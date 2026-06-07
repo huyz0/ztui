@@ -1,0 +1,19 @@
+#!/bin/sh
+echo "=== Running Pre-Commit Validation ==="
+
+echo "1. Checking code formatting and style (Biome)..."
+bun run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Formatting checks failed! Please run 'bun run lint:fix' or edit the code to comply."
+  exit 1
+fi
+
+echo "2. Running unit and integration tests (Vitest)..."
+bun run test
+if [ $? -ne 0 ]; then
+  echo "❌ Unit tests failed or coverage threshold was not met!"
+  exit 1
+fi
+
+echo "✅ Pre-commit checks passed successfully."
+exit 0

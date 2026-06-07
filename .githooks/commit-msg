@@ -1,0 +1,20 @@
+#!/bin/sh
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Regexp to match conventional commits
+# Pattern: type(scope): lowercase description
+REGEXP="^(feat|fix|docs|test|chore)(\([a-z0-9-]+\))?: [a-z0-9].+"
+
+if ! echo "$COMMIT_MSG" | grep -qE "$REGEXP"; then
+  echo "❌ Invalid commit message format: \"$COMMIT_MSG\""
+  echo ""
+  echo "Your commit message must follow the Conventional Commits format:"
+  echo "  <type>(<scope>): <lowercase description>"
+  echo ""
+  echo "Allowed types: feat, fix, docs, test, chore"
+  echo "Example: feat(layout): add grid component"
+  exit 1
+fi
+
+exit 0

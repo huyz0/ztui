@@ -1,0 +1,183 @@
+import { renderBufferToHTML } from "../render/html-renderer.ts";
+import type { App } from "./app.ts";
+
+export interface InspectorServer {
+  stop(): void;
+}
+
+export function startInspector(app: App, port = 8000): InspectorServer {
+  if (typeof Bun !== "undefined") {
+    const server = Bun.serve({
+      port,
+      fetch(req) {
+        return handleRequest(app, req);
+      },
+    });
+    return {
+      stop() {
+        server.stop();
+      },
+    };
+  }
+
+  // Node.js fallback using native http module (for Vitest/Node environments)
+  const http = require("node:http");
+  const server = http.createServer(async (nodeReq: any, nodeRes: any) => {
+    const protocol = nodeReq.headers["x-forwarded-proto"] || "http";
+    const host = nodeReq.headers.host || `localhost:${port}`;
+    const url = new URL(nodeReq.url || "", `${protocol}://${host}`);
+
+    let bodyText = "";
+    if (nodeReq.method === "POST") {
+      const buffers = [];
+      for await (const chunk of nodeReq) {
+        buffers.push(chunk);
+      }
+      bodyText = Buffer.concat(buffers).toString();
+    }
+
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(nodeReq.headers)) {
+      if (typeof v === "string") headers[k] = v;
+    }
+
+    const req = new Request(url.toString(), {
+      method: nodeReq.method,
+      headers,
+      body: nodeReq.method === "POST" ? bodyText : undefined,
+    });
+
+    try {
+      const response = await handleRequest(app, req);
+      const resHeaders: Record<string, string> = {
+        "Content-Type": response.headers.get("Content-Type") || "text/plain",
+      };
+      for (const [k, v] of response.headers.entries()) {
+        resHeaders[k] = v;
+      }
+      nodeRes.writeHead(response.status, resHeaders);
+      nodeRes.end(await response.text());
+    } catch (err: any) {
+      nodeRes.writeHead(500, { "Content-Type": "application/json" });
+      nodeRes.end(JSON.stringify({ status: "error", msg: err.message }));
+    }
+  });
+
+  server.listen(port);
+  return {
+    stop() {
+      server.close();
+    },
+  };
+}
+
+async function handleRequest(app: App, req: Request): Promise<Response> {
+  const url = new URL(req.url);
+
+  if (url.pathname === "/dom" && req.method === "GET") {
+    const dump = dumpDOMTree(app.activeScreen);
+    return new Response(JSON.stringify(dump, null, 2), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
+
+  if (url.pathname === "/render" && req.method === "GET") {
+    const html = renderBufferToHTML((app as any).currentBuffer);
+    return new Response(html, {
+      headers: {
+        "Content-Type": "text/html",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
+
+  if (url.pathname === "/input" && req.method === "POST") {
+    try {
+      const body: any = await req.json();
+      if (body.type === "key") {
+        app.driver.emit("key", {
+          key: body.key,
+          name: body.name || body.key,
+          ctrl: !!body.ctrl,
+          shift: !!body.shift,
+          meta: !!body.meta,
+        });
+        app.queueRender();
+        return new Response(JSON.stringify({ status: "ok", msg: `Key ${body.key} simulated` }), {
+          headers: { "Access-Control-Allow-Origin": "*" },
+        });
+      }
+      if (body.type === "mouse") {
+        app.driver.emit("mouse", {
+          x: body.x,
+          y: body.y,
+          type: body.action || "press",
+          button: body.button || "left",
+        });
+        app.queueRender();
+        return new Response(
+          JSON.stringify({ status: "ok", msg: `Mouse click at (${body.x}, ${body.y}) simulated` }),
+          {
+            headers: { "Access-Control-Allow-Origin": "*" },
+          },
+        );
+      }
+      return new Response(JSON.stringify({ status: "error", msg: "Invalid event type" }), {
+        status: 400,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    } catch (err: any) {
+      return new Response(JSON.stringify({ status: "error", msg: err.message }), {
+        status: 500,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    }
+  }
+
+  return new Response("ZTUI Inspector Running. Endpoints: GET /dom, GET /render, POST /input", {
+    status: 200,
+    headers: { "Access-Control-Allow-Origin": "*" },
+  });
+}
+
+function dumpDOMTree(node: any): any {
+  const result: any = {
+    tagName: node.tagName,
+    id: node.id || undefined,
+    classes: Array.from(node.classes || []),
+  };
+
+  if (node.region) {
+    result.region = {
+      x: node.region.x,
+      y: node.region.y,
+      width: node.region.width,
+      height: node.region.height,
+    };
+  }
+
+  if (node.style) {
+    result.style = node.style;
+  }
+
+  if (node.computedStyle) {
+    result.computedStyle = node.computedStyle;
+  }
+
+  if ("value" in node) {
+    result.value = node.value;
+  }
+
+  if (node.focused !== undefined) {
+    result.focused = node.focused;
+  }
+
+  if (node.children && node.children.length > 0) {
+    result.children = node.children.map((c: any) => dumpDOMTree(c));
+  }
+
+  return result;
+}

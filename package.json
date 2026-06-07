@@ -1,0 +1,33 @@
+{
+  "name": "ztui",
+  "version": "0.1.0",
+  "description": "Textual-like TUI framework for TypeScript and Bun with React JSX support",
+  "type": "module",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run examples/demo.tsx",
+    "test": "vitest run --coverage",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "postinstall": "git config core.hooksPath .githooks || true",
+    "review": "bun run scripts/code-review.ts"
+  },
+  "dependencies": {
+    "picocolors": "^1.1.1",
+    "react": "^19.0.0",
+    "react-reconciler": "^0.31.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-reconciler": "^0.28.8",
+    "@vitest/coverage-v8": "^1.6.0",
+    "vitest": "^1.6.0"
+  }
+}
