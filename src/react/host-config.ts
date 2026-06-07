@@ -47,23 +47,21 @@ function applyProps(instance: DOMNode, props: any) {
     if (props.onMouseLeave !== undefined) {
       instance.onMouseLeave = props.onMouseLeave;
     }
-    if ("value" in instance && props.value !== undefined) {
-      (instance as any).value = props.value;
-    }
-    if ("onChange" in instance && props.onChange !== undefined) {
-      (instance as any).onChange = props.onChange;
-    }
-    if ("name" in instance && props.name !== undefined) {
-      (instance as any).name = props.name;
-    }
-    if ("src" in instance && props.src !== undefined) {
-      (instance as any).src = props.src;
-    }
-    if ("buffer" in instance && props.buffer !== undefined) {
-      (instance as any).buffer = props.buffer;
-    }
-    if ("ansi" in instance && props.ansi !== undefined) {
-      (instance as any).ansi = props.ansi;
+
+    // Generic prop mapping for any properties defined on the widget instance
+    for (const key of Object.keys(props)) {
+      if (
+        key === "children" ||
+        key === "style" ||
+        key === "id" ||
+        key === "className" ||
+        key.startsWith("on")
+      ) {
+        continue;
+      }
+      if (key in instance && props[key] !== undefined) {
+        (instance as any)[key] = props[key];
+      }
     }
   }
 }

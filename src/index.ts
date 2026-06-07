@@ -31,8 +31,13 @@ export {
   type ImageProps,
   Input,
   Label,
+  Markdown,
+  type MarkdownProps,
+  RichText,
   SvgImage,
   type SvgImageProps,
+  Syntax,
+  type SyntaxProps,
   VBox,
   View,
 } from "./react/components.tsx";
@@ -40,6 +45,9 @@ export {
 export { render } from "./react/reconciler.ts";
 export { ScreenBuffer } from "./render/buffer.ts";
 export { renderBufferToHTML } from "./render/html-renderer.ts";
+export { Markdown as MarkdownEngine } from "./render/rich/markdown.ts";
+export { Syntax as SyntaxEngine } from "./render/rich/syntax.ts";
+export { RichText as RichTextEngine } from "./render/rich/text.ts";
 export { Segment } from "./render/segment.ts";
 export type { StyleProps } from "./render/style.ts";
 // Rendering & Styling
@@ -48,7 +56,10 @@ export { IconWidget } from "./widgets/icon.ts";
 // Icon Registry
 export { IconRegistry, iconRegistry } from "./widgets/icon-registry.ts";
 export { ImageWidget } from "./widgets/image.ts";
+export { MarkdownWidget } from "./widgets/markdown.ts";
+export { RichTextWidget } from "./widgets/rich-text.ts";
 export { SvgImageWidget } from "./widgets/svg-image.ts";
+export { SyntaxWidget } from "./widgets/syntax.ts";
 
 // Run widget registrations
 import "./widgets/index.ts";

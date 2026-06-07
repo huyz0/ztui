@@ -11,7 +11,10 @@ import { IconWidget } from "./icon.ts";
 import { ImageWidget } from "./image.ts";
 import { InputWidget } from "./input.ts";
 import { LabelWidget } from "./label.ts";
+import { MarkdownWidget } from "./markdown.ts";
+import { RichTextWidget } from "./rich-text.ts";
 import { SvgImageWidget } from "./svg-image.ts";
+import { SyntaxWidget } from "./syntax.ts";
 import { VBoxWidget } from "./vbox.ts";
 
 export { BoxWidget } from "./box.ts";
@@ -25,7 +28,10 @@ export { IconWidget } from "./icon.ts";
 export { ImageWidget } from "./image.ts";
 export { InputWidget } from "./input.ts";
 export { LabelWidget } from "./label.ts";
+export { MarkdownWidget } from "./markdown.ts";
+export { RichTextWidget } from "./rich-text.ts";
 export { SvgImageWidget } from "./svg-image.ts";
+export { SyntaxWidget } from "./syntax.ts";
 export { VBoxWidget } from "./vbox.ts";
 
 registerElement("ztui-box", () => new BoxWidget());
@@ -41,3 +47,6 @@ registerElement("ztui-dock", () => new DockWidget());
 registerElement("ztui-icon", () => new IconWidget());
 registerElement("ztui-image", () => new ImageWidget());
 registerElement("ztui-svgimage", () => new SvgImageWidget());
+registerElement("ztui-richtext", () => new RichTextWidget());
+registerElement("ztui-syntax", () => new SyntaxWidget());
+registerElement("ztui-markdown", () => new MarkdownWidget());

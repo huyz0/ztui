@@ -43,6 +43,15 @@ declare global {
           src?: string;
           ansi?: boolean;
         };
+        "ztui-richtext": ZTUIElementProps;
+        "ztui-syntax": ZTUIElementProps & {
+          language?: string;
+          lineNumbers?: boolean;
+          theme?: "ansi_dark" | "ansi_light";
+        };
+        "ztui-markdown": ZTUIElementProps & {
+          theme?: "ansi_dark" | "ansi_light";
+        };
       }
     }
   }
