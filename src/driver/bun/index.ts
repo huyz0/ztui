@@ -370,4 +370,10 @@ export class BunDriver extends Driver {
       bgColor,
     );
   }
+  public override clearScreen(): void {
+    this.write("\x1b[H\x1b[2J\x1b[3J");
+    if (this.capabilities.graphicsProtocol === "kitty") {
+      this.write("\x1b_Ga=d\x1b\\\x1b_Ga=d,d=A\x1b\\");
+    }
+  }
 }

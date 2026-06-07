@@ -99,11 +99,7 @@ export class App extends DOMNode {
         this.currentBuffer.resize(targetW, targetH);
         this.prevBuffer.resize(0, 0); // Force full redraw
 
-        // Clear terminal screen, home cursor, clear scrollback buffer, and purge Kitty image layers
-        this.driver.write("\x1b[H\x1b[2J\x1b[3J");
-        if (this.driver.capabilities.graphicsProtocol === "kitty") {
-          this.driver.write("\x1b_Ga=d\x1b\\\x1b_Ga=d,d=A\x1b\\");
-        }
+        this.driver.clearScreen();
         this.queueRender();
       }, 30);
     });
@@ -232,11 +228,7 @@ export class App extends DOMNode {
       size.height,
     );
     if (ansiDiff) {
-      if (this.driver.capabilities.synchronizedUpdates) {
-        this.driver.write(`\x1b[?2026h${ansiDiff}\x1b[?2026l`);
-      } else {
-        this.driver.write(ansiDiff);
-      }
+      this.driver.writeFrame(ansiDiff);
       this.currentBuffer.copyTo(this.prevBuffer);
     }
   }

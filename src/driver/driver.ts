@@ -73,4 +73,14 @@ export abstract class Driver extends EventEmitter {
   ): string {
     return "";
   }
+  public clearScreen(): void {
+    this.write("\x1b[H\x1b[2J\x1b[3J");
+  }
+  public writeFrame(data: string): void {
+    if (this.capabilities.synchronizedUpdates) {
+      this.write(`\x1b[?2026h${data}\x1b[?2026l`);
+    } else {
+      this.write(data);
+    }
+  }
 }
