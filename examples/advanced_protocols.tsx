@@ -13,7 +13,7 @@ function AdvancedProtocolsApp() {
     const caps = App.instance?.driver?.capabilities;
     if (caps) {
       setProtocolInfo(
-        `Truecolor: ${caps.truecolor} │ KittyKeys: ${caps.kittyKeyboard} │ Hover: ${caps.mouseHover} │ Graphics: ${caps.graphicsProtocol} │ Hyperlinks: ${caps.hyperlinks}`,
+        `Truecolor: ${caps.truecolor} │ KittyKeys: ${caps.kittyKeyboard} │ Hover: ${caps.mouseHover} │ Graphics: ${caps.graphicsProtocol} │ Hyperlinks: ${caps.hyperlinks} │ Glyphs: ${caps.glyphProtocol}`,
       );
     }
   }, []);

@@ -73,6 +73,7 @@ export class BunDriver extends Driver {
       mouseHover: false,
       hyperlinks,
       synchronizedUpdates: false,
+      glyphProtocol: false,
       graphicsProtocol,
       terminalProgram: termProgram || undefined,
     };
@@ -115,7 +116,8 @@ export class BunDriver extends Driver {
       // 3. Kitty graphics query: \x1b_Gi=31,a=q;\x1b\\
       // 4. DECRQM Mouse Hover query: \x1b[?1003$p
       // 5. DECRQM Synchronized Updates query: \x1b[?2026$p
-      this.write("\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p");
+      // 6. Glyph Protocol support query: \x1b_25a1;s\x1b\\
+      this.write("\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p\x1b_25a1;s\x1b\\\\");
 
       this.probeTimeout = setTimeout(() => {
         this.finishProbing();
@@ -224,6 +226,13 @@ export class BunDriver extends Driver {
         this.capabilities.synchronizedUpdates = true;
       }
       leftover = leftover.replace(syncMatch[0], "");
+    }
+
+    // Parse Glyph Protocol support query response: \x1b_25a1;s;fmt=<formats>\x1b\\ or \x1b_25a1;s\x1b\\
+    const glyphMatch = leftover.match(/\x1b_25a1;s(?:;[^\x1b]*)?\x1b\\/);
+    if (glyphMatch) {
+      this.capabilities.glyphProtocol = true;
+      leftover = leftover.replace(glyphMatch[0], "");
     }
 
     // Activate/degrade protocols

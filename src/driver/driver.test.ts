@@ -86,6 +86,7 @@ describe("BunDriver Capability Probing", () => {
     stdin.emit("data", "\x1b_Gi=31;OK\x1b\\"); // Kitty Graphics support OK
     stdin.emit("data", "\x1b[?1003;1$y"); // Mouse Hover DECRQM response (status 1 = active)
     stdin.emit("data", "\x1b[?2026;1$y"); // Synchronized Updates DECRQM response
+    stdin.emit("data", "\x1b_25a1;s;fmt=glyf,colrv0,colrv1\x1b\\"); // Glyph Protocol response
     stdin.emit("data", "k"); // Early user key stroke
 
     // Verify no keys emitted during probing
@@ -99,6 +100,7 @@ describe("BunDriver Capability Probing", () => {
     expect(driver.capabilities.graphicsProtocol).toBe("kitty");
     expect(driver.capabilities.mouseHover).toBe(true);
     expect(driver.capabilities.synchronizedUpdates).toBe(true);
+    expect(driver.capabilities.glyphProtocol).toBe(true);
 
     // Verify protocol activation sequences written to stdout
     expect(stdout.dataWritten.includes("\x1b[>1u")).toBe(true); // Kitty keyboard activation

@@ -24,6 +24,7 @@ export interface TerminalCapabilities {
   mouseHover: boolean;
   hyperlinks: boolean;
   synchronizedUpdates: boolean;
+  glyphProtocol: boolean;
   graphicsProtocol: "kitty" | "iterm2" | "none";
   terminalProgram?: string;
 }
