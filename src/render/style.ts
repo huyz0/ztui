@@ -6,6 +6,7 @@ export interface StyleProps {
   underline?: boolean;
   reverse?: boolean;
   dim?: boolean;
+  strikethrough?: boolean;
   link?: string;
 }
 
@@ -28,6 +29,7 @@ export class Style {
   public readonly underline: boolean;
   public readonly reverse: boolean;
   public readonly dim: boolean;
+  public readonly strikethrough: boolean;
   public readonly link?: string;
 
   constructor(props: StyleProps = {}) {
@@ -38,6 +40,7 @@ export class Style {
     this.underline = !!props.underline;
     this.reverse = !!props.reverse;
     this.dim = !!props.dim;
+    this.strikethrough = !!props.strikethrough;
     this.link = props.link;
   }
 
@@ -52,6 +55,7 @@ export class Style {
       this.underline === other.underline &&
       this.reverse === other.reverse &&
       this.dim === other.dim &&
+      this.strikethrough === other.strikethrough &&
       this.link === other.link
     );
   }
@@ -65,6 +69,7 @@ export class Style {
       underline: other.underline !== undefined ? other.underline : this.underline,
       reverse: other.reverse !== undefined ? other.reverse : this.reverse,
       dim: other.dim !== undefined ? other.dim : this.dim,
+      strikethrough: other.strikethrough !== undefined ? other.strikethrough : this.strikethrough,
       link: other.link !== undefined ? other.link : this.link,
     });
   }
@@ -89,6 +94,10 @@ export class Style {
     if (this.underline) {
       start += "\x1b[4m";
       end += "\x1b[24m";
+    }
+    if (this.strikethrough) {
+      start += "\x1b[9m";
+      end += "\x1b[29m";
     }
     if (this.reverse) {
       start += "\x1b[7m";
@@ -168,6 +177,10 @@ function getClosestBasicColor(r: number, g: number, b: number): number {
 function parseColorToAnsi(color: string, isBackground: boolean): string | null {
   const norm = color.trim().toLowerCase();
   const prefix = isBackground ? 48 : 38;
+
+  if (norm === "default") {
+    return `\x1b[${isBackground ? 49 : 39}m`;
+  }
 
   // Basic colors (16 colors)
   const basicColors: Record<string, number> = {

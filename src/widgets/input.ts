@@ -39,7 +39,7 @@ export class InputWidget extends Widget {
     }
 
     const fg = this.computedStyle.color || "default";
-    const bg = this.computedStyle.background || "default";
+    const bg = this.findResolvedBackground();
     const style = new Style({ color: fg, background: bg });
 
     const segment = new Segment(displayVal, style);

@@ -31,6 +31,7 @@ export interface WidgetStyles {
   underline?: boolean;
   reverse?: boolean;
   dim?: boolean;
+  strikethrough?: boolean;
   link?: string;
 }
 
@@ -52,6 +53,8 @@ export class Widget extends DOMNode {
 
   public onClick?: (ev: any) => void;
   public onKey?: (ev: any) => void;
+  public onMouseEnter?: (ev: any) => void;
+  public onMouseLeave?: (ev: any) => void;
 
   constructor(tagName = "widget") {
     super(tagName);
@@ -100,13 +103,24 @@ export class Widget extends DOMNode {
     return new Region(offset, size);
   }
 
+  public findResolvedBackground(): string {
+    const bg = this.computedStyle?.background;
+    if (bg && bg !== "default" && bg !== "transparent") {
+      return bg;
+    }
+    if (this.parent && this.parent instanceof Widget) {
+      return this.parent.findResolvedBackground();
+    }
+    return "default";
+  }
+
   public render(buffer: ScreenBuffer): void {
     if (!this.visible) return;
 
     const client = this.getClientRect();
 
     // Draw background
-    const bg = this.computedStyle.background || "default";
+    const bg = this.findResolvedBackground();
     const fg = this.computedStyle.color || "default";
     const style = new Style({
       color: fg,
@@ -116,6 +130,7 @@ export class Widget extends DOMNode {
       underline: this.computedStyle.underline,
       reverse: this.computedStyle.reverse,
       dim: this.computedStyle.dim,
+      strikethrough: this.computedStyle.strikethrough,
       link: this.computedStyle.link,
     });
 

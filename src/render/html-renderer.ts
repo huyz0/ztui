@@ -32,8 +32,12 @@ export function renderBufferToHTML(buffer: ScreenBuffer): string {
         if (currentStyle.italic) {
           cssStyles.push("font-style: italic");
         }
-        if (currentStyle.underline) {
+        if (currentStyle.underline && currentStyle.strikethrough) {
+          cssStyles.push("text-decoration: underline line-through");
+        } else if (currentStyle.underline) {
           cssStyles.push("text-decoration: underline");
+        } else if (currentStyle.strikethrough) {
+          cssStyles.push("text-decoration: line-through");
         }
 
         const styleAttr = cssStyles.length > 0 ? ` style="${cssStyles.join("; ")}"` : "";
@@ -69,6 +73,7 @@ export function renderBufferToHTML(buffer: ScreenBuffer): string {
         bold: cellStyle.bold,
         italic: cellStyle.italic,
         underline: cellStyle.underline,
+        strikethrough: cellStyle.strikethrough,
         reverse: cellStyle.reverse,
         link: cellStyle.link,
       };
@@ -94,6 +99,7 @@ function stylesEqual(s1: any, s2: any): boolean {
     s1.bold === s2.bold &&
     s1.italic === s2.italic &&
     s1.underline === s2.underline &&
+    s1.strikethrough === s2.strikethrough &&
     s1.reverse === s2.reverse &&
     s1.link === s2.link
   );

@@ -1,7 +1,7 @@
 import { Widget } from "../dom/widget.ts";
 import { TextNode } from "../react/host-config.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
-import { Segment } from "../render/segment.ts";
+import { Segment, stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 
 export class ButtonWidget extends Widget {
@@ -40,15 +40,16 @@ export class ButtonWidget extends Widget {
     if (!text) return;
 
     const fg = this.focused ? "black" : this.computedStyle.color || "default";
-    const bg = this.focused ? "white" : this.computedStyle.background || "default";
+    const bg = this.focused ? "white" : this.findResolvedBackground();
     const style = new Style({
       color: fg,
       background: bg,
       bold: true,
+      strikethrough: this.computedStyle.strikethrough,
       link: this.computedStyle.link,
     });
 
-    const textLen = text.length;
+    const textLen = stringWidth(text);
     const x = Math.max(
       contentRect.x,
       contentRect.x + Math.floor((contentRect.width - textLen) / 2),

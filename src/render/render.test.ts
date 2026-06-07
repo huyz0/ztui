@@ -182,4 +182,24 @@ describe("rendering system", () => {
     expect(output.includes("[C:A]")).toBe(true);
     expect(output.includes("[C:B]")).toBe(true);
   });
+
+  test("Strikethrough rendering and HTML conversion", () => {
+    const s1 = new Style({ strikethrough: true });
+    const c1 = s1.getEscapeCodes();
+    expect(c1.start.includes("\x1b[9m")).toBe(true);
+    expect(c1.end.includes("\x1b[29m")).toBe(true);
+
+    // HTML Renderer with strikethrough
+    const buffer = new ScreenBuffer(10, 1);
+    buffer.drawSegment(0, 0, new Segment("Struck", s1));
+    const html1 = renderBufferToHTML(buffer);
+    expect(html1.includes("text-decoration: line-through")).toBe(true);
+
+    // HTML Renderer combining underline and strikethrough
+    const s2 = new Style({ underline: true, strikethrough: true });
+    const buffer2 = new ScreenBuffer(10, 1);
+    buffer2.drawSegment(0, 0, new Segment("Both", s2));
+    const html2 = renderBufferToHTML(buffer2);
+    expect(html2.includes("text-decoration: underline line-through")).toBe(true);
+  });
 });
