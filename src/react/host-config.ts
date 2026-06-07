@@ -40,11 +40,20 @@ function applyProps(instance: DOMNode, props: any) {
     if (props.onKey !== undefined) {
       instance.onKey = props.onKey;
     }
+    if (props.onMouseEnter !== undefined) {
+      instance.onMouseEnter = props.onMouseEnter;
+    }
+    if (props.onMouseLeave !== undefined) {
+      instance.onMouseLeave = props.onMouseLeave;
+    }
     if ("value" in instance && props.value !== undefined) {
       (instance as any).value = props.value;
     }
     if ("onChange" in instance && props.onChange !== undefined) {
       (instance as any).onChange = props.onChange;
+    }
+    if ("name" in instance && props.name !== undefined) {
+      (instance as any).name = props.name;
     }
   }
 }

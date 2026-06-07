@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   App,
   Box,
@@ -287,5 +287,70 @@ describe("first-class isolated debugging", () => {
     expect(html.includes("Box Right")).toBe(true);
 
     app.stop();
+  });
+
+  test("Mouse hover events (onMouseEnter & onMouseLeave)", async () => {
+    const driver = new MockDriver(40, 10);
+    const app = new App(driver);
+
+    let enterCount = 0;
+    let leaveCount = 0;
+
+    render(
+      <View style={{ layout: "vertical", width: 40, height: 10 }}>
+        <Button
+          id="btn-hover"
+          onMouseEnter={() => {
+            enterCount++;
+          }}
+          onMouseLeave={() => {
+            leaveCount++;
+          }}
+        >
+          Hover Me
+        </Button>
+      </View>,
+      app.activeScreen,
+    );
+    app.run();
+
+    await new Promise((resolve) => setTimeout(resolve, 15));
+
+    const btn = app.activeScreen.children[0].children[0] as any;
+    expect(btn.tagName).toBe("button");
+
+    const clickX = btn.region.x + Math.floor(btn.region.width / 2);
+    const clickY = btn.region.y + Math.floor(btn.region.height / 2);
+
+    // Hover over the button (mouse move event)
+    driver.simulateMouse(clickX, clickY, "move", "none");
+    await new Promise((resolve) => setTimeout(resolve, 15));
+
+    // Move mouse away to coordinates (39, 9)
+    driver.simulateMouse(39, 9, "move", "none");
+    await new Promise((resolve) => setTimeout(resolve, 15));
+
+    expect(enterCount).toBe(1);
+    expect(leaveCount).toBe(1);
+
+    app.stop();
+  });
+
+  test("App Ctrl+C safety exit handler", async () => {
+    const driver = new MockDriver(40, 10);
+    const app = new App(driver);
+    app.run();
+
+    const originalExit = process.exit;
+    const mockExit = vi.fn();
+    process.exit = mockExit as any;
+
+    try {
+      driver.simulateKey("ctrl+c", "c", true, false);
+      expect(mockExit).toHaveBeenCalledWith(0);
+    } finally {
+      process.exit = originalExit;
+      app.stop();
+    }
   });
 });

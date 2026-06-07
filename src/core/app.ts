@@ -88,8 +88,19 @@ export class App extends DOMNode {
       this.queueRender();
     });
 
+    this.driver.on("capabilities_resolved", () => {
+      log(
+        `Capabilities resolved event received from driver. Cell size: ${JSON.stringify(this.driver.capabilities.cellSize)}, Graphics: ${this.driver.capabilities.graphicsProtocol}`,
+      );
+      this.queueRender();
+    });
+
     this.driver.on("key", (ev) => {
       log(`Key event received: key=${ev.key}, name=${ev.name}`);
+      if (ev.key === "ctrl+c") {
+        this.stop();
+        process.exit(0);
+      }
       if (ev.key === "tab") {
         this.activeScreen.focusNext(ev.shift);
         log(
@@ -116,7 +127,17 @@ export class App extends DOMNode {
       );
 
       if (hit !== this.hoveredWidget) {
+        const oldHovered = this.hoveredWidget;
         this.hoveredWidget = hit;
+
+        if (oldHovered?.onMouseLeave) {
+          log(`Triggered onMouseLeave on widget: ${oldHovered.tagName}#${oldHovered.id || ""}`);
+          oldHovered.onMouseLeave(ev);
+        }
+        if (hit?.onMouseEnter) {
+          log(`Triggered onMouseEnter on widget: ${hit.tagName}#${hit.id || ""}`);
+          hit.onMouseEnter(ev);
+        }
         this.queueRender();
       }
 
@@ -155,6 +176,9 @@ export class App extends DOMNode {
   }
 
   private layoutAndRender(): void {
+    if (!this.driver.capabilitiesResolved) {
+      return;
+    }
     const screen = this.activeScreen;
 
     this.resolveAllStyles(screen);

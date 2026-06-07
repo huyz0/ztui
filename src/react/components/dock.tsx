@@ -2,9 +2,9 @@ import type React from "react";
 import { Box } from "./box.tsx";
 import type { ComponentProps } from "./types.ts";
 
-export function Dock({ id, className, style, children }: ComponentProps) {
+export function Dock({ id, className, style, children, ...rest }: ComponentProps) {
   return (
-    <Box id={id} className={className} style={{ display: "dock", ...style }}>
+    <Box id={id} className={className} style={{ display: "dock", ...style }} {...rest}>
       {children}
     </Box>
   );

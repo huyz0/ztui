@@ -4,76 +4,35 @@ import type { WidgetStyles } from "../dom/widget.ts";
 declare global {
   namespace React {
     namespace JSX {
+      interface ZTUIElementProps {
+        style?: WidgetStyles;
+        className?: string;
+        id?: string;
+        children?: React.ReactNode;
+        onMouseEnter?: (ev: any) => void;
+        onMouseLeave?: (ev: any) => void;
+      }
+
       interface IntrinsicElements {
-        "ztui-view": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-button": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
+        "ztui-view": ZTUIElementProps;
+        "ztui-button": ZTUIElementProps & {
           onClick?: (ev: any) => void;
-          children?: React.ReactNode;
         };
-        "ztui-label": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-input": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
+        "ztui-label": ZTUIElementProps;
+        "ztui-input": ZTUIElementProps & {
           onKey?: (ev: any) => void;
           value?: string;
           onChange?: (val: string) => void;
-          children?: React.ReactNode;
         };
-        "ztui-header": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-footer": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-vbox": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-hbox": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-grid": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-dock": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
-        };
-        "ztui-box": {
-          style?: WidgetStyles;
-          className?: string;
-          id?: string;
-          children?: React.ReactNode;
+        "ztui-header": ZTUIElementProps;
+        "ztui-footer": ZTUIElementProps;
+        "ztui-vbox": ZTUIElementProps;
+        "ztui-hbox": ZTUIElementProps;
+        "ztui-grid": ZTUIElementProps;
+        "ztui-dock": ZTUIElementProps;
+        "ztui-box": ZTUIElementProps;
+        "ztui-icon": ZTUIElementProps & {
+          name: string;
         };
       }
     }

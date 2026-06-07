@@ -1,9 +1,9 @@
 import type React from "react";
 import type { ComponentProps } from "./types.ts";
 
-export function View({ id, className, style, children }: ComponentProps) {
+export function View({ id, className, style, children, ...rest }: ComponentProps) {
   return (
-    <ztui-view id={id} className={className} style={style}>
+    <ztui-view id={id} className={className} style={style} {...rest}>
       {children}
     </ztui-view>
   );

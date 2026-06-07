@@ -1,9 +1,9 @@
 import type React from "react";
 import type { ComponentProps } from "./types.ts";
 
-export function Footer({ id, className, style, children }: ComponentProps) {
+export function Footer({ id, className, style, children, ...rest }: ComponentProps) {
   return (
-    <ztui-footer id={id} className={className} style={style}>
+    <ztui-footer id={id} className={className} style={style} {...rest}>
       {children}
     </ztui-footer>
   );

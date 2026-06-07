@@ -7,7 +7,16 @@ export interface InputProps extends ComponentProps {
   onChange?: (val: string) => void;
 }
 
-export function Input({ id, className, style, onKey, value, onChange, children }: InputProps) {
+export function Input({
+  id,
+  className,
+  style,
+  onKey,
+  value,
+  onChange,
+  children,
+  ...rest
+}: InputProps) {
   return (
     <ztui-input
       id={id}
@@ -16,6 +25,7 @@ export function Input({ id, className, style, onKey, value, onChange, children }
       onKey={onKey}
       value={value}
       onChange={onChange}
+      {...rest}
     >
       {children}
     </ztui-input>
