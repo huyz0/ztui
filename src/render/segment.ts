@@ -6,6 +6,9 @@ export function charWidth(char: string): number {
   // ASCII Control characters
   if (code < 32 || (code >= 127 && code < 160)) return 0;
 
+  // Custom SVG icon PUA characters span 2 columns
+  if (code >= 0xe000 && code <= 0xefff) return 2;
+
   // CJK and wide characters:
   // 0x1100 - 0x115F: Hangul Jamo
   // 0x2E80 - 0xA4CF: CJK Radicals, Symbols, Bopomofo, Kana, Yi, etc.
@@ -26,8 +29,11 @@ export function charWidth(char: string): number {
     (code >= 0xfe30 && code <= 0xfe6f) ||
     (code >= 0xff00 && code <= 0xff60) ||
     (code >= 0xffe0 && code <= 0xffe6) ||
-    (code >= 0x1f300 && code <= 0x1f9ff) ||
-    (code >= 0x20000 && code <= 0x2fa1f)
+    (code >= 0x1f300 && code <= 0x1faff) ||
+    (code >= 0x20000 && code <= 0x2fa1f) ||
+    (code >= 0x2600 && code <= 0x27bf) ||
+    (code >= 0x23e9 && code <= 0x23f3) ||
+    code === 0x2b50
   ) {
     return 2;
   }

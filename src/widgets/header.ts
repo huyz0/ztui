@@ -1,7 +1,7 @@
 import { Widget } from "../dom/widget.ts";
 import { TextNode } from "../react/host-config.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
-import { Segment } from "../render/segment.ts";
+import { Segment, stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 
 export class HeaderWidget extends Widget {
@@ -34,7 +34,7 @@ export class HeaderWidget extends Widget {
     const bg = this.computedStyle.background || "blue";
     const style = new Style({ color: fg, background: bg });
 
-    const textLen = text.length;
+    const textLen = stringWidth(text);
     const x = Math.max(
       contentRect.x,
       contentRect.x + Math.floor((contentRect.width - textLen) / 2),

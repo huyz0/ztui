@@ -1,6 +1,8 @@
 import { renderBufferToHTML } from "../render/html-renderer.ts";
 import type { App } from "./app.ts";
 
+declare const Bun: any;
+
 export interface InspectorServer {
   stop(): void;
 }
@@ -9,7 +11,7 @@ export function startInspector(app: App, port = 8000): InspectorServer {
   if (typeof Bun !== "undefined") {
     const server = Bun.serve({
       port,
-      fetch(req) {
+      fetch(req: Request) {
         return handleRequest(app, req);
       },
     });
