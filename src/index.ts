@@ -31,7 +31,15 @@ export {
   HBox,
   Grid,
   Dock,
+  Icon,
+  type IconProps,
+  HeroicIcon,
+  type HeroicIconProps,
 } from "./react/components.tsx";
+
+// Icon Registry
+export { iconRegistry, IconRegistry } from "./widgets/icon-registry.ts";
+export { IconWidget } from "./widgets/icon.ts";
 
 // Debug, Introspection & Testing
 export { MockDriver } from "./driver/mock-driver.ts";

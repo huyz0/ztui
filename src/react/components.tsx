@@ -12,3 +12,7 @@ export { VBox } from "./components/vbox.tsx";
 export { HBox } from "./components/hbox.tsx";
 export { Grid } from "./components/grid.tsx";
 export { Dock } from "./components/dock.tsx";
+export { Icon } from "./components/icon.tsx";
+export type { IconProps } from "./components/icon.tsx";
+export { HeroicIcon } from "./components/heroic-icon.tsx";
+export type { HeroicIconProps } from "./components/heroic-icon.tsx";
