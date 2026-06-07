@@ -76,7 +76,7 @@ describe("Image & SVG Image Widgets", () => {
 
     const buffer = (app as any).currentBuffer;
     const cell = buffer.cells[0][0];
-    expect(cell.char).toBe("▀");
+    expect([" ", "█"]).toContain(cell.char);
     expect(cell.style.color).toBeDefined();
     expect(cell.style.background).toBeDefined();
 
@@ -152,7 +152,7 @@ describe("Image & SVG Image Widgets", () => {
 
     const buffer = (app as any).currentBuffer;
     const cell = buffer.cells[0][0];
-    expect(cell.char).toBe("▀");
+    expect([" ", "█"]).toContain(cell.char);
 
     app.stop();
 
@@ -206,9 +206,70 @@ describe("Image & SVG Image Widgets", () => {
 
     const buffer = (app as any).currentBuffer;
     const cell = buffer.cells[0][0];
-    expect(cell.char).toBe("▀");
+    expect([" ", "█"]).toContain(cell.char);
     expect(cell.graphic).toBeUndefined();
 
     app.stop();
+  });
+
+  test("Dynamically selects quadrant characters depending on image content", async () => {
+    const driver = new VTEDriver(10, 5, {
+      graphicsProtocol: "none",
+    });
+    const app = new App(driver);
+    app.activeScreen.style.layout = "vertical";
+
+    // 1. A vertical division SVG should trigger quadrant characters (like left/right half-blocks)
+    const vertSvg = `
+      <svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="5" height="10" fill="white"/>
+        <rect x="5" y="0" width="5" height="10" fill="black"/>
+      </svg>
+    `;
+    render(<SvgImage src={vertSvg} style={{ width: 1, height: 1 }} />, app.activeScreen);
+    app.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await driver.waitWrite();
+    let cell = (app as any).currentBuffer.cells[0][0];
+    expect(["▌", "▐"]).toContain(cell.char);
+    app.stop();
+
+    // 2. A gradient SVG should trigger quadrant blocks
+    const gradSvg = `
+      <svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="black"/>
+            <stop offset="100%" stop-color="white"/>
+          </linearGradient>
+        </defs>
+        <rect width="10" height="10" fill="url(#g)"/>
+      </svg>
+    `;
+    const app2 = new App(driver);
+    app2.activeScreen.style.layout = "vertical";
+    render(<SvgImage src={gradSvg} style={{ width: 1, height: 1 }} />, app2.activeScreen);
+    app2.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await driver.waitWrite();
+    cell = (app2 as any).currentBuffer.cells[0][0];
+    expect(["▌", "▐"]).toContain(cell.char);
+    app2.stop();
+
+    // 3. Fine diagonal line SVG should trigger diagonal quadrant characters
+    const lineSvg = `
+      <svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="0" x2="100" y2="100" stroke="white" stroke-width="20"/>
+      </svg>
+    `;
+    const app3 = new App(driver);
+    app3.activeScreen.style.layout = "vertical";
+    render(<SvgImage src={lineSvg} style={{ width: 1, height: 1 }} />, app3.activeScreen);
+    app3.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await driver.waitWrite();
+    cell = (app3 as any).currentBuffer.cells[0][0];
+    expect(["▚", "▞"]).toContain(cell.char);
+    app3.stop();
   });
 });

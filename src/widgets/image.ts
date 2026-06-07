@@ -8,6 +8,7 @@ import { encodePNG } from "../driver/bun/graphics.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
 import { parseColorToRGB } from "./icon-registry.ts";
+import { renderAnsiFallback, resizeImage } from "./image-renderers.ts";
 
 export class ImageWidget extends Widget {
   public src?: string;
@@ -161,55 +162,16 @@ export class ImageWidget extends Widget {
         }
       }
     } else {
-      // 2. ANSI Half-Block Fallback mode
-      const pixelWidth = client.width;
-      const pixelHeight = client.height * 2;
-
-      const scaledPixels = resizeImage(
+      // 2. ANSI Fallback mode using dynamic character selection
+      renderAnsiFallback(
+        buffer,
         decoded.pixels,
         decoded.width,
         decoded.height,
-        pixelWidth,
-        pixelHeight,
+        client,
+        bgRgb,
+        bgHex,
       );
-
-      // Blend transparency with background color
-      for (let i = 0; i < scaledPixels.length; i += 4) {
-        const alpha = scaledPixels[i + 3] / 255;
-        scaledPixels[i] = Math.round(scaledPixels[i] * alpha + bgRgb.r * (1 - alpha));
-        scaledPixels[i + 1] = Math.round(scaledPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
-        scaledPixels[i + 2] = Math.round(scaledPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
-        scaledPixels[i + 3] = 255;
-      }
-
-      for (let dy = 0; dy < client.height; dy++) {
-        for (let dx = 0; dx < client.width; dx++) {
-          const topIdx = (dy * 2 * pixelWidth + dx) * 4;
-          const botIdx = ((dy * 2 + 1) * pixelWidth + dx) * 4;
-
-          const topHex = rgbToHex(
-            scaledPixels[topIdx],
-            scaledPixels[topIdx + 1],
-            scaledPixels[topIdx + 2],
-          );
-          const botHex = rgbToHex(
-            scaledPixels[botIdx],
-            scaledPixels[botIdx + 1],
-            scaledPixels[botIdx + 2],
-          );
-
-          const cellStyle = new Style({
-            color: topHex,
-            background: botHex,
-          });
-
-          buffer.cells[client.y + dy][client.x + dx] = {
-            char: "▀",
-            style: cellStyle,
-            wideContinuation: false,
-          };
-        }
-      }
     }
   }
 
@@ -283,52 +245,4 @@ export function decodeImage(buffer: Uint8Array): {
   }
 }
 
-export function resizeImage(
-  srcPixels: Uint8Array,
-  srcWidth: number,
-  srcHeight: number,
-  dstWidth: number,
-  dstHeight: number,
-): Uint8Array {
-  const dstPixels = new Uint8Array(dstWidth * dstHeight * 4);
-  const xRatio = srcWidth / dstWidth;
-  const yRatio = srcHeight / dstHeight;
-
-  for (let y = 0; y < dstHeight; y++) {
-    for (let x = 0; x < dstWidth; x++) {
-      const px = x * xRatio;
-      const py = y * yRatio;
-      const xL = Math.floor(px);
-      const xH = Math.min(srcWidth - 1, Math.ceil(px));
-      const yL = Math.floor(py);
-      const yH = Math.min(srcHeight - 1, Math.ceil(py));
-
-      const xWeight = px - xL;
-      const yWeight = py - yL;
-
-      const idxLL = (yL * srcWidth + xL) * 4;
-      const idxLH = (yL * srcWidth + xH) * 4;
-      const idxHL = (yH * srcWidth + xL) * 4;
-      const idxHH = (yH * srcWidth + xH) * 4;
-
-      const dstIdx = (y * dstWidth + x) * 4;
-
-      for (let c = 0; c < 4; c++) {
-        const valLL = srcPixels[idxLL + c];
-        const valLH = srcPixels[idxLH + c];
-        const valHL = srcPixels[idxHL + c];
-        const valHH = srcPixels[idxHH + c];
-
-        const top = valLL * (1 - xWeight) + valLH * xWeight;
-        const bottom = valHL * (1 - xWeight) + valHH * xWeight;
-        dstPixels[dstIdx + c] = Math.round(top * (1 - yWeight) + bottom * yWeight);
-      }
-    }
-  }
-  return dstPixels;
-}
-
-function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (c: number) => c.toString(16).padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
+export { resizeImage } from "./image-renderers.ts";
