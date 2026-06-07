@@ -34,6 +34,13 @@ declare global {
         "ztui-icon": ZTUIElementProps & {
           name: string;
         };
+        "ztui-image": ZTUIElementProps & {
+          src?: string;
+          buffer?: Uint8Array;
+        };
+        "ztui-svgimage": ZTUIElementProps & {
+          src?: string;
+        };
       }
     }
   }

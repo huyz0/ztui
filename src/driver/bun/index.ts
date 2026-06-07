@@ -235,4 +235,25 @@ export class BunDriver extends Driver {
   public override getIconSequence(name: string, color?: string, bgColor?: string): string {
     return this.graphicsManager.getIconSequence(name, this.capabilities, color, bgColor);
   }
+
+  public override getImageSequence(
+    pixelBuffer: Uint8Array,
+    pixelWidth: number,
+    pixelHeight: number,
+    cellWidth: number,
+    cellHeight: number,
+    pngBase64?: string,
+    bgColor?: string,
+  ): string {
+    return this.graphicsManager.getImageSequence(
+      pixelBuffer,
+      pixelWidth,
+      pixelHeight,
+      cellWidth,
+      cellHeight,
+      this.capabilities,
+      pngBase64,
+      bgColor,
+    );
+  }
 }

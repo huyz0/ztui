@@ -8,8 +8,10 @@ import { GridWidget } from "./grid.ts";
 import { HBoxWidget } from "./hbox.ts";
 import { HeaderWidget } from "./header.ts";
 import { IconWidget } from "./icon.ts";
+import { ImageWidget } from "./image.ts";
 import { InputWidget } from "./input.ts";
 import { LabelWidget } from "./label.ts";
+import { SvgImageWidget } from "./svg-image.ts";
 import { VBoxWidget } from "./vbox.ts";
 
 export { BoxWidget } from "./box.ts";
@@ -23,6 +25,8 @@ export { HBoxWidget } from "./hbox.ts";
 export { GridWidget } from "./grid.ts";
 export { DockWidget } from "./dock.ts";
 export { IconWidget } from "./icon.ts";
+export { ImageWidget } from "./image.ts";
+export { SvgImageWidget } from "./svg-image.ts";
 
 registerElement("ztui-box", () => new BoxWidget());
 registerElement("ztui-label", () => new LabelWidget());
@@ -35,3 +39,5 @@ registerElement("ztui-hbox", () => new HBoxWidget());
 registerElement("ztui-grid", () => new GridWidget());
 registerElement("ztui-dock", () => new DockWidget());
 registerElement("ztui-icon", () => new IconWidget());
+registerElement("ztui-image", () => new ImageWidget());
+registerElement("ztui-svgimage", () => new SvgImageWidget());

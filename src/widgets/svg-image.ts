@@ -1,0 +1,244 @@
+import * as fs from "node:fs";
+import { Resvg } from "@resvg/resvg-js";
+import { App } from "../core/app.ts";
+import { Widget } from "../dom/widget.ts";
+import type { ScreenBuffer } from "../render/buffer.ts";
+import { Style } from "../render/style.ts";
+import { parseColorToRGB } from "./icon-registry.ts";
+import { resizeImage } from "./image.ts";
+
+export class SvgImageWidget extends Widget {
+  public src?: string;
+
+  constructor() {
+    super("svgimage");
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    if (!this.visible) return;
+
+    super.render(buffer);
+    const client = this.getClientRect();
+    if (client.width <= 0 || client.height <= 0) return;
+
+    const bgHex = this.findResolvedBackground();
+    const bgRgb = parseColorToRGB(bgHex === "default" ? "#1e1e2e" : bgHex);
+    const style = new Style({
+      color: "default",
+      background: bgHex,
+    });
+
+    let svgContent = "";
+    if (this.src) {
+      try {
+        const trimmed = this.src.trim();
+        if (trimmed.startsWith("<svg") || trimmed.startsWith("<?xml")) {
+          svgContent = trimmed;
+        } else {
+          svgContent = fs.readFileSync(this.src, "utf8");
+        }
+      } catch (err) {
+        this.renderError(
+          buffer,
+          `Error reading SVG: ${err instanceof Error ? err.message : String(err)}`,
+          style,
+        );
+        return;
+      }
+    }
+
+    if (!svgContent) {
+      this.renderError(buffer, "No SVG source provided", style);
+      return;
+    }
+
+    const app = App.instance;
+    const capabilities = app?.driver.capabilities;
+    const isGraphicsSupported = capabilities && capabilities.graphicsProtocol !== "none";
+
+    const cellSize = capabilities?.cellSize || { width: 10, height: 20 };
+
+    if (isGraphicsSupported) {
+      // 1. Graphics Protocol mode
+      const pixelWidth = client.width * cellSize.width;
+      const pixelHeight = client.height * cellSize.height;
+
+      let renderedPixels: any;
+      try {
+        const resvg = new Resvg(svgContent, {
+          fitTo: {
+            mode: "width",
+            value: pixelWidth,
+          },
+        });
+        const rendered = resvg.render();
+        let rawPixels: any = new Uint8Array(
+          rendered.pixels.buffer,
+          rendered.pixels.byteOffset,
+          rendered.pixels.byteLength,
+        );
+        if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
+          rawPixels = resizeImage(
+            rawPixels,
+            rendered.width,
+            rendered.height,
+            pixelWidth,
+            pixelHeight,
+          );
+        }
+        renderedPixels = rawPixels;
+      } catch (err) {
+        this.renderError(
+          buffer,
+          `Render error: ${err instanceof Error ? err.message : String(err)}`,
+          style,
+        );
+        return;
+      }
+
+      // Blend transparency with background
+      for (let i = 0; i < renderedPixels.length; i += 4) {
+        const alpha = renderedPixels[i + 3] / 255;
+        renderedPixels[i] = Math.round(renderedPixels[i] * alpha + bgRgb.r * (1 - alpha));
+        renderedPixels[i + 1] = Math.round(renderedPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
+        renderedPixels[i + 2] = Math.round(renderedPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
+        renderedPixels[i + 3] = 255;
+      }
+
+      buffer.cells[client.y][client.x] = {
+        char: " ",
+        style,
+        wideContinuation: false,
+        graphic: {
+          type: "image",
+          pixelBuffer: renderedPixels,
+          pixelWidth,
+          pixelHeight,
+          cellWidth: client.width,
+          cellHeight: client.height,
+        },
+      };
+
+      // Mark other cells as wideContinuation so they are skipped by the terminal text renderer
+      for (let dy = 0; dy < client.height; dy++) {
+        for (let dx = 0; dx < client.width; dx++) {
+          if (dy === 0 && dx === 0) continue;
+          buffer.cells[client.y + dy][client.x + dx] = {
+            char: "",
+            style,
+            wideContinuation: true,
+          };
+        }
+      }
+    } else {
+      // 2. ANSI Half-Block Fallback mode
+      const pixelWidth = client.width;
+      const pixelHeight = client.height * 2;
+
+      let renderedPixels: any;
+      try {
+        const resvg = new Resvg(svgContent, {
+          fitTo: {
+            mode: "width",
+            value: pixelWidth,
+          },
+        });
+        const rendered = resvg.render();
+        let rawPixels: any = new Uint8Array(
+          rendered.pixels.buffer,
+          rendered.pixels.byteOffset,
+          rendered.pixels.byteLength,
+        );
+        if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
+          rawPixels = resizeImage(
+            rawPixels,
+            rendered.width,
+            rendered.height,
+            pixelWidth,
+            pixelHeight,
+          );
+        }
+        renderedPixels = rawPixels;
+      } catch (err) {
+        this.renderError(
+          buffer,
+          `Render error: ${err instanceof Error ? err.message : String(err)}`,
+          style,
+        );
+        return;
+      }
+
+      // Blend transparency with background color
+      for (let i = 0; i < renderedPixels.length; i += 4) {
+        const alpha = renderedPixels[i + 3] / 255;
+        renderedPixels[i] = Math.round(renderedPixels[i] * alpha + bgRgb.r * (1 - alpha));
+        renderedPixels[i + 1] = Math.round(renderedPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
+        renderedPixels[i + 2] = Math.round(renderedPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
+        renderedPixels[i + 3] = 255;
+      }
+
+      for (let dy = 0; dy < client.height; dy++) {
+        for (let dx = 0; dx < client.width; dx++) {
+          const topIdx = (dy * 2 * pixelWidth + dx) * 4;
+          const botIdx = ((dy * 2 + 1) * pixelWidth + dx) * 4;
+
+          const topHex = rgbToHex(
+            renderedPixels[topIdx],
+            renderedPixels[topIdx + 1],
+            renderedPixels[topIdx + 2],
+          );
+          const botHex = rgbToHex(
+            renderedPixels[botIdx],
+            renderedPixels[botIdx + 1],
+            renderedPixels[botIdx + 2],
+          );
+
+          const cellStyle = new Style({
+            color: topHex,
+            background: botHex,
+          });
+
+          buffer.cells[client.y + dy][client.x + dx] = {
+            char: "▀",
+            style: cellStyle,
+            wideContinuation: false,
+          };
+        }
+      }
+    }
+  }
+
+  private renderError(buffer: ScreenBuffer, msg: string, style: Style): void {
+    const client = this.getClientRect();
+    let charsWritten = 0;
+    for (let dy = 0; dy < client.height; dy++) {
+      for (let dx = 0; dx < client.width; dx++) {
+        const char = " ";
+        if (dy === 0 && charsWritten < msg.length) {
+          const remainingWidth = client.width - dx;
+          const chunk = msg.substring(charsWritten, charsWritten + remainingWidth);
+          for (let i = 0; i < chunk.length; i++) {
+            buffer.cells[client.y + dy][client.x + dx + i] = {
+              char: chunk[i],
+              style,
+              wideContinuation: false,
+            };
+          }
+          charsWritten += chunk.length;
+          dx += chunk.length - 1;
+          continue;
+        }
+        buffer.cells[client.y + dy][client.x + dx] = {
+          char,
+          style,
+          wideContinuation: false,
+        };
+      }
+    }
+  }
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const toHex = (c: number) => c.toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}

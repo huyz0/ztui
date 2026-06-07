@@ -62,4 +62,15 @@ export abstract class Driver extends EventEmitter {
     const icon = iconRegistry.get(name);
     return icon ? icon.textFallback : "";
   }
+  public getImageSequence(
+    _pixelBuffer: Uint8Array,
+    _pixelWidth: number,
+    _pixelHeight: number,
+    _cellWidth: number,
+    _cellHeight: number,
+    _pngBase64?: string,
+    _bgColor?: string,
+  ): string {
+    return "";
+  }
 }

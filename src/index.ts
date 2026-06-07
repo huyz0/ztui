@@ -35,11 +35,17 @@ export {
   type IconProps,
   HeroicIcon,
   type HeroicIconProps,
+  Image,
+  type ImageProps,
+  SvgImage,
+  type SvgImageProps,
 } from "./react/components.tsx";
 
 // Icon Registry
 export { iconRegistry, IconRegistry } from "./widgets/icon-registry.ts";
 export { IconWidget } from "./widgets/icon.ts";
+export { ImageWidget } from "./widgets/image.ts";
+export { SvgImageWidget } from "./widgets/svg-image.ts";
 
 // Drivers
 export { Driver } from "./driver/driver.ts";

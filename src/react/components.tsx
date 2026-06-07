@@ -16,3 +16,7 @@ export { Icon } from "./components/icon.tsx";
 export type { IconProps } from "./components/icon.tsx";
 export { HeroicIcon } from "./components/heroic-icon.tsx";
 export type { HeroicIconProps } from "./components/heroic-icon.tsx";
+export { Image } from "./components/image.tsx";
+export type { ImageProps } from "./components/image.tsx";
+export { SvgImage } from "./components/svg-image.tsx";
+export type { SvgImageProps } from "./components/svg-image.tsx";

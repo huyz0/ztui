@@ -188,6 +188,17 @@ export class App extends DOMNode {
     screen.render(this.currentBuffer);
 
     const ansiDiff = this.currentBuffer.renderDiff(this.prevBuffer, (cell) => {
+      if (cell.graphic) {
+        return this.driver.getImageSequence(
+          cell.graphic.pixelBuffer,
+          cell.graphic.pixelWidth,
+          cell.graphic.pixelHeight,
+          cell.graphic.cellWidth,
+          cell.graphic.cellHeight,
+          cell.graphic.pngBase64,
+          cell.style.background,
+        );
+      }
       if (cell.icon) {
         return this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background);
       }

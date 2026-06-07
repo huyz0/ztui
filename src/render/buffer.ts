@@ -3,11 +3,22 @@ import type { Segment } from "./segment.ts";
 import { charWidth } from "./segment.ts";
 import { Style } from "./style.ts";
 
+export interface GraphicMetadata {
+  type: "image";
+  pixelBuffer: Uint8Array;
+  pixelWidth: number;
+  pixelHeight: number;
+  cellWidth: number;
+  cellHeight: number;
+  pngBase64?: string;
+}
+
 export interface Cell {
   char: string;
   style: Style;
   wideContinuation: boolean;
   icon?: string;
+  graphic?: GraphicMetadata;
 }
 
 export class ScreenBuffer {
@@ -29,6 +40,7 @@ export class ScreenBuffer {
         style: Style.DEFAULT,
         wideContinuation: false,
         icon: undefined,
+        graphic: undefined,
       })),
     );
   }
@@ -41,6 +53,7 @@ export class ScreenBuffer {
         cell.style = Style.DEFAULT;
         cell.wideContinuation = false;
         cell.icon = undefined;
+        cell.graphic = undefined;
       }
     }
   }
@@ -140,7 +153,8 @@ export class ScreenBuffer {
           newCell.char !== oldCell.char ||
           !newCell.style.equals(oldCell.style) ||
           newCell.wideContinuation !== oldCell.wideContinuation ||
-          newCell.icon !== oldCell.icon;
+          newCell.icon !== oldCell.icon ||
+          newCell.graphic !== oldCell.graphic;
 
         const styleChanged =
           runStartX !== null && !newCell.style.equals(this.cells[y][runStartX].style);
@@ -197,6 +211,7 @@ export class ScreenBuffer {
           style: cell.style,
           wideContinuation: cell.wideContinuation,
           icon: cell.icon,
+          graphic: cell.graphic,
         };
       }
     }

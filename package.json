@@ -21,7 +21,10 @@
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "heroicons": "^2.2.0",
+    "jpeg-js": "^0.4.4",
+    "omggif": "^1.0.10",
     "picocolors": "^1.1.1",
+    "pngjs": "^7.0.0",
     "react": "^19.0.0",
     "react-reconciler": "^0.31.0"
   },
@@ -29,6 +32,7 @@
     "@biomejs/biome": "^1.8.3",
     "@types/bun": "latest",
     "@types/node": "^20.0.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",
     "@types/react-reconciler": "^0.28.8",
     "@vitest/coverage-v8": "^1.6.0",

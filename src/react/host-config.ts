@@ -55,6 +55,12 @@ function applyProps(instance: DOMNode, props: any) {
     if ("name" in instance && props.name !== undefined) {
       (instance as any).name = props.name;
     }
+    if ("src" in instance && props.src !== undefined) {
+      (instance as any).src = props.src;
+    }
+    if ("buffer" in instance && props.buffer !== undefined) {
+      (instance as any).buffer = props.buffer;
+    }
   }
 }
 
