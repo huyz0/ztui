@@ -37,7 +37,11 @@ export function renderBufferToHTML(buffer: ScreenBuffer): string {
         }
 
         const styleAttr = cssStyles.length > 0 ? ` style="${cssStyles.join("; ")}"` : "";
-        rowHtml += `<span${styleAttr}>${currentText}</span>`;
+        let runHtml = `<span${styleAttr}>${currentText}</span>`;
+        if (currentStyle.link) {
+          runHtml = `<a href="${currentStyle.link}" target="_blank" style="text-decoration: underline; color: inherit;">${runHtml}</a>`;
+        }
+        rowHtml += runHtml;
         currentText = "";
       }
     };
@@ -66,6 +70,7 @@ export function renderBufferToHTML(buffer: ScreenBuffer): string {
         italic: cellStyle.italic,
         underline: cellStyle.underline,
         reverse: cellStyle.reverse,
+        link: cellStyle.link,
       };
 
       if (!currentStyle || !stylesEqual(currentStyle, styleKey)) {
@@ -89,7 +94,8 @@ function stylesEqual(s1: any, s2: any): boolean {
     s1.bold === s2.bold &&
     s1.italic === s2.italic &&
     s1.underline === s2.underline &&
-    s1.reverse === s2.reverse
+    s1.reverse === s2.reverse &&
+    s1.link === s2.link
   );
 }
 

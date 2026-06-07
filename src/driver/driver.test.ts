@@ -1,0 +1,298 @@
+import { EventEmitter } from "node:events";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { BunDriver } from "./bun-driver.ts";
+
+class MockReadStream extends EventEmitter {
+  public isTTY = true;
+  public setRawMode = vi.fn();
+  public resume = vi.fn();
+  public pause = vi.fn();
+  public setEncoding = vi.fn();
+}
+
+class MockWriteStream extends EventEmitter {
+  public isTTY = true;
+  public columns = 80;
+  public rows = 24;
+  public dataWritten = "";
+  public write(data: string) {
+    this.dataWritten += data;
+  }
+}
+
+describe("BunDriver Capability Probing", () => {
+  let stdin: MockReadStream;
+  let stdout: MockWriteStream;
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    stdin = new MockReadStream();
+    stdout = new MockWriteStream();
+    originalEnv = { ...process.env };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    vi.useRealTimers();
+  });
+
+  test("Baseline capability initialization from environment", () => {
+    process.env.COLORTERM = "truecolor";
+    process.env.TERM = "xterm-256color";
+    process.env.TERM_PROGRAM = "ghostty";
+
+    const driver = new BunDriver({ stdin, stdout });
+    expect(driver.capabilities.truecolor).toBe(true);
+    expect(driver.capabilities.color256).toBe(true);
+    expect(driver.capabilities.hyperlinks).toBe(true);
+    expect(driver.capabilities.graphicsProtocol).toBe("kitty");
+  });
+
+  test("Bypasses active probing if stdin/stdout are not TTYs", () => {
+    stdin.isTTY = false;
+    stdout.isTTY = false;
+
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+
+    // Verify no probe sequences written, only baseline default mouse tracking
+    expect(stdout.dataWritten.includes("\x1b[?1049h")).toBe(true); // alt buffer
+    expect(stdout.dataWritten.includes("\x1b[?1000h")).toBe(true); // standard mouse
+    expect(stdout.dataWritten.includes("\x1b[?1003$p")).toBe(false); // NO probe
+
+    driver.stop();
+  });
+
+  test("Active probing updates capabilities and replays early keystrokes", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+
+    // Verify probe queries emitted
+    expect(stdout.dataWritten.includes("\x1b[>c")).toBe(true);
+    expect(stdout.dataWritten.includes("\x1b[?u")).toBe(true);
+    expect(stdout.dataWritten.includes("\x1b_Gi=31")).toBe(true);
+    expect(stdout.dataWritten.includes("\x1b[?1003$p")).toBe(true);
+
+    // Capture key events emitted by driver
+    const emittedKeys: any[] = [];
+    driver.on("key", (ev) => {
+      emittedKeys.push(ev);
+    });
+
+    // Simulate query responses + early user input keystroke
+    stdin.emit("data", "\x1b[>0;95;0c"); // DA2 response
+    stdin.emit("data", "\x1b[?1u"); // Kitty Keyboard response (enabled)
+    stdin.emit("data", "\x1b_Gi=31;OK\x1b\\"); // Kitty Graphics support OK
+    stdin.emit("data", "\x1b[?1003;1$y"); // Mouse Hover DECRQM response (status 1 = active)
+    stdin.emit("data", "k"); // Early user key stroke
+
+    // Verify no keys emitted during probing
+    expect(emittedKeys.length).toBe(0);
+
+    // Advance 100ms to finish probing
+    vi.advanceTimersByTime(100);
+
+    // Verify capabilities updated
+    expect(driver.capabilities.kittyKeyboard).toBe(true);
+    expect(driver.capabilities.graphicsProtocol).toBe("kitty");
+    expect(driver.capabilities.mouseHover).toBe(true);
+
+    // Verify protocol activation sequences written to stdout
+    expect(stdout.dataWritten.includes("\x1b[>1u")).toBe(true); // Kitty keyboard activation
+    expect(stdout.dataWritten.includes("\x1b[?1003h")).toBe(true); // Mouse Hover activation
+
+    // Verify buffered key was replayed
+    expect(emittedKeys.length).toBe(1);
+    expect(emittedKeys[0]).toEqual({
+      key: "k",
+      name: "k",
+      ctrl: false,
+      meta: false,
+      shift: false,
+    });
+
+    driver.stop();
+    // Verify cleanup
+    expect(stdout.dataWritten.includes("\x1b[<u")).toBe(true); // Disable kitty keyboard
+  });
+
+  test("Kitty Keyboard key and modifier parsing", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+    vi.advanceTimersByTime(100);
+
+    const emittedKeys: any[] = [];
+    driver.on("key", (ev) => {
+      emittedKeys.push(ev);
+    });
+
+    // Simulate Ctrl+Shift+A (key 97, modifier 6 = 1 + 1 (shift) + 4 (ctrl) = 6, event type 1 = press)
+    stdin.emit("data", "\x1b[97;6u");
+    expect(emittedKeys[emittedKeys.length - 1]).toEqual({
+      key: "ctrl+A",
+      name: "a",
+      ctrl: true,
+      meta: false,
+      shift: true,
+    });
+
+    // Simulate Up Arrow key (keycode 57376, no modifier)
+    stdin.emit("data", "\x1b[57376;1u");
+    expect(emittedKeys[emittedKeys.length - 1]).toEqual({
+      key: "up",
+      name: "up",
+      ctrl: false,
+      meta: false,
+      shift: false,
+    });
+
+    // Simulate arbitrary unknown keycode (e.g. 9999)
+    stdin.emit("data", "\x1b[9999;1u");
+    expect(emittedKeys[emittedKeys.length - 1].key).toBe("key_9999");
+
+    // Simulate Enter key release (keycode 13, event type 3 = release) - should be ignored
+    const lengthBefore = emittedKeys.length;
+    stdin.emit("data", "\x1b[13;1:3u");
+    expect(emittedKeys.length).toBe(lengthBefore);
+
+    driver.stop();
+  });
+
+  test("Standard key fallbacks and control sequences", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+    vi.advanceTimersByTime(100);
+
+    const emittedKeys: any[] = [];
+    driver.on("key", (ev) => {
+      emittedKeys.push(ev);
+    });
+
+    // Arrow keys
+    stdin.emit("data", "\x1b[A"); // Up
+    expect(emittedKeys[emittedKeys.length - 1].key).toBe("up");
+
+    // Shift-Tab
+    stdin.emit("data", "\x1b[Z");
+    expect(emittedKeys[emittedKeys.length - 1]).toEqual({
+      key: "tab",
+      name: "tab",
+      ctrl: false,
+      meta: false,
+      shift: true,
+    });
+
+    // Backspace (127), Enter (13), Tab (9)
+    stdin.emit("data", "\x7f");
+    expect(emittedKeys[emittedKeys.length - 1].key).toBe("backspace");
+    stdin.emit("data", "\r");
+    expect(emittedKeys[emittedKeys.length - 1].key).toBe("enter");
+    stdin.emit("data", "\t");
+    expect(emittedKeys[emittedKeys.length - 1].key).toBe("tab");
+
+    // Ctrl+X (code 24)
+    stdin.emit("data", String.fromCharCode(24));
+    expect(emittedKeys[emittedKeys.length - 1]).toEqual({
+      key: "ctrl+x",
+      name: "x",
+      ctrl: true,
+      meta: false,
+      shift: false,
+    });
+
+    // Generic escape sequence
+    stdin.emit("data", "\x1b[1;5A");
+    expect(emittedKeys[emittedKeys.length - 1].key).toBe("\x1b[1;5A");
+
+    // Single escape press
+    stdin.emit("data", "\x1b");
+    expect(emittedKeys[emittedKeys.length - 1].key).toBe("escape");
+
+    driver.stop();
+  });
+
+  test("Mouse event sequence parsing", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+    vi.advanceTimersByTime(100);
+
+    const emittedMouse: any[] = [];
+    driver.on("mouse", (ev) => {
+      emittedMouse.push(ev);
+    });
+
+    // SGR Mouse Press Left (button 0, x=10, y=20) -> index is 1-based, so input uses 11;21
+    stdin.emit("data", "\x1b[<0;11;21M");
+    expect(emittedMouse[emittedMouse.length - 1]).toEqual({
+      x: 10,
+      y: 20,
+      type: "press",
+      button: "left",
+    });
+
+    // SGR Mouse Release Left
+    stdin.emit("data", "\x1b[<0;11;21m");
+    expect(emittedMouse[emittedMouse.length - 1]).toEqual({
+      x: 10,
+      y: 20,
+      type: "release",
+      button: "left",
+    });
+
+    // SGR Mouse Drag Right (button 2 + drag bit 32 = 34)
+    stdin.emit("data", "\x1b[<34;11;21M");
+    expect(emittedMouse[emittedMouse.length - 1]).toEqual({
+      x: 10,
+      y: 20,
+      type: "drag",
+      button: "right",
+    });
+
+    // SGR Mouse Move Hover (button code 35 or movement/hover)
+    stdin.emit("data", "\x1b[<35;11;21M");
+    expect(emittedMouse[emittedMouse.length - 1]).toEqual({
+      x: 10,
+      y: 20,
+      type: "move",
+      button: "none",
+    });
+
+    // SGR Scroll Up (button code 64)
+    stdin.emit("data", "\x1b[<64;11;21M");
+    expect(emittedMouse[emittedMouse.length - 1]).toEqual({
+      x: 10,
+      y: 20,
+      type: "scroll_up",
+      button: "none",
+    });
+
+    // SGR Scroll Down (button code 65)
+    stdin.emit("data", "\x1b[<65;11;21M");
+    expect(emittedMouse[emittedMouse.length - 1]).toEqual({
+      x: 10,
+      y: 20,
+      type: "scroll_down",
+      button: "none",
+    });
+
+    driver.stop();
+  });
+
+  test("Ctrl+C safety exit sequence", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+    vi.advanceTimersByTime(100);
+
+    const originalExit = process.exit;
+    const mockExit = vi.fn();
+    process.exit = mockExit as any;
+
+    try {
+      stdin.emit("data", "\u0003");
+      expect(mockExit).toHaveBeenCalledWith(0);
+    } finally {
+      process.exit = originalExit;
+    }
+  });
+});

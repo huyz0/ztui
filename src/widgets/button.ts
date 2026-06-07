@@ -41,7 +41,12 @@ export class ButtonWidget extends Widget {
 
     const fg = this.focused ? "black" : this.computedStyle.color || "default";
     const bg = this.focused ? "white" : this.computedStyle.background || "default";
-    const style = new Style({ color: fg, background: bg, bold: true });
+    const style = new Style({
+      color: fg,
+      background: bg,
+      bold: true,
+      link: this.computedStyle.link,
+    });
 
     const textLen = text.length;
     const x = Math.max(

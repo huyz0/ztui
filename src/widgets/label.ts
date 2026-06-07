@@ -27,7 +27,16 @@ export class LabelWidget extends Widget {
 
     const fg = this.computedStyle.color || "default";
     const bg = this.computedStyle.background || "default";
-    const style = new Style({ color: fg, background: bg });
+    const style = new Style({
+      color: fg,
+      background: bg,
+      bold: this.computedStyle.bold,
+      italic: this.computedStyle.italic,
+      underline: this.computedStyle.underline,
+      reverse: this.computedStyle.reverse,
+      dim: this.computedStyle.dim,
+      link: this.computedStyle.link,
+    });
 
     let x = contentRect.x;
     const textLen = text.length;

@@ -138,7 +138,10 @@ export class ScreenBuffer {
           !newCell.style.equals(oldCell.style) ||
           newCell.wideContinuation !== oldCell.wideContinuation;
 
-        if (changed) {
+        const styleChanged =
+          runStartX !== null && !newCell.style.equals(this.cells[y][runStartX].style);
+
+        if (changed && !styleChanged) {
           if (runStartX === null) {
             runStartX = x;
           }
@@ -146,11 +149,17 @@ export class ScreenBuffer {
             runContent += newCell.char;
           }
         } else {
-          // End of run
+          // End of run or style change
           if (runStartX !== null) {
             output += this.flushRun(runStartX, y, runContent, this.cells[y][runStartX].style);
             runStartX = null;
             runContent = "";
+          }
+          if (changed) {
+            runStartX = x;
+            if (!newCell.wideContinuation) {
+              runContent += newCell.char;
+            }
           }
         }
       }

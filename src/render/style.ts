@@ -6,7 +6,19 @@ export interface StyleProps {
   underline?: boolean;
   reverse?: boolean;
   dim?: boolean;
+  link?: string;
 }
+
+export interface RenderCapabilities {
+  truecolor: boolean;
+  color256: boolean;
+}
+
+// Global capabilities reference to prevent circular core imports
+export const renderCapabilities: RenderCapabilities = {
+  truecolor: true,
+  color256: true,
+};
 
 export class Style {
   public readonly color?: string;
@@ -16,6 +28,7 @@ export class Style {
   public readonly underline: boolean;
   public readonly reverse: boolean;
   public readonly dim: boolean;
+  public readonly link?: string;
 
   constructor(props: StyleProps = {}) {
     this.color = props.color;
@@ -25,6 +38,7 @@ export class Style {
     this.underline = !!props.underline;
     this.reverse = !!props.reverse;
     this.dim = !!props.dim;
+    this.link = props.link;
   }
 
   public static readonly DEFAULT = new Style();
@@ -37,7 +51,8 @@ export class Style {
       this.italic === other.italic &&
       this.underline === other.underline &&
       this.reverse === other.reverse &&
-      this.dim === other.dim
+      this.dim === other.dim &&
+      this.link === other.link
     );
   }
 
@@ -50,6 +65,7 @@ export class Style {
       underline: other.underline !== undefined ? other.underline : this.underline,
       reverse: other.reverse !== undefined ? other.reverse : this.reverse,
       dim: other.dim !== undefined ? other.dim : this.dim,
+      link: other.link !== undefined ? other.link : this.link,
     });
   }
 
@@ -95,6 +111,11 @@ export class Style {
       }
     }
 
+    if (this.link) {
+      start = `\x1b]8;;${this.link}\x1b\\${start}`;
+      end = `${end}\x1b]8;;\x1b\\`;
+    }
+
     return { start, end };
   }
 
@@ -103,6 +124,44 @@ export class Style {
     if (!start) return text;
     return start + text + end;
   }
+}
+
+// Helper to map RGB values to the closest basic 16 ANSI color using Euclidean distance
+function getClosestBasicColor(r: number, g: number, b: number): number {
+  const ansiRGBs = [
+    { r: 0, g: 0, b: 0 }, // 0: black
+    { r: 128, g: 0, b: 0 }, // 1: red
+    { r: 0, g: 128, b: 0 }, // 2: green
+    { r: 128, g: 128, b: 0 }, // 3: yellow
+    { r: 0, g: 0, b: 128 }, // 4: blue
+    { r: 128, g: 0, b: 128 }, // 5: magenta
+    { r: 0, g: 128, b: 128 }, // 6: cyan
+    { r: 192, g: 192, b: 192 }, // 7: white
+    { r: 128, g: 128, b: 128 }, // 8: bright-black / gray
+    { r: 255, g: 0, b: 0 }, // 9: bright-red
+    { r: 0, g: 255, b: 0 }, // 10: bright-green
+    { r: 255, g: 255, b: 0 }, // 11: bright-yellow
+    { r: 0, g: 0, b: 255 }, // 12: bright-blue
+    { r: 255, g: 0, b: 255 }, // 13: bright-magenta
+    { r: 0, g: 255, b: 255 }, // 14: bright-cyan
+    { r: 255, g: 255, b: 255 }, // 15: bright-white
+  ];
+
+  let minDistance = Number.MAX_VALUE;
+  let closestIndex = 0;
+
+  for (let i = 0; i < ansiRGBs.length; i++) {
+    const dr = r - ansiRGBs[i].r;
+    const dg = g - ansiRGBs[i].g;
+    const db = b - ansiRGBs[i].b;
+    const dist = dr * dr + dg * dg + db * db;
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestIndex = i;
+    }
+  }
+
+  return closestIndex;
 }
 
 // Utility to parse color name, hex, or rgb/rgba to ANSI escape sequences
@@ -140,34 +199,56 @@ function parseColorToAnsi(color: string, isBackground: boolean): string | null {
     return `\x1b[${isBackground ? 100 + (code - 8) : 90 + (code - 8)}m`;
   }
 
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let parsed = false;
+
   // Hex colors: #rgb or #rrggbb
   if (norm.startsWith("#")) {
     const hex = norm.slice(1);
-    let r = 0;
-    let g = 0;
-    let b = 0;
     if (hex.length === 3) {
       r = Number.parseInt(hex[0] + hex[0], 16);
       g = Number.parseInt(hex[1] + hex[1], 16);
       b = Number.parseInt(hex[2] + hex[2], 16);
+      parsed = true;
     } else if (hex.length === 6) {
       r = Number.parseInt(hex.slice(0, 2), 16);
       g = Number.parseInt(hex.slice(2, 4), 16);
       b = Number.parseInt(hex.slice(4, 6), 16);
-    } else {
-      return null;
+      parsed = true;
     }
+  } else {
+    // rgb(r, g, b)
+    const rgbMatch = norm.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
+    if (rgbMatch) {
+      r = Number.parseInt(rgbMatch[1]);
+      g = Number.parseInt(rgbMatch[2]);
+      b = Number.parseInt(rgbMatch[3]);
+      parsed = true;
+    }
+  }
+
+  if (!parsed) {
+    return null;
+  }
+
+  if (renderCapabilities.truecolor) {
     return `\x1b[${prefix};2;${r};${g};${b}m`;
   }
 
-  // rgb(r, g, b)
-  const rgbMatch = norm.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
-  if (rgbMatch) {
-    const r = Number.parseInt(rgbMatch[1]);
-    const g = Number.parseInt(rgbMatch[2]);
-    const b = Number.parseInt(rgbMatch[3]);
-    return `\x1b[${prefix};2;${r};${g};${b}m`;
+  if (renderCapabilities.color256) {
+    const rIdx = Math.round((r / 255) * 5);
+    const gIdx = Math.round((g / 255) * 5);
+    const bIdx = Math.round((b / 255) * 5);
+    const index = 16 + 36 * rIdx + 6 * gIdx + bIdx;
+    return `\x1b[${prefix};5;${index}m`;
   }
 
-  return null;
+  // Fallback to closest 16-color index
+  const closestIndex = getClosestBasicColor(r, g, b);
+  if (closestIndex < 8) {
+    return `\x1b[${isBackground ? 40 + closestIndex : 30 + closestIndex}m`;
+  }
+  return `\x1b[${isBackground ? 100 + (closestIndex - 8) : 90 + (closestIndex - 8)}m`;
 }

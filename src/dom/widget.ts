@@ -26,6 +26,12 @@ export interface WidgetStyles {
   display?: "flex" | "grid" | "dock";
   flexDirection?: "row" | "column";
   flexGrow?: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  reverse?: boolean;
+  dim?: boolean;
+  link?: string;
 }
 
 export class Widget extends DOMNode {
@@ -102,7 +108,16 @@ export class Widget extends DOMNode {
     // Draw background
     const bg = this.computedStyle.background || "default";
     const fg = this.computedStyle.color || "default";
-    const style = new Style({ color: fg, background: bg });
+    const style = new Style({
+      color: fg,
+      background: bg,
+      bold: this.computedStyle.bold,
+      italic: this.computedStyle.italic,
+      underline: this.computedStyle.underline,
+      reverse: this.computedStyle.reverse,
+      dim: this.computedStyle.dim,
+      link: this.computedStyle.link,
+    });
 
     for (let y = client.y; y < client.bottom; y++) {
       for (let x = client.x; x < client.right; x++) {

@@ -1,8 +1,9 @@
 import { Size } from "../geometry/size.ts";
-import { Driver, KeyEvent, type MouseEvent } from "./driver.ts";
+import { Driver, KeyEvent, type MouseEvent, type TerminalCapabilities } from "./driver.ts";
 
 export class MockDriver extends Driver {
   public writtenData = "";
+  public override readonly capabilities: TerminalCapabilities;
   private width: number;
   private height: number;
   private isRunning = false;
@@ -11,6 +12,15 @@ export class MockDriver extends Driver {
     super();
     this.width = width;
     this.height = height;
+    this.capabilities = {
+      truecolor: true,
+      color256: true,
+      kittyKeyboard: false,
+      mouseTracking: true,
+      mouseHover: false,
+      hyperlinks: true,
+      graphicsProtocol: "none",
+    };
   }
 
   public getSize(): Size {
