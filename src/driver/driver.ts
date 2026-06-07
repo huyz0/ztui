@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { Size } from "../geometry/size.ts";
+import { iconRegistry } from "../widgets/icon-registry.ts";
 
 export interface KeyEvent {
   key: string;
@@ -25,23 +26,40 @@ export interface TerminalCapabilities {
   hyperlinks: boolean;
   synchronizedUpdates: boolean;
   glyphProtocol: boolean;
-  graphicsProtocol: "kitty" | "iterm2" | "none";
+  clipboard: boolean;
+  notifications: boolean;
+  graphicsProtocol: "kitty" | "iterm2" | "sixel" | "none";
   terminalProgram?: string;
+  cellSize?: { width: number; height: number };
 }
 
 export declare interface Driver {
   on(event: "resize", listener: (size: Size) => void): this;
   on(event: "key", listener: (ev: KeyEvent) => void): this;
   on(event: "mouse", listener: (ev: MouseEvent) => void): this;
+  on(event: "capabilities_resolved", listener: () => void): this;
   emit(event: "resize", size: Size): boolean;
   emit(event: "key", ev: KeyEvent): boolean;
   emit(event: "mouse", ev: MouseEvent): boolean;
+  emit(event: "capabilities_resolved"): boolean;
+}
+
+export interface Clipboard {
+  get(): Promise<string>;
+  set(text: string): void;
 }
 
 export abstract class Driver extends EventEmitter {
+  public capabilitiesResolved = false;
   public abstract readonly capabilities: TerminalCapabilities;
+  public abstract readonly clipboard: Clipboard;
   abstract start(): void;
   abstract stop(): void;
   abstract write(data: string): void;
   abstract getSize(): Size;
+  public abstract showNotification(title: string, body: string): void;
+  public getIconSequence(name: string, _color?: string, _bgColor?: string): string {
+    const icon = iconRegistry.get(name);
+    return icon ? icon.textFallback : "";
+  }
 }

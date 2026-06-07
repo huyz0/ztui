@@ -1,9 +1,16 @@
 import { Size } from "../geometry/size.ts";
-import { Driver, KeyEvent, type MouseEvent, type TerminalCapabilities } from "./driver.ts";
+import {
+  type Clipboard,
+  Driver,
+  KeyEvent,
+  type MouseEvent,
+  type TerminalCapabilities,
+} from "./driver.ts";
 
 export class MockDriver extends Driver {
   public writtenData = "";
   public override readonly capabilities: TerminalCapabilities;
+  public override readonly clipboard: Clipboard;
   private width: number;
   private height: number;
   private isRunning = false;
@@ -21,7 +28,17 @@ export class MockDriver extends Driver {
       hyperlinks: true,
       synchronizedUpdates: false,
       glyphProtocol: false,
+      clipboard: true,
+      notifications: true,
       graphicsProtocol: "none",
+    };
+    let mockClipboardText = "";
+    this.clipboard = {
+      get: async () => mockClipboardText,
+      set: (text: string) => {
+        mockClipboardText = text;
+        this.write(`\x1b]52;c;${Buffer.from(text).toString("base64")}\x07`);
+      },
     };
   }
 
@@ -32,6 +49,8 @@ export class MockDriver extends Driver {
   public start(): void {
     this.isRunning = true;
     this.writtenData = "";
+    this.capabilitiesResolved = true;
+    this.emit("capabilities_resolved");
   }
 
   public stop(): void {
@@ -44,6 +63,11 @@ export class MockDriver extends Driver {
 
   public clearWrittenData(): void {
     this.writtenData = "";
+  }
+
+  public showNotification(title: string, body: string): void {
+    this.write(`\x1b]9;${title}: ${body}\x07`);
+    this.write(`\x1b]777;notify;${title};${body}\x07`);
   }
 
   public simulateKey(

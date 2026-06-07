@@ -1,9 +1,48 @@
 import { Size } from "../geometry/size.ts";
 import { renderCapabilities } from "../render/style.ts";
-import { Driver, KeyEvent, type MouseEvent, type TerminalCapabilities } from "./driver.ts";
+import {
+  type RasterizedIcon,
+  iconRegistry,
+  rasterizeSVG,
+  rgbaToSixel,
+} from "../widgets/icon-registry.ts";
+import {
+  type Clipboard,
+  Driver,
+  type KeyEvent,
+  type MouseEvent,
+  type TerminalCapabilities,
+} from "./driver.ts";
 
 export class BunDriver extends Driver {
+  private iconCache = new Map<
+    string,
+    {
+      raster?: RasterizedIcon;
+      cellWidth?: number;
+      cellHeight?: number;
+      sixelCache?: Map<string, string>;
+    }
+  >();
   public override readonly capabilities!: TerminalCapabilities;
+  public override readonly clipboard: Clipboard = {
+    get: (): Promise<string> => {
+      return new Promise<string>((resolve) => {
+        this.pendingClipboardResolvers.push(resolve);
+        this.write("\x1b]52;c;?\x07");
+        setTimeout(() => {
+          const idx = this.pendingClipboardResolvers.indexOf(resolve);
+          if (idx !== -1) {
+            this.pendingClipboardResolvers.splice(idx, 1);
+            resolve("");
+          }
+        }, 500);
+      });
+    },
+    set: (text: string): void => {
+      this.write(`\x1b]52;c;${Buffer.from(text).toString("base64")}\x07`);
+    },
+  };
 
   private isRunning = false;
   private stdin: any;
@@ -11,6 +50,7 @@ export class BunDriver extends Driver {
   private isProbing = false;
   private probeBuffer = "";
   private probeTimeout: any = null;
+  private pendingClipboardResolvers: ((text: string) => void)[] = [];
 
   private resizeListener = () => {
     this.emit("resize", this.getSize());
@@ -43,11 +83,14 @@ export class BunDriver extends Driver {
     const termProgram = process.env.TERM_PROGRAM || "";
     const lcTerminal = process.env.LC_TERMINAL || "";
 
+    const isWT = !!process.env.WT_SESSION || !!process.env.WT_PROFILE_ID;
+
     const truecolor =
       colorterm === "truecolor" ||
       colorterm === "24bit" ||
       termProgram === "WezTerm" ||
-      termProgram === "ghostty";
+      termProgram === "ghostty" ||
+      isWT;
     const color256 = term.includes("256color") || truecolor;
 
     const hyperlinks =
@@ -55,13 +98,23 @@ export class BunDriver extends Driver {
       termProgram === "ghostty" ||
       termProgram === "iTerm.app" ||
       lcTerminal === "iTerm2" ||
+      isWT ||
       !!process.env.VTE_VERSION;
 
-    let graphicsProtocol: "kitty" | "iterm2" | "none" = "none";
+    const mouseHover =
+      termProgram === "WezTerm" ||
+      termProgram === "ghostty" ||
+      termProgram === "iTerm.app" ||
+      isWT ||
+      !!process.env.VTE_VERSION;
+
+    let graphicsProtocol: "kitty" | "iterm2" | "sixel" | "none" = "none";
     if (termProgram === "iTerm.app" || lcTerminal === "iTerm2") {
       graphicsProtocol = "iterm2";
     } else if (termProgram === "WezTerm" || termProgram === "ghostty") {
       graphicsProtocol = "kitty";
+    } else if (isWT) {
+      graphicsProtocol = "sixel";
     }
 
     // Capabilities initialized to baseline configuration
@@ -70,12 +123,15 @@ export class BunDriver extends Driver {
       color256,
       kittyKeyboard: false,
       mouseTracking: true,
-      mouseHover: false,
+      mouseHover,
       hyperlinks,
       synchronizedUpdates: false,
       glyphProtocol: false,
+      clipboard: true,
+      notifications: true,
       graphicsProtocol,
-      terminalProgram: termProgram || undefined,
+      terminalProgram: termProgram || (isWT ? "Windows Terminal" : undefined),
+      cellSize: isWT ? { width: 11, height: 22 } : { width: 10, height: 20 },
     };
   }
 
@@ -108,22 +164,28 @@ export class BunDriver extends Driver {
     const isTTY = this.stdin.isTTY && this.stdout.isTTY;
     if (isTTY) {
       this.isProbing = true;
+      this.capabilitiesResolved = false;
       this.probeBuffer = "";
 
       // Emit probe escape sequences to stdout:
+      // 0. DA1: \x1b[c
       // 1. DA2: \x1b[>c
       // 2. Kitty keyboard query: \x1b[?u
       // 3. Kitty graphics query: \x1b_Gi=31,a=q;\x1b\\
       // 4. DECRQM Mouse Hover query: \x1b[?1003$p
       // 5. DECRQM Synchronized Updates query: \x1b[?2026$p
       // 6. Glyph Protocol support query: \x1b_25a1;s\x1b\\
-      this.write("\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p\x1b_25a1;s\x1b\\\\");
+      // 7. Window pixel size query (14t) and Cell size query (16t)
+      this.write(
+        "\x1b[c\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p\x1b_25a1;s\x1b\\\x1b[14t\x1b[16t",
+      );
 
       this.probeTimeout = setTimeout(() => {
         this.finishProbing();
       }, 100);
     } else {
       // Non-TTY environment: bypass probing, sync capabilities, and enable fallback mouse mode
+      this.capabilitiesResolved = true;
       renderCapabilities.truecolor = this.capabilities.truecolor;
       renderCapabilities.color256 = this.capabilities.color256;
       this.write("\x1b[?1000h\x1b[?1002h\x1b[?1006h");
@@ -171,8 +233,28 @@ export class BunDriver extends Driver {
     }
   }
 
+  public showNotification(title: string, body: string): void {
+    this.write(`\x1b]9;${title}: ${body}\x07`);
+    this.write(`\x1b]777;notify;${title};${body}\x07`);
+  }
+
   private handleInputInternal = (chunk: string | Buffer): void => {
-    const data = chunk.toString();
+    let data = chunk.toString();
+
+    // Intercept OSC 52 clipboard responses
+    const clipboardMatch = data.match(/\x1b\]52;[cp]?;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/);
+    if (clipboardMatch) {
+      const base64 = clipboardMatch[1];
+      const text = Buffer.from(base64, "base64").toString("utf8");
+      const resolve = this.pendingClipboardResolvers.shift();
+      if (resolve) {
+        resolve(text);
+      }
+      data = data.replace(clipboardMatch[0], "");
+    }
+
+    if (data.length === 0) return;
+
     if (this.isProbing) {
       this.probeBuffer += data;
       return;
@@ -185,6 +267,16 @@ export class BunDriver extends Driver {
     this.probeTimeout = null;
 
     let leftover = this.probeBuffer;
+
+    // Parse DA1 check
+    const da1Match = leftover.match(/\x1b\[\?([\d;]+)c/);
+    if (da1Match) {
+      const params = da1Match[1].split(";");
+      if (params.includes("4") && this.capabilities.graphicsProtocol === "none") {
+        this.capabilities.graphicsProtocol = "sixel";
+      }
+      leftover = leftover.replace(da1Match[0], "");
+    }
 
     // Parse DA2 check
     const da2Match = leftover.match(/\x1b\[>([\d;]*)c/);
@@ -235,6 +327,35 @@ export class BunDriver extends Driver {
       leftover = leftover.replace(glyphMatch[0], "");
     }
 
+    // Parse window pixel size response: \x1b[4;height;widtht
+    const pixelSizeMatch = leftover.match(/\x1b\[4;(\d+);(\d+)t/);
+    let probedCellWidth = 0;
+    let probedCellHeight = 0;
+    if (pixelSizeMatch) {
+      const height = Number.parseInt(pixelSizeMatch[1], 10);
+      const width = Number.parseInt(pixelSizeMatch[2], 10);
+      const cols = this.stdout.columns || 80;
+      const rows = this.stdout.rows || 24;
+      if (width > 0 && height > 0) {
+        probedCellWidth = Math.round(width / cols);
+        probedCellHeight = Math.round(height / rows);
+      }
+      leftover = leftover.replace(pixelSizeMatch[0], "");
+    }
+
+    // Parse character cell size response: \x1b[6;height;widtht
+    const cellSizeMatch = leftover.match(/\x1b\[6;(\d+);(\d+)t/);
+    if (cellSizeMatch) {
+      const height = Number.parseInt(cellSizeMatch[1], 10);
+      const width = Number.parseInt(cellSizeMatch[2], 10);
+      if (width > 0 && height > 0) {
+        this.capabilities.cellSize = { width, height };
+      }
+      leftover = leftover.replace(cellSizeMatch[0], "");
+    } else if (probedCellWidth > 0 && probedCellHeight > 0) {
+      this.capabilities.cellSize = { width: probedCellWidth, height: probedCellHeight };
+    }
+
     // Activate/degrade protocols
     if (this.capabilities.kittyKeyboard) {
       this.write("\x1b[>1u"); // Activate advanced keyboard mode
@@ -255,6 +376,20 @@ export class BunDriver extends Driver {
       this.processInput(leftover);
     }
     this.probeBuffer = "";
+
+    if (this.capabilities.glyphProtocol) {
+      for (const icon of iconRegistry.getAll()) {
+        const codepoint = iconRegistry.getCodepoint(icon.name);
+        if (codepoint) {
+          const hex = codepoint.toString(16);
+          const base64Svg = Buffer.from(icon.svg).toString("base64");
+          this.write(`\x1b_25a1;d;cp=${hex};fmt=svg;width=2;${base64Svg}\x1b\\`);
+        }
+      }
+    }
+
+    this.capabilitiesResolved = true;
+    this.emit("capabilities_resolved");
   }
 
   private processInput(data: string): void {
@@ -476,5 +611,74 @@ export class BunDriver extends Driver {
 
       i++;
     }
+  }
+
+  private getOrRasterize(name: string, svg: string, color: string): RasterizedIcon {
+    const isWT = !!process.env.WT_SESSION || !!process.env.WT_PROFILE_ID;
+    const cellWidth = this.capabilities.cellSize?.width || (isWT ? 11 : 10);
+    const cellHeight = this.capabilities.cellSize?.height || (isWT ? 22 : 20);
+
+    const cacheKey = `${name}_${color}`;
+    const cache = this.iconCache.get(cacheKey);
+    if (cache?.raster && cache.cellWidth === cellWidth && cache.cellHeight === cellHeight) {
+      return cache.raster;
+    }
+
+    const raster = rasterizeSVG(svg, cellWidth * 2, cellHeight, color);
+    this.iconCache.set(cacheKey, {
+      raster,
+      cellWidth,
+      cellHeight,
+      sixelCache: new Map(),
+    });
+    return raster;
+  }
+
+  public override getIconSequence(name: string, color?: string, bgColor?: string): string {
+    const icon = iconRegistry.get(name);
+    if (!icon) return "";
+
+    const fgColor = color && color !== "default" ? color : "white";
+
+    if (this.capabilities.graphicsProtocol === "kitty") {
+      const raster = this.getOrRasterize(name, icon.svg, fgColor);
+      const w = raster.superWidth !== undefined ? raster.superWidth : raster.width;
+      const h = raster.superHeight !== undefined ? raster.superHeight : raster.height;
+      return `\x1b[s\x1b_Gf=100,a=T,t=d,s=${w},v=${h},c=2,r=1;${raster.pngBase64}\x1b\\\x1b[u`;
+    }
+
+    if (this.capabilities.graphicsProtocol === "iterm2") {
+      const raster = this.getOrRasterize(name, icon.svg, fgColor);
+      return `\x1b[s\x1b]1337;File=inline=1;width=2;height=1:${raster.pngBase64}\x07\x1b[u`;
+    }
+
+    if (this.capabilities.graphicsProtocol === "sixel") {
+      const raster = this.getOrRasterize(name, icon.svg, fgColor);
+      const bgClr = bgColor && bgColor !== "default" ? bgColor : "#1e1e2e";
+      const cacheKey = `${fgColor}_${bgClr}`;
+
+      const cacheKeyWithColor = `${name}_${fgColor}`;
+      let cache = this.iconCache.get(cacheKeyWithColor);
+      if (!cache) {
+        cache = { raster };
+        this.iconCache.set(cacheKeyWithColor, cache);
+      }
+      if (!cache.sixelCache) {
+        cache.sixelCache = new Map();
+      }
+      let sixel = cache.sixelCache.get(cacheKey);
+      if (!sixel) {
+        sixel = rgbaToSixel(raster.pixels, raster.width, raster.height, fgColor, bgClr);
+        cache.sixelCache.set(cacheKey, sixel);
+      }
+      return `\x1b[s${sixel}\x1b[u`;
+    }
+
+    if (this.capabilities.glyphProtocol) {
+      const codepoint = iconRegistry.getCodepoint(name);
+      return codepoint ? String.fromCodePoint(codepoint) : icon.textFallback;
+    }
+
+    return icon.textFallback;
   }
 }

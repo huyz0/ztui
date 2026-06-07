@@ -299,4 +299,76 @@ describe("BunDriver Capability Probing", () => {
       process.exit = originalExit;
     }
   });
+
+  test("Clipboard and Notification output sequences", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+    vi.advanceTimersByTime(100);
+
+    stdout.dataWritten = "";
+    driver.clipboard.set("Hello world");
+    expect(stdout.dataWritten).toBe("\x1b]52;c;SGVsbG8gd29ybGQ=\x07");
+
+    stdout.dataWritten = "";
+    driver.showNotification("Alert", "Something happened");
+    expect(stdout.dataWritten).toBe(
+      "\x1b]9;Alert: Something happened\x07\x1b]777;notify;Alert;Something happened\x07",
+    );
+
+    driver.stop();
+  });
+
+  test("Clipboard reading from terminal (OSC 52 get)", async () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+    vi.advanceTimersByTime(100);
+
+    stdout.dataWritten = "";
+    const getPromise = driver.clipboard.get();
+
+    // Verify it sent the OSC 52 query
+    expect(stdout.dataWritten).toBe("\x1b]52;c;?\x07");
+
+    // Simulate terminal response
+    stdin.emit("data", "\x1b]52;c;SGVsbG8gd29ybGQ=\x07");
+
+    const text = await getPromise;
+    expect(text).toBe("Hello world");
+
+    driver.stop();
+  });
+
+  test("Clipboard reading timeout fallback", async () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+    vi.advanceTimersByTime(100);
+
+    stdout.dataWritten = "";
+    const getPromise = driver.clipboard.get();
+
+    // Advance timer by 500ms to trigger timeout
+    vi.advanceTimersByTime(500);
+
+    const text = await getPromise;
+    expect(text).toBe("");
+
+    driver.stop();
+  });
+
+  test("Sixel capability probing via DA1 response", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+
+    // Verify DA1 sequence \x1b[c is sent in probe
+    expect(stdout.dataWritten.includes("\x1b[c")).toBe(true);
+
+    // Simulate DA1 response containing '4' (Sixel)
+    stdin.emit("data", "\x1b[?62;1;2;4;6;7;8;9c");
+
+    vi.advanceTimersByTime(100);
+
+    expect(driver.capabilities.graphicsProtocol).toBe("sixel");
+
+    driver.stop();
+  });
 });

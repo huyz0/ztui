@@ -17,7 +17,7 @@ export class BoxLayout extends Layout {
     const isVert = this.direction === "vertical";
     const totalLength = isVert ? parentRect.height : parentRect.width;
 
-    // Phase 1: Parse sizes and track fractional fr counts
+    // Phase 1: Parse sizes and track fractional fr counts, accumulating margins of all children
     let allocatedLength = 0;
     let totalFr = 0;
 
@@ -27,6 +27,12 @@ export class BoxLayout extends Layout {
         sizeProp = `${child.computedStyle.flexGrow}fr`;
       }
       const parsed = parseDimension(sizeProp, totalLength, 1);
+
+      // Collect margin size
+      const m = child.margin;
+      const marginSize = isVert ? m.top + m.bottom : m.left + m.right;
+      allocatedLength += marginSize;
+
       if (typeof parsed === "object" && "fr" in parsed) {
         totalFr += parsed.fr;
         return parsed;
@@ -46,19 +52,22 @@ export class BoxLayout extends Layout {
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       const parsedSize = childSizes[i];
+      const m = child.margin;
+      const marginSize = isVert ? m.top + m.bottom : m.left + m.right;
 
       let size = 0;
       if (typeof parsedSize === "object" && "fr" in parsedSize) {
         if (remainingFrCount > 0) {
           const exactSize = (parsedSize.fr / remainingFrCount) * remainingFrLength;
-          size = Math.round(exactSize);
-          remainingFrLength -= size;
+          const distributed = Math.round(exactSize);
+          size = distributed + marginSize;
+          remainingFrLength -= distributed;
           remainingFrCount -= parsedSize.fr;
         } else {
-          size = 0;
+          size = marginSize;
         }
       } else {
-        size = parsedSize;
+        size = parsedSize + marginSize;
       }
 
       if (isVert) {
