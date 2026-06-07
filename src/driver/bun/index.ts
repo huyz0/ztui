@@ -1,0 +1,238 @@
+import { Size } from "../../geometry/size.ts";
+import { iconRegistry } from "../../widgets/icon-registry.ts";
+import { type Clipboard, Driver, type TerminalCapabilities } from "../driver.ts";
+import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
+import { TerminalGraphicsManager } from "./graphics.ts";
+import { parseInput } from "./input.ts";
+
+export class BunDriver extends Driver {
+  private graphicsManager = new TerminalGraphicsManager();
+  public override readonly capabilities!: TerminalCapabilities;
+  public override readonly clipboard: Clipboard = {
+    get: (): Promise<string> => {
+      return new Promise<string>((resolve) => {
+        this.pendingClipboardResolvers.push(resolve);
+        this.write("\x1b]52;c;?\x07");
+        setTimeout(() => {
+          const idx = this.pendingClipboardResolvers.indexOf(resolve);
+          if (idx !== -1) {
+            this.pendingClipboardResolvers.splice(idx, 1);
+            resolve("");
+          }
+        }, 500);
+      });
+    },
+    set: (text: string): void => {
+      this.write(`\x1b]52;c;${Buffer.from(text).toString("base64")}\x07`);
+    },
+  };
+
+  private isRunning = false;
+  private stdin: any;
+  private stdout: any;
+  private isProbing = false;
+  private probeBuffer = "";
+  private probeTimeout: any = null;
+  private pendingClipboardResolvers: ((text: string) => void)[] = [];
+
+  private resizeListener = () => {
+    this.emit("resize", this.getSize());
+  };
+
+  private cleanupHandler = () => {
+    this.stop();
+  };
+
+  private sigintHandler = () => {
+    this.stop();
+    process.exit(130);
+  };
+
+  private sigtermHandler = () => {
+    this.stop();
+    process.exit(143);
+  };
+
+  constructor(options?: { stdin?: any; stdout?: any }) {
+    super();
+    this.stdin = options?.stdin || process.stdin;
+    this.stdout = options?.stdout || process.stdout;
+    this.capabilities = getBaselineCapabilities();
+  }
+
+  public getSize(): Size {
+    return new Size(this.stdout.columns || 80, this.stdout.rows || 24);
+  }
+
+  public start(): void {
+    if (this.isRunning) return;
+    this.isRunning = true;
+
+    // Enable alternative buffer, clear screen, hide cursor
+    this.write("\x1b[?1049h\x1b[?25l");
+
+    if (this.stdin.setRawMode) {
+      this.stdin.setRawMode(true);
+    }
+    this.stdin.resume();
+    this.stdin.setEncoding("utf8");
+
+    this.stdin.on("data", this.handleInputInternal);
+    if (this.stdout.on) {
+      this.stdout.on("resize", this.resizeListener);
+    }
+
+    process.on("exit", this.cleanupHandler);
+    process.on("SIGINT", this.sigintHandler);
+    process.on("SIGTERM", this.sigtermHandler);
+
+    const isTTY = this.stdin.isTTY && this.stdout.isTTY;
+    if (isTTY) {
+      this.isProbing = true;
+      this.capabilitiesResolved = false;
+      this.probeBuffer = "";
+
+      // Emit probe escape sequences to stdout
+      this.write(
+        "\x1b[c\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p\x1b_25a1;s\x1b\\\x1b[14t\x1b[16t",
+      );
+
+      this.probeTimeout = setTimeout(() => {
+        this.finishProbing();
+      }, 100);
+    } else {
+      this.capabilitiesResolved = true;
+      this.write("\x1b[?1000h\x1b[?1002h\x1b[?1006h");
+    }
+  }
+
+  public stop(): void {
+    if (!this.isRunning) return;
+    this.isRunning = false;
+
+    if (this.probeTimeout) {
+      clearTimeout(this.probeTimeout);
+      this.probeTimeout = null;
+    }
+
+    // Disable mouse tracking (hover 1003 and standard 1000/1002/1006)
+    this.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l");
+
+    // Disable kitty keyboard mode if activated
+    if (this.capabilities.kittyKeyboard) {
+      this.write("\x1b[<u");
+    }
+
+    // Restore main buffer, show cursor
+    this.write("\x1b[?1049l\x1b[?25h");
+
+    this.stdin.off("data", this.handleInputInternal);
+    if (this.stdout.off) {
+      this.stdout.off("resize", this.resizeListener);
+    }
+
+    process.off("exit", this.cleanupHandler);
+    process.off("SIGINT", this.sigintHandler);
+    process.off("SIGTERM", this.sigtermHandler);
+
+    if (this.stdin.setRawMode) {
+      this.stdin.setRawMode(false);
+    }
+    this.stdin.pause();
+  }
+
+  public write(data: string): void {
+    if (typeof this.stdout.write === "function") {
+      this.stdout.write(data);
+    }
+  }
+
+  public showNotification(title: string, body: string): void {
+    this.write(`\x1b]9;${title}: ${body}\x07`);
+    this.write(`\x1b]777;notify;${title};${body}\x07`);
+  }
+
+  private handleInputInternal = (chunk: string | Buffer): void => {
+    let data = chunk.toString();
+
+    // Intercept OSC 52 clipboard responses
+    const clipboardMatch = data.match(/\x1b\]52;[cp]?;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/);
+    if (clipboardMatch) {
+      const base64 = clipboardMatch[1];
+      const text = Buffer.from(base64, "base64").toString("utf8");
+      const resolve = this.pendingClipboardResolvers.shift();
+      if (resolve) {
+        resolve(text);
+      }
+      data = data.replace(clipboardMatch[0], "");
+    }
+
+    if (data.length === 0) return;
+
+    if (this.isProbing) {
+      this.probeBuffer += data;
+      return;
+    }
+    this.processInput(data);
+  };
+
+  private finishProbing(): void {
+    this.isProbing = false;
+    this.probeTimeout = null;
+
+    const columns = this.stdout.columns || 80;
+    const rows = this.stdout.rows || 24;
+
+    const result = parseProbeResponse(this.probeBuffer, this.capabilities, columns, rows);
+    const leftover = result.leftover;
+
+    // Activate/degrade protocols
+    if (this.capabilities.kittyKeyboard) {
+      this.write("\x1b[>1u"); // Activate advanced keyboard mode
+    }
+
+    if (this.capabilities.mouseHover) {
+      this.write("\x1b[?1000h\x1b[?1003h\x1b[?1006h");
+    } else {
+      this.write("\x1b[?1000h\x1b[?1002h\x1b[?1006h");
+    }
+
+    // Replay remaining key events
+    if (leftover.length > 0) {
+      this.processInput(leftover);
+    }
+    this.probeBuffer = "";
+
+    if (this.capabilities.glyphProtocol) {
+      for (const icon of iconRegistry.getAll()) {
+        const codepoint = iconRegistry.getCodepoint(icon.name);
+        if (codepoint) {
+          const hex = codepoint.toString(16);
+          const base64Svg = Buffer.from(icon.svg).toString("base64");
+          this.write(`\x1b_25a1;d;cp=${hex};fmt=svg;width=2;${base64Svg}\x1b\\`);
+        }
+      }
+    }
+
+    this.capabilitiesResolved = true;
+    this.emit("capabilities_resolved");
+  }
+
+  private processInput(data: string): void {
+    // Safety exit sequence: Ctrl+C
+    if (data === "\u0003") {
+      this.stop();
+      process.exit(0);
+    }
+
+    parseInput(
+      data,
+      (ev) => this.emit("key", ev),
+      (ev) => this.emit("mouse", ev),
+    );
+  }
+
+  public override getIconSequence(name: string, color?: string, bgColor?: string): string {
+    return this.graphicsManager.getIconSequence(name, this.capabilities, color, bgColor);
+  }
+}

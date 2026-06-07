@@ -1,6 +1,9 @@
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { BunDriver } from "./bun-driver.ts";
+import { iconRegistry } from "../widgets/icon-registry.ts";
+import { BunDriver } from "./bun/index.ts";
+import { MockDriver } from "./mock/index.ts";
+import { WebDriver } from "./web/index.ts";
 
 class MockReadStream extends EventEmitter {
   public isTTY = true;
@@ -370,5 +373,109 @@ describe("BunDriver Capability Probing", () => {
     expect(driver.capabilities.graphicsProtocol).toBe("sixel");
 
     driver.stop();
+  });
+
+  test("WebDriver basic implementation coverage", async () => {
+    const webDriver = new WebDriver(100, 30);
+    expect(webDriver.getSize().width).toBe(100);
+    expect(webDriver.getSize().height).toBe(30);
+
+    let capsResolved = false;
+    webDriver.on("capabilities_resolved", () => {
+      capsResolved = true;
+    });
+
+    webDriver.start();
+    expect(capsResolved).toBe(true);
+    expect(webDriver.capabilities.truecolor).toBe(true);
+    expect(webDriver.capabilities.graphicsProtocol).toBe("none");
+
+    webDriver.write("anything");
+    webDriver.showNotification("Title", "Body");
+
+    const text = await webDriver.clipboard.get();
+    expect(text).toBe("");
+    webDriver.clipboard.set("hello");
+
+    webDriver.stop();
+  });
+
+  test("MockDriver methods", async () => {
+    const mockDriver = new MockDriver(80, 24);
+    expect(mockDriver.getSize().width).toBe(80);
+
+    let keyEvent: any = null;
+    mockDriver.on("key", (ev) => {
+      keyEvent = ev;
+    });
+    mockDriver.simulateKey("a");
+    expect(keyEvent.key).toBe("a");
+
+    let mouseEvent: any = null;
+    mockDriver.on("mouse", (ev) => {
+      mouseEvent = ev;
+    });
+    mockDriver.simulateMouse(5, 5, "press", "left");
+    expect(mouseEvent.x).toBe(5);
+
+    let resizeEvent: any = null;
+    mockDriver.on("resize", (size) => {
+      resizeEvent = size;
+    });
+    mockDriver.simulateResize(100, 40);
+    expect(resizeEvent.width).toBe(100);
+
+    mockDriver.showNotification("Title", "Body");
+    expect(mockDriver.writtenData).toContain("Title");
+
+    mockDriver.clearWrittenData();
+    expect(mockDriver.writtenData).toBe("");
+  });
+
+  test("BunDriver getIconSequence under different protocols", () => {
+    iconRegistry.registerIcon({
+      name: "test-graphics-icon",
+      svg: "<svg><circle cx='12' cy='12' r='10' fill='currentColor'/></svg>",
+      textFallback: "⭐",
+    });
+
+    const driver = new BunDriver({ stdin, stdout });
+
+    // Test kitty
+    (driver as any).capabilities.graphicsProtocol = "kitty";
+    const kittySeq = driver.getIconSequence("test-graphics-icon");
+    expect(kittySeq).toContain("\x1b[s");
+
+    // Test iterm2
+    (driver as any).capabilities.graphicsProtocol = "iterm2";
+    const itermSeq = driver.getIconSequence("test-graphics-icon");
+    expect(itermSeq).toContain("File=inline=1");
+
+    // Test sixel
+    (driver as any).capabilities.graphicsProtocol = "sixel";
+    const sixelSeq = driver.getIconSequence("test-graphics-icon");
+    expect(sixelSeq).toContain("\x1bPq");
+
+    // Test glyphProtocol
+    (driver as any).capabilities.graphicsProtocol = "none";
+    (driver as any).capabilities.glyphProtocol = true;
+    const glyphSeq = driver.getIconSequence("test-graphics-icon");
+    expect(glyphSeq).toBeDefined();
+
+    // Test none
+    (driver as any).capabilities.glyphProtocol = false;
+    const fallbackSeq = driver.getIconSequence("test-graphics-icon");
+    expect(fallbackSeq).toBe("⭐");
+
+    // Call signal handlers directly for test coverage
+    (driver as any).cleanupHandler();
+    const originalExit = process.exit;
+    process.exit = vi.fn() as any;
+    try {
+      (driver as any).sigintHandler();
+      (driver as any).sigtermHandler();
+    } finally {
+      process.exit = originalExit;
+    }
   });
 });

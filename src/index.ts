@@ -41,8 +41,11 @@ export {
 export { iconRegistry, IconRegistry } from "./widgets/icon-registry.ts";
 export { IconWidget } from "./widgets/icon.ts";
 
-// Debug, Introspection & Testing
-export { MockDriver } from "./driver/mock-driver.ts";
+// Drivers
+export { Driver } from "./driver/driver.ts";
+export { BunDriver } from "./driver/bun/index.ts";
+export { MockDriver } from "./driver/mock/index.ts";
+export { WebDriver } from "./driver/web/index.ts";
 export { renderBufferToHTML } from "./render/html-renderer.ts";
 export { startInspector } from "./core/inspector.ts";
 

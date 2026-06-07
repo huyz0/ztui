@@ -14,7 +14,6 @@ export default defineConfig({
         "src/**/*.test.tsx",
         "src/index.ts",
         "src/react/jsx-namespace.d.ts",
-        "src/driver/bun-driver.ts",
         "src/react/host-config.ts",
         "src/core/inspector.ts",
       ],

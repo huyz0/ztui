@@ -7,6 +7,7 @@ export interface Cell {
   char: string;
   style: Style;
   wideContinuation: boolean;
+  icon?: string;
 }
 
 export class ScreenBuffer {
@@ -27,6 +28,7 @@ export class ScreenBuffer {
         char: " ",
         style: Style.DEFAULT,
         wideContinuation: false,
+        icon: undefined,
       })),
     );
   }
@@ -38,6 +40,7 @@ export class ScreenBuffer {
         cell.char = " ";
         cell.style = Style.DEFAULT;
         cell.wideContinuation = false;
+        cell.icon = undefined;
       }
     }
   }
@@ -78,7 +81,7 @@ export class ScreenBuffer {
 
   // Double buffering output: compare with old buffer and write changes to terminal
   // Returns ANSI escape sequences to render the differences
-  public renderDiff(oldBuffer: ScreenBuffer): string {
+  public renderDiff(oldBuffer: ScreenBuffer, formatChar?: (cell: Cell) => string): string {
     let output = "";
     let activeStyle: Style | null = null;
 
@@ -105,7 +108,7 @@ export class ScreenBuffer {
             const { start } = activeStyle.getEscapeCodes();
             output += start;
           }
-          line += cell.char;
+          line += formatChar ? formatChar(cell) : cell.char;
         }
         if (line) {
           output += line;
@@ -136,7 +139,8 @@ export class ScreenBuffer {
         const changed =
           newCell.char !== oldCell.char ||
           !newCell.style.equals(oldCell.style) ||
-          newCell.wideContinuation !== oldCell.wideContinuation;
+          newCell.wideContinuation !== oldCell.wideContinuation ||
+          newCell.icon !== oldCell.icon;
 
         const styleChanged =
           runStartX !== null && !newCell.style.equals(this.cells[y][runStartX].style);
@@ -146,7 +150,7 @@ export class ScreenBuffer {
             runStartX = x;
           }
           if (!newCell.wideContinuation) {
-            runContent += newCell.char;
+            runContent += formatChar ? formatChar(newCell) : newCell.char;
           }
         } else {
           // End of run or style change
@@ -158,7 +162,7 @@ export class ScreenBuffer {
           if (changed) {
             runStartX = x;
             if (!newCell.wideContinuation) {
-              runContent += newCell.char;
+              runContent += formatChar ? formatChar(newCell) : newCell.char;
             }
           }
         }
@@ -192,6 +196,7 @@ export class ScreenBuffer {
           char: cell.char,
           style: cell.style,
           wideContinuation: cell.wideContinuation,
+          icon: cell.icon,
         };
       }
     }

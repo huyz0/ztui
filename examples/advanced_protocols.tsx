@@ -203,10 +203,9 @@ function AdvancedProtocolsApp() {
         <VBox style={{ width: "50%", border: "solid", padding: 1 }}>
           <Label style={{ color: "#f5e0dc", bold: true }}>5. OS Integration & Media</Label>
 
-          <HBox style={{ margin: new Spacing(0, 1, 1, 1), height: 3 }}>
+          <HBox style={{ margin: new Spacing(0, 1, 1, 1) }}>
             <Button
               style={{
-                height: 3,
                 background: "#fab387",
                 color: "black",
                 flexGrow: 1,
@@ -218,7 +217,7 @@ function AdvancedProtocolsApp() {
             </Button>
 
             <Button
-              style={{ height: 3, background: "#fab387", color: "black", flexGrow: 1 }}
+              style={{ background: "#fab387", color: "black", flexGrow: 1 }}
               onClick={handleTriggerNotification}
             >
               Show Notification
@@ -227,7 +226,6 @@ function AdvancedProtocolsApp() {
 
           <Button
             style={{
-              height: 3,
               background: "#a6e3a1",
               color: "black",
               margin: new Spacing(0, 1, 1, 1),
@@ -239,7 +237,6 @@ function AdvancedProtocolsApp() {
 
           <Button
             style={{
-              height: 3,
               background: "#fab387",
               color: "black",
               margin: new Spacing(0, 1, 1, 1),
@@ -251,7 +248,6 @@ function AdvancedProtocolsApp() {
 
           <Button
             style={{
-              height: 3,
               background: "#f38ba8",
               color: "black",
               margin: new Spacing(0, 1, 0, 1),

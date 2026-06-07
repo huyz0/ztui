@@ -1,4 +1,5 @@
 import { Widget } from "../dom/widget.ts";
+import { Spacing } from "../geometry/spacing.ts";
 import { TextNode } from "../react/host-config.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Segment, stringWidth } from "../render/segment.ts";
@@ -8,7 +9,7 @@ export class ButtonWidget extends Widget {
   constructor() {
     super("button");
     this.focusable = true;
-    this.defaultStyle = { height: 3 };
+    this.defaultStyle = { height: 1, padding: new Spacing(0, 1, 0, 1) };
     this.onKey = (ev) => {
       if (ev.key === "enter" || ev.key === " ") {
         if (this.onClick) {
@@ -29,10 +30,6 @@ export class ButtonWidget extends Widget {
   }
 
   public render(buffer: ScreenBuffer): void {
-    if (this.computedStyle.border === undefined) {
-      this.computedStyle.border = "solid";
-    }
-
     super.render(buffer);
 
     const contentRect = this.getContentRect();

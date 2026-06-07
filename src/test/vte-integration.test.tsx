@@ -107,7 +107,7 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
 
     // Verify click count increment
     const buttonLine =
-      driver.terminal.buffer.active.getLine(btn.region.y + 1)?.translateToString(true) || "";
+      driver.terminal.buffer.active.getLine(btn.region.y)?.translateToString(true) || "";
     expect(buttonLine).toContain("Clicks: 1");
 
     app.stop();

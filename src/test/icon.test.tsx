@@ -46,7 +46,8 @@ describe("SVG Icon Support Engine", () => {
     const cell1 = buffer.cells[0][1];
 
     const cp = iconRegistry.getCodepoint("test-home");
-    expect(cell0.char).toBe(String.fromCodePoint(cp!));
+    expect(cell0.char).toBe("🏠");
+    expect(cell0.icon).toBe("test-home");
     expect(cell1.wideContinuation).toBe(true);
 
     // Verify it was written to the terminal driver
@@ -74,7 +75,8 @@ describe("SVG Icon Support Engine", () => {
     const cell0 = buffer.cells[0][0];
     const cell1 = buffer.cells[0][1];
 
-    expect(cell0.char).toContain("\x1b_Gf=100,a=T,t=d,s=64,v=64,c=2,r=1;");
+    expect(cell0.char).toBe("🏠");
+    expect(cell0.icon).toBe("test-home");
     expect(cell1.wideContinuation).toBe(true);
 
     // Verify exact ESC sequence written to terminal
@@ -103,7 +105,8 @@ describe("SVG Icon Support Engine", () => {
     const cell0 = buffer.cells[0][0];
     const cell1 = buffer.cells[0][1];
 
-    expect(cell0.char).toContain("\x1b]1337;File=inline=1;width=2;height=1:");
+    expect(cell0.char).toBe("🏠");
+    expect(cell0.icon).toBe("test-home");
     expect(cell1.wideContinuation).toBe(true);
 
     // Verify exact ESC sequence written to terminal
@@ -132,7 +135,8 @@ describe("SVG Icon Support Engine", () => {
     const cell0 = buffer.cells[0][0];
     const cell1 = buffer.cells[0][1];
 
-    expect(cell0.char).toContain("\x1bPq");
+    expect(cell0.char).toBe("🏠");
+    expect(cell0.icon).toBe("test-home");
     expect(cell1.wideContinuation).toBe(true);
 
     // Verify Sixel colors and terminator in written data

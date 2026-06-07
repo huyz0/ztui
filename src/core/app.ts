@@ -3,7 +3,7 @@ import { CSSResolver } from "../css/css-resolver.ts";
 import { DOMNode } from "../dom/dom.ts";
 import { Screen } from "../dom/screen.ts";
 import { Widget } from "../dom/widget.ts";
-import { BunDriver } from "../driver/bun-driver.ts";
+import { BunDriver } from "../driver/bun/index.ts";
 import type { Driver } from "../driver/driver.ts";
 import { BoxLayout } from "../layout/box-layout.ts";
 import { DockLayout } from "../layout/dock-layout.ts";
@@ -187,7 +187,12 @@ export class App extends DOMNode {
     this.currentBuffer.clear();
     screen.render(this.currentBuffer);
 
-    const ansiDiff = this.currentBuffer.renderDiff(this.prevBuffer);
+    const ansiDiff = this.currentBuffer.renderDiff(this.prevBuffer, (cell) => {
+      if (cell.icon) {
+        return this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background);
+      }
+      return cell.char;
+    });
     if (ansiDiff) {
       if (this.driver.capabilities.synchronizedUpdates) {
         this.driver.write(`\x1b[?2026h${ansiDiff}\x1b[?2026l`);

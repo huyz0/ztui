@@ -1,8 +1,8 @@
 import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
-import { charWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
+import { iconRegistry } from "./icon-registry.ts";
 
 export class IconWidget extends Widget {
   public name = "";
@@ -40,26 +40,22 @@ export class IconWidget extends Widget {
       link: this.computedStyle.link,
     });
 
-    const driver = App.instance?.driver;
-    const char = driver ? driver.getIconSequence(this.name, fg, resolvedBg) : "";
-    if (!char) return;
+    const icon = iconRegistry.get(this.name);
+    const textFallback = icon ? icon.textFallback : "";
 
-    const isEscapeSequence = char.startsWith("\x1b");
+    buffer.cells[client.y][client.x] = {
+      char: textFallback,
+      style,
+      wideContinuation: false,
+      icon: this.name,
+    };
 
-    if (isEscapeSequence) {
-      // Clear the cells by outputting spaces first, then the graphic sequence, and finally advance the cursor.
-      const wrappedChar = `\x1b[s  \x1b[u${char}\x1b[2C`;
-      buffer.cells[client.y][client.x] = { char: wrappedChar, style, wideContinuation: false };
-      if (client.x + 1 < buffer.width) {
-        buffer.cells[client.y][client.x + 1] = { char: "", style, wideContinuation: true };
-      }
-    } else {
-      // For text fallbacks, emojis, or PUA glyphs
-      buffer.setCell(client.x, client.y, char, style);
-      const w = charWidth(char);
-      if (w < 2 && client.x + 1 < buffer.width) {
-        buffer.setCell(client.x + 1, client.y, " ", style);
-      }
+    if (client.x + 1 < buffer.width) {
+      buffer.cells[client.y][client.x + 1] = {
+        char: "",
+        style,
+        wideContinuation: true,
+      };
     }
   }
 }

@@ -1,11 +1,5 @@
-import { Size } from "../geometry/size.ts";
-import {
-  type Clipboard,
-  Driver,
-  KeyEvent,
-  type MouseEvent,
-  type TerminalCapabilities,
-} from "./driver.ts";
+import { Size } from "../../geometry/size.ts";
+import { type Clipboard, Driver, type MouseEvent, type TerminalCapabilities } from "../driver.ts";
 
 export class MockDriver extends Driver {
   public writtenData = "";

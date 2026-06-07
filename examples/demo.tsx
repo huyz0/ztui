@@ -45,7 +45,7 @@ function DemoApp() {
           <Label style={{ color: "#cba6f7" }}>Interactive Panel</Label>
 
           <Button
-            style={{ height: 5, background: "#89b4fa", color: "black", margin: 1 }}
+            style={{ background: "#89b4fa", color: "black", margin: 1 }}
             onClick={() => setCount(count + 1)}
           >
             Click to Increment
@@ -57,10 +57,7 @@ function DemoApp() {
             onChange={(val) => setText(val)}
           />
 
-          <Button
-            style={{ height: 5, background: "#f38ba8", color: "black", margin: 1 }}
-            onClick={handleExit}
-          >
+          <Button style={{ background: "#f38ba8", color: "black", margin: 1 }} onClick={handleExit}>
             Exit Application
           </Button>
         </VBox>
