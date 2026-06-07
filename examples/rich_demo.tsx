@@ -151,11 +151,7 @@ console.log(value);
             </VBox>
           )}
 
-          {tab === "markdown" && (
-            <VBox>
-              <Markdown style={{ flexGrow: 1 }}>{mdText}</Markdown>
-            </VBox>
-          )}
+          {tab === "markdown" && <Markdown style={{ flexGrow: 1 }}>{mdText}</Markdown>}
         </VBox>
       </HBox>
     </Dock>
