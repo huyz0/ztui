@@ -59,6 +59,15 @@ console.log(value);
 
 1. Ordered list item 1
 2. Ordered list item 2
+
+## Mermaid Diagram
+\`\`\`mermaid
+graph TD
+Start[Start Demo] --> Select[Select Tab]
+Select -->|Markup| MarkupTab[Show markup details]
+Select -->|Syntax| SyntaxTab[Show highlighted code]
+Select -->|Markdown| MarkdownTab[Show rendered markdown]
+\`\`\`
 `;
 
   return (

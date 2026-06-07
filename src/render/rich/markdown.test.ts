@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { App } from "../../core/app.ts";
 import { Markdown, parseInlineMarkdown } from "./markdown.ts";
 
 describe("Markdown Engine", () => {
@@ -63,5 +64,43 @@ describe("Markdown Engine", () => {
     expect(lines.length).toBe(1); // code line (trailing blank line popped)
     expect(lines[0].plain).toContain("const val = 1;");
     expect(lines[0].spans.length).toBeGreaterThan(0);
+  });
+
+  test("Markdown.renderToLines parses nested mermaid block in ASCII fallback mode", () => {
+    const originalApp = App.instance;
+    App.instance = null; // Force ASCII fallback
+
+    const mdText = "```mermaid\ngraph TD\nA --> B\n```";
+    const lines = Markdown.renderToLines(mdText);
+
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines[0].plain).toContain("┌──");
+    expect(lines[0].spans[0].style.color).toBe("bright-cyan");
+
+    App.instance = originalApp;
+  });
+
+  test("Markdown.renderToLines parses nested mermaid block in Graphics mode", () => {
+    const originalApp = App.instance;
+    const mockApp = {
+      driver: {
+        capabilities: {
+          graphicsProtocol: "kitty",
+          cellSize: { width: 8, height: 16 },
+        },
+      },
+    };
+    App.instance = mockApp as any;
+
+    const mdText = "```mermaid\ngraph TD\nA --> B\n```";
+    const lines = Markdown.renderToLines(mdText);
+
+    expect(lines.length).toBe(1); // the graphic placeholder line (trailing blank line popped)
+    expect((lines[0] as any).graphic).toBeDefined();
+    expect((lines[0] as any).graphic.type).toBe("image");
+    expect((lines[0] as any).graphic.cellWidth).toBe(40);
+    expect((lines[0] as any).graphic.cellHeight).toBe(12);
+
+    App.instance = originalApp;
   });
 });

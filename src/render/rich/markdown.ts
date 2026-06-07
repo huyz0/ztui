@@ -1,4 +1,10 @@
+import { Resvg } from "@resvg/resvg-js";
+import { renderMermaidAscii, renderMermaidSync } from "beautiful-mermaid";
 import MarkdownIt from "markdown-it";
+import { App } from "../../core/app.ts";
+import { encodePNG } from "../../driver/bun/graphics.ts";
+import { parseColorToRGB } from "../../widgets/icon-registry.ts";
+import { resizeImage } from "../../widgets/image-renderers.ts";
 import { Style } from "../style.ts";
 import { Syntax } from "./syntax.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
@@ -187,6 +193,102 @@ export class Markdown {
       if (token.type === "fence" || token.type === "code_block") {
         const lang = token.info ? token.info.split(/\s+/)[0] : "text";
         const code = token.content.replace(/\r?\n$/, "");
+
+        if (lang === "mermaid") {
+          const app = App.instance;
+          const capabilities = app?.driver.capabilities;
+          const isGraphicsSupported = capabilities && capabilities.graphicsProtocol !== "none";
+
+          if (isGraphicsSupported) {
+            try {
+              const svgContent = renderMermaidSync(code);
+              const cellSize = capabilities.cellSize || { width: 8, height: 16 };
+              const cols = 40;
+              const rows = 12;
+              const pixelWidth = cols * cellSize.width;
+              const pixelHeight = rows * cellSize.height;
+
+              const resvg = new Resvg(svgContent, {
+                fitTo: {
+                  mode: "width",
+                  value: pixelWidth,
+                },
+              });
+              const rendered = resvg.render();
+              let rawPixels = new Uint8Array(
+                rendered.pixels.buffer,
+                rendered.pixels.byteOffset,
+                rendered.pixels.byteLength,
+              );
+              if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
+                rawPixels = resizeImage(
+                  rawPixels,
+                  rendered.width,
+                  rendered.height,
+                  pixelWidth,
+                  pixelHeight,
+                );
+              }
+
+              const bgHex = themeName === "ansi_dark" ? "#1e1e2e" : "#ffffff";
+              const bgRgb = parseColorToRGB(bgHex);
+              for (let j = 0; j < rawPixels.length; j += 4) {
+                const alpha = rawPixels[j + 3] / 255;
+                rawPixels[j] = Math.round(rawPixels[j] * alpha + bgRgb.r * (1 - alpha));
+                rawPixels[j + 1] = Math.round(rawPixels[j + 1] * alpha + bgRgb.g * (1 - alpha));
+                rawPixels[j + 2] = Math.round(rawPixels[j + 2] * alpha + bgRgb.b * (1 - alpha));
+                rawPixels[j + 3] = 255;
+              }
+
+              const pngBase64 = encodePNG(rawPixels, pixelWidth, pixelHeight);
+
+              const richGraphic = new RichText(" ");
+              (richGraphic as any).graphic = {
+                type: "image",
+                pixelBuffer: rawPixels,
+                pixelWidth,
+                pixelHeight,
+                cellWidth: cols,
+                cellHeight: rows,
+                pngBase64,
+              };
+
+              lines.push(richGraphic);
+              lines.push(new RichText(""));
+            } catch (err) {
+              const errorMsg = `[Mermaid Render Error: ${err instanceof Error ? err.message : String(err)}]`;
+              lines.push(
+                new RichText(errorMsg, [
+                  { start: 0, end: errorMsg.length, style: new Style({ color: "red" }) },
+                ]),
+              );
+              lines.push(new RichText(""));
+            }
+          } else {
+            try {
+              const ascii = renderMermaidAscii(code);
+              const asciiLines = ascii.split("\n");
+              for (const asciiLine of asciiLines) {
+                lines.push(
+                  new RichText(asciiLine, [
+                    { start: 0, end: asciiLine.length, style: new Style({ color: "bright-cyan" }) },
+                  ]),
+                );
+              }
+              lines.push(new RichText(""));
+            } catch (err) {
+              const errorMsg = `[Mermaid Render Error: ${err instanceof Error ? err.message : String(err)}]`;
+              lines.push(
+                new RichText(errorMsg, [
+                  { start: 0, end: errorMsg.length, style: new Style({ color: "red" }) },
+                ]),
+              );
+              lines.push(new RichText(""));
+            }
+          }
+          continue;
+        }
+
         const syntaxLines = Syntax.renderToLines(code, lang, true, themeName);
 
         for (const line of syntaxLines) {
