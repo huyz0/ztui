@@ -165,7 +165,11 @@ export class App extends DOMNode {
 
     const ansiDiff = this.currentBuffer.renderDiff(this.prevBuffer);
     if (ansiDiff) {
-      this.driver.write(ansiDiff);
+      if (this.driver.capabilities.synchronizedUpdates) {
+        this.driver.write(`\x1b[?2026h${ansiDiff}\x1b[?2026l`);
+      } else {
+        this.driver.write(ansiDiff);
+      }
       this.currentBuffer.copyTo(this.prevBuffer);
     }
   }

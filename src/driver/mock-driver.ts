@@ -19,6 +19,7 @@ export class MockDriver extends Driver {
       mouseTracking: true,
       mouseHover: false,
       hyperlinks: true,
+      synchronizedUpdates: false,
       graphicsProtocol: "none",
     };
   }

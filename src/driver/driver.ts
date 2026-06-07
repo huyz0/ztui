@@ -23,6 +23,7 @@ export interface TerminalCapabilities {
   mouseTracking: boolean;
   mouseHover: boolean;
   hyperlinks: boolean;
+  synchronizedUpdates: boolean;
   graphicsProtocol: "kitty" | "iterm2" | "none";
   terminalProgram?: string;
 }

@@ -72,6 +72,7 @@ export class BunDriver extends Driver {
       mouseTracking: true,
       mouseHover: false,
       hyperlinks,
+      synchronizedUpdates: false,
       graphicsProtocol,
       terminalProgram: termProgram || undefined,
     };
@@ -113,7 +114,8 @@ export class BunDriver extends Driver {
       // 2. Kitty keyboard query: \x1b[?u
       // 3. Kitty graphics query: \x1b_Gi=31,a=q;\x1b\\
       // 4. DECRQM Mouse Hover query: \x1b[?1003$p
-      this.write("\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p");
+      // 5. DECRQM Synchronized Updates query: \x1b[?2026$p
+      this.write("\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p");
 
       this.probeTimeout = setTimeout(() => {
         this.finishProbing();
@@ -212,6 +214,16 @@ export class BunDriver extends Driver {
         this.capabilities.mouseHover = true;
       }
       leftover = leftover.replace(hoverMatch[0], "");
+    }
+
+    // Parse Synchronized Updates DECRQM response: \x1b[?2026;<status>$y
+    const syncMatch = leftover.match(/\x1b\[\?2026;([0-4])\$y/);
+    if (syncMatch) {
+      const status = syncMatch[1];
+      if (status === "1" || status === "2") {
+        this.capabilities.synchronizedUpdates = true;
+      }
+      leftover = leftover.replace(syncMatch[0], "");
     }
 
     // Activate/degrade protocols
