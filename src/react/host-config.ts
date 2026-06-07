@@ -61,6 +61,9 @@ function applyProps(instance: DOMNode, props: any) {
     if ("buffer" in instance && props.buffer !== undefined) {
       (instance as any).buffer = props.buffer;
     }
+    if ("ansi" in instance && props.ansi !== undefined) {
+      (instance as any).ansi = props.ansi;
+    }
   }
 }
 

@@ -12,6 +12,7 @@
     "dev": "bun run examples/demo.tsx",
     "demo:protocols": "bun run examples/advanced_protocols.tsx",
     "demo:heroicons": "bun run examples/heroicons_demo.tsx",
+    "demo:image": "bun run examples/image_demo.tsx",
     "test": "vitest run --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

@@ -18,6 +18,16 @@ export class Screen extends Widget {
     this.region = new Region(Offset.ORIGIN, new Size(width, height));
   }
 
+  public override measure(maxW: number, maxH: number): void {
+    for (const child of this.children) {
+      if (child instanceof Widget && child.visible) {
+        child.measure(maxW, maxH);
+      }
+    }
+    this.measuredWidth = maxW;
+    this.measuredHeight = maxH;
+  }
+
   public getFocusableWidgets(): Widget[] {
     const list: Widget[] = [];
     this.walk((node) => {

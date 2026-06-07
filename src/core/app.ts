@@ -39,8 +39,9 @@ export class App extends DOMNode {
   public pushScreen(screen: Screen): void {
     screen.parent = this;
     this.screenStack.push(screen);
-    if (this.driver.getSize().width > 0) {
-      screen.resize(this.driver.getSize().width, this.driver.getSize().height);
+    const size = this.driver.getSize();
+    if (size.width > 0) {
+      screen.resize(Math.max(80, size.width), Math.max(24, size.height));
       this.layoutAndRender();
     }
   }
@@ -74,18 +75,37 @@ export class App extends DOMNode {
     this.driver.start();
 
     const size = this.driver.getSize();
-    this.activeScreen.resize(size.width, size.height);
-    this.currentBuffer.resize(size.width, size.height);
-    this.prevBuffer.resize(size.width, size.height);
+    const targetW = Math.max(80, size.width);
+    const targetH = Math.max(24, size.height);
+    this.activeScreen.resize(targetW, targetH);
+    this.currentBuffer.resize(targetW, targetH);
+    this.prevBuffer.resize(targetW, targetH);
 
     log(`Initial screen bounds resolved: ${size.width}x${size.height}`);
     this.layoutAndRender();
 
+    let resizeTimeout: any = null;
     this.driver.on("resize", (newSize) => {
       log(`Resize event: ${newSize.width}x${newSize.height}`);
-      this.activeScreen.resize(newSize.width, newSize.height);
-      this.currentBuffer.resize(newSize.width, newSize.height);
-      this.queueRender();
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = setTimeout(() => {
+        resizeTimeout = null;
+        const latestSize = this.driver.getSize();
+        const targetW = Math.max(80, latestSize.width);
+        const targetH = Math.max(24, latestSize.height);
+        this.activeScreen.resize(targetW, targetH);
+        this.currentBuffer.resize(targetW, targetH);
+        this.prevBuffer.resize(0, 0); // Force full redraw
+
+        // Clear terminal screen, home cursor, clear scrollback buffer, and purge Kitty image layers
+        this.driver.write("\x1b[H\x1b[2J\x1b[3J");
+        if (this.driver.capabilities.graphicsProtocol === "kitty") {
+          this.driver.write("\x1b_Ga=d\x1b\\\x1b_Ga=d,d=A\x1b\\");
+        }
+        this.queueRender();
+      }, 30);
     });
 
     this.driver.on("capabilities_resolved", () => {
@@ -182,28 +202,35 @@ export class App extends DOMNode {
     const screen = this.activeScreen;
 
     this.resolveAllStyles(screen);
+    const size = this.driver.getSize();
+    screen.measure(screen.region.width, screen.region.height);
     this.resolveAllLayouts(screen);
 
     this.currentBuffer.clear();
     screen.render(this.currentBuffer);
 
-    const ansiDiff = this.currentBuffer.renderDiff(this.prevBuffer, (cell) => {
-      if (cell.graphic) {
-        return this.driver.getImageSequence(
-          cell.graphic.pixelBuffer,
-          cell.graphic.pixelWidth,
-          cell.graphic.pixelHeight,
-          cell.graphic.cellWidth,
-          cell.graphic.cellHeight,
-          cell.graphic.pngBase64,
-          cell.style.background,
-        );
-      }
-      if (cell.icon) {
-        return this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background);
-      }
-      return cell.char;
-    });
+    const ansiDiff = this.currentBuffer.renderDiff(
+      this.prevBuffer,
+      (cell) => {
+        if (cell.graphic) {
+          return this.driver.getImageSequence(
+            cell.graphic.pixelBuffer,
+            cell.graphic.pixelWidth,
+            cell.graphic.pixelHeight,
+            cell.graphic.cellWidth,
+            cell.graphic.cellHeight,
+            cell.graphic.pngBase64,
+            cell.style.background,
+          );
+        }
+        if (cell.icon) {
+          return this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background);
+        }
+        return cell.char;
+      },
+      size.width,
+      size.height,
+    );
     if (ansiDiff) {
       if (this.driver.capabilities.synchronizedUpdates) {
         this.driver.write(`\x1b[?2026h${ansiDiff}\x1b[?2026l`);

@@ -375,6 +375,39 @@ describe("BunDriver Capability Probing", () => {
     driver.stop();
   });
 
+  test("Late-arriving cell size query responses update capabilities dynamically", () => {
+    const driver = new BunDriver({ stdin, stdout });
+    driver.start();
+
+    // Advance 100ms to complete initial probing
+    vi.advanceTimersByTime(100);
+    expect(driver.capabilitiesResolved).toBe(true);
+
+    // Track capabilities_resolved events
+    let resolvedCount = 0;
+    driver.on("capabilities_resolved", () => {
+      resolvedCount++;
+    });
+
+    // Send late-arriving cell size response: height=17, width=8
+    stdin.emit("data", "\x1b[6;17;8t");
+
+    // Verify cell size got updated
+    expect(driver.capabilities.cellSize).toEqual({ width: 8, height: 17 });
+    expect(resolvedCount).toBe(1);
+
+    // Verify it doesn't emit any key events for that sequence
+    let keyEmitted = false;
+    driver.on("key", () => {
+      keyEmitted = true;
+    });
+
+    stdin.emit("data", "\x1b[6;17;8t");
+    expect(keyEmitted).toBe(false);
+
+    driver.stop();
+  });
+
   test("WebDriver basic implementation coverage", async () => {
     const webDriver = new WebDriver(100, 30);
     expect(webDriver.getSize().width).toBe(100);

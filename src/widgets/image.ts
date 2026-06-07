@@ -4,6 +4,7 @@ import { GifReader } from "omggif";
 import { PNG } from "pngjs";
 import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
+import { encodePNG } from "../driver/bun/graphics.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
 import { parseColorToRGB } from "./icon-registry.ts";
@@ -11,6 +12,15 @@ import { parseColorToRGB } from "./icon-registry.ts";
 export class ImageWidget extends Widget {
   public src?: string;
   public buffer?: Uint8Array;
+  public ansi = false;
+
+  private lastPixelWidth = 0;
+  private lastPixelHeight = 0;
+  private lastBgHex = "";
+  private lastSrc = "";
+  private lastBuffer: Uint8Array | null = null;
+  private cachedPngBase64 = "";
+  private cachedPixels: Uint8Array | null = null;
 
   constructor() {
     super("image");
@@ -70,7 +80,8 @@ export class ImageWidget extends Widget {
 
     const app = App.instance;
     const capabilities = app?.driver.capabilities;
-    const isGraphicsSupported = capabilities && capabilities.graphicsProtocol !== "none";
+    const isGraphicsSupported =
+      capabilities && capabilities.graphicsProtocol !== "none" && !this.ansi;
 
     const cellSize = capabilities?.cellSize || { width: 10, height: 20 };
 
@@ -79,21 +90,48 @@ export class ImageWidget extends Widget {
       const pixelWidth = client.width * cellSize.width;
       const pixelHeight = client.height * cellSize.height;
 
-      const scaledPixels = resizeImage(
-        decoded.pixels,
-        decoded.width,
-        decoded.height,
-        pixelWidth,
-        pixelHeight,
-      );
+      const isCacheValid =
+        this.cachedPixels !== null &&
+        this.lastPixelWidth === pixelWidth &&
+        this.lastPixelHeight === pixelHeight &&
+        this.lastBgHex === bgHex &&
+        this.lastSrc === (this.src || "") &&
+        this.lastBuffer === this.buffer;
 
-      // Blend transparency with the background color
-      for (let i = 0; i < scaledPixels.length; i += 4) {
-        const alpha = scaledPixels[i + 3] / 255;
-        scaledPixels[i] = Math.round(scaledPixels[i] * alpha + bgRgb.r * (1 - alpha));
-        scaledPixels[i + 1] = Math.round(scaledPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
-        scaledPixels[i + 2] = Math.round(scaledPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
-        scaledPixels[i + 3] = 255;
+      let scaledPixels: Uint8Array;
+      let pngBase64: string;
+
+      if (isCacheValid) {
+        scaledPixels = this.cachedPixels!;
+        pngBase64 = this.cachedPngBase64;
+      } else {
+        scaledPixels = resizeImage(
+          decoded.pixels,
+          decoded.width,
+          decoded.height,
+          pixelWidth,
+          pixelHeight,
+        );
+
+        // Blend transparency with the background color
+        for (let i = 0; i < scaledPixels.length; i += 4) {
+          const alpha = scaledPixels[i + 3] / 255;
+          scaledPixels[i] = Math.round(scaledPixels[i] * alpha + bgRgb.r * (1 - alpha));
+          scaledPixels[i + 1] = Math.round(scaledPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
+          scaledPixels[i + 2] = Math.round(scaledPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
+          scaledPixels[i + 3] = 255;
+        }
+
+        pngBase64 = encodePNG(scaledPixels, pixelWidth, pixelHeight);
+
+        // Cache the results
+        this.cachedPixels = scaledPixels;
+        this.cachedPngBase64 = pngBase64;
+        this.lastPixelWidth = pixelWidth;
+        this.lastPixelHeight = pixelHeight;
+        this.lastBgHex = bgHex;
+        this.lastSrc = this.src || "";
+        this.lastBuffer = this.buffer || null;
       }
 
       buffer.cells[client.y][client.x] = {
@@ -107,6 +145,7 @@ export class ImageWidget extends Widget {
           pixelHeight,
           cellWidth: client.width,
           cellHeight: client.height,
+          pngBase64,
         },
       };
 

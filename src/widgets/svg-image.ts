@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import { Resvg } from "@resvg/resvg-js";
 import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
+import { encodePNG } from "../driver/bun/graphics.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
 import { parseColorToRGB } from "./icon-registry.ts";
@@ -9,6 +10,14 @@ import { resizeImage } from "./image.ts";
 
 export class SvgImageWidget extends Widget {
   public src?: string;
+  public ansi = false;
+
+  private lastPixelWidth = 0;
+  private lastPixelHeight = 0;
+  private lastBgHex = "";
+  private lastSrc = "";
+  private cachedPngBase64 = "";
+  private cachedPixels: Uint8Array | null = null;
 
   constructor() {
     super("svgimage");
@@ -54,7 +63,8 @@ export class SvgImageWidget extends Widget {
 
     const app = App.instance;
     const capabilities = app?.driver.capabilities;
-    const isGraphicsSupported = capabilities && capabilities.graphicsProtocol !== "none";
+    const isGraphicsSupported =
+      capabilities && capabilities.graphicsProtocol !== "none" && !this.ansi;
 
     const cellSize = capabilities?.cellSize || { width: 10, height: 20 };
 
@@ -63,46 +73,71 @@ export class SvgImageWidget extends Widget {
       const pixelWidth = client.width * cellSize.width;
       const pixelHeight = client.height * cellSize.height;
 
-      let renderedPixels: any;
-      try {
-        const resvg = new Resvg(svgContent, {
-          fitTo: {
-            mode: "width",
-            value: pixelWidth,
-          },
-        });
-        const rendered = resvg.render();
-        let rawPixels: any = new Uint8Array(
-          rendered.pixels.buffer,
-          rendered.pixels.byteOffset,
-          rendered.pixels.byteLength,
-        );
-        if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
-          rawPixels = resizeImage(
-            rawPixels,
-            rendered.width,
-            rendered.height,
-            pixelWidth,
-            pixelHeight,
-          );
-        }
-        renderedPixels = rawPixels;
-      } catch (err) {
-        this.renderError(
-          buffer,
-          `Render error: ${err instanceof Error ? err.message : String(err)}`,
-          style,
-        );
-        return;
-      }
+      const isCacheValid =
+        this.cachedPixels !== null &&
+        this.lastPixelWidth === pixelWidth &&
+        this.lastPixelHeight === pixelHeight &&
+        this.lastBgHex === bgHex &&
+        this.lastSrc === (this.src || "");
 
-      // Blend transparency with background
-      for (let i = 0; i < renderedPixels.length; i += 4) {
-        const alpha = renderedPixels[i + 3] / 255;
-        renderedPixels[i] = Math.round(renderedPixels[i] * alpha + bgRgb.r * (1 - alpha));
-        renderedPixels[i + 1] = Math.round(renderedPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
-        renderedPixels[i + 2] = Math.round(renderedPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
-        renderedPixels[i + 3] = 255;
+      let renderedPixels: Uint8Array;
+      let pngBase64: string;
+
+      if (isCacheValid) {
+        renderedPixels = this.cachedPixels!;
+        pngBase64 = this.cachedPngBase64;
+      } else {
+        let rawPixels: any;
+        try {
+          const resvg = new Resvg(svgContent, {
+            fitTo: {
+              mode: "width",
+              value: pixelWidth,
+            },
+          });
+          const rendered = resvg.render();
+          rawPixels = new Uint8Array(
+            rendered.pixels.buffer,
+            rendered.pixels.byteOffset,
+            rendered.pixels.byteLength,
+          );
+          if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
+            rawPixels = resizeImage(
+              rawPixels,
+              rendered.width,
+              rendered.height,
+              pixelWidth,
+              pixelHeight,
+            );
+          }
+          renderedPixels = rawPixels;
+        } catch (err) {
+          this.renderError(
+            buffer,
+            `Render error: ${err instanceof Error ? err.message : String(err)}`,
+            style,
+          );
+          return;
+        }
+
+        // Blend transparency with background
+        for (let i = 0; i < renderedPixels.length; i += 4) {
+          const alpha = renderedPixels[i + 3] / 255;
+          renderedPixels[i] = Math.round(renderedPixels[i] * alpha + bgRgb.r * (1 - alpha));
+          renderedPixels[i + 1] = Math.round(renderedPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
+          renderedPixels[i + 2] = Math.round(renderedPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
+          renderedPixels[i + 3] = 255;
+        }
+
+        pngBase64 = encodePNG(renderedPixels, pixelWidth, pixelHeight);
+
+        // Update cache
+        this.cachedPixels = renderedPixels;
+        this.cachedPngBase64 = pngBase64;
+        this.lastPixelWidth = pixelWidth;
+        this.lastPixelHeight = pixelHeight;
+        this.lastBgHex = bgHex;
+        this.lastSrc = this.src || "";
       }
 
       buffer.cells[client.y][client.x] = {
@@ -116,6 +151,7 @@ export class SvgImageWidget extends Widget {
           pixelHeight,
           cellWidth: client.width,
           cellHeight: client.height,
+          pngBase64,
         },
       };
 

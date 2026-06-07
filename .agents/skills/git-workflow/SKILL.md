@@ -20,6 +20,10 @@ This skill governs the git validation, branching, and committing conventions for
 > **Conventional Commits & Atomic Commits:**
 > All commit messages must follow the Conventional Commits specification. Combine only related modifications; avoid non-atomic commit blocks. Git commit formats are validated by `.githooks/commit-msg`.
 
+> [!IMPORTANT]
+> **No Auto-Commit or Auto-Push:**
+> The agent MUST NOT automatically commit or push code changes to git unless the user has explicitly requested a commit or push in their message. Do not execute git commits or pushes as a side effect or default action.
+
 ## 3. Reference Documents
 For detailed conventions and examples of commit messages:
 - [git_best_practices.md](../../../docs/git_best_practices.md)

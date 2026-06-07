@@ -59,15 +59,32 @@ function ImageDemoApp() {
           <Label style={{ color: "#89b4fa", bold: true }}>⚡ Vector Graphics (SVG)</Label>
           <View style={{ height: 1 }} />
 
-          {/* Beautiful SVG Image Component */}
-          <SvgImage
-            src={BEAUTIFUL_SVG}
-            style={{
-              width: 30,
-              height: 12,
-              margin: 1,
-            }}
-          />
+          {/* Beautiful SVG Image Components side-by-side */}
+          <HBox style={{ width: "100%" }}>
+            <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
+              <Label style={{ color: "#cba6f7", bold: true }}>Protocol</Label>
+              <SvgImage
+                src={BEAUTIFUL_SVG}
+                style={{
+                  width: 10,
+                  height: 5,
+                  margin: 1,
+                }}
+              />
+            </VBox>
+            <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
+              <Label style={{ color: "#fab387", bold: true }}>ANSI</Label>
+              <SvgImage
+                src={BEAUTIFUL_SVG}
+                ansi={true}
+                style={{
+                  width: 10,
+                  height: 5,
+                  margin: 1,
+                }}
+              />
+            </VBox>
+          </HBox>
 
           <View style={{ height: 1 }} />
           <Label style={{ color: "#a6adc8" }}>Renders dynamically using @resvg/resvg-js</Label>
@@ -80,16 +97,34 @@ function ImageDemoApp() {
           </Label>
           <View style={{ height: 1 }} />
 
-          {/* Transparent PNG component scaled */}
-          <Image
-            src={TINY_PNG_DATA_URL}
-            style={{
-              width: 20,
-              height: 8,
-              margin: 1,
-              background: "#ff007f", // Background highlights the single transparent pixel scaling
-            }}
-          />
+          {/* Transparent PNG components side-by-side */}
+          <HBox style={{ width: "100%" }}>
+            <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
+              <Label style={{ color: "#cba6f7", bold: true }}>Protocol</Label>
+              <Image
+                src={TINY_PNG_DATA_URL}
+                style={{
+                  width: 10,
+                  height: 5,
+                  margin: 1,
+                  background: "#ff007f", // Background highlights the single transparent pixel scaling
+                }}
+              />
+            </VBox>
+            <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
+              <Label style={{ color: "#fab387", bold: true }}>ANSI</Label>
+              <Image
+                src={TINY_PNG_DATA_URL}
+                ansi={true}
+                style={{
+                  width: 10,
+                  height: 5,
+                  margin: 1,
+                  background: "#ff007f", // Background highlights the single transparent pixel scaling
+                }}
+              />
+            </VBox>
+          </HBox>
 
           <View style={{ height: 2 }} />
           <Button

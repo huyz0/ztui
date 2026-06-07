@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { describe, expect, test } from "vitest";
-import { App, Button, Label, View, render } from "../index.ts";
+import { App, Button, Label, Spacing, View, render } from "../index.ts";
 import { VTEDriver } from "./vte-runner.ts";
 
 function InteractiveApp() {
@@ -26,7 +26,7 @@ function InteractiveApp() {
 
 describe("Virtual Terminal Emulation (VTE) Integration", () => {
   test("Renders layout and reads buffer content", async () => {
-    const driver = new VTEDriver(40, 10);
+    const driver = new VTEDriver(80, 24);
     const app = new App(driver);
 
     render(<InteractiveApp />, app.activeScreen);
@@ -44,7 +44,7 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
   });
 
   test("Propagates mouse hover and resolves stylesheet dynamically in VTE", async () => {
-    const driver = new VTEDriver(40, 10);
+    const driver = new VTEDriver(80, 24);
     const app = new App(driver);
 
     render(<InteractiveApp />, app.activeScreen);
@@ -87,7 +87,7 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
   });
 
   test("Propagates clicks and keyboard events in PTY/VTE", async () => {
-    const driver = new VTEDriver(40, 10);
+    const driver = new VTEDriver(80, 24);
     const app = new App(driver);
 
     render(<InteractiveApp />, app.activeScreen);
@@ -114,7 +114,7 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
   });
 
   test("Exercises all methods of VTEDriver to ensure 100% function coverage", async () => {
-    const driver = new VTEDriver(40, 10);
+    const driver = new VTEDriver(80, 24);
     driver.start();
     driver.stop();
 
@@ -152,7 +152,47 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
 
     // size
     const size = driver.getSize();
-    expect(size.width).toBe(40);
-    expect(size.height).toBe(10);
+    expect(size.width).toBe(80);
+    expect(size.height).toBe(24);
+  });
+
+  test("Clamps canvas to minimum of 80x24 and clips output correctly for a small driver", async () => {
+    const driver = new VTEDriver(30, 10);
+    const app = new App(driver);
+
+    render(
+      <View style={{ layout: "vertical", width: 80, height: 24 }}>
+        <Label id="label1">Line 1 Content</Label>
+        <Label id="label2" style={{ margin: new Spacing(15, 0, 0, 0) }}>
+          Line 16 Content
+        </Label>
+      </View>,
+      app.activeScreen,
+    );
+    app.run();
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await driver.waitWrite();
+
+    // The virtual screen and buffers should have resolved to 80x24 minimum
+    expect(app.activeScreen.region.width).toBe(80);
+    expect(app.activeScreen.region.height).toBe(24);
+
+    const buffer = (app as any).currentBuffer;
+    expect(buffer.width).toBe(80);
+    expect(buffer.height).toBe(24);
+
+    // Line 0 ("Line 1 Content") is within physical height (10) and width (30), so it should be visible in the virtual terminal
+    const terminalLine0 = driver.terminal.buffer.active.getLine(0)?.translateToString(true) || "";
+    expect(terminalLine0).toContain("Line 1 Content");
+
+    // Line 16 ("Line 16 Content") is at y = 16 (since margin-top is 15), which is outside the physical height (10).
+    // It should be clipped and therefore NOT written to the driver's terminal buffer.
+    for (let y = 0; y < 10; y++) {
+      const lineText = driver.terminal.buffer.active.getLine(y)?.translateToString(true) || "";
+      expect(lineText).not.toContain("Line 16 Content");
+    }
+
+    app.stop();
   });
 });

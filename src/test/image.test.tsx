@@ -103,8 +103,8 @@ describe("Image & SVG Image Widgets", () => {
     const cell0 = buffer.cells[0][0];
     expect(cell0.graphic).toBeDefined();
     expect(cell0.graphic?.type).toBe("image");
-    expect(cell0.graphic?.cellWidth).toBe(10);
-    expect(cell0.graphic?.cellHeight).toBe(5);
+    expect(cell0.graphic?.cellWidth).toBe(80);
+    expect(cell0.graphic?.cellHeight).toBe(24);
 
     // Other cells in the image boundary should be wideContinuation
     const cell1 = buffer.cells[0][1];
@@ -128,8 +128,8 @@ describe("Image & SVG Image Widgets", () => {
     const buffer = (app as any).currentBuffer;
     const cell = buffer.cells[0][0];
     expect(cell.graphic).toBeDefined();
-    expect(cell.graphic?.cellWidth).toBe(15);
-    expect(cell.graphic?.cellHeight).toBe(6);
+    expect(cell.graphic?.cellWidth).toBe(80);
+    expect(cell.graphic?.cellHeight).toBe(24);
 
     app.stop();
   });
@@ -181,6 +181,33 @@ describe("Image & SVG Image Widgets", () => {
     // Top-left cell should start with error text character, e.g. "E"
     const cell = buffer.cells[0][0];
     expect(cell.char).toBe("E");
+
+    app.stop();
+  });
+
+  test("Forces ANSI half-block rendering when ansi=true prop is set", async () => {
+    const driver = new VTEDriver(10, 5, {
+      graphicsProtocol: "kitty",
+    });
+    const app = new App(driver);
+
+    render(
+      <Image
+        src={`data:image/png;base64,${TINY_PNG_BASE64}`}
+        ansi={true}
+        style={{ width: 4, height: 2 }}
+      />,
+      app.activeScreen,
+    );
+
+    app.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await driver.waitWrite();
+
+    const buffer = (app as any).currentBuffer;
+    const cell = buffer.cells[0][0];
+    expect(cell.char).toBe("▀");
+    expect(cell.graphic).toBeUndefined();
 
     app.stop();
   });

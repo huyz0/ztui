@@ -37,9 +37,11 @@ declare global {
         "ztui-image": ZTUIElementProps & {
           src?: string;
           buffer?: Uint8Array;
+          ansi?: boolean;
         };
         "ztui-svgimage": ZTUIElementProps & {
           src?: string;
+          ansi?: boolean;
         };
       }
     }

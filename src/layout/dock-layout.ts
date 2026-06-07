@@ -18,8 +18,15 @@ export class DockLayout extends Layout {
       }
 
       if (dock === "top") {
-        const val = parseDimension(child.computedStyle.height, remaining.height, 1);
-        const height = typeof val === "number" ? val : remaining.height;
+        const val = parseDimension(child.computedStyle.height, remaining.height, -1);
+        const height =
+          typeof val === "number"
+            ? val === -1
+              ? child.computedStyle.height === "auto" || child.computedStyle.height === undefined
+                ? child.measuredHeight
+                : 1
+              : val
+            : remaining.height;
         child.region = new Region(
           new Offset(remaining.x, remaining.y),
           new Size(remaining.width, height),
@@ -29,8 +36,15 @@ export class DockLayout extends Layout {
           new Size(remaining.width, Math.max(0, remaining.height - height)),
         );
       } else if (dock === "bottom") {
-        const val = parseDimension(child.computedStyle.height, remaining.height, 1);
-        const height = typeof val === "number" ? val : remaining.height;
+        const val = parseDimension(child.computedStyle.height, remaining.height, -1);
+        const height =
+          typeof val === "number"
+            ? val === -1
+              ? child.computedStyle.height === "auto" || child.computedStyle.height === undefined
+                ? child.measuredHeight
+                : 1
+              : val
+            : remaining.height;
         child.region = new Region(
           new Offset(remaining.x, remaining.bottom - height),
           new Size(remaining.width, height),
@@ -40,8 +54,15 @@ export class DockLayout extends Layout {
           new Size(remaining.width, Math.max(0, remaining.height - height)),
         );
       } else if (dock === "left") {
-        const val = parseDimension(child.computedStyle.width, remaining.width, 10);
-        const width = typeof val === "number" ? val : remaining.width;
+        const val = parseDimension(child.computedStyle.width, remaining.width, -1);
+        const width =
+          typeof val === "number"
+            ? val === -1
+              ? child.computedStyle.width === "auto" || child.computedStyle.width === undefined
+                ? child.measuredWidth
+                : 10
+              : val
+            : remaining.width;
         child.region = new Region(
           new Offset(remaining.x, remaining.y),
           new Size(width, remaining.height),
@@ -51,8 +72,15 @@ export class DockLayout extends Layout {
           new Size(Math.max(0, remaining.width - width), remaining.height),
         );
       } else if (dock === "right") {
-        const val = parseDimension(child.computedStyle.width, remaining.width, 10);
-        const width = typeof val === "number" ? val : remaining.width;
+        const val = parseDimension(child.computedStyle.width, remaining.width, -1);
+        const width =
+          typeof val === "number"
+            ? val === -1
+              ? child.computedStyle.width === "auto" || child.computedStyle.width === undefined
+                ? child.measuredWidth
+                : 10
+              : val
+            : remaining.width;
         child.region = new Region(
           new Offset(remaining.right - width, remaining.y),
           new Size(width, remaining.height),

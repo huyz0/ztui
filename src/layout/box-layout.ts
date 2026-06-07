@@ -26,7 +26,13 @@ export class BoxLayout extends Layout {
       if (sizeProp === undefined && child.computedStyle.flexGrow !== undefined) {
         sizeProp = `${child.computedStyle.flexGrow}fr`;
       }
-      const parsed = parseDimension(sizeProp, totalLength, 1);
+
+      let parsed: number | { fr: number };
+      if (sizeProp === undefined || sizeProp === "auto") {
+        parsed = isVert ? child.measuredHeight : child.measuredWidth;
+      } else {
+        parsed = parseDimension(sizeProp, totalLength, 1);
+      }
 
       // Collect margin size
       const m = child.margin;
@@ -71,23 +77,29 @@ export class BoxLayout extends Layout {
       }
 
       if (isVert) {
-        const childWidthVal = parseDimension(
-          child.computedStyle.width,
-          parentRect.width,
-          parentRect.width,
-        );
-        const childWidth = typeof childWidthVal === "number" ? childWidthVal : parentRect.width;
+        const childWidthVal = parseDimension(child.computedStyle.width, parentRect.width, -1);
+        const childWidth =
+          typeof childWidthVal === "number"
+            ? childWidthVal === -1
+              ? child.computedStyle.width === "auto"
+                ? child.measuredWidth + child.margin.left + child.margin.right
+                : parentRect.width
+              : childWidthVal + child.margin.left + child.margin.right
+            : parentRect.width;
         child.region = new Region(
           new Offset(parentRect.x, currentOffset),
           new Size(childWidth, size),
         );
       } else {
-        const childHeightVal = parseDimension(
-          child.computedStyle.height,
-          parentRect.height,
-          parentRect.height,
-        );
-        const childHeight = typeof childHeightVal === "number" ? childHeightVal : parentRect.height;
+        const childHeightVal = parseDimension(child.computedStyle.height, parentRect.height, -1);
+        const childHeight =
+          typeof childHeightVal === "number"
+            ? childHeightVal === -1
+              ? child.computedStyle.height === "auto"
+                ? child.measuredHeight + child.margin.top + child.margin.bottom
+                : parentRect.height
+              : childHeightVal + child.margin.top + child.margin.bottom
+            : parentRect.height;
         child.region = new Region(
           new Offset(currentOffset, parentRect.y),
           new Size(size, childHeight),

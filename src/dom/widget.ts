@@ -2,7 +2,9 @@ import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { Spacing } from "../geometry/spacing.ts";
+import { parseDimension } from "../layout/layout.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
+import { stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 import { DOMNode } from "./dom.ts";
 
@@ -46,6 +48,8 @@ export class Widget extends DOMNode {
     this._computedStyle = val;
   }
   public region: Region = Region.EMPTY;
+  public measuredWidth = 0;
+  public measuredHeight = 0;
   public scrollOffset: Offset = Offset.ORIGIN;
   public focusable = false;
   public focused = false;
@@ -190,4 +194,138 @@ export class Widget extends DOMNode {
 
   public onMount(): void {}
   public onUnmount(): void {}
+
+  public measure(maxW: number, maxH: number): void {
+    // 1. Recursively measure children first (bottom-up)
+    for (const child of this.children) {
+      if (child instanceof Widget && child.visible) {
+        child.measure(maxW, maxH);
+      }
+    }
+
+    // Determine layout type
+    const display = this.computedStyle.display;
+    const flexDirection = this.computedStyle.flexDirection;
+    let layoutType: "vertical" | "horizontal" | "dock" | "grid" = "vertical";
+    if (this.computedStyle.layout) {
+      layoutType = this.computedStyle.layout;
+    } else if (display === "grid") {
+      layoutType = "grid";
+    } else if (display === "dock") {
+      layoutType = "dock";
+    } else if (display === "flex" || flexDirection !== undefined) {
+      layoutType = flexDirection === "row" ? "horizontal" : "vertical";
+    }
+
+    // Determine text content if any (handling Label, Button, Header, Footer inline text)
+    let text = "";
+    let hasText = false;
+    for (const child of this.children) {
+      if (child.constructor.name === "TextNode") {
+        text += (child as any).text || "";
+        hasText = true;
+      }
+    }
+
+    const b = this.borderSize;
+    const p = this.padding;
+
+    // 2. Resolve own width
+    const wVal = parseDimension(this.computedStyle.width, maxW, -1);
+    if (wVal === -1 || (typeof wVal === "object" && "fr" in wVal)) {
+      let contentW = 0;
+      if (hasText) {
+        contentW = stringWidth(text);
+      } else {
+        if (layoutType === "horizontal") {
+          for (const child of this.children) {
+            if (child instanceof Widget && child.visible) {
+              const childWProp = child.computedStyle.width;
+              const isFr =
+                childWProp !== undefined &&
+                typeof childWProp === "string" &&
+                childWProp.endsWith("fr");
+              const isFlexGrow = child.computedStyle.flexGrow !== undefined;
+              if (!isFr && !isFlexGrow) {
+                contentW += child.measuredWidth + child.margin.left + child.margin.right;
+              } else {
+                contentW += 1 + child.margin.left + child.margin.right;
+              }
+            }
+          }
+        } else {
+          for (const child of this.children) {
+            if (child instanceof Widget && child.visible) {
+              const childWProp = child.computedStyle.width;
+              const isFr =
+                childWProp !== undefined &&
+                typeof childWProp === "string" &&
+                childWProp.endsWith("fr");
+              const childW = !isFr ? child.measuredWidth : 1;
+              contentW = Math.max(contentW, childW + child.margin.left + child.margin.right);
+            }
+          }
+        }
+      }
+      this.measuredWidth = contentW + b.width + p.width;
+    } else {
+      this.measuredWidth = wVal as number;
+    }
+
+    // 3. Resolve own height
+    const hVal = parseDimension(this.computedStyle.height, maxH, -1);
+    if (hVal === -1 || (typeof hVal === "object" && "fr" in hVal)) {
+      let contentH = 0;
+      if (hasText) {
+        contentH = text ? 1 : 0;
+      } else {
+        if (layoutType === "vertical") {
+          for (const child of this.children) {
+            if (child instanceof Widget && child.visible) {
+              const childHProp = child.computedStyle.height;
+              const isFr =
+                childHProp !== undefined &&
+                typeof childHProp === "string" &&
+                childHProp.endsWith("fr");
+              const isFlexGrow = child.computedStyle.flexGrow !== undefined;
+              if (!isFr && !isFlexGrow) {
+                contentH += child.measuredHeight + child.margin.top + child.margin.bottom;
+              } else {
+                contentH += 1 + child.margin.top + child.margin.bottom;
+              }
+            }
+          }
+        } else {
+          for (const child of this.children) {
+            if (child instanceof Widget && child.visible) {
+              const childHProp = child.computedStyle.height;
+              const isFr =
+                childHProp !== undefined &&
+                typeof childHProp === "string" &&
+                childHProp.endsWith("fr");
+              const childH = !isFr ? child.measuredHeight : 1;
+              contentH = Math.max(contentH, childH + child.margin.top + child.margin.bottom);
+            }
+          }
+        }
+      }
+      this.measuredHeight = contentH + b.height + p.height;
+    } else {
+      this.measuredHeight = hVal as number;
+    }
+
+    // Apply min/max constraints
+    if (this.computedStyle.minWidth !== undefined) {
+      this.measuredWidth = Math.max(this.measuredWidth, this.computedStyle.minWidth);
+    }
+    if (this.computedStyle.maxWidth !== undefined) {
+      this.measuredWidth = Math.min(this.measuredWidth, this.computedStyle.maxWidth);
+    }
+    if (this.computedStyle.minHeight !== undefined) {
+      this.measuredHeight = Math.max(this.measuredHeight, this.computedStyle.minHeight);
+    }
+    if (this.computedStyle.maxHeight !== undefined) {
+      this.measuredHeight = Math.min(this.measuredHeight, this.computedStyle.maxHeight);
+    }
+  }
 }

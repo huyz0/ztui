@@ -8,6 +8,7 @@ import { Spacing } from "../geometry/spacing.ts";
 import { BoxLayout } from "../layout/box-layout.ts";
 import { DockLayout } from "../layout/dock-layout.ts";
 import { GridLayout } from "../layout/grid-layout.ts";
+import { TextNode } from "../react/host-config.ts";
 import {
   BoxWidget,
   DockWidget,
@@ -15,6 +16,7 @@ import {
   GridWidget,
   HBoxWidget,
   HeaderWidget,
+  LabelWidget,
   VBoxWidget,
 } from "../widgets/index.ts";
 import { DOMNode } from "./dom.ts";
@@ -301,6 +303,39 @@ describe("DOM and layout resolution", () => {
     expect(child2.region.width).toBe(8);
   });
 
+  test("BoxLayout adds cross-axis margins for fixed dimension children", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 20));
+
+    const child = new Widget("button");
+    child.style.width = 5;
+    child.style.height = 5;
+    child.style.margin = 1;
+
+    parent.appendChild(child);
+
+    // Vertical layout: width is cross-axis, height is main-axis.
+    const verticalLayout = new BoxLayout("vertical");
+    verticalLayout.resolve(parent);
+
+    // Cross-axis (width) should include margin (5 + 2 = 7)
+    expect(child.region.width).toBe(7);
+    // Main-axis (height) should include margin (5 + 2 = 7)
+    expect(child.region.height).toBe(7);
+    // client rect should be 5x5
+    expect(child.getClientRect().width).toBe(5);
+    expect(child.getClientRect().height).toBe(5);
+
+    // Horizontal layout: height is cross-axis, width is main-axis.
+    const horizontalLayout = new BoxLayout("horizontal");
+    horizontalLayout.resolve(parent);
+
+    expect(child.region.width).toBe(7);
+    expect(child.region.height).toBe(7);
+    expect(child.getClientRect().width).toBe(5);
+    expect(child.getClientRect().height).toBe(5);
+  });
+
   test("DockLayout dimension fallback tests", () => {
     const parent = new Widget("view");
     parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
@@ -355,5 +390,21 @@ describe("DOM and layout resolution", () => {
   test("BoxWidget default styles and tags", () => {
     const box = new BoxWidget();
     expect(box.tagName).toBe("box");
+  });
+
+  test("Container shrink-wrapping bottom-up measurement pass", () => {
+    const parent = new Widget("vbox");
+    const label = new LabelWidget();
+    const textNode = new TextNode("Hello World");
+    label.appendChild(textNode);
+    parent.appendChild(label);
+
+    parent.measure(80, 24);
+
+    expect(label.measuredWidth).toBe(11);
+    expect(label.measuredHeight).toBe(1);
+
+    expect(parent.measuredWidth).toBe(11);
+    expect(parent.measuredHeight).toBe(1);
   });
 });

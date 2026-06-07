@@ -169,6 +169,120 @@ export class BunDriver extends Driver {
 
     if (data.length === 0) return;
 
+    // Intercept late-arriving capability responses when not probing
+    if (!this.isProbing) {
+      let matchedAny = false;
+
+      // 1. DA1 Match
+      while (true) {
+        const da1Match = data.match(/\x1b\[\?([\d;]+)c/);
+        if (!da1Match) break;
+        const params = da1Match[1].split(";");
+        if (params.includes("4") && this.capabilities.graphicsProtocol === "none") {
+          this.capabilities.graphicsProtocol = "sixel";
+        }
+        data = data.replace(da1Match[0], "");
+        matchedAny = true;
+      }
+
+      // 2. DA2 Match
+      while (true) {
+        const da2Match = data.match(/\x1b\[>([\d;]*)c/);
+        if (!da2Match) break;
+        data = data.replace(da2Match[0], "");
+        matchedAny = true;
+      }
+
+      // 3. Kitty keyboard match
+      while (true) {
+        const kittyKeyMatch = data.match(/\x1b\[\?(\d+)u/);
+        if (!kittyKeyMatch) break;
+        this.capabilities.kittyKeyboard = true;
+        data = data.replace(kittyKeyMatch[0], "");
+        matchedAny = true;
+      }
+
+      // 4. Kitty graphics status match
+      while (true) {
+        const kittyGraphMatch = data.match(/\x1b_Gi=31;([^\x1b]+)\x1b\\/);
+        if (!kittyGraphMatch) break;
+        if (kittyGraphMatch[1].includes("OK")) {
+          this.capabilities.graphicsProtocol = "kitty";
+        }
+        data = data.replace(kittyGraphMatch[0], "");
+        matchedAny = true;
+      }
+
+      // 5. Mouse hover match
+      while (true) {
+        const hoverMatch = data.match(/\x1b\[\?1003;([0-4])\$y/);
+        if (!hoverMatch) break;
+        const status = hoverMatch[1];
+        if (status === "1" || status === "2") {
+          this.capabilities.mouseHover = true;
+        }
+        data = data.replace(hoverMatch[0], "");
+        matchedAny = true;
+      }
+
+      // 6. Synchronized updates match
+      while (true) {
+        const syncMatch = data.match(/\x1b\[\?2026;([0-4])\$y/);
+        if (!syncMatch) break;
+        const status = syncMatch[1];
+        if (status === "1" || status === "2") {
+          this.capabilities.synchronizedUpdates = true;
+        }
+        data = data.replace(syncMatch[0], "");
+        matchedAny = true;
+      }
+
+      // 7. Glyph protocol match
+      while (true) {
+        const glyphMatch = data.match(/\x1b_25a1;s(?:;[^\x1b]*)?\x1b\\/);
+        if (!glyphMatch) break;
+        this.capabilities.glyphProtocol = true;
+        data = data.replace(glyphMatch[0], "");
+        matchedAny = true;
+      }
+
+      // 8. Window pixel size response
+      while (true) {
+        const pixelSizeMatch = data.match(/\x1b\[4;(\d+);(\d+)t/);
+        if (!pixelSizeMatch) break;
+        const height = Number.parseInt(pixelSizeMatch[1], 10);
+        const width = Number.parseInt(pixelSizeMatch[2], 10);
+        const columns = this.stdout.columns || 80;
+        const rows = this.stdout.rows || 24;
+        if (width > 0 && height > 0) {
+          const probedCellWidth = Math.round(width / columns);
+          const probedCellHeight = Math.round(height / rows);
+          this.capabilities.cellSize = { width: probedCellWidth, height: probedCellHeight };
+        }
+        data = data.replace(pixelSizeMatch[0], "");
+        matchedAny = true;
+      }
+
+      // 9. Cell size response
+      while (true) {
+        const cellSizeMatch = data.match(/\x1b\[6;(\d+);(\d+)t/);
+        if (!cellSizeMatch) break;
+        const height = Number.parseInt(cellSizeMatch[1], 10);
+        const width = Number.parseInt(cellSizeMatch[2], 10);
+        if (width > 0 && height > 0) {
+          this.capabilities.cellSize = { width, height };
+        }
+        data = data.replace(cellSizeMatch[0], "");
+        matchedAny = true;
+      }
+
+      if (matchedAny) {
+        this.emit("capabilities_resolved");
+      }
+    }
+
+    if (data.length === 0) return;
+
     if (this.isProbing) {
       this.probeBuffer += data;
       return;

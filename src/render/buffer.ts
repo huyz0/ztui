@@ -94,58 +94,33 @@ export class ScreenBuffer {
 
   // Double buffering output: compare with old buffer and write changes to terminal
   // Returns ANSI escape sequences to render the differences
-  public renderDiff(oldBuffer: ScreenBuffer, formatChar?: (cell: Cell) => string): string {
+  public renderDiff(
+    oldBuffer: ScreenBuffer,
+    formatChar?: (cell: Cell) => string,
+    clipW?: number,
+    clipH?: number,
+  ): string {
     let output = "";
-    let activeStyle: Style | null = null;
+    const limitW = clipW !== undefined ? Math.min(clipW, this.width) : this.width;
+    const limitH = clipH !== undefined ? Math.min(clipH, this.height) : this.height;
 
     // Ensure they are the same size
     if (this.width !== oldBuffer.width || this.height !== oldBuffer.height) {
-      // If sizes mismatch, draw the entire screen
-      output += "\x1b[H"; // Cursor to home
+      oldBuffer.resize(this.width, this.height);
+      // Invalidate all cells to force redraw of every cell
       for (let y = 0; y < this.height; y++) {
-        let line = "";
         for (let x = 0; x < this.width; x++) {
-          const cell = this.cells[y][x];
-          if (cell.wideContinuation) continue;
-
-          if (!activeStyle || !activeStyle.equals(cell.style)) {
-            if (line) {
-              output += line;
-              line = "";
-            }
-            if (activeStyle) {
-              const { end } = activeStyle.getEscapeCodes();
-              output += end;
-            }
-            activeStyle = cell.style;
-            const { start } = activeStyle.getEscapeCodes();
-            output += start;
-          }
-          line += formatChar ? formatChar(cell) : cell.char;
-        }
-        if (line) {
-          output += line;
-        }
-        if (y < this.height - 1) {
-          if (activeStyle) {
-            output += activeStyle.getEscapeCodes().end;
-            activeStyle = null;
-          }
-          output += "\r\n";
+          oldBuffer.cells[y][x].char = "";
         }
       }
-      if (activeStyle) {
-        output += activeStyle.getEscapeCodes().end;
-      }
-      return output;
     }
 
     // Standard diff mode
-    for (let y = 0; y < this.height; y++) {
+    for (let y = 0; y < limitH; y++) {
       let runStartX: number | null = null;
       let runContent = "";
 
-      for (let x = 0; x < this.width; x++) {
+      for (let x = 0; x < limitW; x++) {
         const newCell = this.cells[y][x];
         const oldCell = oldBuffer.cells[y][x];
 
@@ -156,16 +131,32 @@ export class ScreenBuffer {
           newCell.icon !== oldCell.icon ||
           newCell.graphic !== oldCell.graphic;
 
+        const isSpecial =
+          newCell.graphic !== undefined || newCell.icon !== undefined || newCell.wideContinuation;
+
         const styleChanged =
           runStartX !== null && !newCell.style.equals(this.cells[y][runStartX].style);
+
+        if (isSpecial) {
+          if (runStartX !== null) {
+            output += this.flushRun(runStartX, y, runContent, this.cells[y][runStartX].style);
+            runStartX = null;
+            runContent = "";
+          }
+          if (changed) {
+            if (!newCell.wideContinuation) {
+              const content = formatChar ? formatChar(newCell) : newCell.char;
+              output += this.flushRun(x, y, content, newCell.style);
+            }
+          }
+          continue;
+        }
 
         if (changed && !styleChanged) {
           if (runStartX === null) {
             runStartX = x;
           }
-          if (!newCell.wideContinuation) {
-            runContent += formatChar ? formatChar(newCell) : newCell.char;
-          }
+          runContent += formatChar ? formatChar(newCell) : newCell.char;
         } else {
           // End of run or style change
           if (runStartX !== null) {
@@ -175,9 +166,7 @@ export class ScreenBuffer {
           }
           if (changed) {
             runStartX = x;
-            if (!newCell.wideContinuation) {
-              runContent += formatChar ? formatChar(newCell) : newCell.char;
-            }
+            runContent += formatChar ? formatChar(newCell) : newCell.char;
           }
         }
       }
