@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import {
   App,
@@ -12,10 +12,10 @@ import {
   Input,
   Label,
   MockDriver,
-  VBox,
-  View,
   render,
   renderBufferToHTML,
+  VBox,
+  View,
 } from "../index.ts";
 
 function SimpleTestApp() {

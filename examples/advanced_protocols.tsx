@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   App,
   Button,
@@ -8,11 +8,11 @@ import {
   Header,
   HeroicIcon,
   Icon,
+  iconRegistry,
   Label,
+  render,
   Spacing,
   VBox,
-  iconRegistry,
-  render,
 } from "../src/index.ts";
 
 iconRegistry.registerIcons([
@@ -263,7 +263,7 @@ function AdvancedProtocolsApp() {
 }
 
 // Simple View wrapper for vertical spacer
-function View({ style, children }: { style?: any; children?: any }) {
+function _View({ style, children }: { style?: any; children?: any }) {
   return <VBox style={style}>{children}</VBox>;
 }
 

@@ -1,9 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import React from "react";
 import { describe, expect, test } from "vitest";
 import { fullColorRgbaToSixel } from "../driver/bun/graphics.ts";
-import { App, Image, SvgImage, render } from "../index.ts";
+import { App, Image, render, SvgImage } from "../index.ts";
 import { decodeImage, resizeImage } from "../widgets/image.ts";
 import { VTEDriver } from "./vte-runner.ts";
 

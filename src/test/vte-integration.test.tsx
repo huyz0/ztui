@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { describe, expect, test } from "vitest";
-import { App, Button, Label, Spacing, View, render } from "../index.ts";
+import { App, Button, Label, render, Spacing, View } from "../index.ts";
 import { VTEDriver } from "./vte-runner.ts";
 
 function InteractiveApp() {

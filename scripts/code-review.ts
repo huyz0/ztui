@@ -50,13 +50,13 @@ if (existsSync(coverageSummaryPath)) {
       { name: "Branches", actual: total.branches.pct, threshold: 80 },
     ];
 
-    let coveragePass = true;
+    let _coveragePass = true;
     for (const check of checks) {
       if (check.actual < check.threshold) {
         console.log(
           `❌ Coverage ${check.name}: FAIL (${check.actual}% / Min: ${check.threshold}%)`,
         );
-        coveragePass = false;
+        _coveragePass = false;
         overallPass = false;
       } else {
         console.log(

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   App,
   Button,
@@ -8,9 +8,9 @@ import {
   Header,
   Input,
   Label,
+  render,
   VBox,
   View,
-  render,
 } from "../src/index.ts";
 
 function DemoApp() {

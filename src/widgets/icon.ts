@@ -1,4 +1,3 @@
-import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";

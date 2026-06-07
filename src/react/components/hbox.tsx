@@ -1,4 +1,3 @@
-import type React from "react";
 import { Box } from "./box.tsx";
 import type { ComponentProps } from "./types.ts";
 

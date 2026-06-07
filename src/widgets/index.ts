@@ -15,18 +15,18 @@ import { SvgImageWidget } from "./svg-image.ts";
 import { VBoxWidget } from "./vbox.ts";
 
 export { BoxWidget } from "./box.ts";
-export { LabelWidget } from "./label.ts";
 export { ButtonWidget } from "./button.ts";
-export { InputWidget } from "./input.ts";
-export { HeaderWidget } from "./header.ts";
-export { FooterWidget } from "./footer.ts";
-export { VBoxWidget } from "./vbox.ts";
-export { HBoxWidget } from "./hbox.ts";
-export { GridWidget } from "./grid.ts";
 export { DockWidget } from "./dock.ts";
+export { FooterWidget } from "./footer.ts";
+export { GridWidget } from "./grid.ts";
+export { HBoxWidget } from "./hbox.ts";
+export { HeaderWidget } from "./header.ts";
 export { IconWidget } from "./icon.ts";
 export { ImageWidget } from "./image.ts";
+export { InputWidget } from "./input.ts";
+export { LabelWidget } from "./label.ts";
 export { SvgImageWidget } from "./svg-image.ts";
+export { VBoxWidget } from "./vbox.ts";
 
 registerElement("ztui-box", () => new BoxWidget());
 registerElement("ztui-label", () => new LabelWidget());

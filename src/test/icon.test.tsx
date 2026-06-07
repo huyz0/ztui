@@ -1,6 +1,5 @@
-import React from "react";
 import { describe, expect, test } from "vitest";
-import { App, HeroicIcon, Icon, VBox, iconRegistry, render } from "../index.ts";
+import { App, HeroicIcon, Icon, iconRegistry, render, VBox } from "../index.ts";
 import { parseColorToRGB } from "../widgets/icon-registry.ts";
 import { VTEDriver } from "./vte-runner.ts";
 

@@ -1,7 +1,9 @@
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { Size } from "../geometry/size.ts";
 import { iconRegistry } from "../widgets/icon-registry.ts";
 import { BunDriver } from "./bun/index.ts";
+import { Driver, type TerminalCapabilities } from "./driver.ts";
 import { MockDriver } from "./mock/index.ts";
 import { WebDriver } from "./web/index.ts";
 
@@ -510,5 +512,64 @@ describe("BunDriver Capability Probing", () => {
     } finally {
       process.exit = originalExit;
     }
+  });
+
+  test("Base Driver default implementations", () => {
+    class TestBaseDriver extends Driver {
+      public capabilities: TerminalCapabilities = {
+        truecolor: false,
+        color256: false,
+        kittyKeyboard: false,
+        mouseTracking: false,
+        mouseHover: false,
+        hyperlinks: false,
+        synchronizedUpdates: false,
+        glyphProtocol: false,
+        clipboard: false,
+        notifications: false,
+        graphicsProtocol: "none",
+      };
+      public clipboard = {
+        async get() {
+          return "";
+        },
+        set() {},
+      };
+      public dataWritten = "";
+      start() {}
+      stop() {}
+      write(data: string) {
+        this.dataWritten += data;
+      }
+      getSize() {
+        return new Size(80, 24);
+      }
+      showNotification() {}
+    }
+
+    const driver = new TestBaseDriver();
+
+    // Test clearScreen
+    driver.clearScreen();
+    expect(driver.dataWritten).toBe("\x1b[H\x1b[2J\x1b[3J");
+
+    // Test writeFrame without synchronized updates
+    driver.dataWritten = "";
+    driver.writeFrame("hello");
+    expect(driver.dataWritten).toBe("hello");
+
+    // Test writeFrame with synchronized updates
+    driver.capabilities.synchronizedUpdates = true;
+    driver.dataWritten = "";
+    driver.writeFrame("hello");
+    expect(driver.dataWritten).toBe("\x1b[?2026hhello\x1b[?2026l");
+
+    // Test default getIconSequence
+    const iconSeq = driver.getIconSequence("nonexistent");
+    expect(iconSeq).toBe("");
+
+    // Test default getImageSequence
+    const imgSeq = driver.getImageSequence(new Uint8Array(), 0, 0, 0, 0);
+    expect(imgSeq).toBe("");
   });
 });

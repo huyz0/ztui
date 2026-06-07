@@ -2,8 +2,8 @@ import { Terminal } from "@xterm/headless";
 import { type Clipboard, Driver, type TerminalCapabilities } from "../driver/driver.ts";
 import { Size } from "../geometry/size.ts";
 import {
-  type RasterizedIcon,
   iconRegistry,
+  type RasterizedIcon,
   rasterizeSVG,
   rgbaToSixel,
 } from "../widgets/icon-registry.ts";

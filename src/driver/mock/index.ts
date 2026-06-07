@@ -7,7 +7,6 @@ export class MockDriver extends Driver {
   public override readonly clipboard: Clipboard;
   private width: number;
   private height: number;
-  private isRunning = false;
 
   constructor(width = 80, height = 24) {
     super();

@@ -1,4 +1,3 @@
-import React from "react";
 import {
   App,
   Button,
@@ -8,10 +7,10 @@ import {
   Header,
   Image,
   Label,
+  render,
   SvgImage,
   VBox,
   View,
-  render,
 } from "../src/index.ts";
 
 // A beautiful, premium gradient SVG featuring a colorful background, circle, and text

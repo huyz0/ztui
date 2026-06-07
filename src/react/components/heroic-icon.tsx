@@ -1,7 +1,6 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import type React from "react";
 import { iconRegistry } from "../../widgets/icon-registry.ts";
 import { Icon } from "./icon.tsx";
 import type { ComponentProps } from "./types.ts";

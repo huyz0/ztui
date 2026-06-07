@@ -1,6 +1,7 @@
-import { HostConfig } from "react-reconciler";
 import { DefaultEventPriority } from "react-reconciler/constants";
+
 const NoEventPriority = 0;
+
 import { createContext } from "react";
 import { App } from "../core/app.ts";
 import { DOMNode } from "../dom/dom.ts";
@@ -100,7 +101,7 @@ export const hostConfig: any = {
     return false;
   },
 
-  prepareUpdate(instance: DOMNode, type: string, oldProps: any, newProps: any) {
+  prepareUpdate(_instance: DOMNode, _type: string, _oldProps: any, _newProps: any) {
     return true;
   },
 
@@ -168,7 +169,7 @@ export const hostConfig: any = {
     applyProps(instance, newProps);
   },
 
-  commitTextUpdate(textInstance: TextNode, oldText: string, newText: string) {
+  commitTextUpdate(textInstance: TextNode, _oldText: string, newText: string) {
     textInstance.text = newText;
   },
 
@@ -186,15 +187,15 @@ export const hostConfig: any = {
     }
   },
 
-  unhideInstance(instance: DOMNode, props: any) {
+  unhideInstance(instance: DOMNode, _props: any) {
     if (instance instanceof Widget) {
       instance.visible = true;
     }
   },
 
-  hideTextInstance(textInstance: TextNode) {},
+  hideTextInstance(_textInstance: TextNode) {},
 
-  unhideTextInstance(textInstance: TextNode, text: string) {},
+  unhideTextInstance(_textInstance: TextNode, _text: string) {},
 
   clearContainer(container: DOMNode) {
     container.children = [];

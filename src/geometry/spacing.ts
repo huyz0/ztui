@@ -1,5 +1,3 @@
-import { Size } from "./size.ts";
-
 export class Spacing {
   constructor(
     public readonly top: number = 0,

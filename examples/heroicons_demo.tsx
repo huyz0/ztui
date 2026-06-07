@@ -1,5 +1,5 @@
 import { appendFileSync } from "node:fs";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   App,
   Button,
@@ -9,10 +9,10 @@ import {
   Header,
   HeroicIcon,
   Label,
+  render,
   Spacing,
   VBox,
   View,
-  render,
 } from "../src/index.ts";
 
 process.on("unhandledRejection", (reason) => {

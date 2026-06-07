@@ -235,9 +235,9 @@ function parseColorToAnsi(color: string, isBackground: boolean): string | null {
     // rgb(r, g, b)
     const rgbMatch = norm.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
     if (rgbMatch) {
-      r = Number.parseInt(rgbMatch[1]);
-      g = Number.parseInt(rgbMatch[2]);
-      b = Number.parseInt(rgbMatch[3]);
+      r = Number.parseInt(rgbMatch[1], 10);
+      g = Number.parseInt(rgbMatch[2], 10);
+      b = Number.parseInt(rgbMatch[3], 10);
       parsed = true;
     }
   }

@@ -1,8 +1,8 @@
 import { PNG } from "pngjs";
 import {
-  type RasterizedIcon,
   iconRegistry,
   parseColorToRGB,
+  type RasterizedIcon,
   rasterizeSVG,
   rgbaToSixel,
 } from "../../widgets/icon-registry.ts";

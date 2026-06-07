@@ -53,7 +53,7 @@ export function renderAnsiFallback(
   height: number,
   client: { x: number; y: number; width: number; height: number },
   bgRgb: { r: number; g: number; b: number },
-  bgHex: string,
+  _bgHex: string,
 ): void {
   const pixelWidth = client.width * 2;
   const pixelHeight = client.height * 2;

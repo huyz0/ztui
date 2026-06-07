@@ -240,7 +240,7 @@ export function decodeImage(buffer: Uint8Array): {
       width: raw.width,
       height: raw.height,
     };
-  } catch (err) {
+  } catch (_err) {
     throw new Error("Unsupported or invalid image format. Must be PNG, JPEG, or GIF.");
   }
 }

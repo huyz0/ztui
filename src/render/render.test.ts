@@ -5,7 +5,7 @@ import { Size } from "../geometry/size.ts";
 import { ScreenBuffer } from "./buffer.ts";
 import { renderBufferToHTML } from "./html-renderer.ts";
 import { Segment } from "./segment.ts";
-import { Style, renderCapabilities } from "./style.ts";
+import { renderCapabilities, Style } from "./style.ts";
 
 function debugRender(buffer: ScreenBuffer): string {
   let output = "";

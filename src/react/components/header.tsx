@@ -1,4 +1,3 @@
-import type React from "react";
 import type { ComponentProps } from "./types.ts";
 
 export function Header({ id, className, style, children, ...rest }: ComponentProps) {
