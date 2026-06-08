@@ -1,10 +1,6 @@
-import { Resvg } from "@resvg/resvg-js";
-import { renderMermaidAscii, renderMermaidSync } from "beautiful-mermaid";
 import MarkdownIt from "markdown-it";
-import { App } from "../../core/app.ts";
-import { encodePNG } from "../../driver/bun/graphics.ts";
-import { parseColorToRGB } from "../../widgets/icon-registry.ts";
-import { resizeImage } from "../../widgets/image-renderers.ts";
+import type { TerminalCapabilities } from "../../driver/driver.ts";
+import { stringWidth } from "../segment.ts";
 import { Style } from "../style.ts";
 import { Syntax } from "./syntax.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
@@ -40,6 +36,7 @@ export class Markdown {
   public static renderToLines(
     markdown: string,
     themeName: "ansi_dark" | "ansi_light" = "ansi_dark",
+    _capabilities?: TerminalCapabilities,
   ): RichText[] {
     const md = new MarkdownIt({ html: true, linkify: true });
     const tokens = md.parse(markdown, {});
@@ -194,113 +191,73 @@ export class Markdown {
         const lang = token.info ? token.info.split(/\s+/)[0] : "text";
         const code = token.content.replace(/\r?\n$/, "");
 
-        if (lang === "mermaid") {
-          const app = App.instance;
-          const capabilities = app?.driver.capabilities;
-          const isGraphicsSupported = capabilities && capabilities.graphicsProtocol !== "none";
-
-          if (isGraphicsSupported) {
-            try {
-              const svgContent = renderMermaidSync(code);
-              const cellSize = capabilities.cellSize || { width: 8, height: 16 };
-              const cols = 40;
-              const rows = 12;
-              const pixelWidth = cols * cellSize.width;
-              const pixelHeight = rows * cellSize.height;
-
-              const resvg = new Resvg(svgContent, {
-                fitTo: {
-                  mode: "width",
-                  value: pixelWidth,
-                },
-              });
-              const rendered = resvg.render();
-              let rawPixels = new Uint8Array(
-                rendered.pixels.buffer,
-                rendered.pixels.byteOffset,
-                rendered.pixels.byteLength,
-              );
-              if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
-                rawPixels = resizeImage(
-                  rawPixels,
-                  rendered.width,
-                  rendered.height,
-                  pixelWidth,
-                  pixelHeight,
-                );
-              }
-
-              const bgHex = themeName === "ansi_dark" ? "#1e1e2e" : "#ffffff";
-              const bgRgb = parseColorToRGB(bgHex);
-              for (let j = 0; j < rawPixels.length; j += 4) {
-                const alpha = rawPixels[j + 3] / 255;
-                rawPixels[j] = Math.round(rawPixels[j] * alpha + bgRgb.r * (1 - alpha));
-                rawPixels[j + 1] = Math.round(rawPixels[j + 1] * alpha + bgRgb.g * (1 - alpha));
-                rawPixels[j + 2] = Math.round(rawPixels[j + 2] * alpha + bgRgb.b * (1 - alpha));
-                rawPixels[j + 3] = 255;
-              }
-
-              const pngBase64 = encodePNG(rawPixels, pixelWidth, pixelHeight);
-
-              const richGraphic = new RichText(" ");
-              (richGraphic as any).graphic = {
-                type: "image",
-                pixelBuffer: rawPixels,
-                pixelWidth,
-                pixelHeight,
-                cellWidth: cols,
-                cellHeight: rows,
-                pngBase64,
-              };
-
-              lines.push(richGraphic);
-              lines.push(new RichText(""));
-            } catch (err) {
-              const errorMsg = `[Mermaid Render Error: ${err instanceof Error ? err.message : String(err)}]`;
-              lines.push(
-                new RichText(errorMsg, [
-                  { start: 0, end: errorMsg.length, style: new Style({ color: "red" }) },
-                ]),
-              );
-              lines.push(new RichText(""));
-            }
-          } else {
-            try {
-              const ascii = renderMermaidAscii(code);
-              const asciiLines = ascii.split("\n");
-              for (const asciiLine of asciiLines) {
-                lines.push(
-                  new RichText(asciiLine, [
-                    { start: 0, end: asciiLine.length, style: new Style({ color: "bright-cyan" }) },
-                  ]),
-                );
-              }
-              lines.push(new RichText(""));
-            } catch (err) {
-              const errorMsg = `[Mermaid Render Error: ${err instanceof Error ? err.message : String(err)}]`;
-              lines.push(
-                new RichText(errorMsg, [
-                  { start: 0, end: errorMsg.length, style: new Style({ color: "red" }) },
-                ]),
-              );
-              lines.push(new RichText(""));
-            }
-          }
-          continue;
-        }
-
         const syntaxLines = Syntax.renderToLines(code, lang, true, themeName);
 
+        let maxLineLen = 0;
         for (const line of syntaxLines) {
-          let formattedLine = line;
-          if (inBlockquote) {
-            formattedLine = formatLine(formattedLine, "▌ ", [
-              { start: 0, end: 2, style: quoteBarStyle },
-            ]);
-          }
-          formattedLine = formatLine(formattedLine, "  ", []);
-          lines.push(formattedLine);
+          maxLineLen = Math.max(maxLineLen, stringWidth(line.plain));
         }
+
+        const borderStyle = new Style({ color: "gray", dim: true });
+
+        // 1. Top border line
+        const topText = `┌${"─".repeat(maxLineLen + 2)}┐`;
+        let topBorderLine = new RichText(topText, [
+          { start: 0, end: topText.length, style: borderStyle },
+        ]);
+        if (inBlockquote) {
+          topBorderLine = formatLine(topBorderLine, "▌ ", [
+            { start: 0, end: 2, style: quoteBarStyle },
+          ]);
+        }
+        topBorderLine = formatLine(topBorderLine, "  ", []);
+        lines.push(topBorderLine);
+
+        // 2. Middle code lines with borders
+        for (const line of syntaxLines) {
+          const paddingCount = maxLineLen - stringWidth(line.plain);
+          const paddedPlain = line.plain + " ".repeat(paddingCount);
+          const fullPlain = `│ ${paddedPlain} │`;
+
+          const shiftedSpans = line.spans.map((s) => ({
+            start: s.start + 2,
+            end: s.end + 2,
+            style: s.style,
+          }));
+
+          const leftBorderSpan = { start: 0, end: 2, style: borderStyle };
+          const rightBorderSpan = {
+            start: 2 + paddedPlain.length,
+            end: fullPlain.length,
+            style: borderStyle,
+          };
+
+          let middleLine = new RichText(fullPlain, [
+            leftBorderSpan,
+            rightBorderSpan,
+            ...shiftedSpans,
+          ]);
+
+          if (inBlockquote) {
+            middleLine = formatLine(middleLine, "▌ ", [{ start: 0, end: 2, style: quoteBarStyle }]);
+          }
+          middleLine = formatLine(middleLine, "  ", []);
+          lines.push(middleLine);
+        }
+
+        // 3. Bottom border line
+        const bottomText = `└${"─".repeat(maxLineLen + 2)}┘`;
+        let bottomBorderLine = new RichText(bottomText, [
+          { start: 0, end: bottomText.length, style: borderStyle },
+        ]);
+        if (inBlockquote) {
+          bottomBorderLine = formatLine(bottomBorderLine, "▌ ", [
+            { start: 0, end: 2, style: quoteBarStyle },
+          ]);
+        }
+        bottomBorderLine = formatLine(bottomBorderLine, "  ", []);
+        lines.push(bottomBorderLine);
+
         lines.push(new RichText(""));
         continue;
       }

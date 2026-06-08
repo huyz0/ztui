@@ -1,5 +1,4 @@
 import { describe, expect, test } from "vitest";
-import { App } from "../../core/app.ts";
 import { Markdown, parseInlineMarkdown } from "./markdown.ts";
 
 describe("Markdown Engine", () => {
@@ -59,48 +58,36 @@ describe("Markdown Engine", () => {
     const mdText = "```ts\nconst val = 1;\n```";
     const lines = Markdown.renderToLines(mdText);
 
-    // The code block should have highlighted spans
-    // Code block inside markdown gets indented: "  1 │ const val = 1;"
-    expect(lines.length).toBe(1); // code line (trailing blank line popped)
-    expect(lines[0].plain).toContain("const val = 1;");
-    expect(lines[0].spans.length).toBeGreaterThan(0);
+    // With borders, the code block rendering has 3 lines: top border, code line, bottom border
+    expect(lines.length).toBe(3);
+    expect(lines[1].plain).toContain("const val = 1;");
+    expect(lines[1].spans.length).toBeGreaterThan(0);
   });
 
-  test("Markdown.renderToLines parses nested mermaid block in ASCII fallback mode", () => {
-    const originalApp = App.instance;
-    App.instance = null; // Force ASCII fallback
+  test("Markdown.renderToLines additional inline/block coverages", () => {
+    const mdText = `# Header 1
+> # Header 1 inside blockquote
+> ## Header 2 inside blockquote
+> block with **bold**, *italic*, ~~strikethrough~~, \`inline code\`, [link](http://domain), and ![img](img.png).
+> softbreak here
+> hardbreak here\\
+> after break
+>
+> ---
+>
+> \`\`\`ts
+> const codeInQuote = 1;
+> \`\`\`
+>
+> - item 1
+> - item 2
+**unbalanced bold`;
 
-    const mdText = "```mermaid\ngraph TD\nA --> B\n```";
     const lines = Markdown.renderToLines(mdText);
+    expect(lines.length).toBeGreaterThan(0);
 
-    expect(lines.length).toBeGreaterThan(1);
-    expect(lines[0].plain).toContain("┌──");
-    expect(lines[0].spans[0].style.color).toBe("bright-cyan");
-
-    App.instance = originalApp;
-  });
-
-  test("Markdown.renderToLines parses nested mermaid block in Graphics mode", () => {
-    const originalApp = App.instance;
-    const mockApp = {
-      driver: {
-        capabilities: {
-          graphicsProtocol: "kitty",
-          cellSize: { width: 8, height: 16 },
-        },
-      },
-    };
-    App.instance = mockApp as any;
-
-    const mdText = "```mermaid\ngraph TD\nA --> B\n```";
-    const lines = Markdown.renderToLines(mdText);
-
-    expect(lines.length).toBe(1); // the graphic placeholder line (trailing blank line popped)
-    expect((lines[0] as any).graphic).toBeDefined();
-    expect((lines[0] as any).graphic.type).toBe("image");
-    expect((lines[0] as any).graphic.cellWidth).toBe(40);
-    expect((lines[0] as any).graphic.cellHeight).toBe(12);
-
-    App.instance = originalApp;
+    // Verify thematic break rule in blockquote
+    const hrLine = lines.find((l) => l.plain.includes("─") && l.plain.includes("▌"));
+    expect(hrLine).toBeDefined();
   });
 });

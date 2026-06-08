@@ -1,4 +1,4 @@
-import { Resvg } from "@resvg/resvg-js";
+import { renderSvgSync } from "../utils/sharp-sync.ts";
 
 export interface IconDefinition {
   name: string;
@@ -62,7 +62,7 @@ function cleanSvg(svg: string): string {
 }
 
 /**
- * Rasterizes an SVG string using @resvg/resvg-js at a target resolution of 16x16 pixels
+ * Rasterizes an SVG string using sharp at a target resolution of 16x16 pixels
  * to fit double-width (2x1 cells) terminal grids.
  */
 export function rasterizeSVG(
@@ -88,81 +88,27 @@ export function rasterizeSVG(
   const dx = Math.floor((targetWidth - visualSize) / 2);
   const dy = Math.floor((targetHeight - visualSize) / 2);
 
-  // Render at 4x the target size for high-quality super-sampling
-  const superWidth = targetWidth * 4;
-  const superHeight = targetHeight * 4;
-  const superVisualSize = visualSize * 4;
-  const superDx = dx * 4;
-  const superDy = dy * 4;
-
-  const wrappedSvg = `<svg width="${superWidth}" height="${superHeight}" viewBox="0 0 ${superWidth} ${superHeight}" xmlns="http://www.w3.org/2000/svg" color="${color}">
-    <svg x="${superDx}" y="${superDy}" width="${superVisualSize}" height="${superVisualSize}">
+  const wrappedSvg = `<svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg" color="${color}">
+    <svg x="${dx}" y="${dy}" width="${visualSize}" height="${visualSize}">
       ${cleanedSvg}
     </svg>
   </svg>`;
 
-  const resvg = new Resvg(wrappedSvg, {
-    fitTo: {
-      mode: "width",
-      value: superWidth,
-    },
-  });
-  const rendered = resvg.render();
-
-  // Downsample the 4x rendered pixels to 1x using high-quality box filter (alpha-weighted)
-  const downsampledPixels = new Uint8Array(targetWidth * targetHeight * 4);
-  const srcPixels = rendered.pixels;
-
-  for (let y = 0; y < targetHeight; y++) {
-    for (let x = 0; x < targetWidth; x++) {
-      let rSum = 0;
-      let gSum = 0;
-      let bSum = 0;
-      let aSum = 0;
-
-      const sxMin = x * 4;
-      const syMin = y * 4;
-
-      for (let offsety = 0; offsety < 4; offsety++) {
-        const sy = syMin + offsety;
-        if (sy >= superHeight) continue;
-
-        for (let offsetx = 0; offsetx < 4; offsetx++) {
-          const sx = sxMin + offsetx;
-          if (sx >= superWidth) continue;
-
-          const srcIdx = (sy * superWidth + sx) * 4;
-          const a = srcPixels[srcIdx + 3];
-
-          rSum += srcPixels[srcIdx] * a;
-          gSum += srcPixels[srcIdx + 1] * a;
-          bSum += srcPixels[srcIdx + 2] * a;
-          aSum += a;
-        }
-      }
-
-      const dstIdx = (y * targetWidth + x) * 4;
-      if (aSum > 0) {
-        downsampledPixels[dstIdx] = Math.round(rSum / aSum);
-        downsampledPixels[dstIdx + 1] = Math.round(gSum / aSum);
-        downsampledPixels[dstIdx + 2] = Math.round(bSum / aSum);
-        downsampledPixels[dstIdx + 3] = Math.round(aSum / 16);
-      } else {
-        downsampledPixels[dstIdx] = 0;
-        downsampledPixels[dstIdx + 1] = 0;
-        downsampledPixels[dstIdx + 2] = 0;
-        downsampledPixels[dstIdx + 3] = 0;
-      }
-    }
-  }
-
-  return {
-    pngBase64: rendered.asPng().toString("base64"),
-    pixels: downsampledPixels,
+  const rendered = renderSvgSync({
+    svg: wrappedSvg,
     width: targetWidth,
     height: targetHeight,
-    superWidth,
-    superHeight,
+    isIcon: true,
+    color,
+  });
+
+  return {
+    pngBase64: rendered.pngBase64,
+    pixels: rendered.pixels,
+    width: rendered.width,
+    height: rendered.height,
+    superWidth: rendered.width,
+    superHeight: rendered.height,
   };
 }
 

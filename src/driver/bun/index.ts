@@ -358,6 +358,7 @@ export class BunDriver extends Driver {
     cellHeight: number,
     pngBase64?: string,
     bgColor?: string,
+    zIndex?: number,
   ): string {
     return this.graphicsManager.getImageSequence(
       pixelBuffer,
@@ -368,6 +369,7 @@ export class BunDriver extends Driver {
       this.capabilities,
       pngBase64,
       bgColor,
+      zIndex,
     );
   }
   public override clearScreen(): void {

@@ -25,6 +25,12 @@ export interface WidgetStyles {
   dock?: "top" | "right" | "bottom" | "left";
   align?: "left" | "center" | "right"; // Horizontal alignment of children
   verticalAlign?: "top" | "middle" | "bottom"; // Vertical alignment
+  position?: "relative" | "absolute";
+  left?: number | string;
+  top?: number | string;
+  right?: number | string;
+  bottom?: number | string;
+  zIndex?: number;
   display?: "flex" | "grid" | "dock";
   flexDirection?: "row" | "column";
   flexGrow?: number;
@@ -165,27 +171,36 @@ export class Widget extends DOMNode {
 
     const [tl, h, tr, v, br, bl] = chars;
 
+    const borderStyle = this.computedStyle.borderColor
+      ? style.merge({ color: this.computedStyle.borderColor })
+      : style;
+
     // Corners
-    buffer.setCell(rect.x, rect.y, tl, style);
-    buffer.setCell(rect.right - 1, rect.y, tr, style);
-    buffer.setCell(rect.right - 1, rect.bottom - 1, br, style);
-    buffer.setCell(rect.x, rect.bottom - 1, bl, style);
+    buffer.setCell(rect.x, rect.y, tl, borderStyle);
+    buffer.setCell(rect.right - 1, rect.y, tr, borderStyle);
+    buffer.setCell(rect.right - 1, rect.bottom - 1, br, borderStyle);
+    buffer.setCell(rect.x, rect.bottom - 1, bl, borderStyle);
 
     // Horizontal edges
     for (let x = rect.x + 1; x < rect.right - 1; x++) {
-      buffer.setCell(x, rect.y, h, style);
-      buffer.setCell(x, rect.bottom - 1, h, style);
+      buffer.setCell(x, rect.y, h, borderStyle);
+      buffer.setCell(x, rect.bottom - 1, h, borderStyle);
     }
 
     // Vertical edges
     for (let y = rect.y + 1; y < rect.bottom - 1; y++) {
-      buffer.setCell(rect.x, y, v, style);
-      buffer.setCell(rect.right - 1, y, v, style);
+      buffer.setCell(rect.x, y, v, borderStyle);
+      buffer.setCell(rect.right - 1, y, v, borderStyle);
     }
   }
 
   public renderChildren(buffer: ScreenBuffer): void {
-    for (const child of this.children) {
+    const sorted = [...this.children].sort((a, b) => {
+      const az = (a as any).computedStyle?.zIndex ?? 0;
+      const bz = (b as any).computedStyle?.zIndex ?? 0;
+      return az - bz;
+    });
+    for (const child of sorted) {
       if (child instanceof Widget) {
         child.render(buffer);
       }
@@ -239,7 +254,11 @@ export class Widget extends DOMNode {
       } else {
         if (layoutType === "horizontal") {
           for (const child of this.children) {
-            if (child instanceof Widget && child.visible) {
+            if (
+              child instanceof Widget &&
+              child.visible &&
+              child.computedStyle.position !== "absolute"
+            ) {
               const childWProp = child.computedStyle.width;
               const isFr =
                 childWProp !== undefined &&
@@ -255,7 +274,11 @@ export class Widget extends DOMNode {
           }
         } else {
           for (const child of this.children) {
-            if (child instanceof Widget && child.visible) {
+            if (
+              child instanceof Widget &&
+              child.visible &&
+              child.computedStyle.position !== "absolute"
+            ) {
               const childWProp = child.computedStyle.width;
               const isFr =
                 childWProp !== undefined &&
@@ -281,7 +304,11 @@ export class Widget extends DOMNode {
       } else {
         if (layoutType === "vertical") {
           for (const child of this.children) {
-            if (child instanceof Widget && child.visible) {
+            if (
+              child instanceof Widget &&
+              child.visible &&
+              child.computedStyle.position !== "absolute"
+            ) {
               const childHProp = child.computedStyle.height;
               const isFr =
                 childHProp !== undefined &&
@@ -297,7 +324,11 @@ export class Widget extends DOMNode {
           }
         } else {
           for (const child of this.children) {
-            if (child instanceof Widget && child.visible) {
+            if (
+              child instanceof Widget &&
+              child.visible &&
+              child.computedStyle.position !== "absolute"
+            ) {
               const childHProp = child.computedStyle.height;
               const isFr =
                 childHProp !== undefined &&

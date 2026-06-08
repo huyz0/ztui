@@ -114,6 +114,16 @@ export class CSSResolver {
     if (key === "minWidth" || key === "minHeight" || key === "maxWidth" || key === "maxHeight") {
       return Number.parseInt(val, 10);
     }
+    if (
+      key === "left" ||
+      key === "right" ||
+      key === "top" ||
+      key === "bottom" ||
+      key === "zIndex"
+    ) {
+      const parsed = Number.parseInt(val, 10);
+      return Number.isNaN(parsed) ? val : parsed;
+    }
     return val;
   }
 }

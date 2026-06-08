@@ -9,7 +9,12 @@ export class DockLayout extends Layout {
     let remaining = parent.getContentRect();
 
     for (const child of parent.children) {
-      if (!(child instanceof Widget) || !child.visible) continue;
+      if (
+        !(child instanceof Widget) ||
+        !child.visible ||
+        child.computedStyle.position === "absolute"
+      )
+        continue;
 
       const dock = child.computedStyle.dock;
       if (!dock) {

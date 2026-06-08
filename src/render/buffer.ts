@@ -11,6 +11,7 @@ export interface GraphicMetadata {
   cellWidth: number;
   cellHeight: number;
   pngBase64?: string;
+  zIndex?: number;
 }
 
 export interface Cell {
@@ -96,7 +97,7 @@ export class ScreenBuffer {
   // Returns ANSI escape sequences to render the differences
   public renderDiff(
     oldBuffer: ScreenBuffer,
-    formatChar?: (cell: Cell) => string,
+    formatChar?: (cell: Cell, oldCell?: Cell) => string,
     clipW?: number,
     clipH?: number,
   ): string {
@@ -145,8 +146,11 @@ export class ScreenBuffer {
           }
           if (changed) {
             if (!newCell.wideContinuation) {
-              const content = formatChar ? formatChar(newCell) : newCell.char;
+              const content = formatChar ? formatChar(newCell, oldCell) : newCell.char;
               output += this.flushRun(x, y, content, newCell.style);
+            } else if (oldCell && !oldCell.wideContinuation) {
+              // Clears a previously written text character by replacing it with a space
+              output += this.flushRun(x, y, " ", newCell.style);
             }
           }
           continue;
@@ -156,7 +160,7 @@ export class ScreenBuffer {
           if (runStartX === null) {
             runStartX = x;
           }
-          runContent += formatChar ? formatChar(newCell) : newCell.char;
+          runContent += formatChar ? formatChar(newCell, oldCell) : newCell.char;
         } else {
           // End of run or style change
           if (runStartX !== null) {
@@ -166,7 +170,7 @@ export class ScreenBuffer {
           }
           if (changed) {
             runStartX = x;
-            runContent += formatChar ? formatChar(newCell) : newCell.char;
+            runContent += formatChar ? formatChar(newCell, oldCell) : newCell.char;
           }
         }
       }

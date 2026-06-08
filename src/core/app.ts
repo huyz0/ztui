@@ -5,9 +5,13 @@ import { Screen } from "../dom/screen.ts";
 import { Widget } from "../dom/widget.ts";
 import { BunDriver } from "../driver/bun/index.ts";
 import type { Driver } from "../driver/driver.ts";
+import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
+import { Size } from "../geometry/size.ts";
 import { BoxLayout } from "../layout/box-layout.ts";
 import { DockLayout } from "../layout/dock-layout.ts";
 import { GridLayout } from "../layout/grid-layout.ts";
+import { parseDimension } from "../layout/layout.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
 
@@ -207,22 +211,35 @@ export class App extends DOMNode {
 
     const ansiDiff = this.currentBuffer.renderDiff(
       this.prevBuffer,
-      (cell) => {
+      (cell, oldCell) => {
+        let prefix = "";
+        if (oldCell?.graphic && !cell.graphic) {
+          if (this.driver.capabilities.graphicsProtocol === "kitty") {
+            prefix = "\x1b_Ga=d,d=c\x1b\\";
+          }
+        }
+
         if (cell.graphic) {
-          return this.driver.getImageSequence(
-            cell.graphic.pixelBuffer,
-            cell.graphic.pixelWidth,
-            cell.graphic.pixelHeight,
-            cell.graphic.cellWidth,
-            cell.graphic.cellHeight,
-            cell.graphic.pngBase64,
-            cell.style.background,
+          return (
+            prefix +
+            this.driver.getImageSequence(
+              cell.graphic.pixelBuffer,
+              cell.graphic.pixelWidth,
+              cell.graphic.pixelHeight,
+              cell.graphic.cellWidth,
+              cell.graphic.cellHeight,
+              cell.graphic.pngBase64,
+              cell.style.background,
+              cell.graphic.zIndex,
+            )
           );
         }
         if (cell.icon) {
-          return this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background);
+          return (
+            prefix + this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background)
+          );
         }
-        return cell.char;
+        return prefix + cell.char;
       },
       size.width,
       size.height,
@@ -271,9 +288,52 @@ export class App extends DOMNode {
       }
     }
 
+    this.resolveAbsoluteChildren(parent);
+
     for (const child of parent.children) {
       if (child instanceof Widget) {
         this.resolveAllLayouts(child);
+      }
+    }
+  }
+
+  private resolveAbsoluteChildren(parent: Widget): void {
+    const parentRect = parent.getContentRect();
+    for (const child of parent.children) {
+      if (child instanceof Widget && child.visible && child.computedStyle.position === "absolute") {
+        const wVal = parseDimension(
+          child.computedStyle.width,
+          parentRect.width,
+          child.measuredWidth,
+        );
+        const childWidth = typeof wVal === "number" ? wVal : child.measuredWidth;
+
+        const hVal = parseDimension(
+          child.computedStyle.height,
+          parentRect.height,
+          child.measuredHeight,
+        );
+        const childHeight = typeof hVal === "number" ? hVal : child.measuredHeight;
+
+        let x = parentRect.x;
+        if (child.computedStyle.left !== undefined) {
+          const val = parseDimension(child.computedStyle.left, parentRect.width, 0);
+          x = parentRect.x + (typeof val === "number" ? val : 0);
+        } else if (child.computedStyle.right !== undefined) {
+          const val = parseDimension(child.computedStyle.right, parentRect.width, 0);
+          x = parentRect.right - childWidth - (typeof val === "number" ? val : 0);
+        }
+
+        let y = parentRect.y;
+        if (child.computedStyle.top !== undefined) {
+          const val = parseDimension(child.computedStyle.top, parentRect.height, 0);
+          y = parentRect.y + (typeof val === "number" ? val : 0);
+        } else if (child.computedStyle.bottom !== undefined) {
+          const val = parseDimension(child.computedStyle.bottom, parentRect.height, 0);
+          y = parentRect.bottom - childHeight - (typeof val === "number" ? val : 0);
+        }
+
+        child.region = new Region(new Offset(x, y), new Size(childWidth, childHeight));
       }
     }
   }

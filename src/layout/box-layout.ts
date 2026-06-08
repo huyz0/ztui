@@ -11,7 +11,10 @@ export class BoxLayout extends Layout {
 
   public resolve(parent: Widget): void {
     const parentRect = parent.getContentRect();
-    const children = parent.children.filter((c): c is Widget => c instanceof Widget && c.visible);
+    const children = parent.children.filter(
+      (c): c is Widget =>
+        c instanceof Widget && c.visible && c.computedStyle.position !== "absolute",
+    );
     if (children.length === 0) return;
 
     const isVert = this.direction === "vertical";

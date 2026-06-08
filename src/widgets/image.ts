@@ -147,6 +147,7 @@ export class ImageWidget extends Widget {
           cellWidth: client.width,
           cellHeight: client.height,
           pngBase64,
+          zIndex: this.computedStyle.zIndex,
         },
       };
 

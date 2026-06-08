@@ -40,7 +40,12 @@ export class DOMNode {
 
   public walk(callback: (node: DOMNode) => void): void {
     callback(this);
-    for (const child of this.children) {
+    const sorted = [...this.children].sort((a, b) => {
+      const az = (a as any).computedStyle?.zIndex ?? 0;
+      const bz = (b as any).computedStyle?.zIndex ?? 0;
+      return az - bz;
+    });
+    for (const child of sorted) {
       child.walk(callback);
     }
   }

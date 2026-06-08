@@ -17,27 +17,27 @@ export function getBaselineCapabilities(): TerminalCapabilities {
     isWT;
   const color256 = term.includes("256color") || truecolor;
 
+  const isWezTerm = termProgram === "WezTerm" || !!process.env.WEZTERM_PANE;
+  const isGhostty = termProgram === "ghostty" || !!process.env.GHOSTTY_BIN_DIR;
+  const isKitty =
+    termProgram === "kitty" || term.includes("kitty") || !!process.env.KITTY_WINDOW_ID;
+  const isITerm =
+    termProgram === "iTerm.app" || lcTerminal === "iTerm2" || !!process.env.ITERM_SESSION_ID;
+  const isFoot = term === "foot" || term.includes("foot");
+  const isSixelTerm = term.includes("sixel");
+
   const hyperlinks =
-    termProgram === "WezTerm" ||
-    termProgram === "ghostty" ||
-    termProgram === "iTerm.app" ||
-    lcTerminal === "iTerm2" ||
-    isWT ||
-    !!process.env.VTE_VERSION;
+    isWezTerm || isGhostty || isKitty || isITerm || isWT || !!process.env.VTE_VERSION;
 
   const mouseHover =
-    termProgram === "WezTerm" ||
-    termProgram === "ghostty" ||
-    termProgram === "iTerm.app" ||
-    isWT ||
-    !!process.env.VTE_VERSION;
+    isWezTerm || isGhostty || isKitty || isITerm || isWT || !!process.env.VTE_VERSION;
 
   let graphicsProtocol: "kitty" | "iterm2" | "sixel" | "none" = "none";
-  if (termProgram === "iTerm.app" || lcTerminal === "iTerm2") {
+  if (isITerm) {
     graphicsProtocol = "iterm2";
-  } else if (termProgram === "WezTerm" || termProgram === "ghostty") {
+  } else if (isWezTerm || isGhostty || isKitty) {
     graphicsProtocol = "kitty";
-  } else if (isWT) {
+  } else if (isWT || isFoot || isSixelTerm) {
     graphicsProtocol = "sixel";
   }
 

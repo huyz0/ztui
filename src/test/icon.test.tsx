@@ -79,7 +79,7 @@ describe("SVG Icon Support Engine", () => {
     expect(cell1.wideContinuation).toBe(true);
 
     // Verify exact ESC sequence written to terminal
-    expect(driver.writtenData).toContain("\x1b_Gf=100,a=T,t=d,s=64,v=64,c=2,r=1;");
+    expect(driver.writtenData).toContain("\x1b_Gf=100,a=T,t=d,s=16,v=16,c=2,r=1;");
     expect(driver.writtenData).toContain("\x1b\\");
 
     app.stop();

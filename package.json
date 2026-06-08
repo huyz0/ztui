@@ -14,6 +14,7 @@
     "demo:heroicons": "bun run examples/heroicons_demo.tsx",
     "demo:image": "bun run examples/image_demo.tsx",
     "demo:rich": "bun run examples/rich_demo.tsx",
+    "demo:genui": "bun run examples/generative_ui.tsx",
     "test": "vitest run --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -21,17 +22,18 @@
     "review": "bun run scripts/code-review.ts"
   },
   "dependencies": {
-    "@resvg/resvg-js": "^2.6.2",
     "beautiful-mermaid": "^1.1.3",
     "heroicons": "^2.2.0",
     "jpeg-js": "^0.4.4",
     "markdown-it": "14.1.1",
+    "marked": "^17.0.1",
     "omggif": "^1.0.10",
-    "picocolors": "^1.1.1",
     "pngjs": "^7.0.0",
     "prismjs": "1.30.0",
     "react": "19.2.6",
-    "react-reconciler": "0.33.0"
+    "react-reconciler": "0.33.0",
+    "remend": "^1.3.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.15",

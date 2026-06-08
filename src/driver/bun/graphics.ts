@@ -110,10 +110,12 @@ export class TerminalGraphicsManager {
     capabilities: TerminalCapabilities,
     pngBase64?: string,
     bgColor?: string,
+    zIndex?: number,
   ): string {
     if (capabilities.graphicsProtocol === "kitty") {
       const base64 = pngBase64 || encodePNG(pixelBuffer, pixelWidth, pixelHeight);
-      return `\x1b_Gf=100,a=T,t=d,s=${pixelWidth},v=${pixelHeight},c=${cellWidth},r=${cellHeight};${base64}\x1b\\`;
+      const zValue = -10000 + (zIndex ?? 0);
+      return `\x1b_Gf=100,a=T,t=d,s=${pixelWidth},v=${pixelHeight},c=${cellWidth},r=${cellHeight},z=${zValue};${base64}\x1b\\`;
     }
 
     if (capabilities.graphicsProtocol === "iterm2") {

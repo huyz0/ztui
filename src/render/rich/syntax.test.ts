@@ -1,3 +1,4 @@
+import Prism from "prismjs";
 import { describe, expect, test } from "vitest";
 import { Syntax } from "./syntax.ts";
 
@@ -20,6 +21,59 @@ describe("Syntax Highlighting Engine", () => {
     // Verify keyword style
     const keywordSpan = rich.spans.find((s) => s.style.bold === true);
     expect(keywordSpan).toBeDefined();
+  });
+
+  test("highlight handles other well-known languages", () => {
+    // Python
+    const pyCode = "def test():\n    # comment\n    return 'hello'";
+    const pyRich = Syntax.highlight(pyCode, "python");
+    expect(pyRich.spans.length).toBeGreaterThan(0);
+    expect(pyRich.spans.some((s) => s.style.dim === true)).toBe(true); // comment
+
+    // Rust
+    const rustCode = "fn main() {\n    // comment\n    let x = 5;\n}";
+    const rustRich = Syntax.highlight(rustCode, "rust");
+    expect(rustRich.spans.length).toBeGreaterThan(0);
+
+    // YAML
+    const yamlCode = "name: test\nvalue: 123";
+    const yamlRich = Syntax.highlight(yamlCode, "yaml");
+    expect(yamlRich.spans.length).toBeGreaterThan(0);
+
+    // SQL
+    const sqlCode = "SELECT * FROM users WHERE id = 1;";
+    const sqlRich = Syntax.highlight(sqlCode, "mysql");
+    expect(sqlRich.spans.length).toBeGreaterThan(0);
+
+    // PL/SQL
+    const plsqlCode = "DECLARE\n  x NUMBER;\nBEGIN\n  NULL;\nEND;";
+    const plsqlRich = Syntax.highlight(plsqlCode, "plsql");
+    expect(plsqlRich.spans.length).toBeGreaterThan(0);
+
+    // Other languages to hit getGrammar:
+    // javascript, json, css, html (markup), go, kotlin, toml, mermaid, plantuml
+    Prism.languages["plant-style"] = { keyword: /dummy/ };
+    Prism.languages["plant-uml"] = { keyword: /dummy/ };
+    Prism.languages.kotlin = { keyword: /dummy/ };
+    Prism.languages.go = { keyword: /dummy/ };
+    Prism.languages.toml = { keyword: /dummy/ };
+    Prism.languages.mermaid = { keyword: /dummy/ };
+    Prism.languages.java = { keyword: /dummy/ };
+
+    expect(Syntax.highlight("const x = 1;", "javascript").spans.length).toBeGreaterThan(0);
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: JSX test string containing raw template string
+    expect(Syntax.highlight("const x = `tpl \\${a}`;", "jsx").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight('{"a": 1}', "json").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("body { color: red; }", "css").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight('<div class="val">test</div>', "html").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("package dummy", "go").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("fun dummy() {}", "kotlin").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("name = 'dummy'", "toml").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("graph dummy", "mermaid").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("@startuml dummy", "plantuml").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("SELECT * FROM x", "postgres").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("SELECT * FROM x", "pl-sql").spans.length).toBeGreaterThan(0);
+    expect(Syntax.highlight("class dummy {}", "java").spans.length).toBeGreaterThan(0);
   });
 
   test("highlightDiff formats added/removed lines", () => {

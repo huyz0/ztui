@@ -51,6 +51,16 @@ declare global {
         };
         "ztui-markdown": ZTUIElementProps & {
           theme?: "ansi_dark" | "ansi_light";
+          onAction?: (actionName: string, eventData: any) => void;
+        };
+        "ztui-jsonui": ZTUIElementProps & {
+          onAction?: (actionName: string, eventData: any) => void;
+        };
+        "ztui-mermaid": ZTUIElementProps & {
+          theme?: "ansi_dark" | "ansi_light";
+        };
+        mermaid: ZTUIElementProps & {
+          theme?: "ansi_dark" | "ansi_light";
         };
       }
     }

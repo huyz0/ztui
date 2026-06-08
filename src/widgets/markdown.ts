@@ -1,135 +1,485 @@
+import { marked, type Token } from "marked";
+import remend from "remend";
+import { App } from "../core/app.ts";
+import type { DOMNode } from "../dom/dom.ts";
 import { Widget } from "../dom/widget.ts";
-import { parseDimension } from "../layout/layout.ts";
-import { TextNode } from "../react/host-config.ts";
+import { Spacing } from "../geometry/spacing.ts";
+import { createWidgetByTagName, TextNode } from "../react/host-config.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
-import { Markdown } from "../render/rich/markdown.ts";
 import { stringWidth } from "../render/segment.ts";
-import { Style } from "../render/style.ts";
+import { parsePartialJson } from "./json-ui.ts";
+import { RichTextWidget } from "./rich-text.ts";
+import { SyntaxWidget } from "./syntax.ts";
+
+function tokensToMarkup(tokens: Token[] | undefined): string {
+  if (!tokens) return "";
+  let markup = "";
+  for (const token of tokens) {
+    if (token.type === "text") {
+      markup += token.text;
+    } else if (token.type === "codespan") {
+      markup += `[dim yellow]${token.text}[/]`;
+    } else if (token.type === "strong") {
+      markup += `[bold]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "em") {
+      markup += `[italic]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "del") {
+      markup += `[strikethrough]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "link") {
+      const href = (token as any).href || "";
+      markup += `[bright-blue underline link=${href}]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "image") {
+      const src = (token as any).href || "";
+      const alt = (token as any).text || "image";
+      markup += `[dim]🖼️  ${alt} (${src})[/]`;
+    } else if (token.type === "escape") {
+      markup += token.text;
+    } else if (token.type === "br") {
+      markup += "\n";
+    } else if ((token as any).tokens) {
+      markup += tokensToMarkup((token as any).tokens);
+    } else {
+      markup += token.raw || "";
+    }
+  }
+  return markup;
+}
+
+function areTokensEqual(a: any, b: any): boolean {
+  if (!a || !b) return a === b;
+  if (a.type !== b.type || a.raw !== b.raw) return false;
+
+  if (a.type === "heading") {
+    if (a.depth !== b.depth || a.text !== b.text) return false;
+  } else if (a.type === "list") {
+    if (a.ordered !== b.ordered || a.start !== b.start || a.loose !== b.loose) return false;
+    if (a.items?.length !== b.items?.length) return false;
+    for (let i = 0; i < a.items.length; i++) {
+      if (!areTokensEqual(a.items[i], b.items[i])) return false;
+    }
+  } else if (a.type === "list_item") {
+    if (a.task !== b.task || a.checked !== b.checked || a.loose !== b.loose || a.text !== b.text)
+      return false;
+  } else if (a.type === "code") {
+    if (a.lang !== b.lang || a.text !== b.text) return false;
+  } else if (a.type === "blockquote") {
+    if (a.text !== b.text) return false;
+  }
+
+  if ((a.tokens && !b.tokens) || (!a.tokens && b.tokens)) return false;
+  if (a.tokens && b.tokens) {
+    if (a.tokens.length !== b.tokens.length) return false;
+    for (let i = 0; i < a.tokens.length; i++) {
+      if (!areTokensEqual(a.tokens[i], b.tokens[i])) return false;
+    }
+  }
+
+  return true;
+}
 
 export class MarkdownWidget extends Widget {
-  public theme: "ansi_dark" | "ansi_light" = "ansi_dark";
+  private _theme: "ansi_dark" | "ansi_light" = "ansi_dark";
+  public get theme(): "ansi_dark" | "ansi_light" {
+    return this._theme;
+  }
+  public set theme(val: "ansi_dark" | "ansi_light") {
+    if (this._theme !== val) {
+      this._theme = val;
+      this.propagateTheme();
+    }
+  }
+
+  private propagateTheme(): void {
+    const update = (w: Widget) => {
+      if ("theme" in w) {
+        (w as any).theme = this._theme;
+      }
+      for (const child of w.children) {
+        if (child instanceof Widget) {
+          update(child);
+        }
+      }
+    };
+    for (const child of this.children) {
+      if (child instanceof Widget) {
+        update(child);
+      }
+    }
+  }
+  public onAction?: (actionName: string, eventData: any) => void;
+
+  private textNode: TextNode | null = null;
+  private lastRawMarkdown = "";
+  private lastBlocks: { token: Token; widget: Widget | null }[] = [];
 
   constructor() {
     super("markdown");
+    this.defaultStyle = { layout: "vertical" };
   }
 
-  public getTextContent(): string {
-    let text = "";
-    for (const child of this.children) {
-      if (child instanceof TextNode) {
-        text += child.text;
-      }
+  public override appendChild(child: DOMNode): void {
+    if (child instanceof TextNode) {
+      this.textNode = child;
+      child.parent = this;
+    } else {
+      super.appendChild(child);
     }
-    return text;
+  }
+
+  public override removeChild(child: DOMNode): void {
+    if (child === this.textNode) {
+      this.textNode = null;
+      child.parent = null;
+    } else {
+      super.removeChild(child);
+    }
+  }
+
+  public override insertBefore(child: DOMNode, before: DOMNode): void {
+    if (child instanceof TextNode) {
+      this.textNode = child;
+      child.parent = this;
+    } else {
+      super.insertBefore(child, before);
+    }
+  }
+
+  public getRawMarkdown(): string {
+    return this.textNode ? this.textNode.text : "";
   }
 
   public override measure(maxW: number, maxH: number): void {
-    const rawMarkdown = this.getTextContent();
-    const lines = rawMarkdown ? Markdown.renderToLines(rawMarkdown, this.theme) : [];
+    const rawMarkdown = this.getRawMarkdown();
 
-    let totalHeight = 0;
-    let maxLineLen = 0;
-    for (const line of lines) {
-      if ((line as any).graphic) {
-        totalHeight += (line as any).graphic.cellHeight;
-        maxLineLen = Math.max(maxLineLen, (line as any).graphic.cellWidth);
+    if (rawMarkdown !== this.lastRawMarkdown) {
+      this.lastRawMarkdown = rawMarkdown;
+
+      const processedMarkdown = rawMarkdown ? remend(rawMarkdown) : "";
+
+      if (!processedMarkdown) {
+        // Clear all generated widgets from this.children
+        while (this.children.length > 0) {
+          const child = this.children[0];
+          super.removeChild(child);
+        }
+        this.lastBlocks = [];
       } else {
-        totalHeight += 1;
-        maxLineLen = Math.max(maxLineLen, stringWidth(line.plain));
-      }
-    }
+        const tokens = marked.lexer(processedMarkdown);
+        const blockTokens = tokens.filter((t) => t.type !== "space");
 
-    const wVal = parseDimension(this.computedStyle.width, maxW, -1);
-    if (wVal === -1 || (typeof wVal === "object" && "fr" in wVal)) {
-      this.measuredWidth = maxLineLen + this.borderSize.width + this.padding.width;
-    } else {
-      this.measuredWidth = wVal as number;
-    }
+        const nextBlocks: { token: Token; widget: Widget | null }[] = [];
 
-    const hVal = parseDimension(this.computedStyle.height, maxH, -1);
-    if (hVal === -1 || (typeof hVal === "object" && "fr" in hVal)) {
-      this.measuredHeight = totalHeight + this.borderSize.height + this.padding.height;
-    } else {
-      this.measuredHeight = hVal as number;
-    }
-  }
+        // Reconciliation
+        const len = Math.max(blockTokens.length, this.lastBlocks.length);
+        for (let i = 0; i < len; i++) {
+          const newToken = blockTokens[i];
+          const oldBlock = this.lastBlocks[i];
 
-  public render(buffer: ScreenBuffer): void {
-    super.render(buffer);
-    const contentRect = this.getContentRect();
-    const rawMarkdown = this.getTextContent();
-    if (!rawMarkdown) return;
-
-    const lines = Markdown.renderToLines(rawMarkdown, this.theme);
-
-    const fg = this.computedStyle.color || "default";
-    const bg = this.findResolvedBackground();
-    const baseStyle = new Style({
-      color: fg,
-      background: bg,
-      bold: this.computedStyle.bold,
-      italic: this.computedStyle.italic,
-      underline: this.computedStyle.underline,
-      reverse: this.computedStyle.reverse,
-      dim: this.computedStyle.dim,
-      strikethrough: this.computedStyle.strikethrough,
-      link: this.computedStyle.link,
-    });
-
-    let currentY = contentRect.y;
-    for (const line of lines) {
-      if (currentY >= contentRect.bottom) {
-        break; // clip vertically
-      }
-
-      if ((line as any).graphic) {
-        const g = (line as any).graphic;
-        const targetW = Math.min(g.cellWidth, contentRect.width);
-        const targetH = Math.min(g.cellHeight, contentRect.bottom - currentY);
-
-        if (targetW > 0 && targetH > 0) {
-          buffer.cells[currentY][contentRect.x] = {
-            char: " ",
-            style: baseStyle,
-            wideContinuation: false,
-            graphic: {
-              type: "image",
-              pixelBuffer: g.pixelBuffer,
-              pixelWidth: g.pixelWidth,
-              pixelHeight: g.pixelHeight,
-              cellWidth: targetW,
-              cellHeight: targetH,
-              pngBase64: g.pngBase64,
-            },
-          };
-
-          for (let dy = 0; dy < targetH; dy++) {
-            for (let dx = 0; dx < targetW; dx++) {
-              if (dy === 0 && dx === 0) continue;
-              buffer.cells[currentY + dy][contentRect.x + dx] = {
-                char: "",
-                style: baseStyle,
-                wideContinuation: true,
-              };
+          if (newToken && oldBlock) {
+            if (areTokensEqual(newToken, oldBlock.token)) {
+              // Reuse existing block widget
+              nextBlocks.push({ token: newToken, widget: oldBlock.widget });
+            } else {
+              // Recreate widget
+              if (oldBlock.widget) {
+                super.removeChild(oldBlock.widget);
+              }
+              const newWidget = this.buildWidgetFromToken(newToken);
+              if (newWidget) {
+                this.resolveStylesForGenerated(newWidget);
+              }
+              nextBlocks.push({ token: newToken, widget: newWidget });
+            }
+          } else if (newToken) {
+            // New block added
+            const newWidget = this.buildWidgetFromToken(newToken);
+            if (newWidget) {
+              this.resolveStylesForGenerated(newWidget);
+            }
+            nextBlocks.push({ token: newToken, widget: newWidget });
+          } else if (oldBlock) {
+            // Old block removed
+            if (oldBlock.widget) {
+              super.removeChild(oldBlock.widget);
             }
           }
         }
-        currentY += g.cellHeight;
-        continue;
-      }
 
-      const segments = line.toSegments(baseStyle);
-      let currentX = contentRect.x;
+        // Apply updated active widgets to this.children
+        const activeWidgets = nextBlocks
+          .map((b) => b.widget)
+          .filter((w): w is Widget => w !== null);
 
-      for (const segment of segments) {
-        if (currentX >= contentRect.right) {
-          break; // clip horizontally
+        for (const widget of activeWidgets) {
+          widget.parent = this;
         }
-        buffer.drawSegment(currentX, currentY, segment, contentRect);
-        currentX += stringWidth(segment.text);
+        this.children = activeWidgets;
+        this.lastBlocks = nextBlocks;
+      }
+    }
+
+    super.measure(maxW, maxH);
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    super.render(buffer);
+  }
+
+  private resolveStylesForGenerated(widget: Widget): void {
+    if (App.instance) {
+      widget.computedStyle = App.instance.cssResolver.resolveStyles(widget, false);
+    }
+    for (const child of widget.children) {
+      if (child instanceof Widget) {
+        this.resolveStylesForGenerated(child);
+      }
+    }
+  }
+
+  private buildWidgetFromToken(token: Token): Widget | null {
+    // 1. Heading
+    if (token.type === "heading") {
+      const headingColors = {
+        1: "bright-cyan",
+        2: "bright-blue",
+        3: "green",
+        4: "yellow",
+        5: "magenta",
+        6: "gray",
+      };
+      const depth = token.depth || 1;
+      const color = headingColors[depth as keyof typeof headingColors] || "white";
+      const content = tokensToMarkup(token.tokens);
+
+      const container = new Widget("heading");
+      container.style.layout = "vertical";
+      container.style.margin = new Spacing(0, 0, 1, 0);
+
+      const richText = new RichTextWidget();
+      richText.style.bold = true;
+      richText.style.color = color;
+      richText.appendChild(new TextNode(`[bold]${content}[/]`));
+      container.appendChild(richText);
+
+      if (depth === 1 || depth === 2) {
+        const rule = new RichTextWidget();
+        rule.style.color = "gray";
+        rule.style.dim = true;
+        rule.appendChild(new TextNode("━".repeat(Math.max(10, stringWidth(content)))));
+        container.appendChild(rule);
       }
 
-      currentY++;
+      return container;
     }
+
+    // 2. Paragraph or Text container
+    if (token.type === "paragraph" || token.type === "text") {
+      const content = tokensToMarkup(token.tokens);
+      if (!content) return null;
+
+      const container = new Widget(token.type);
+      container.style.layout = "vertical";
+      if (token.type === "paragraph") {
+        container.style.margin = new Spacing(0, 0, 1, 0);
+      }
+
+      const richText = new RichTextWidget();
+      richText.appendChild(new TextNode(content));
+      container.appendChild(richText);
+
+      return container;
+    }
+
+    // 3. Lists
+    if (token.type === "list") {
+      const container = new Widget(token.ordered ? "ordered_list" : "bullet_list");
+      container.style.layout = "vertical";
+      container.style.margin = new Spacing(0, 0, 1, 0);
+
+      const isOrdered = token.ordered || false;
+      (token.items as any[]).forEach((itemToken: any, idx: number) => {
+        const itemWidget = this.buildListItemWidget(itemToken, isOrdered, idx);
+        if (itemWidget) {
+          container.appendChild(itemWidget);
+        }
+      });
+
+      return container;
+    }
+
+    // 4. Blockquote
+    if (token.type === "blockquote") {
+      const container = new Widget("blockquote");
+      container.style.layout = "horizontal";
+      container.style.margin = new Spacing(0, 0, 1, 0);
+
+      const bar = new RichTextWidget();
+      bar.style.color = "blue";
+      bar.style.dim = true;
+      bar.appendChild(new TextNode("▌ "));
+      container.appendChild(bar);
+
+      const body = new Widget("blockquote_body");
+      body.style.layout = "vertical";
+      body.style.flexGrow = 1;
+
+      for (const childToken of token.tokens || []) {
+        const w = this.buildWidgetFromToken(childToken);
+        if (w) body.appendChild(w);
+      }
+      container.appendChild(body);
+
+      return container;
+    }
+
+    // 5. Thematic Break (HR)
+    if (token.type === "hr") {
+      const container = new Widget("hr");
+      container.style.layout = "vertical";
+      container.style.margin = new Spacing(1, 0, 1, 0);
+
+      const rule = new RichTextWidget();
+      rule.style.color = "gray";
+      rule.style.dim = true;
+      rule.appendChild(new TextNode("─".repeat(40)));
+      container.appendChild(rule);
+
+      return container;
+    }
+
+    // 6. Fence (Code Block & Custom UI)
+    if (token.type === "code") {
+      const lang = token.lang ? token.lang.trim().toLowerCase() : "text";
+
+      const widget =
+        lang !== "mermaid" && lang !== "ztui-mermaid" ? createWidgetByTagName(lang) : null;
+      if (widget) {
+        if ("theme" in widget) {
+          (widget as any).theme = this.theme;
+        }
+        const props = parsePartialJson(token.text.trim());
+        if (props && typeof props === "object") {
+          if (props.style) {
+            const styleObj = { ...props.style };
+            if (styleObj.margin !== undefined && typeof styleObj.margin === "object") {
+              const m = styleObj.margin;
+              styleObj.margin = new Spacing(m.top ?? 0, m.right ?? 0, m.bottom ?? 0, m.left ?? 0);
+            }
+            if (styleObj.padding !== undefined && typeof styleObj.padding === "object") {
+              const p = styleObj.padding;
+              styleObj.padding = new Spacing(p.top ?? 0, p.right ?? 0, p.bottom ?? 0, p.left ?? 0);
+            }
+            widget.style = { ...widget.style, ...styleObj };
+          }
+          if (props.text) {
+            widget.appendChild(new TextNode(props.text));
+          }
+          if (props.id) widget.id = props.id;
+          if (props.action) {
+            const actionName = props.action;
+            widget.onClick = (ev) => {
+              if (this.onAction) {
+                this.onAction(actionName, {
+                  id: widget.id,
+                  type: widget.tagName,
+                  event: ev,
+                });
+              }
+            };
+          }
+          if (props.children && Array.isArray(props.children)) {
+            for (const childProps of props.children) {
+              const childWidget = this.buildWidgetFromJson(childProps);
+              if (childWidget) widget.appendChild(childWidget);
+            }
+          }
+          return widget;
+        } else {
+          // Fallback if JSON is completely unparseable
+          widget.appendChild(new TextNode(token.text));
+          return widget;
+        }
+      }
+
+      const syntax = new SyntaxWidget();
+      syntax.language = lang;
+      syntax.theme = this.theme;
+      syntax.lineNumbers = true;
+      syntax.style.border = "dashed";
+      syntax.style.borderColor = "gray";
+      syntax.style.margin = new Spacing(0, 0, 1, 0);
+      syntax.appendChild(new TextNode(token.text.trim()));
+      return syntax;
+    }
+
+    return null;
+  }
+
+  private buildListItemWidget(token: any, isOrdered: boolean, index: number): Widget | null {
+    if (token.type !== "list_item") return null;
+
+    const container = new Widget("list_item");
+    container.style.layout = "horizontal";
+
+    const bulletSymbol = isOrdered ? `${index + 1}. ` : "• ";
+    const bullet = new RichTextWidget();
+    bullet.style.color = "bright-blue";
+    bullet.style.bold = true;
+    bullet.appendChild(new TextNode(bulletSymbol));
+    container.appendChild(bullet);
+
+    const body = new Widget("list_item_body");
+    body.style.layout = "vertical";
+    body.style.flexGrow = 1;
+
+    for (const childToken of token.tokens || []) {
+      const w = this.buildWidgetFromToken(childToken);
+      if (w) body.appendChild(w);
+    }
+    container.appendChild(body);
+
+    return container;
+  }
+
+  private buildWidgetFromJson(json: any): Widget | null {
+    if (!json || typeof json !== "object" || !json.type) return null;
+    const widget = createWidgetByTagName(json.type);
+    if (!widget) return null;
+
+    if (json.id) widget.id = json.id;
+    if (json.style) {
+      const styleObj = { ...json.style };
+      if (styleObj.margin !== undefined && typeof styleObj.margin === "object") {
+        const m = styleObj.margin;
+        styleObj.margin = new Spacing(m.top ?? 0, m.right ?? 0, m.bottom ?? 0, m.left ?? 0);
+      }
+      if (styleObj.padding !== undefined && typeof styleObj.padding === "object") {
+        const p = styleObj.padding;
+        styleObj.padding = new Spacing(p.top ?? 0, p.right ?? 0, p.bottom ?? 0, p.left ?? 0);
+      }
+      widget.style = { ...widget.style, ...styleObj };
+    }
+    if (json.text) {
+      widget.appendChild(new TextNode(json.text));
+    }
+    if (json.action) {
+      const actionName = json.action;
+      widget.onClick = (ev) => {
+        if (this.onAction) {
+          this.onAction(actionName, {
+            id: widget.id,
+            type: widget.tagName,
+            event: ev,
+          });
+        }
+      };
+    }
+    if (json.children && Array.isArray(json.children)) {
+      for (const childJson of json.children) {
+        const childWidget = this.buildWidgetFromJson(childJson);
+        if (childWidget) widget.appendChild(childWidget);
+      }
+    }
+    return widget;
   }
 }

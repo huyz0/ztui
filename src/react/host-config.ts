@@ -26,6 +26,11 @@ export function registerElement(tagName: string, ctor: () => Widget) {
   elementRegistry[tagName.toLowerCase()] = ctor;
 }
 
+export function createWidgetByTagName(tagName: string): Widget | null {
+  const ctor = elementRegistry[tagName.toLowerCase()];
+  return ctor ? ctor() : null;
+}
+
 function applyProps(instance: DOMNode, props: any) {
   if (instance instanceof Widget) {
     if (props.id !== undefined) instance.id = props.id;
@@ -46,6 +51,12 @@ function applyProps(instance: DOMNode, props: any) {
     }
     if (props.onMouseLeave !== undefined) {
       instance.onMouseLeave = props.onMouseLeave;
+    }
+    if (props.onAction !== undefined) {
+      (instance as any).onAction = props.onAction;
+    }
+    if (props.onChange !== undefined) {
+      (instance as any).onChange = props.onChange;
     }
 
     // Generic prop mapping for any properties defined on the widget instance

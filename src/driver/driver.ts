@@ -70,6 +70,7 @@ export abstract class Driver extends EventEmitter {
     _cellHeight: number,
     _pngBase64?: string,
     _bgColor?: string,
+    _zIndex?: number,
   ): string {
     return "";
   }

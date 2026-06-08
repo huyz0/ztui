@@ -30,9 +30,13 @@ export {
   Image,
   type ImageProps,
   Input,
+  JSONUI,
+  type JSONUIProps,
   Label,
   Markdown,
   type MarkdownProps,
+  Mermaid,
+  type MermaidProps,
   RichText,
   SvgImage,
   type SvgImageProps,
@@ -56,7 +60,9 @@ export { IconWidget } from "./widgets/icon.ts";
 // Icon Registry
 export { IconRegistry, iconRegistry } from "./widgets/icon-registry.ts";
 export { ImageWidget } from "./widgets/image.ts";
+export { JSONUIWidget } from "./widgets/json-ui.ts";
 export { MarkdownWidget } from "./widgets/markdown.ts";
+export { MermaidWidget } from "./widgets/mermaid.ts";
 export { RichTextWidget } from "./widgets/rich-text.ts";
 export { SvgImageWidget } from "./widgets/svg-image.ts";
 export { SyntaxWidget } from "./widgets/syntax.ts";

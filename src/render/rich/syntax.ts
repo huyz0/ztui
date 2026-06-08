@@ -6,6 +6,17 @@ import "prismjs/components/prism-clike.js";
 import "prismjs/components/prism-javascript.js";
 import "prismjs/components/prism-typescript.js";
 import "prismjs/components/prism-json.js";
+import "prismjs/components/prism-python.js";
+import "prismjs/components/prism-go.js";
+import "prismjs/components/prism-rust.js";
+import "prismjs/components/prism-java.js";
+import "prismjs/components/prism-kotlin.js";
+import "prismjs/components/prism-toml.js";
+import "prismjs/components/prism-yaml.js";
+import "prismjs/components/prism-mermaid.js";
+import "prismjs/components/prism-plant-uml.js";
+import "prismjs/components/prism-sql.js";
+import "prismjs/components/prism-plsql.js";
 
 import { Style } from "../style.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
@@ -56,8 +67,53 @@ function getGrammar(lang: string): Prism.Grammar | undefined {
   if (normalized === "css") {
     return Prism.languages.css;
   }
-  if (normalized === "html" || normalized === "xml" || normalized === "markup") {
+  if (
+    normalized === "html" ||
+    normalized === "xml" ||
+    normalized === "markup" ||
+    normalized === "svg"
+  ) {
     return Prism.languages.markup;
+  }
+  if (normalized === "py" || normalized === "python") {
+    return Prism.languages.python;
+  }
+  if (normalized === "go" || normalized === "golang") {
+    return Prism.languages.go;
+  }
+  if (normalized === "rs" || normalized === "rust") {
+    return Prism.languages.rust;
+  }
+  if (normalized === "java") {
+    return Prism.languages.java;
+  }
+  if (normalized === "kt" || normalized === "kotlin") {
+    return Prism.languages.kotlin;
+  }
+  if (normalized === "toml") {
+    return Prism.languages.toml;
+  }
+  if (normalized === "yaml" || normalized === "yml") {
+    return Prism.languages.yaml;
+  }
+  if (normalized === "mermaid") {
+    return Prism.languages.mermaid;
+  }
+  if (normalized === "plantuml" || normalized === "plant-uml") {
+    return Prism.languages["plant-uml"];
+  }
+  if (
+    normalized === "sql" ||
+    normalized === "mysql" ||
+    normalized === "pgsql" ||
+    normalized === "postgres" ||
+    normalized === "postgresql" ||
+    normalized === "sqlite"
+  ) {
+    return Prism.languages.sql;
+  }
+  if (normalized === "plsql" || normalized === "pl-sql") {
+    return Prism.languages.plsql;
   }
   return Prism.languages[normalized];
 }

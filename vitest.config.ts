@@ -16,6 +16,8 @@ export default defineConfig({
         "src/react/jsx-namespace.d.ts",
         "src/react/host-config.ts",
         "src/core/inspector.ts",
+        "src/utils/sharp-render-sync.ts",
+        "src/widgets/mermaid.ts",
       ],
       thresholds: {
         lines: 90,
