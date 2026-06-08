@@ -84,16 +84,20 @@ export function parseInput(
         let type: MouseEvent["type"] = "press";
         let button: MouseEvent["button"] = "none";
 
-        if (btnCode === 64) {
-          type = "scroll_up";
-        } else if (btnCode === 65) {
-          type = "scroll_down";
+        // Bit 6 (0x40) marks wheel events; low 2 bits give the direction. This
+        // also covers modified wheels (e.g. Ctrl+scroll = 64|16 = 80/81).
+        const isWheel = (btnCode & 0x40) !== 0;
+        if (isWheel) {
+          type = (btnCode & 3) === 0 ? "scroll_up" : "scroll_down";
         } else {
           const baseBtn = btnCode & 3;
-          const isMove = (btnCode & 64) !== 0 || btnCode === 35; // 35 is movement without press
-          const isDrag = !isMove && (btnCode & 32) !== 0;
+          // Bit 5 (0x20) marks motion; button bits === 3 means no button held.
+          const isMotion = (btnCode & 0x20) !== 0;
+          const noButton = baseBtn === 3;
+          const isMove = isMotion && noButton;
+          const isDrag = isMotion && !noButton;
 
-          if (btnCode !== 35) {
+          if (!noButton) {
             if (baseBtn === 0) button = "left";
             else if (baseBtn === 1) button = "middle";
             else if (baseBtn === 2) button = "right";

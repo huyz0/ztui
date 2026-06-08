@@ -31,8 +31,38 @@ export function createWidgetByTagName(tagName: string): Widget | null {
   return ctor ? ctor() : null;
 }
 
-function applyProps(instance: DOMNode, props: any) {
+// Props that map to widget fields and must be reset when removed between renders.
+const KNOWN_HANDLER_PROPS = [
+  "onClick",
+  "onKey",
+  "onMouseEnter",
+  "onMouseLeave",
+  "onAction",
+  "onChange",
+];
+
+function applyProps(instance: DOMNode, props: any, oldProps?: any) {
   if (instance instanceof Widget) {
+    // Clear props that existed in the previous render but are now absent, so a
+    // removed onClick/className/style/id doesn't linger on the reused widget.
+    if (oldProps) {
+      if (oldProps.id !== undefined && props.id === undefined) instance.id = "";
+      if (oldProps.className !== undefined && props.className === undefined) {
+        instance.classes = new Set();
+      }
+      if (oldProps.style !== undefined && props.style === undefined) {
+        instance.style = {};
+      }
+      for (const handler of KNOWN_HANDLER_PROPS) {
+        if (oldProps[handler] !== undefined && props[handler] === undefined) {
+          (instance as any)[handler] = undefined;
+        }
+      }
+      // NOTE: generic widget props (label, value, checked, ...) are intentionally
+      // not reset here — they carry typed defaults (e.g. "" / 0 / false) and
+      // forcing them to undefined breaks widgets that assume a concrete value.
+    }
+
     if (props.id !== undefined) instance.id = props.id;
     if (props.className !== undefined) {
       const trimmed = props.className.trim();
@@ -165,18 +195,21 @@ export const hostConfig: any = {
 
   commitUpdate(...args: any[]) {
     let instance: DOMNode;
+    let oldProps: any;
     let newProps: any;
 
     if (args.length === 5 && typeof args[1] === "string") {
       // Runtime signature: commitUpdate(instance, type, oldProps, newProps, internalHandle)
       instance = args[0];
+      oldProps = args[2];
       newProps = args[3];
     } else {
       // Type signature: commitUpdate(instance, updatePayload, type, oldProps, newProps, internalHandle)
       instance = args[0];
+      oldProps = args[3];
       newProps = args[4];
     }
-    applyProps(instance, newProps);
+    applyProps(instance, newProps, oldProps);
   },
 
   commitTextUpdate(textInstance: TextNode, _oldText: string, newText: string) {

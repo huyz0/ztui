@@ -28,6 +28,7 @@ export class App extends DOMNode {
   private hoveredWidget: Widget | null = null;
   private activeDragWidget: Widget | null = null;
   private inspectorServer: InspectorServer | null = null;
+  private resizeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(driver?: Driver) {
     super("app");
@@ -94,14 +95,13 @@ export class App extends DOMNode {
     log(`Initial screen bounds resolved: ${size.width}x${size.height}`);
     this.layoutAndRender();
 
-    let resizeTimeout: any = null;
     this.driver.on("resize", (newSize) => {
       log(`Resize event: ${newSize.width}x${newSize.height}`);
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout);
       }
-      resizeTimeout = setTimeout(() => {
-        resizeTimeout = null;
+      this.resizeTimeout = setTimeout(() => {
+        this.resizeTimeout = null;
         const latestSize = this.driver.getSize();
         const targetW = Math.max(80, latestSize.width);
         const targetH = Math.max(24, latestSize.height);
@@ -233,6 +233,10 @@ export class App extends DOMNode {
   }
 
   public stop(): void {
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = null;
+    }
     if (this.inspectorServer) {
       this.inspectorServer.stop();
       this.inspectorServer = null;
