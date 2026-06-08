@@ -21,7 +21,11 @@ export { Spacing } from "./geometry/spacing.ts";
 export {
   Box,
   Button,
+  Checkbox,
+  type CheckboxProps,
   Dock,
+  EmailInput,
+  type EmailInputProps,
   Footer,
   Grid,
   HBox,
@@ -40,14 +44,26 @@ export {
   type MarkdownProps,
   Mermaid,
   type MermaidProps,
+  PasswordInput,
+  type PasswordInputProps,
+  RadioGroup,
+  type RadioGroupProps,
   RichText,
   ScrollableBox,
+  Select,
+  type SelectProps,
+  Slider,
+  type SliderProps,
   SvgImage,
   type SvgImageProps,
+  Switch,
+  type SwitchProps,
   Syntax,
   type SyntaxProps,
   TextArea,
   type TextAreaProps,
+  ToggleButton,
+  type ToggleButtonProps,
   VBox,
   View,
 } from "./react/components.tsx";
@@ -62,6 +78,7 @@ export { Segment } from "./render/segment.ts";
 export type { StyleProps } from "./render/style.ts";
 // Rendering & Styling
 export { Style } from "./render/style.ts";
+export { CheckboxWidget } from "./widgets/checkbox.ts";
 export { IconWidget } from "./widgets/icon.ts";
 // Icon Registry
 export { IconRegistry, iconRegistry } from "./widgets/icon-registry.ts";
@@ -69,10 +86,15 @@ export { ImageWidget } from "./widgets/image.ts";
 export { JSONUIWidget } from "./widgets/json-ui.ts";
 export { MarkdownWidget } from "./widgets/markdown.ts";
 export { MermaidWidget } from "./widgets/mermaid.ts";
+export { RadioGroupWidget } from "./widgets/radio-group.ts";
 export { RichTextWidget } from "./widgets/rich-text.ts";
+export { SelectWidget } from "./widgets/select.ts";
+export { SliderWidget } from "./widgets/slider.ts";
 export { SvgImageWidget } from "./widgets/svg-image.ts";
+export { SwitchWidget } from "./widgets/switch.ts";
 export { SyntaxWidget } from "./widgets/syntax.ts";
 export { TextAreaWidget } from "./widgets/textarea.ts";
+export { ToggleButtonWidget } from "./widgets/toggle-button.ts";
 
 // Run widget registrations
 import "./widgets/index.ts";

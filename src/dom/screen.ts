@@ -1,11 +1,13 @@
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
+import type { ScreenBuffer } from "../render/buffer.ts";
 import type { DOMNode } from "./dom.ts";
 import { Widget } from "./widget.ts";
 
 export class Screen extends Widget {
   private _focusedWidget: Widget | null = null;
+  public overlays: Widget[] = [];
 
   constructor() {
     super("screen");
@@ -27,6 +29,27 @@ export class Screen extends Widget {
     }
     this.measuredWidth = maxW;
     this.measuredHeight = maxH;
+  }
+
+  public addOverlay(widget: Widget): void {
+    widget.parent = this;
+    this.overlays.push(widget);
+  }
+
+  public removeOverlay(widget: Widget): void {
+    const idx = this.overlays.indexOf(widget);
+    if (idx !== -1) {
+      this.overlays.splice(idx, 1);
+      widget.parent = null;
+    }
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    super.render(buffer);
+    // Draw overlays on top of all normal children
+    for (const overlay of this.overlays) {
+      overlay.render(buffer);
+    }
   }
 
   public getFocusableWidgets(): Widget[] {

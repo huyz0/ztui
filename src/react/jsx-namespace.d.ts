@@ -25,6 +25,10 @@ declare global {
           value?: string;
           onChange?: (val: string) => void;
           placeholder?: string;
+          type?: "text" | "password" | "email";
+          icon?: string;
+          suffixIcon?: string;
+          invalid?: boolean;
         };
         "ztui-textarea": ZTUIElementProps & {
           onKey?: (ev: any) => void;
@@ -67,6 +71,42 @@ declare global {
         };
         "ztui-mermaid": ZTUIElementProps;
         mermaid: ZTUIElementProps;
+        "ztui-select": ZTUIElementProps & {
+          options: any[];
+          value?: any;
+          multiple?: boolean;
+          onChange?: (val: any) => void;
+          placeholder?: string;
+        };
+        "ztui-radio-group": ZTUIElementProps & {
+          options: any[];
+          value?: string;
+          orientation?: "horizontal" | "vertical";
+          onChange?: (val: string) => void;
+        };
+        "ztui-checkbox": ZTUIElementProps & {
+          checked?: boolean;
+          label?: string;
+          onChange?: (val: boolean) => void;
+        };
+        "ztui-switch": ZTUIElementProps & {
+          active?: boolean;
+          label?: string;
+          onChange?: (val: boolean) => void;
+        };
+        "ztui-slider": ZTUIElementProps & {
+          value?: number;
+          min?: number;
+          max?: number;
+          step?: number;
+          onChange?: (val: number) => void;
+        };
+        "ztui-toggle-button": ZTUIElementProps & {
+          active?: boolean;
+          label?: string;
+          onChange?: (val: boolean) => void;
+          onClick?: (ev: any) => void;
+        };
       }
     }
   }

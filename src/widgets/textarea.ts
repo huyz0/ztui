@@ -17,14 +17,15 @@ export class TextAreaWidget extends Widget {
     const newLines = val.split(/\r?\n/);
 
     const isAtEnd =
-      this.cursorRow === oldLines.length - 1 && this.cursorCol === oldLines[this.cursorRow].length;
+      this.cursorRow === oldLines.length - 1 &&
+      this.cursorCol === [...oldLines[this.cursorRow]].length;
 
     if (isAtEnd || this._value === "") {
       this.cursorRow = newLines.length - 1;
-      this.cursorCol = newLines[this.cursorRow].length;
+      this.cursorCol = [...newLines[this.cursorRow]].length;
     } else {
       this.cursorRow = Math.min(this.cursorRow, newLines.length - 1);
-      this.cursorCol = Math.min(this.cursorCol, newLines[this.cursorRow].length);
+      this.cursorCol = Math.min(this.cursorCol, [...newLines[this.cursorRow]].length);
     }
   }
   public onChange?: (val: string) => void;
@@ -91,19 +92,19 @@ export class TextAreaWidget extends Widget {
 
     if (keyName === "up") {
       this.cursorRow = Math.max(0, this.cursorRow - 1);
-      this.cursorCol = Math.min(this.cursorCol, lines[this.cursorRow].length);
+      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "down") {
       this.cursorRow = Math.min(lines.length - 1, this.cursorRow + 1);
-      this.cursorCol = Math.min(this.cursorCol, lines[this.cursorRow].length);
+      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "left") {
       if (this.cursorCol > 0) {
         this.cursorCol--;
       } else if (this.cursorRow > 0) {
         this.cursorRow--;
-        this.cursorCol = lines[this.cursorRow].length;
+        this.cursorCol = [...lines[this.cursorRow]].length;
       }
     } else if (keyName === "right") {
-      if (this.cursorCol < lines[this.cursorRow].length) {
+      if (this.cursorCol < [...lines[this.cursorRow]].length) {
         this.cursorCol++;
       } else if (this.cursorRow < lines.length - 1) {
         this.cursorRow++;
@@ -112,22 +113,22 @@ export class TextAreaWidget extends Widget {
     } else if (keyName === "home") {
       this.cursorCol = 0;
     } else if (keyName === "end") {
-      this.cursorCol = lines[this.cursorRow].length;
+      this.cursorCol = [...lines[this.cursorRow]].length;
     } else if (keyName === "pageup") {
       this.cursorRow = Math.max(0, this.cursorRow - viewportHeight + 1);
-      this.cursorCol = Math.min(this.cursorCol, lines[this.cursorRow].length);
+      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "pagedown") {
       this.cursorRow = Math.min(lines.length - 1, this.cursorRow + viewportHeight - 1);
-      this.cursorCol = Math.min(this.cursorCol, lines[this.cursorRow].length);
+      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "backspace") {
       if (this.cursorCol > 0) {
-        lines[this.cursorRow] =
-          lines[this.cursorRow].slice(0, this.cursorCol - 1) +
-          lines[this.cursorRow].slice(this.cursorCol);
+        const chars = [...lines[this.cursorRow]];
+        chars.splice(this.cursorCol - 1, 1);
+        lines[this.cursorRow] = chars.join("");
         this.cursorCol--;
       } else if (this.cursorRow > 0) {
         const prevRow = this.cursorRow - 1;
-        const prevLen = lines[prevRow].length;
+        const prevLen = [...lines[prevRow]].length;
         lines[prevRow] = lines[prevRow] + lines[this.cursorRow];
         lines.splice(this.cursorRow, 1);
         this.cursorRow = prevRow;
@@ -135,35 +136,34 @@ export class TextAreaWidget extends Widget {
       }
       this._value = lines.join("\n");
     } else if (keyName === "delete") {
-      if (this.cursorCol < lines[this.cursorRow].length) {
-        lines[this.cursorRow] =
-          lines[this.cursorRow].slice(0, this.cursorCol) +
-          lines[this.cursorRow].slice(this.cursorCol + 1);
+      const chars = [...lines[this.cursorRow]];
+      if (this.cursorCol < chars.length) {
+        chars.splice(this.cursorCol, 1);
+        lines[this.cursorRow] = chars.join("");
       } else if (this.cursorRow < lines.length - 1) {
         lines[this.cursorRow] = lines[this.cursorRow] + lines[this.cursorRow + 1];
         lines.splice(this.cursorRow + 1, 1);
       }
       this._value = lines.join("\n");
     } else if (keyName === "enter") {
-      const line1 = lines[this.cursorRow].slice(0, this.cursorCol);
-      const line2 = lines[this.cursorRow].slice(this.cursorCol);
+      const chars = [...lines[this.cursorRow]];
+      const line1 = chars.slice(0, this.cursorCol).join("");
+      const line2 = chars.slice(this.cursorCol).join("");
       lines[this.cursorRow] = line1;
       lines.splice(this.cursorRow + 1, 0, line2);
       this.cursorRow++;
       this.cursorCol = 0;
       this._value = lines.join("\n");
     } else if (keyName === "tab") {
-      lines[this.cursorRow] =
-        lines[this.cursorRow].slice(0, this.cursorCol) +
-        "  " +
-        lines[this.cursorRow].slice(this.cursorCol);
+      const chars = [...lines[this.cursorRow]];
+      chars.splice(this.cursorCol, 0, " ", " ");
+      lines[this.cursorRow] = chars.join("");
       this.cursorCol += 2;
       this._value = lines.join("\n");
     } else if (ev.key && ev.key.length === 1) {
-      lines[this.cursorRow] =
-        lines[this.cursorRow].slice(0, this.cursorCol) +
-        ev.key +
-        lines[this.cursorRow].slice(this.cursorCol);
+      const chars = [...lines[this.cursorRow]];
+      chars.splice(this.cursorCol, 0, ev.key);
+      lines[this.cursorRow] = chars.join("");
       this.cursorCol++;
       this._value = lines.join("\n");
     }
@@ -194,7 +194,7 @@ export class TextAreaWidget extends Widget {
     } else if (this.cursorCol >= this.scrollX + textViewportWidth) {
       this.scrollX = this.cursorCol - textViewportWidth + 1;
     }
-    const maxLineLen = lines[this.cursorRow].length;
+    const maxLineLen = [...lines[this.cursorRow]].length;
     const maxScrollX = Math.max(0, maxLineLen - textViewportWidth);
     this.scrollX = Math.max(0, Math.min(maxScrollX, this.scrollX));
   }
@@ -215,7 +215,7 @@ export class TextAreaWidget extends Widget {
       const absoluteCol = this.scrollX + (clickCol - gutterWidth);
 
       this.cursorRow = Math.max(0, Math.min(lines.length - 1, absoluteRow));
-      this.cursorCol = Math.max(0, Math.min(lines[this.cursorRow].length, absoluteCol));
+      this.cursorCol = Math.max(0, Math.min([...lines[this.cursorRow]].length, absoluteCol));
 
       // Reset blink timer so caret is solid on click
       this.cursorVisible = true;
@@ -292,8 +292,9 @@ export class TextAreaWidget extends Widget {
       if (this.value === "" && this.placeholder && lineIndex === 0) {
         const phColor = App.instance?.cssResolver.resolveVariable(this, "$placeholder") || "gray";
         const placeholderStyle = new Style({ color: phColor, background: bg });
-        for (let j = 0; j < this.placeholder.length; j++) {
-          cells.push({ char: this.placeholder[j], style: placeholderStyle });
+        const phChars = [...this.placeholder];
+        for (const char of phChars) {
+          cells.push({ char, style: placeholderStyle });
         }
       } else {
         const richLine = richLines[lineIndex] || new RichText("");
@@ -304,8 +305,9 @@ export class TextAreaWidget extends Widget {
               segment.style.color
             : undefined;
           const resolvedStyle = segment.style.merge({ color: resolvedColor });
-          for (let j = 0; j < segment.text.length; j++) {
-            cells.push({ char: segment.text[j], style: resolvedStyle });
+          const chars = [...segment.text];
+          for (const char of chars) {
+            cells.push({ char, style: resolvedStyle });
           }
         }
       }
@@ -320,8 +322,21 @@ export class TextAreaWidget extends Widget {
         }
       }
 
-      // 4. Draw sliced visible cells
-      const visibleCells = cells.slice(this.scrollX, this.scrollX + textViewportWidth);
+      // 4. Draw sliced visible cells using safe width accumulation
+      let currentWidth = 0;
+      let cellIndex = this.scrollX;
+      const visibleCells: typeof cells = [];
+      while (cellIndex < cells.length && currentWidth < textViewportWidth) {
+        const cell = cells[cellIndex];
+        const cellW = stringWidth(cell.char);
+        if (currentWidth + cellW > textViewportWidth) {
+          break;
+        }
+        visibleCells.push(cell);
+        currentWidth += cellW;
+        cellIndex++;
+      }
+
       let drawX = contentRect.x + gutterWidth;
       for (const cell of visibleCells) {
         if (drawX >= contentRect.right) break;

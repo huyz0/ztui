@@ -257,8 +257,15 @@ export class App extends DOMNode {
 
     this.resolveAllStyles(screen);
     const size = this.driver.getSize();
-    screen.measure(screen.region.width, screen.region.height);
+    screen.measure(screen.region.width, size.height);
     this.resolveAllLayouts(screen);
+
+    // Resolve styles and absolute layouts for screen overlays
+    for (const overlay of screen.overlays) {
+      this.resolveAllStyles(overlay);
+      overlay.region = screen.region.clone();
+      this.resolveAllLayouts(overlay);
+    }
 
     this.currentBuffer.clear();
     screen.render(this.currentBuffer);
@@ -407,7 +414,26 @@ export class App extends DOMNode {
   }
 
   private hitTest(node: DOMNode, x: number, y: number): Widget | null {
-    if (!(node instanceof Widget) || !node.visible || !node.region.contains(x, y)) {
+    if (!(node instanceof Widget) || !node.visible) {
+      return null;
+    }
+
+    // Hit-test overlays first if this node is a Screen
+    if (node instanceof Screen) {
+      const sortedOverlays = [...node.overlays].sort((a, b) => {
+        const az = (a as any).computedStyle?.zIndex ?? 0;
+        const bz = (b as any).computedStyle?.zIndex ?? 0;
+        return bz - az;
+      });
+      for (const overlay of sortedOverlays) {
+        const match = this.hitTest(overlay, x, y);
+        if (match) {
+          return match;
+        }
+      }
+    }
+
+    if (!node.region.contains(x, y)) {
       return null;
     }
 

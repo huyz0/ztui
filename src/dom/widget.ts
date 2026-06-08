@@ -18,8 +18,8 @@ export interface WidgetStyles {
   minHeight?: number;
   maxWidth?: number;
   maxHeight?: number;
-  margin?: Spacing | number;
-  padding?: Spacing | number;
+  margin?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
+  padding?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
   border?: string; // "solid", "double", "dashed", "none"
   borderColor?: string;
   layout?: "vertical" | "horizontal" | "dock" | "grid";
@@ -101,6 +101,14 @@ export class Widget extends DOMNode {
     const m = this.computedStyle.margin;
     if (m instanceof Spacing) return m;
     if (typeof m === "number") return new Spacing(m, m, m, m);
+    if (m && typeof m === "object") {
+      return new Spacing(
+        (m as any).top ?? 0,
+        (m as any).right ?? 0,
+        (m as any).bottom ?? 0,
+        (m as any).left ?? 0,
+      );
+    }
     return Spacing.ZERO;
   }
 
@@ -108,6 +116,14 @@ export class Widget extends DOMNode {
     const p = this.computedStyle.padding;
     if (p instanceof Spacing) return p;
     if (typeof p === "number") return new Spacing(p, p, p, p);
+    if (p && typeof p === "object") {
+      return new Spacing(
+        (p as any).top ?? 0,
+        (p as any).right ?? 0,
+        (p as any).bottom ?? 0,
+        (p as any).left ?? 0,
+      );
+    }
     return Spacing.ZERO;
   }
 

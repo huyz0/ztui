@@ -6,6 +6,18 @@ export function charWidth(char: string): number {
   // ASCII Control characters
   if (code < 32 || (code >= 127 && code < 160)) return 0;
 
+  // Zero-width/combining characters (variation selectors, joiners, BOM)
+  if (
+    (code >= 0xfe00 && code <= 0xfe0f) ||
+    (code >= 0xe0100 && code <= 0xe01ef) ||
+    code === 0x200b ||
+    code === 0x200c ||
+    code === 0x200d ||
+    code === 0xfeff
+  ) {
+    return 0;
+  }
+
   // Custom SVG icon PUA characters span 2 columns
   if (code >= 0xe000 && code <= 0xefff) return 2;
 
@@ -31,9 +43,26 @@ export function charWidth(char: string): number {
     (code >= 0xffe0 && code <= 0xffe6) ||
     (code >= 0x1f300 && code <= 0x1faff) ||
     (code >= 0x20000 && code <= 0x2fa1f) ||
-    (code >= 0x2600 && code <= 0x27bf) ||
     (code >= 0x23e9 && code <= 0x23f3) ||
-    code === 0x2b50
+    code === 0x2b50 ||
+    // Wide symbols in the 0x2600 - 0x27BF block
+    (code >= 0x26a0 && code <= 0x26a1) ||
+    code === 0x26aa ||
+    code === 0x26ab ||
+    code === 0x26bd ||
+    code === 0x26be ||
+    (code >= 0x26c4 && code <= 0x26c5) ||
+    (code >= 0x26f2 && code <= 0x26f5) ||
+    code === 0x26fa ||
+    code === 0x26fd ||
+    code === 0x2705 ||
+    code === 0x2728 ||
+    code === 0x274c ||
+    code === 0x274e ||
+    (code >= 0x2753 && code <= 0x2757) ||
+    (code >= 0x2795 && code <= 0x2797) ||
+    code === 0x27b0 ||
+    code === 0x27bf
   ) {
     return 2;
   }
