@@ -3,11 +3,22 @@ export interface CSSRule {
   properties: Record<string, string>;
 }
 
-export function parseTCSS(content: string): CSSRule[] {
+export interface TCSSParsedRules extends Array<CSSRule> {
+  variables?: Record<string, string>;
+}
+
+export function parseTCSS(content: string): TCSSParsedRules {
   const rules: CSSRule[] = [];
+  const variables: Record<string, string> = {};
 
   // Remove block comments
-  const cleaned = content.replace(/\/\*[\s\S]*?\*\//g, "");
+  let cleaned = content.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // Extract and remove top-level variables (e.g. $var: value;)
+  cleaned = cleaned.replace(/^\s*\$([a-zA-Z0-9_-]+)\s*:\s*([^;]+);/gm, (_, name, value) => {
+    variables[name.trim()] = value.trim();
+    return "";
+  });
 
   // Split by closing brace
   const parts = cleaned.split("}");
@@ -39,5 +50,7 @@ export function parseTCSS(content: string): CSSRule[] {
     }
   }
 
-  return rules;
+  const result = rules as TCSSParsedRules;
+  result.variables = variables;
+  return result;
 }

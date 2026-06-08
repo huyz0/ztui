@@ -10,8 +10,8 @@ export class HeaderWidget extends Widget {
     this.defaultStyle = {
       dock: "top",
       height: 1,
-      background: "blue",
-      color: "white",
+      background: "$primary",
+      color: "$background",
     };
   }
 
@@ -30,8 +30,8 @@ export class HeaderWidget extends Widget {
     const contentRect = this.getContentRect();
     const text = this.getTextContent() || "ZTUI Application";
 
-    const fg = this.computedStyle.color || "white";
-    const bg = this.computedStyle.background || "blue";
+    const fg = this.computedStyle.color || "default";
+    const bg = this.findResolvedBackground();
     const style = new Style({ color: fg, background: bg });
 
     const textLen = stringWidth(text);

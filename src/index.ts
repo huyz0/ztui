@@ -1,6 +1,8 @@
 // Core & DOM
 export { App } from "./core/app.ts";
 export { startInspector } from "./core/inspector.ts";
+export type { Theme } from "./core/theme.ts";
+export { adjustLightness, deriveTheme, ThemeManager } from "./core/theme.ts";
 export { DOMNode } from "./dom/dom.ts";
 export { Screen } from "./dom/screen.ts";
 export { Scrollable } from "./dom/scrollable.ts";

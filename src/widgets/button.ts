@@ -1,3 +1,4 @@
+import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import { Spacing } from "../geometry/spacing.ts";
 import { TextNode } from "../react/host-config.ts";
@@ -36,8 +37,14 @@ export class ButtonWidget extends Widget {
     const text = this.getTextContent();
     if (!text) return;
 
-    const fg = this.focused ? "black" : this.computedStyle.color || "default";
-    const bg = this.focused ? "white" : this.findResolvedBackground();
+    let fg = this.focused ? "$background" : this.computedStyle.color || "default";
+    let bg = this.focused ? "$primary" : this.findResolvedBackground();
+
+    if (App.instance) {
+      fg = App.instance.cssResolver.resolveVariable(this, fg);
+      bg = App.instance.cssResolver.resolveVariable(this, bg);
+    }
+
     const style = new Style({
       color: fg,
       background: bg,

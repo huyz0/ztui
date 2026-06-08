@@ -15,6 +15,7 @@
     "demo:image": "bun run examples/image_demo.tsx",
     "demo:rich": "bun run examples/rich_demo.tsx",
     "demo:genui": "bun run examples/generative_ui.tsx",
+    "demo:themes": "bun run examples/theme_explorer.tsx",
     "test": "vitest run --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

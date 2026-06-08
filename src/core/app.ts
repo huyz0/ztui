@@ -14,6 +14,7 @@ import { GridLayout } from "../layout/grid-layout.ts";
 import { parseDimension } from "../layout/layout.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
+import { ThemeManager } from "./theme.ts";
 
 export class App extends DOMNode {
   public static instance: App | null = null;
@@ -35,6 +36,10 @@ export class App extends DOMNode {
 
     const defaultScreen = new Screen();
     this.pushScreen(defaultScreen);
+
+    ThemeManager.getInstance().subscribe(() => {
+      this.queueRender();
+    });
   }
 
   public get activeScreen(): Screen {
