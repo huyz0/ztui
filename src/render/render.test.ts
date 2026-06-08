@@ -183,6 +183,45 @@ describe("rendering system", () => {
     expect(output.includes("[C:B]")).toBe(true);
   });
 
+  test("ScreenBuffer renderDiff does not emit cursor movements for adjacent runs of different styles", () => {
+    const b1 = new ScreenBuffer(10, 1);
+    const b2 = new ScreenBuffer(10, 1);
+
+    const s1 = new Style({ color: "red" });
+    const s2 = new Style({ color: "blue" });
+
+    b1.setCell(0, 0, "A", s1);
+    b1.setCell(1, 0, "B", s2);
+
+    const diff = b1.renderDiff(b2);
+
+    // Initial cursor move to (1,1) should be present
+    expect(diff.includes("\x1b[1;1H")).toBe(true);
+    // There should NOT be any cursor move to (1,2) like \x1b[1;2H
+    expect(diff.includes("\x1b[1;2H")).toBe(false);
+  });
+
+  test("ScreenBuffer renderDiff invalidates main cell when wide continuation cell reverts to graphic/wide char", () => {
+    const b1 = new ScreenBuffer(10, 1);
+    const b2 = new ScreenBuffer(10, 1);
+
+    const s = new Style();
+    // Frame 1: Draw icon
+    b2.cells[0][0] = { char: "I", style: s, wideContinuation: false, icon: "test-icon" };
+    b2.cells[0][1] = { char: "", style: s, wideContinuation: true };
+
+    // Frame 2: Overwrite cell 2 with character X
+    b2.cells[0][1] = { char: "X", style: s, wideContinuation: false };
+
+    // Frame 3: Revert cell 2 back to wideContinuation
+    b1.cells[0][0] = { char: "I", style: s, wideContinuation: false, icon: "test-icon" };
+    b1.cells[0][1] = { char: "", style: s, wideContinuation: true };
+
+    // This should force redraw of cell 1 (I)
+    const diff = b1.renderDiff(b2);
+    expect(diff.includes("I")).toBe(true);
+  });
+
   test("Strikethrough rendering and HTML conversion", () => {
     const s1 = new Style({ strikethrough: true });
     const c1 = s1.getEscapeCodes();

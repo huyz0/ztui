@@ -4,17 +4,29 @@ import { renderSvgSync } from "./sharp-sync.ts";
 
 vi.mock("node:child_process", () => {
   return {
-    spawnSync: vi.fn(),
+    spawnSync: vi.fn(() => ({
+      error: undefined,
+      stdout: JSON.stringify({
+        success: true,
+        data: {
+          pngBase64: "cG5n",
+          pixelsBase64: "cGl4ZWxz",
+          width: 10,
+          height: 20,
+        },
+      }),
+      stderr: "",
+    })),
   };
 });
 
 describe("sharp-sync", () => {
   beforeEach(() => {
-    vi.mocked(spawnSync).mockReset();
+    (spawnSync as any).mockClear();
   });
 
   test("renderSvgSync successfully parses valid input", () => {
-    vi.mocked(spawnSync).mockReturnValueOnce({
+    (spawnSync as any).mockReturnValueOnce({
       error: undefined,
       stdout: JSON.stringify({
         success: true,
@@ -42,7 +54,7 @@ describe("sharp-sync", () => {
   });
 
   test("renderSvgSync handles spawnSync error", () => {
-    vi.mocked(spawnSync).mockReturnValueOnce({
+    (spawnSync as any).mockReturnValueOnce({
       error: new Error("spawn failed"),
       stdout: "",
       stderr: "",
@@ -59,7 +71,7 @@ describe("sharp-sync", () => {
   });
 
   test("renderSvgSync handles invalid JSON stdout", () => {
-    vi.mocked(spawnSync).mockReturnValueOnce({
+    (spawnSync as any).mockReturnValueOnce({
       error: undefined,
       stdout: "invalid-json",
       stderr: "some stderr logs",
@@ -76,7 +88,7 @@ describe("sharp-sync", () => {
   });
 
   test("renderSvgSync handles success: false response", () => {
-    vi.mocked(spawnSync).mockReturnValueOnce({
+    (spawnSync as any).mockReturnValueOnce({
       error: undefined,
       stdout: JSON.stringify({
         success: false,

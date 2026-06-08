@@ -1,9 +1,43 @@
-import MarkdownIt from "markdown-it";
+import { marked, type Token } from "marked";
 import type { TerminalCapabilities } from "../../driver/driver.ts";
 import { stringWidth } from "../segment.ts";
 import { Style } from "../style.ts";
 import { Syntax } from "./syntax.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
+
+function tokensToMarkup(tokens: Token[] | undefined): string {
+  if (!tokens) return "";
+  let markup = "";
+  for (const token of tokens) {
+    if (token.type === "text") {
+      markup += (token as any).text;
+    } else if (token.type === "codespan") {
+      markup += `[dim yellow]${(token as any).text}[/]`;
+    } else if (token.type === "strong") {
+      markup += `[bold]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "em") {
+      markup += `[italic]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "del") {
+      markup += `[strikethrough]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "link") {
+      const href = (token as any).href || "";
+      markup += `[bright-blue underline link=${href}]${tokensToMarkup((token as any).tokens)}[/]`;
+    } else if (token.type === "image") {
+      const src = (token as any).href || "";
+      const alt = (token as any).text || "image";
+      markup += `[dim]🖼️  ${alt} (${src})[/]`;
+    } else if (token.type === "escape") {
+      markup += (token as any).text;
+    } else if (token.type === "br") {
+      markup += "\n";
+    } else if ((token as any).tokens) {
+      markup += tokensToMarkup((token as any).tokens);
+    } else {
+      markup += token.raw || "";
+    }
+  }
+  return markup;
+}
 
 /**
  * Translates inline markdown syntax (e.g. **bold**, *italic*, `code`, [text](url)) into console markup tags.
@@ -38,8 +72,7 @@ export class Markdown {
     themeName: "ansi_dark" | "ansi_light" = "ansi_dark",
     _capabilities?: TerminalCapabilities,
   ): RichText[] {
-    const md = new MarkdownIt({ html: true, linkify: true });
-    const tokens = md.parse(markdown, {});
+    const tokens = marked.lexer(markdown);
     const lines: RichText[] = [];
 
     // Base theme styles
@@ -56,84 +89,6 @@ export class Markdown {
     const numberStyle = new Style({ color: "bright-blue", bold: true });
     const quoteBarStyle = new Style({ color: "blue", dim: true });
     const hrStyle = new Style({ color: "gray", dim: true });
-    const linkStyle = new Style({ color: "bright-blue", underline: true });
-    const inlineCodeStyle = new Style({ color: "bright-yellow", dim: true });
-
-    const listStack: { type: "bullet" | "ordered"; index: number }[] = [];
-    let indentLevel = 0;
-    let inBlockquote = false;
-
-    // Helper to process inline children recursively into RichText spans
-    const processInline = (inlineTokens: any[]): RichText => {
-      let plain = "";
-      const spans: Span[] = [];
-      const styleStack: { style: Style; start: number }[] = [];
-
-      for (const t of inlineTokens) {
-        if (t.type === "text") {
-          plain += t.content;
-        } else if (t.type === "softbreak") {
-          plain += " ";
-        } else if (t.type === "hardbreak") {
-          plain += "\n";
-        } else if (t.type === "code_inline") {
-          const start = plain.length;
-          plain += t.content;
-          spans.push({ start, end: plain.length, style: inlineCodeStyle });
-        } else if (t.type === "strong_open") {
-          styleStack.push({ style: new Style({ bold: true }), start: plain.length });
-        } else if (t.type === "strong_close") {
-          const open = styleStack.pop();
-          if (open) {
-            spans.push({ start: open.start, end: plain.length, style: open.style });
-          }
-        } else if (t.type === "em_open") {
-          styleStack.push({ style: new Style({ italic: true }), start: plain.length });
-        } else if (t.type === "em_close") {
-          const open = styleStack.pop();
-          if (open) {
-            spans.push({ start: open.start, end: plain.length, style: open.style });
-          }
-        } else if (t.type === "s_open") {
-          styleStack.push({ style: new Style({ strikethrough: true }), start: plain.length });
-        } else if (t.type === "s_close") {
-          const open = styleStack.pop();
-          if (open) {
-            spans.push({ start: open.start, end: plain.length, style: open.style });
-          }
-        } else if (t.type === "link_open") {
-          const hrefAttr = t.attrs?.find((a: any) => a[0] === "href");
-          const href = hrefAttr ? hrefAttr[1] : "";
-          styleStack.push({
-            style: linkStyle.merge(new Style({ link: href })),
-            start: plain.length,
-          });
-        } else if (t.type === "link_close") {
-          const open = styleStack.pop();
-          if (open) {
-            spans.push({ start: open.start, end: plain.length, style: open.style });
-          }
-        } else if (t.type === "image") {
-          const srcAttr = t.attrs?.find((a: any) => a[0] === "src");
-          const src = srcAttr ? srcAttr[1] : "";
-          const alt = t.content || "image";
-          const start = plain.length;
-          plain += `🖼️  ${alt} (${src})`;
-          spans.push({
-            start,
-            end: plain.length,
-            style: new Style({ color: "bright-magenta", italic: true }),
-          });
-        }
-      }
-
-      while (styleStack.length > 0) {
-        const open = styleStack.pop()!;
-        spans.push({ start: open.start, end: plain.length, style: open.style });
-      }
-
-      return new RichText(plain, spans);
-    };
 
     // Helper to format block prefixes (like list bullets, line numbers, blockquotes)
     const formatLine = (richLine: RichText, prefix: string, prefixSpans: Span[]): RichText => {
@@ -146,131 +101,16 @@ export class Markdown {
       return new RichText(fullText, [...prefixSpans, ...spans]);
     };
 
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i];
-
-      if (token.type === "bullet_list_open") {
-        listStack.push({ type: "bullet", index: 0 });
-        indentLevel++;
-        continue;
-      }
-      if (token.type === "bullet_list_close") {
-        listStack.pop();
-        indentLevel--;
-        continue;
-      }
-      if (token.type === "ordered_list_open") {
-        const startAttr = token.attrs?.find((a) => a[0] === "start");
-        const startIdx = startAttr ? parseInt(startAttr[1], 10) : 1;
-        listStack.push({ type: "ordered", index: startIdx });
-        indentLevel++;
-        continue;
-      }
-      if (token.type === "ordered_list_close") {
-        listStack.pop();
-        indentLevel--;
-        continue;
-      }
-      if (token.type === "blockquote_open") {
-        inBlockquote = true;
-        continue;
-      }
-      if (token.type === "blockquote_close") {
-        inBlockquote = false;
-        continue;
-      }
-
-      if (token.type === "hr") {
-        const ruleText = "─".repeat(50);
-        lines.push(new RichText(ruleText, [{ start: 0, end: ruleText.length, style: hrStyle }]));
-        lines.push(new RichText(""));
-        continue;
-      }
-
-      if (token.type === "fence" || token.type === "code_block") {
-        const lang = token.info ? token.info.split(/\s+/)[0] : "text";
-        const code = token.content.replace(/\r?\n$/, "");
-
-        const syntaxLines = Syntax.renderToLines(code, lang, true, themeName);
-
-        let maxLineLen = 0;
-        for (const line of syntaxLines) {
-          maxLineLen = Math.max(maxLineLen, stringWidth(line.plain));
-        }
-
-        const borderStyle = new Style({ color: "gray", dim: true });
-
-        // 1. Top border line
-        const topText = `┌${"─".repeat(maxLineLen + 2)}┐`;
-        let topBorderLine = new RichText(topText, [
-          { start: 0, end: topText.length, style: borderStyle },
-        ]);
-        if (inBlockquote) {
-          topBorderLine = formatLine(topBorderLine, "▌ ", [
-            { start: 0, end: 2, style: quoteBarStyle },
-          ]);
-        }
-        topBorderLine = formatLine(topBorderLine, "  ", []);
-        lines.push(topBorderLine);
-
-        // 2. Middle code lines with borders
-        for (const line of syntaxLines) {
-          const paddingCount = maxLineLen - stringWidth(line.plain);
-          const paddedPlain = line.plain + " ".repeat(paddingCount);
-          const fullPlain = `│ ${paddedPlain} │`;
-
-          const shiftedSpans = line.spans.map((s) => ({
-            start: s.start + 2,
-            end: s.end + 2,
-            style: s.style,
-          }));
-
-          const leftBorderSpan = { start: 0, end: 2, style: borderStyle };
-          const rightBorderSpan = {
-            start: 2 + paddedPlain.length,
-            end: fullPlain.length,
-            style: borderStyle,
-          };
-
-          let middleLine = new RichText(fullPlain, [
-            leftBorderSpan,
-            rightBorderSpan,
-            ...shiftedSpans,
-          ]);
-
-          if (inBlockquote) {
-            middleLine = formatLine(middleLine, "▌ ", [{ start: 0, end: 2, style: quoteBarStyle }]);
-          }
-          middleLine = formatLine(middleLine, "  ", []);
-          lines.push(middleLine);
-        }
-
-        // 3. Bottom border line
-        const bottomText = `└${"─".repeat(maxLineLen + 2)}┘`;
-        let bottomBorderLine = new RichText(bottomText, [
-          { start: 0, end: bottomText.length, style: borderStyle },
-        ]);
-        if (inBlockquote) {
-          bottomBorderLine = formatLine(bottomBorderLine, "▌ ", [
-            { start: 0, end: 2, style: quoteBarStyle },
-          ]);
-        }
-        bottomBorderLine = formatLine(bottomBorderLine, "  ", []);
-        lines.push(bottomBorderLine);
-
-        lines.push(new RichText(""));
-        continue;
-      }
-
-      // Headings
-      if (token.type === "heading_open") {
-        const level = parseInt(token.tag.substring(1), 10);
-        const nextToken = tokens[i + 1];
-        if (nextToken && nextToken.type === "inline") {
-          const richHeader = processInline(nextToken.children || []);
-          const hColor = headingColors[token.tag as keyof typeof headingColors] || "white";
+    // Recursive helper to process block tokens
+    const processBlocks = (blockTokens: Token[], indentLevel = 0, inBlockquote = false) => {
+      for (const token of blockTokens) {
+        if (token.type === "heading") {
+          const depth = (token as any).depth;
+          const hColor = headingColors[`h${depth}` as keyof typeof headingColors] || "white";
           const headingStyle = new Style({ color: hColor, bold: true });
 
+          const markup = tokensToMarkup((token as any).tokens);
+          const richHeader = RichText.fromMarkup(markup);
           const spans = richHeader.spans.map((s) => ({ ...s }));
           spans.push({ start: 0, end: richHeader.plain.length, style: headingStyle });
 
@@ -283,8 +123,8 @@ export class Markdown {
 
           lines.push(formattedLine);
 
-          if (level === 1 || level === 2) {
-            const char = level === 1 ? "━" : "─";
+          if (depth === 1 || depth === 2) {
+            const char = depth === 1 ? "━" : "─";
             const ruleText = char.repeat(Math.max(20, richHeader.plain.length));
             let richRule = new RichText(ruleText, [
               { start: 0, end: ruleText.length, style: headingStyle },
@@ -295,16 +135,9 @@ export class Markdown {
             lines.push(richRule);
           }
           lines.push(new RichText(""));
-          i++;
-        }
-        continue;
-      }
-
-      // Paragraphs
-      if (token.type === "paragraph_open") {
-        const nextToken = tokens[i + 1];
-        if (nextToken && nextToken.type === "inline") {
-          const richPara = processInline(nextToken.children || []);
+        } else if (token.type === "paragraph") {
+          const markup = tokensToMarkup((token as any).tokens);
+          const richPara = RichText.fromMarkup(markup);
           const paraLines = splitRichTextIntoLines(richPara);
 
           for (const line of paraLines) {
@@ -317,41 +150,121 @@ export class Markdown {
             lines.push(formattedLine);
           }
           lines.push(new RichText(""));
-          i++;
-        }
-        continue;
-      }
+        } else if (token.type === "blockquote") {
+          processBlocks((token as any).tokens, indentLevel, true);
+        } else if (token.type === "hr") {
+          const ruleText = "─".repeat(50);
+          lines.push(new RichText(ruleText, [{ start: 0, end: ruleText.length, style: hrStyle }]));
+          lines.push(new RichText(""));
+        } else if (token.type === "code") {
+          const lang = token.lang ? token.lang.split(/\s+/)[0] : "text";
+          const code = token.text.replace(/\r?\n$/, "");
 
-      // List Items
-      if (token.type === "list_item_open") {
-        const nextToken = tokens[i + 1];
-        if (nextToken && nextToken.type === "paragraph_open") {
-          const inlineToken = tokens[i + 2];
-          if (inlineToken && inlineToken.type === "inline") {
-            const richItem = processInline(inlineToken.children || []);
-            const currentList = listStack[listStack.length - 1];
+          const syntaxLines = Syntax.renderToLines(code, lang, true, themeName);
+
+          let maxLineLen = 0;
+          for (const line of syntaxLines) {
+            maxLineLen = Math.max(maxLineLen, stringWidth(line.plain));
+          }
+
+          const borderStyle = new Style({ color: "gray", dim: true });
+
+          // 1. Top border line
+          const topText = `┌${"─".repeat(maxLineLen + 2)}┐`;
+          let topBorderLine = new RichText(topText, [
+            { start: 0, end: topText.length, style: borderStyle },
+          ]);
+          if (inBlockquote) {
+            topBorderLine = formatLine(topBorderLine, "▌ ", [
+              { start: 0, end: 2, style: quoteBarStyle },
+            ]);
+          }
+          topBorderLine = formatLine(topBorderLine, "  ", []);
+          lines.push(topBorderLine);
+
+          // 2. Middle code lines with borders
+          for (const line of syntaxLines) {
+            const paddingCount = maxLineLen - stringWidth(line.plain);
+            const paddedPlain = line.plain + " ".repeat(paddingCount);
+            const fullPlain = `│ ${paddedPlain} │`;
+
+            const shiftedSpans = line.spans.map((s) => ({
+              start: s.start + 2,
+              end: s.end + 2,
+              style: s.style,
+            }));
+
+            const leftBorderSpan = { start: 0, end: 2, style: borderStyle };
+            const rightBorderSpan = {
+              start: 2 + paddedPlain.length,
+              end: fullPlain.length,
+              style: borderStyle,
+            };
+
+            let middleLine = new RichText(fullPlain, [
+              leftBorderSpan,
+              rightBorderSpan,
+              ...shiftedSpans,
+            ]);
+
+            if (inBlockquote) {
+              middleLine = formatLine(middleLine, "▌ ", [
+                { start: 0, end: 2, style: quoteBarStyle },
+              ]);
+            }
+            middleLine = formatLine(middleLine, "  ", []);
+            lines.push(middleLine);
+          }
+
+          // 3. Bottom border line
+          const bottomText = `└${"─".repeat(maxLineLen + 2)}┘`;
+          let bottomBorderLine = new RichText(bottomText, [
+            { start: 0, end: bottomText.length, style: borderStyle },
+          ]);
+          if (inBlockquote) {
+            bottomBorderLine = formatLine(bottomBorderLine, "▌ ", [
+              { start: 0, end: 2, style: quoteBarStyle },
+            ]);
+          }
+          bottomBorderLine = formatLine(bottomBorderLine, "  ", []);
+          lines.push(bottomBorderLine);
+
+          lines.push(new RichText(""));
+        } else if (token.type === "list") {
+          let listIndex = (token as any).start !== undefined ? (token as any).start : 1;
+          for (const item of (token as any).items) {
+            // Process the list item text / tokens
+            let itemTextToken = item.tokens.find(
+              (t: any) => t.type === "text" || t.type === "paragraph",
+            );
+            if (!itemTextToken) {
+              itemTextToken = item.tokens[0];
+            }
+
+            const itemMarkup = itemTextToken
+              ? tokensToMarkup((itemTextToken as any).tokens || [itemTextToken])
+              : "";
+            const richItem = RichText.fromMarkup(itemMarkup);
 
             let prefix = "";
             const prefixSpans: Span[] = [];
-            const indentSpaces = "  ".repeat(indentLevel - 1);
+            const indentSpaces = "  ".repeat(indentLevel);
 
-            if (currentList) {
-              if (currentList.type === "bullet") {
-                prefix = `${indentSpaces}  •  `;
-                prefixSpans.push({
-                  start: prefix.length - 3,
-                  end: prefix.length - 2,
-                  style: bulletStyle,
-                });
-              } else {
-                const numStr = String(currentList.index++);
-                prefix = `${indentSpaces}  ${numStr}. `;
-                prefixSpans.push({
-                  start: prefix.length - numStr.length - 2,
-                  end: prefix.length,
-                  style: numberStyle,
-                });
-              }
+            if (!token.ordered) {
+              prefix = `${indentSpaces}  •  `;
+              prefixSpans.push({
+                start: prefix.length - 3,
+                end: prefix.length - 2,
+                style: bulletStyle,
+              });
+            } else {
+              const numStr = String(listIndex++);
+              prefix = `${indentSpaces}  ${numStr}. `;
+              prefixSpans.push({
+                start: prefix.length - numStr.length - 2,
+                end: prefix.length,
+                style: numberStyle,
+              });
             }
 
             let formattedLine = formatLine(richItem, prefix, prefixSpans);
@@ -360,16 +273,21 @@ export class Markdown {
                 { start: 0, end: 2, style: quoteBarStyle },
               ]);
             }
-
             lines.push(formattedLine);
-            i += 3;
-            if (tokens[i + 1] && tokens[i + 1].type === "list_item_close") {
-              i++;
+
+            // Handle nested list blocks or sub-blocks in item
+            const subBlocks = item.tokens.filter(
+              (t: any) => t !== itemTextToken && t.type !== "text",
+            );
+            if (subBlocks.length > 0) {
+              processBlocks(subBlocks, indentLevel + 1, inBlockquote);
             }
           }
         }
       }
-    }
+    };
+
+    processBlocks(tokens);
 
     if (lines.length > 0 && lines[lines.length - 1].plain === "") {
       lines.pop();

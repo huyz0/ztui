@@ -1,6 +1,6 @@
 import type { Region } from "../geometry/region.ts";
 import type { Segment } from "./segment.ts";
-import { charWidth } from "./segment.ts";
+import { charWidth, stringWidth } from "./segment.ts";
 import { Style } from "./style.ts";
 
 export interface GraphicMetadata {
@@ -116,6 +116,26 @@ export class ScreenBuffer {
       }
     }
 
+    let cursor: { x: number; y: number } | null = null;
+
+    // Invalidation pass: if a cell becomes wideContinuation but was previously text,
+    // force redraw of its main cell to clear the old text and restore the graphic/wide char.
+    for (let y = 0; y < limitH; y++) {
+      for (let x = 0; x < limitW; x++) {
+        const newCell = this.cells[y][x];
+        const oldCell = oldBuffer.cells[y][x];
+        if (newCell.wideContinuation && oldCell && !oldCell.wideContinuation) {
+          let mainX = x - 1;
+          while (mainX >= 0 && this.cells[y][mainX].wideContinuation) {
+            mainX--;
+          }
+          if (mainX >= 0) {
+            oldBuffer.cells[y][mainX].char = "";
+          }
+        }
+      }
+    }
+
     // Standard diff mode
     for (let y = 0; y < limitH; y++) {
       let runStartX: number | null = null;
@@ -140,17 +160,25 @@ export class ScreenBuffer {
 
         if (isSpecial) {
           if (runStartX !== null) {
-            output += this.flushRun(runStartX, y, runContent, this.cells[y][runStartX].style);
+            const res = this.flushRun(
+              runStartX,
+              y,
+              runContent,
+              this.cells[y][runStartX].style,
+              cursor,
+            );
+            output += res.out;
+            cursor = res.cursor;
             runStartX = null;
             runContent = "";
           }
           if (changed) {
             if (!newCell.wideContinuation) {
               const content = formatChar ? formatChar(newCell, oldCell) : newCell.char;
-              output += this.flushRun(x, y, content, newCell.style);
-            } else if (oldCell && !oldCell.wideContinuation) {
-              // Clears a previously written text character by replacing it with a space
-              output += this.flushRun(x, y, " ", newCell.style);
+              const res = this.flushRun(x, y, content, newCell.style, cursor);
+              output += res.out;
+              // Reset cursor to null after a special cell as we don't track its precise terminal cursor movement
+              cursor = null;
             }
           }
           continue;
@@ -164,7 +192,15 @@ export class ScreenBuffer {
         } else {
           // End of run or style change
           if (runStartX !== null) {
-            output += this.flushRun(runStartX, y, runContent, this.cells[y][runStartX].style);
+            const res = this.flushRun(
+              runStartX,
+              y,
+              runContent,
+              this.cells[y][runStartX].style,
+              cursor,
+            );
+            output += res.out;
+            cursor = res.cursor;
             runStartX = null;
             runContent = "";
           }
@@ -176,19 +212,32 @@ export class ScreenBuffer {
       }
 
       if (runStartX !== null) {
-        output += this.flushRun(runStartX, y, runContent, this.cells[y][runStartX].style);
+        const res = this.flushRun(runStartX, y, runContent, this.cells[y][runStartX].style, cursor);
+        output += res.out;
+        cursor = res.cursor;
       }
     }
 
     return output;
   }
 
-  private flushRun(x: number, y: number, content: string, style: Style): string {
-    // Escape sequence to move cursor to (x + 1, y + 1)
-    let out = `\x1b[${y + 1};${x + 1}H`;
+  private flushRun(
+    x: number,
+    y: number,
+    content: string,
+    style: Style,
+    cursor: { x: number; y: number } | null,
+  ): { out: string; cursor: { x: number; y: number } } {
+    let out = "";
+    if (!cursor || cursor.y !== y || cursor.x !== x) {
+      out += `\x1b[${y + 1};${x + 1}H`;
+    }
     const { start, end } = style.getEscapeCodes();
     out += start + content + end;
-    return out;
+    return {
+      out,
+      cursor: { x: x + stringWidth(content), y },
+    };
   }
 
   // Copy current buffer content to another buffer
