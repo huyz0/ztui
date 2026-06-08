@@ -31,6 +31,7 @@ declare global {
         "ztui-grid": ZTUIElementProps;
         "ztui-dock": ZTUIElementProps;
         "ztui-box": ZTUIElementProps;
+        "ztui-scrollable-box": ZTUIElementProps;
         "ztui-icon": ZTUIElementProps & {
           name: string;
         };

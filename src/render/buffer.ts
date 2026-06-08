@@ -1,4 +1,6 @@
-import type { Region } from "../geometry/region.ts";
+import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
+import { Size } from "../geometry/size.ts";
 import type { Segment } from "./segment.ts";
 import { charWidth, stringWidth } from "./segment.ts";
 import { Style } from "./style.ts";
@@ -24,6 +26,8 @@ export interface Cell {
 
 export class ScreenBuffer {
   public cells: Cell[][] = [];
+  private clipStack: (Region | null)[] = [];
+  public currentClip: Region | null = null;
 
   constructor(
     public width = 0,
@@ -59,8 +63,27 @@ export class ScreenBuffer {
     }
   }
 
+  public pushClip(region: Region): void {
+    this.clipStack.push(this.currentClip);
+    if (this.currentClip) {
+      const intersect = this.currentClip.intersection(region);
+      this.currentClip = intersect || new Region(Offset.ORIGIN, Size.ZERO);
+    } else {
+      this.currentClip = region;
+    }
+  }
+
+  public popClip(): void {
+    if (this.clipStack.length > 0) {
+      this.currentClip = this.clipStack.pop() || null;
+    }
+  }
+
   public setCell(x: number, y: number, char: string, style: Style): void {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+      return;
+    }
+    if (this.currentClip && !this.currentClip.contains(x, y)) {
       return;
     }
     const w = charWidth(char);
@@ -68,7 +91,10 @@ export class ScreenBuffer {
 
     // If it's a wide character, mark the next cell as continuation
     if (w === 2 && x + 1 < this.width) {
-      this.cells[y][x + 1] = { char: "", style, wideContinuation: true };
+      // Respect clipping on continuation cell as well
+      if (!this.currentClip || this.currentClip.contains(x + 1, y)) {
+        this.cells[y][x + 1] = { char: "", style, wideContinuation: true };
+      }
     }
   }
 

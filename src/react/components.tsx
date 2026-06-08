@@ -22,6 +22,7 @@ export { Markdown } from "./components/markdown.tsx";
 export type { MermaidProps } from "./components/mermaid.tsx";
 export { Mermaid } from "./components/mermaid.tsx";
 export { RichText } from "./components/rich-text.tsx";
+export { ScrollableBox } from "./components/scrollable-box.tsx";
 export type { SvgImageProps } from "./components/svg-image.tsx";
 export { SvgImage } from "./components/svg-image.tsx";
 export type { SyntaxProps } from "./components/syntax.tsx";

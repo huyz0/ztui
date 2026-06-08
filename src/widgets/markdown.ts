@@ -2,6 +2,7 @@ import { marked, type Token } from "marked";
 import remend from "remend";
 import { App } from "../core/app.ts";
 import type { DOMNode } from "../dom/dom.ts";
+import { Scrollable } from "../dom/scrollable.ts";
 import { Widget } from "../dom/widget.ts";
 import { Spacing } from "../geometry/spacing.ts";
 import { createWidgetByTagName, TextNode } from "../react/host-config.ts";
@@ -77,7 +78,7 @@ function areTokensEqual(a: any, b: any): boolean {
   return true;
 }
 
-export class MarkdownWidget extends Widget {
+export class MarkdownWidget extends Scrollable(Widget) {
   private _theme: "ansi_dark" | "ansi_light" = "ansi_dark";
   public get theme(): "ansi_dark" | "ansi_light" {
     return this._theme;

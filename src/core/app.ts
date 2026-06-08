@@ -25,6 +25,7 @@ export class App extends DOMNode {
   private prevBuffer: ScreenBuffer = new ScreenBuffer();
   private renderQueued = false;
   private hoveredWidget: Widget | null = null;
+  private activeDragWidget: Widget | null = null;
   private inspectorServer: InspectorServer | null = null;
 
   constructor(driver?: Driver) {
@@ -130,21 +131,46 @@ export class App extends DOMNode {
         return;
       }
 
-      const focused = this.activeScreen.focusedWidget;
-      if (focused?.onKey) {
-        log(`Key forwarded to widget: ${focused.tagName}#${focused.id || ""}`);
-        focused.onKey(ev);
+      // Bubble key event up from the focused widget
+      let current: DOMNode | null = this.activeScreen.focusedWidget;
+      let handled = false;
+      while (current) {
+        if (current instanceof Widget) {
+          if (current.handleKey) {
+            current.handleKey(ev);
+            if (ev.handled) {
+              handled = true;
+              break;
+            }
+          }
+        }
+        current = current.parent;
+      }
+      if (handled) {
+        log("Key handled by widget chain");
         this.queueRender();
       } else {
-        log("Key ignored (no focused widget with key handler)");
+        log("Key ignored (no focused widget chain handled the key)");
       }
     });
 
     this.driver.on("mouse", (ev) => {
-      const hit = this.hitTest(this.activeScreen, ev.x, ev.y);
+      let hit = this.hitTest(this.activeScreen, ev.x, ev.y);
+
+      if (this.activeDragWidget && (ev.type === "drag" || ev.type === "release")) {
+        hit = this.activeDragWidget;
+      }
+      if (ev.type === "press") {
+        this.activeDragWidget = hit;
+      }
+
       log(
         `Mouse event: x=${ev.x}, y=${ev.y}, type=${ev.type}, btn=${ev.button} -> hit: ${hit?.tagName || "none"}#${hit?.id || ""}`,
       );
+
+      if (ev.type === "release") {
+        this.activeDragWidget = null;
+      }
 
       if (hit !== this.hoveredWidget) {
         const oldHovered = this.hoveredWidget;
@@ -162,17 +188,40 @@ export class App extends DOMNode {
       }
 
       if (hit) {
-        if (ev.type === "press" && ev.button === "left") {
-          if (hit.focusable) {
-            this.activeScreen.focusWidget(hit);
-            log(`Widget focused via click: ${hit.tagName}#${hit.id || ""}`);
-            this.queueRender();
+        if (hit.handleMouse) {
+          hit.handleMouse(ev);
+        }
+
+        if (!ev.handled) {
+          if (ev.type === "press" && ev.button === "left") {
+            if (hit.focusable) {
+              this.activeScreen.focusWidget(hit);
+              log(`Widget focused via click: ${hit.tagName}#${hit.id || ""}`);
+              this.queueRender();
+            }
+            if (hit.onClick) {
+              log(`Triggered onClick on widget: ${hit.tagName}#${hit.id || ""}`);
+              hit.onClick(ev);
+              this.queueRender();
+            }
+          } else if (ev.type === "scroll_up" || ev.type === "scroll_down") {
+            let current: DOMNode | null = hit;
+            while (current) {
+              if (current instanceof Widget) {
+                if (current.handleScroll) {
+                  log(`Scroll event forwarded to widget: ${current.tagName}#${current.id || ""}`);
+                  current.handleScroll(ev);
+                  if (ev.handled) {
+                    this.queueRender();
+                    break;
+                  }
+                }
+              }
+              current = current.parent;
+            }
           }
-          if (hit.onClick) {
-            log(`Triggered onClick on widget: ${hit.tagName}#${hit.id || ""}`);
-            hit.onClick(ev);
-            this.queueRender();
-          }
+        } else {
+          this.queueRender();
         }
       }
     });
@@ -290,6 +339,20 @@ export class App extends DOMNode {
 
     this.resolveAbsoluteChildren(parent);
 
+    if (parent.scrollOffset.x !== 0 || parent.scrollOffset.y !== 0) {
+      for (const child of parent.children) {
+        if (child instanceof Widget) {
+          child.region = new Region(
+            new Offset(
+              child.region.x - parent.scrollOffset.x,
+              child.region.y - parent.scrollOffset.y,
+            ),
+            child.region.size,
+          );
+        }
+      }
+    }
+
     for (const child of parent.children) {
       if (child instanceof Widget) {
         this.resolveAllLayouts(child);
@@ -339,14 +402,65 @@ export class App extends DOMNode {
   }
 
   private hitTest(node: DOMNode, x: number, y: number): Widget | null {
-    let bestMatch: Widget | null = null;
+    if (!(node instanceof Widget) || !node.visible || !node.region.contains(x, y)) {
+      return null;
+    }
 
-    node.walk((child) => {
-      if (child instanceof Widget && child.visible && child.region.contains(x, y)) {
-        bestMatch = child;
-      }
+    if (this.isPointOnScrollbar(node, x, y)) {
+      return node;
+    }
+
+    const sorted = [...node.children].sort((a, b) => {
+      const az = (a as any).computedStyle?.zIndex ?? 0;
+      const bz = (b as any).computedStyle?.zIndex ?? 0;
+      return bz - az;
     });
 
-    return bestMatch;
+    for (const child of sorted) {
+      const match = this.hitTest(child, x, y);
+      if (match) {
+        return match;
+      }
+    }
+
+    return node;
+  }
+
+  private isPointOnScrollbar(widget: Widget, x: number, y: number): boolean {
+    const parent = widget as any;
+    const isScrollable = parent.scrollableX !== undefined || parent.scrollableY !== undefined;
+    if (!isScrollable) return false;
+
+    const client = parent.getClientRect();
+    const content = parent.getContentRect();
+    const contentSize = parent.getContentSize();
+    const hasBorder = parent.computedStyle.border && parent.computedStyle.border !== "none";
+
+    const overflowY = parent.computedStyle.overflowY || "auto";
+    const showY =
+      overflowY === "scroll" || (overflowY === "auto" && contentSize.height > content.height);
+    const overflowX = parent.computedStyle.overflowX || "auto";
+    const showX =
+      overflowX === "scroll" || (overflowX === "auto" && contentSize.width > content.width);
+
+    if (showY) {
+      const vScrollbarX = hasBorder ? client.right - 1 : content.right - 1;
+      const startY = hasBorder ? client.y + 1 : content.y;
+      const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
+      if (x === vScrollbarX && y >= startY && y <= endY) {
+        return true;
+      }
+    }
+
+    if (showX) {
+      const hScrollbarY = hasBorder ? client.bottom - 1 : content.bottom - 1;
+      const startX = hasBorder ? client.x + 1 : content.x;
+      const endX = hasBorder ? client.right - 2 : content.right - 1;
+      if (y === hScrollbarY && x >= startX && x <= endX) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

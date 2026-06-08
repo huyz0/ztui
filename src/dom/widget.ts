@@ -1,3 +1,4 @@
+import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
@@ -41,6 +42,8 @@ export interface WidgetStyles {
   dim?: boolean;
   strikethrough?: boolean;
   link?: string;
+  overflowX?: "scroll" | "auto" | "hidden" | "visible";
+  overflowY?: "scroll" | "auto" | "hidden" | "visible";
 }
 
 export class Widget extends DOMNode {
@@ -63,8 +66,25 @@ export class Widget extends DOMNode {
 
   public onClick?: (ev: any) => void;
   public onKey?: (ev: any) => void;
+  public onScroll?: (ev: MouseEvent) => void;
   public onMouseEnter?: (ev: any) => void;
   public onMouseLeave?: (ev: any) => void;
+
+  public handleScroll(ev: MouseEvent): void {
+    if (this.onScroll) {
+      this.onScroll(ev);
+      ev.handled = true;
+    }
+  }
+
+  public handleKey(ev: KeyEvent): void {
+    if (this.onKey) {
+      this.onKey(ev);
+      ev.handled = true;
+    }
+  }
+
+  public handleMouse(_ev: MouseEvent): void {}
 
   constructor(tagName = "widget") {
     super(tagName);
@@ -202,6 +222,9 @@ export class Widget extends DOMNode {
     });
     for (const child of sorted) {
       if (child instanceof Widget) {
+        if (buffer.currentClip && !buffer.currentClip.intersection(child.region)) {
+          continue;
+        }
         child.render(buffer);
       }
     }

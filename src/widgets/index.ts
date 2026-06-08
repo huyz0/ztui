@@ -1,6 +1,6 @@
 import { registerElement } from "../react/host-config.ts";
 
-import { BoxWidget } from "./box.ts";
+import { BoxWidget, ScrollableBoxWidget } from "./box.ts";
 import { ButtonWidget } from "./button.ts";
 import { DockWidget } from "./dock.ts";
 import { FooterWidget } from "./footer.ts";
@@ -19,7 +19,7 @@ import { SvgImageWidget } from "./svg-image.ts";
 import { SyntaxWidget } from "./syntax.ts";
 import { VBoxWidget } from "./vbox.ts";
 
-export { BoxWidget } from "./box.ts";
+export { BoxWidget, ScrollableBoxWidget } from "./box.ts";
 export { ButtonWidget } from "./button.ts";
 export { DockWidget } from "./dock.ts";
 export { FooterWidget } from "./footer.ts";
@@ -39,6 +39,7 @@ export { SyntaxWidget } from "./syntax.ts";
 export { VBoxWidget } from "./vbox.ts";
 
 registerElement("ztui-box", () => new BoxWidget());
+registerElement("ztui-scrollable-box", () => new ScrollableBoxWidget());
 registerElement("ztui-label", () => new LabelWidget());
 registerElement("ztui-button", () => new ButtonWidget());
 registerElement("ztui-input", () => new InputWidget());

@@ -8,6 +8,7 @@ export interface KeyEvent {
   ctrl: boolean;
   meta: boolean;
   shift: boolean;
+  handled?: boolean;
 }
 
 export interface MouseEvent {
@@ -15,6 +16,7 @@ export interface MouseEvent {
   y: number;
   type: "press" | "release" | "drag" | "move" | "scroll_up" | "scroll_down";
   button: "left" | "right" | "middle" | "none";
+  handled?: boolean;
 }
 
 export interface TerminalCapabilities {

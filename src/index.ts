@@ -3,6 +3,7 @@ export { App } from "./core/app.ts";
 export { startInspector } from "./core/inspector.ts";
 export { DOMNode } from "./dom/dom.ts";
 export { Screen } from "./dom/screen.ts";
+export { Scrollable } from "./dom/scrollable.ts";
 export type { WidgetStyles } from "./dom/widget.ts";
 export { Widget } from "./dom/widget.ts";
 export { BunDriver } from "./driver/bun/index.ts";
@@ -38,6 +39,7 @@ export {
   Mermaid,
   type MermaidProps,
   RichText,
+  ScrollableBox,
   SvgImage,
   type SvgImageProps,
   Syntax,

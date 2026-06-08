@@ -11,6 +11,7 @@ import {
   Markdown,
   RichText,
   render,
+  ScrollableBox,
   SvgImage,
   Syntax,
   VBox,
@@ -749,6 +750,35 @@ A --> B
 
     mermaidWidget.onKey({ key: " ", ctrl: false, meta: false, shift: false });
     expect(mermaidWidget.showDiagram).toBe(true);
+
+    app.stop();
+  });
+
+  test("ScrollableBox component renders and updates style / children correctly", async () => {
+    const driver = new VTEDriver(80, 25, {
+      glyphProtocol: false,
+      graphicsProtocol: "none",
+    });
+    const app = new App(driver);
+
+    render(
+      <ScrollableBox id="scroll-box-1" style={{ width: 10, height: 10 }}>
+        <Box style={{ width: 20, height: 20 }} />
+      </ScrollableBox>,
+      app.activeScreen,
+    );
+
+    app.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await driver.waitWrite();
+
+    const scrollBox = app.activeScreen.children[0] as any;
+    expect(scrollBox.tagName).toBe("scrollable-box");
+    expect(scrollBox.id).toBe("scroll-box-1");
+    expect(scrollBox.computedStyle.width).toBe(10);
+    expect(scrollBox.computedStyle.height).toBe(10);
+    expect(scrollBox.children.length).toBe(1);
+    expect(scrollBox.children[0].tagName).toBe("box");
 
     app.stop();
   });
