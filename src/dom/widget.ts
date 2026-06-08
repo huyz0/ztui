@@ -63,7 +63,13 @@ export class Widget extends DOMNode {
   public focusable = false;
   public focused = false;
   public visible = true;
-  public theme?: string;
+  private _theme?: string;
+  public get theme(): string | undefined {
+    return this._theme;
+  }
+  public set theme(val: string | undefined) {
+    this._theme = val;
+  }
 
   public onClick?: (ev: any) => void;
   public onKey?: (ev: any) => void;

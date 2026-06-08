@@ -131,9 +131,7 @@ function GenerativeUIApp() {
           >
             <Label style={{ color: "#89b4fa", bold: true }}>📖 Markdown Stream Panel</Label>
             <View style={{ height: 1 }} />
-            <Markdown theme="ansi_dark" onAction={handleAction}>
-              {mdText}
-            </Markdown>
+            <Markdown onAction={handleAction}>{mdText}</Markdown>
           </VBox>
 
           {/* Right Column: JSONUI Stream */}

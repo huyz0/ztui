@@ -1,13 +1,15 @@
 import type { ComponentProps } from "./types.ts";
 
-export interface InputProps extends ComponentProps {
+export interface TextAreaProps extends ComponentProps {
   onKey?: (ev: any) => void;
   value?: string;
   onChange?: (val: string) => void;
   placeholder?: string;
+  lineNumbers?: boolean;
+  language?: string;
 }
 
-export function Input({
+export function TextArea({
   id,
   className,
   style,
@@ -15,11 +17,14 @@ export function Input({
   value,
   onChange,
   placeholder,
+  lineNumbers,
+  language,
+  theme,
   children,
   ...rest
-}: InputProps) {
+}: TextAreaProps) {
   return (
-    <ztui-input
+    <ztui-textarea
       id={id}
       className={className}
       style={style}
@@ -27,9 +32,12 @@ export function Input({
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      lineNumbers={lineNumbers}
+      language={language}
+      theme={theme}
       {...rest}
     >
       {children}
-    </ztui-input>
+    </ztui-textarea>
   );
 }

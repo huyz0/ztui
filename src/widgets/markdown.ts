@@ -79,22 +79,20 @@ function areTokensEqual(a: any, b: any): boolean {
 }
 
 export class MarkdownWidget extends Scrollable(Widget) {
-  private _theme: "ansi_dark" | "ansi_light" = "ansi_dark";
-  public get theme(): "ansi_dark" | "ansi_light" {
-    return this._theme;
+  private _markdownTheme?: string = "theme";
+  public override get theme(): string | undefined {
+    return this._markdownTheme;
   }
-  public set theme(val: "ansi_dark" | "ansi_light") {
-    if (this._theme !== val) {
-      this._theme = val;
+  public override set theme(val: string | undefined) {
+    if (this._markdownTheme !== val) {
+      this._markdownTheme = val;
       this.propagateTheme();
     }
   }
 
   private propagateTheme(): void {
     const update = (w: Widget) => {
-      if ("theme" in w) {
-        (w as any).theme = this._theme;
-      }
+      w.theme = this._markdownTheme;
       for (const child of w.children) {
         if (child instanceof Widget) {
           update(child);
@@ -241,12 +239,12 @@ export class MarkdownWidget extends Scrollable(Widget) {
     // 1. Heading
     if (token.type === "heading") {
       const headingColors = {
-        1: "bright-cyan",
-        2: "bright-blue",
-        3: "green",
-        4: "yellow",
-        5: "magenta",
-        6: "gray",
+        1: "$primary",
+        2: "$secondary",
+        3: "$accent",
+        4: "$success",
+        5: "$warning",
+        6: "$dimmed",
       };
       const depth = token.depth || 1;
       const color = headingColors[depth as keyof typeof headingColors] || "white";
@@ -264,7 +262,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
 
       if (depth === 1 || depth === 2) {
         const rule = new RichTextWidget();
-        rule.style.color = "gray";
+        rule.style.color = "$dimmed";
         rule.style.dim = true;
         rule.appendChild(new TextNode("━".repeat(Math.max(10, stringWidth(content)))));
         container.appendChild(rule);
@@ -315,7 +313,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
       container.style.margin = new Spacing(0, 0, 1, 0);
 
       const bar = new RichTextWidget();
-      bar.style.color = "blue";
+      bar.style.color = "$secondary";
       bar.style.dim = true;
       bar.appendChild(new TextNode("▌ "));
       container.appendChild(bar);
@@ -340,7 +338,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
       container.style.margin = new Spacing(1, 0, 1, 0);
 
       const rule = new RichTextWidget();
-      rule.style.color = "gray";
+      rule.style.color = "$dimmed";
       rule.style.dim = true;
       rule.appendChild(new TextNode("─".repeat(40)));
       container.appendChild(rule);
@@ -407,7 +405,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
       syntax.theme = this.theme;
       syntax.lineNumbers = true;
       syntax.style.border = "dashed";
-      syntax.style.borderColor = "gray";
+      syntax.style.borderColor = "$dimmed";
       syntax.style.margin = new Spacing(0, 0, 1, 0);
       syntax.appendChild(new TextNode(token.text.trim()));
       return syntax;
@@ -424,7 +422,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
 
     const bulletSymbol = isOrdered ? `${index + 1}. ` : "• ";
     const bullet = new RichTextWidget();
-    bullet.style.color = "bright-blue";
+    bullet.style.color = "$primary";
     bullet.style.bold = true;
     bullet.appendChild(new TextNode(bulletSymbol));
     container.appendChild(bullet);

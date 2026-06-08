@@ -14,6 +14,7 @@ import {
   ScrollableBox,
   SvgImage,
   Syntax,
+  TextArea,
   VBox,
 } from "../index.ts";
 import { TextNode } from "../react/host-config.ts";
@@ -73,10 +74,10 @@ describe("Rich Components Integration Tests", () => {
 
     render(
       <VBox>
-        <Syntax language="typescript" lineNumbers={true} theme="ansi_dark">
+        <Syntax language="typescript" lineNumbers={true} theme="default-dark">
           {tsCode}
         </Syntax>
-        <Syntax language="typescript" lineNumbers={false} theme="ansi_light">
+        <Syntax language="typescript" lineNumbers={false} theme="default-light">
           {"const x = true;"}
         </Syntax>
         <Syntax language="diff" lineNumbers={false}>
@@ -128,7 +129,7 @@ describe("Rich Components Integration Tests", () => {
 - bullet 1
 1. ordered 1`;
 
-    render(<Markdown theme="ansi_dark">{mdText}</Markdown>, app.activeScreen);
+    render(<Markdown>{mdText}</Markdown>, app.activeScreen);
 
     app.run();
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -178,12 +179,7 @@ describe("Rich Components Integration Tests", () => {
 }
 \`\`\``;
 
-    render(
-      <Markdown theme="ansi_dark" onAction={onAction}>
-        {mdContent}
-      </Markdown>,
-      app.activeScreen,
-    );
+    render(<Markdown onAction={onAction}>{mdContent}</Markdown>, app.activeScreen);
 
     app.run();
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -538,10 +534,7 @@ describe("Rich Components Integration Tests", () => {
     // 1. Render initial markdown with incomplete syntax
     // "This is **bold" has an open bold formatting which remend should complete.
     const initialText = "# Header 1\n\nThis is **bold";
-    const container = render(
-      <Markdown theme="ansi_dark">{initialText}</Markdown>,
-      app.activeScreen,
-    );
+    const container = render(<Markdown>{initialText}</Markdown>, app.activeScreen);
 
     app.run();
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -564,12 +557,7 @@ describe("Rich Components Integration Tests", () => {
 
     // 2. Update markdown by appending a new block
     const updatedText = "# Header 1\n\nThis is **bold**\n\n- Item 1\n- Item 2";
-    reconciler.updateContainer(
-      <Markdown theme="ansi_dark">{updatedText}</Markdown>,
-      container,
-      null,
-      () => {},
-    );
+    reconciler.updateContainer(<Markdown>{updatedText}</Markdown>, container, null, () => {});
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     await driver.waitWrite();
@@ -625,7 +613,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
 \`\`\`
 `;
 
-    render(<Markdown theme="ansi_dark">{mdText}</Markdown>, app.activeScreen);
+    render(<Markdown>{mdText}</Markdown>, app.activeScreen);
 
     app.run();
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -779,6 +767,143 @@ A --> B
     expect(scrollBox.computedStyle.height).toBe(10);
     expect(scrollBox.children.length).toBe(1);
     expect(scrollBox.children[0].tagName).toBe("box");
+
+    app.stop();
+  });
+
+  test("InputWidget enhanced keyboard navigation, scrolling, and placeholder", async () => {
+    const driver = new VTEDriver(20, 3, {
+      glyphProtocol: false,
+      graphicsProtocol: "none",
+    });
+    const app = new App(driver);
+
+    let val = "";
+    const onChange = (v: string) => {
+      val = v;
+    };
+
+    render(<Input value="hello" onChange={onChange} placeholder="empty..." />, app.activeScreen);
+    app.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const inputWidget = app.activeScreen.children[0] as any;
+    expect(inputWidget.value).toBe("hello");
+
+    // Click inside to position cursor (e.g. at click col = 2 -> absolute col = 2, character 'l')
+    inputWidget.handleMouse({
+      type: "press",
+      button: "left",
+      x: inputWidget.getContentRect().x + 2,
+      y: inputWidget.getContentRect().y,
+    });
+    expect(inputWidget.cursorCol).toBe(2);
+
+    // Left key
+    inputWidget.onKey({ key: "left", name: "left", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(1);
+
+    // Right key
+    inputWidget.onKey({ key: "right", name: "right", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(2);
+
+    // Home
+    inputWidget.onKey({ key: "home", name: "home", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(0);
+
+    // End
+    inputWidget.onKey({ key: "end", name: "end", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(5);
+
+    // Insert character '!' at end (cursor is at 5)
+    inputWidget.onKey({ key: "!", name: "!", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("hello!");
+    expect(inputWidget.cursorCol).toBe(6);
+
+    // Backspace at 6 deletes '!'
+    inputWidget.onKey({
+      key: "backspace",
+      name: "backspace",
+      ctrl: false,
+      meta: false,
+      shift: false,
+    });
+    expect(val).toBe("hello");
+    expect(inputWidget.cursorCol).toBe(5);
+
+    // Move left twice to col 3 (after 'l')
+    inputWidget.onKey({ key: "left", name: "left", ctrl: false, meta: false, shift: false });
+    inputWidget.onKey({ key: "left", name: "left", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(3);
+
+    // Delete at 3 deletes 'l' (so 'hello' -> 'helo')
+    inputWidget.onKey({ key: "delete", name: "delete", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("helo");
+    expect(inputWidget.cursorCol).toBe(3);
+
+    // Test placeholder rendering
+    inputWidget.value = "";
+    app.queueRender();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const buffer = (app as any).currentBuffer;
+    // Check placeholder character 'e'
+    expect(buffer.cells[inputWidget.getContentRect().y][inputWidget.getContentRect().x].char).toBe(
+      "e",
+    );
+
+    app.stop();
+  });
+
+  test("TextAreaWidget multiline syntax coloring, line numbers, scrolling, and editing", async () => {
+    const driver = new VTEDriver(30, 8, {
+      glyphProtocol: false,
+      graphicsProtocol: "none",
+    });
+    const app = new App(driver);
+
+    let val = "line1\nline2";
+    const onChange = (v: string) => {
+      val = v;
+    };
+
+    render(
+      <TextArea value={val} onChange={onChange} lineNumbers={true} language="typescript" />,
+      app.activeScreen,
+    );
+    app.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const textWidget = app.activeScreen.children[0] as any;
+    expect(textWidget.value).toBe("line1\nline2");
+
+    // Click at row 1, col 2 ('n' of line2).
+    // Gutter width is: Max string length of 2 = 2. 2 + 3 = 5.
+    // So click x at contentRect.x + 5 (gutter) + 2 (offset)
+    textWidget.handleMouse({
+      type: "press",
+      button: "left",
+      x: textWidget.getContentRect().x + 5 + 2,
+      y: textWidget.getContentRect().y + 1,
+    });
+    expect(textWidget.cursorRow).toBe(1);
+    expect(textWidget.cursorCol).toBe(2);
+
+    // Test up arrow
+    textWidget.onKey({ key: "up", name: "up", ctrl: false, meta: false, shift: false });
+    expect(textWidget.cursorRow).toBe(0);
+    expect(textWidget.cursorCol).toBe(2); // keeps same column
+
+    // Test enter to insert newline: 'li\nne1\nline2'
+    textWidget.onKey({ key: "enter", name: "enter", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("li\nne1\nline2");
+    expect(textWidget.cursorRow).toBe(1);
+    expect(textWidget.cursorCol).toBe(0);
+
+    // Test typing a character: 'li\nxne1\nline2'
+    textWidget.onKey({ key: "x", name: "x", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("li\nxne1\nline2");
+    expect(textWidget.cursorRow).toBe(1);
+    expect(textWidget.cursorCol).toBe(1);
 
     app.stop();
   });

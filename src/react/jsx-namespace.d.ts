@@ -8,6 +8,7 @@ declare global {
         style?: WidgetStyles;
         className?: string;
         id?: string;
+        theme?: string;
         children?: React.ReactNode;
         onMouseEnter?: (ev: any) => void;
         onMouseLeave?: (ev: any) => void;
@@ -23,6 +24,15 @@ declare global {
           onKey?: (ev: any) => void;
           value?: string;
           onChange?: (val: string) => void;
+          placeholder?: string;
+        };
+        "ztui-textarea": ZTUIElementProps & {
+          onKey?: (ev: any) => void;
+          value?: string;
+          onChange?: (val: string) => void;
+          placeholder?: string;
+          lineNumbers?: boolean;
+          language?: string;
         };
         "ztui-header": ZTUIElementProps;
         "ztui-footer": ZTUIElementProps;
@@ -48,21 +58,15 @@ declare global {
         "ztui-syntax": ZTUIElementProps & {
           language?: string;
           lineNumbers?: boolean;
-          theme?: "ansi_dark" | "ansi_light";
         };
         "ztui-markdown": ZTUIElementProps & {
-          theme?: "ansi_dark" | "ansi_light";
           onAction?: (actionName: string, eventData: any) => void;
         };
         "ztui-jsonui": ZTUIElementProps & {
           onAction?: (actionName: string, eventData: any) => void;
         };
-        "ztui-mermaid": ZTUIElementProps & {
-          theme?: "ansi_dark" | "ansi_light";
-        };
-        mermaid: ZTUIElementProps & {
-          theme?: "ansi_dark" | "ansi_light";
-        };
+        "ztui-mermaid": ZTUIElementProps;
+        mermaid: ZTUIElementProps;
       }
     }
   }

@@ -46,6 +46,8 @@ export {
   type SvgImageProps,
   Syntax,
   type SyntaxProps,
+  TextArea,
+  type TextAreaProps,
   VBox,
   View,
 } from "./react/components.tsx";
@@ -70,6 +72,7 @@ export { MermaidWidget } from "./widgets/mermaid.ts";
 export { RichTextWidget } from "./widgets/rich-text.ts";
 export { SvgImageWidget } from "./widgets/svg-image.ts";
 export { SyntaxWidget } from "./widgets/syntax.ts";
+export { TextAreaWidget } from "./widgets/textarea.ts";
 
 // Run widget registrations
 import "./widgets/index.ts";

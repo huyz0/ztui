@@ -15,7 +15,7 @@ describe("Syntax Highlighting Engine", () => {
     expect(commentSpan).toBeDefined();
 
     // Verify string style
-    const stringSpan = rich.spans.find((s) => s.style.color?.includes("yellow"));
+    const stringSpan = rich.spans.find((s) => s.style.color === "$string");
     expect(stringSpan).toBeDefined();
 
     // Verify keyword style
@@ -82,13 +82,13 @@ describe("Syntax Highlighting Engine", () => {
 
     expect(rich.plain).toBe(code);
 
-    const addedSpan = rich.spans.find((s) => s.style.color?.includes("green"));
+    const addedSpan = rich.spans.find((s) => s.style.color === "$diff-added");
     expect(addedSpan).toBeDefined();
 
-    const removedSpan = rich.spans.find((s) => s.style.color?.includes("red"));
+    const removedSpan = rich.spans.find((s) => s.style.color === "$diff-removed");
     expect(removedSpan).toBeDefined();
 
-    const headerSpan = rich.spans.find((s) => s.style.color === "cyan");
+    const headerSpan = rich.spans.find((s) => s.style.color === "$diff-header");
     expect(headerSpan).toBeDefined();
   });
 

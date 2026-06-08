@@ -1,15 +1,15 @@
+import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import { parseDimension } from "../layout/layout.ts";
 import { TextNode } from "../react/host-config.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Syntax } from "../render/rich/syntax.ts";
-import { stringWidth } from "../render/segment.ts";
+import { Segment, stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 
 export class SyntaxWidget extends Widget {
   public language = "text";
   public lineNumbers = true;
-  public theme: "ansi_dark" | "ansi_light" = "ansi_dark";
 
   constructor() {
     super("syntax");
@@ -59,7 +59,12 @@ export class SyntaxWidget extends Widget {
     const rawCode = this.getTextContent();
     if (!rawCode) return;
 
-    const lines = Syntax.renderToLines(rawCode, this.language, this.lineNumbers, this.theme);
+    const lines = Syntax.renderToLines(
+      rawCode,
+      this.language,
+      this.lineNumbers,
+      this.theme || "theme",
+    );
 
     const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
@@ -88,7 +93,15 @@ export class SyntaxWidget extends Widget {
         if (currentX >= contentRect.right) {
           break; // clip horizontally
         }
-        buffer.drawSegment(currentX, currentY, segment, contentRect);
+        const resolvedColor = segment.style.color
+          ? App.instance?.cssResolver.resolveVariable(this, segment.style.color) ||
+            segment.style.color
+          : undefined;
+        const resolvedSegment = new Segment(
+          segment.text,
+          segment.style.merge({ color: resolvedColor }),
+        );
+        buffer.drawSegment(currentX, currentY, resolvedSegment, contentRect);
         currentX += stringWidth(segment.text);
       }
 

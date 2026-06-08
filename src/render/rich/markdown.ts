@@ -69,7 +69,7 @@ export class Markdown {
    */
   public static renderToLines(
     markdown: string,
-    themeName: "ansi_dark" | "ansi_light" = "ansi_dark",
+    themeName = "theme",
     _capabilities?: TerminalCapabilities,
   ): RichText[] {
     const tokens = marked.lexer(markdown);
@@ -77,18 +77,18 @@ export class Markdown {
 
     // Base theme styles
     const headingColors = {
-      h1: "bright-cyan",
-      h2: "bright-blue",
-      h3: "green",
-      h4: "yellow",
-      h5: "magenta",
-      h6: "gray",
+      h1: "$primary",
+      h2: "$secondary",
+      h3: "$accent",
+      h4: "$success",
+      h5: "$warning",
+      h6: "$dimmed",
     };
 
-    const bulletStyle = new Style({ color: "bright-blue", bold: true });
-    const numberStyle = new Style({ color: "bright-blue", bold: true });
-    const quoteBarStyle = new Style({ color: "blue", dim: true });
-    const hrStyle = new Style({ color: "gray", dim: true });
+    const bulletStyle = new Style({ color: "$primary", bold: true });
+    const numberStyle = new Style({ color: "$primary", bold: true });
+    const quoteBarStyle = new Style({ color: "$secondary" });
+    const hrStyle = new Style({ color: "$dimmed" });
 
     // Helper to format block prefixes (like list bullets, line numbers, blockquotes)
     const formatLine = (richLine: RichText, prefix: string, prefixSpans: Span[]): RichText => {
@@ -167,7 +167,7 @@ export class Markdown {
             maxLineLen = Math.max(maxLineLen, stringWidth(line.plain));
           }
 
-          const borderStyle = new Style({ color: "gray", dim: true });
+          const borderStyle = new Style({ color: "$dimmed" });
 
           // 1. Top border line
           const topText = `┌${"─".repeat(maxLineLen + 2)}┐`;

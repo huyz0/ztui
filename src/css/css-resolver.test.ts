@@ -125,4 +125,95 @@ describe("CSSResolver Theming and Variables", () => {
     const style = resolver.resolveStyles(child, false);
     expect(style.color).toBe("#88c0d0"); // Nord primary instead of cyan (#00ffff)
   });
+
+  test("Dynamic syntax and diff variable fallbacks", () => {
+    const resolver = new CSSResolver([]);
+    const widget = new Widget("code");
+
+    // Test syntax color fallbacks mapped to primary, secondary, warning, accent, etc.
+    widget.style.color = "$keyword";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+
+    widget.style.color = "$string";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#ffeb3b"); // default-dark warning
+
+    widget.style.color = "$number";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#ff00ff"); // default-dark accent
+
+    widget.style.color = "$function";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#569cd6"); // default-dark secondary
+
+    widget.style.color = "$operator";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#ffffff"); // default-dark foreground
+
+    widget.style.color = "$property";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+
+    widget.style.color = "$tag";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#569cd6"); // default-dark secondary
+
+    // Test diff color fallbacks
+    widget.style.color = "$diff-added";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#4caf50"); // default-dark success
+
+    widget.style.color = "$diff-removed";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#f44336"); // default-dark error
+
+    widget.style.color = "$diff-header";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+
+    // Test comment/dimmed blend fallback when undefined in theme
+    widget.style.color = "$comment";
+    const resolvedComment = resolver.resolveStyles(widget, false).color;
+    expect(resolvedComment).toBeDefined();
+    expect(resolvedComment?.startsWith("#")).toBe(true);
+  });
+
+  test("Dynamic semantic and state variable fallbacks", () => {
+    const themeManager = ThemeManager.getInstance();
+    const resolver = new CSSResolver([]);
+    const widget = new Widget("div");
+
+    // Default dark theme tests
+    themeManager.setTheme("default-dark");
+
+    widget.style.color = "$border";
+    const borderDark = resolver.resolveStyles(widget, false).color;
+    expect(borderDark?.startsWith("#")).toBe(true);
+
+    widget.style.color = "$focus";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+
+    widget.style.color = "$selectionBg";
+    const selectionBgDark = resolver.resolveStyles(widget, false).color;
+    expect(selectionBgDark?.startsWith("#")).toBe(true);
+
+    widget.style.color = "$selectionFg";
+    const selectionFgDark = resolver.resolveStyles(widget, false).color;
+    expect(selectionFgDark).toBe("#ffffff"); // selectionBg is dark, so foreground is white
+
+    widget.style.color = "$shadow";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#000000"); // dark theme shadow is black
+
+    // Default light theme tests
+    themeManager.setTheme("default-light");
+
+    widget.style.color = "$border";
+    const borderLight = resolver.resolveStyles(widget, false).color;
+    expect(borderLight?.startsWith("#")).toBe(true);
+    expect(borderLight).not.toBe(borderDark); // different backgrounds
+
+    widget.style.color = "$focus";
+    expect(resolver.resolveStyles(widget, false).color).toBe("#0088cc"); // default-light primary
+
+    widget.style.color = "$selectionBg";
+    const selectionBgLight = resolver.resolveStyles(widget, false).color;
+    expect(selectionBgLight?.startsWith("#")).toBe(true);
+
+    widget.style.color = "$shadow";
+    const shadowLight = resolver.resolveStyles(widget, false).color;
+    expect(shadowLight?.startsWith("#")).toBe(true);
+
+    themeManager.setTheme("default-dark"); // restore
+  });
 });

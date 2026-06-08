@@ -36,8 +36,7 @@ describe("Markdown Engine", () => {
 
     expect(lines.length).toBe(1);
     expect(lines[0].plain).toBe("▌ This is a quote");
-    expect(lines[0].spans[0].style.color).toBe("blue");
-    expect(lines[0].spans[0].style.dim).toBe(true);
+    expect(lines[0].spans[0].style.color).toBe("$secondary");
   });
 
   test("Markdown.renderToLines parses bullet and ordered lists", () => {

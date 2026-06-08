@@ -3,7 +3,6 @@ import type { ComponentProps } from "./types.ts";
 export interface SyntaxProps extends ComponentProps {
   language?: string;
   lineNumbers?: boolean;
-  theme?: "ansi_dark" | "ansi_light";
 }
 
 export function Syntax({

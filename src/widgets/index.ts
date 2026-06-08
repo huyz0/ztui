@@ -17,6 +17,7 @@ import { MermaidWidget } from "./mermaid.ts";
 import { RichTextWidget } from "./rich-text.ts";
 import { SvgImageWidget } from "./svg-image.ts";
 import { SyntaxWidget } from "./syntax.ts";
+import { TextAreaWidget } from "./textarea.ts";
 import { VBoxWidget } from "./vbox.ts";
 
 export { BoxWidget, ScrollableBoxWidget } from "./box.ts";
@@ -36,6 +37,7 @@ export { MermaidWidget } from "./mermaid.ts";
 export { RichTextWidget } from "./rich-text.ts";
 export { SvgImageWidget } from "./svg-image.ts";
 export { SyntaxWidget } from "./syntax.ts";
+export { TextAreaWidget } from "./textarea.ts";
 export { VBoxWidget } from "./vbox.ts";
 
 registerElement("ztui-box", () => new BoxWidget());
@@ -43,6 +45,7 @@ registerElement("ztui-scrollable-box", () => new ScrollableBoxWidget());
 registerElement("ztui-label", () => new LabelWidget());
 registerElement("ztui-button", () => new ButtonWidget());
 registerElement("ztui-input", () => new InputWidget());
+registerElement("ztui-textarea", () => new TextAreaWidget());
 registerElement("ztui-header", () => new HeaderWidget());
 registerElement("ztui-footer", () => new FooterWidget());
 registerElement("ztui-vbox", () => new VBoxWidget());

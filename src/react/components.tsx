@@ -27,6 +27,8 @@ export type { SvgImageProps } from "./components/svg-image.tsx";
 export { SvgImage } from "./components/svg-image.tsx";
 export type { SyntaxProps } from "./components/syntax.tsx";
 export { Syntax } from "./components/syntax.tsx";
+export type { TextAreaProps } from "./components/textarea.tsx";
+export { TextArea } from "./components/textarea.tsx";
 export type { ComponentProps } from "./components/types.ts";
 export { VBox } from "./components/vbox.tsx";
 export { View } from "./components/view.tsx";

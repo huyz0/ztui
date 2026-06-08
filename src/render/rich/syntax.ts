@@ -21,36 +21,20 @@ import "prismjs/components/prism-plsql.js";
 import { Style } from "../style.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
 
-const ANSI_DARK_THEME: Record<string, Style> = {
-  comment: new Style({ dim: true, color: "gray" }),
-  string: new Style({ color: "bright-yellow" }),
-  keyword: new Style({ color: "bright-cyan", bold: true }),
-  builtin: new Style({ color: "bright-blue" }),
-  number: new Style({ color: "bright-green" }),
-  type: new Style({ color: "bright-magenta" }),
-  operator: new Style({ color: "white" }),
-  punctuation: new Style({ color: "gray" }),
-  property: new Style({ color: "bright-magenta" }),
-  tag: new Style({ color: "bright-blue" }),
-  "attr-name": new Style({ color: "bright-yellow" }),
-  boolean: new Style({ color: "bright-cyan", bold: true }),
-  function: new Style({ color: "bright-green" }),
-};
-
-const ANSI_LIGHT_THEME: Record<string, Style> = {
-  comment: new Style({ dim: true, color: "gray" }),
-  string: new Style({ color: "yellow" }),
-  keyword: new Style({ color: "cyan", bold: true }),
-  builtin: new Style({ color: "blue" }),
-  number: new Style({ color: "green" }),
-  type: new Style({ color: "magenta" }),
-  operator: new Style({ color: "black" }),
-  punctuation: new Style({ color: "gray" }),
-  property: new Style({ color: "magenta" }),
-  tag: new Style({ color: "blue" }),
-  "attr-name": new Style({ color: "yellow" }),
-  boolean: new Style({ color: "cyan", bold: true }),
-  function: new Style({ color: "green" }),
+const THEME_DYNAMIC_STYLE: Record<string, Style> = {
+  comment: new Style({ color: "$comment", dim: true }),
+  string: new Style({ color: "$string" }),
+  keyword: new Style({ color: "$keyword", bold: true }),
+  builtin: new Style({ color: "$builtin" }),
+  number: new Style({ color: "$number" }),
+  type: new Style({ color: "$type" }),
+  operator: new Style({ color: "$operator" }),
+  punctuation: new Style({ color: "$punctuation" }),
+  property: new Style({ color: "$property" }),
+  tag: new Style({ color: "$tag" }),
+  "attr-name": new Style({ color: "$attr-name" }),
+  boolean: new Style({ color: "$boolean", bold: true }),
+  function: new Style({ color: "$function" }),
 };
 
 function getGrammar(lang: string): Prism.Grammar | undefined {
@@ -158,19 +142,15 @@ export class Syntax {
   /**
    * Highlights code syntax using Prism.js and returns a RichText instance.
    */
-  public static highlight(
-    code: string,
-    language: string,
-    themeName: "ansi_dark" | "ansi_light" = "ansi_dark",
-  ): RichText {
+  public static highlight(code: string, language: string, _themeName = "theme"): RichText {
     const lang = language.toLowerCase();
 
     // Custom diff highlighter
     if (lang === "diff") {
-      return Syntax.highlightDiff(code, themeName);
+      return Syntax.highlightDiff(code, _themeName);
     }
 
-    const theme = themeName === "ansi_light" ? ANSI_LIGHT_THEME : ANSI_DARK_THEME;
+    const theme = THEME_DYNAMIC_STYLE;
     const grammar = getGrammar(language);
 
     if (!grammar) {
@@ -195,13 +175,13 @@ export class Syntax {
   /**
    * Highlights diff code block line-by-line.
    */
-  private static highlightDiff(code: string, themeName: "ansi_dark" | "ansi_light"): RichText {
+  private static highlightDiff(code: string, _themeName: string): RichText {
     const rawLines = code.split(/\r?\n/);
     const spans: Span[] = [];
 
-    const addedStyle = new Style({ color: themeName === "ansi_light" ? "green" : "bright-green" });
-    const removedStyle = new Style({ color: themeName === "ansi_light" ? "red" : "bright-red" });
-    const headerStyle = new Style({ color: "cyan" });
+    const addedStyle = new Style({ color: "$diff-added" });
+    const removedStyle = new Style({ color: "$diff-removed" });
+    const headerStyle = new Style({ color: "$diff-header" });
 
     let currentOffset = 0;
     for (const line of rawLines) {
@@ -228,7 +208,7 @@ export class Syntax {
     code: string,
     language: string,
     lineNumbers = false,
-    themeName: "ansi_dark" | "ansi_light" = "ansi_dark",
+    themeName = "theme",
   ): RichText[] {
     const highlighted = Syntax.highlight(code, language, themeName);
     const codeLines = splitRichTextIntoLines(highlighted);
@@ -239,7 +219,7 @@ export class Syntax {
 
     const totalLines = codeLines.length;
     const gutterWidth = Math.max(2, String(totalLines).length);
-    const gutterStyle = new Style({ color: "gray", dim: true });
+    const gutterStyle = new Style({ color: "$gutter", dim: true });
 
     return codeLines.map((line, idx) => {
       const lineNumStr = String(idx + 1).padStart(gutterWidth);

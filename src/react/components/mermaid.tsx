@@ -1,8 +1,6 @@
 import type { ComponentProps } from "./types.ts";
 
-export interface MermaidProps extends ComponentProps {
-  theme?: "ansi_dark" | "ansi_light";
-}
+export interface MermaidProps extends ComponentProps {}
 
 export function Mermaid({ id, className, style, children, theme, ...rest }: MermaidProps) {
   return (

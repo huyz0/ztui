@@ -11,12 +11,53 @@ export interface Theme {
     success: string;
     warning: string;
     error: string;
-    [key: string]: string;
+    comment?: string;
+    placeholder?: string;
+    gutter?: string;
+    dimmed?: string;
+    keyword?: string;
+    string?: string;
+    number?: string;
+    regexp?: string;
+    operator?: string;
+    punctuation?: string;
+    builtin?: string;
+    type?: string;
+    boolean?: string;
+    function?: string;
+    property?: string;
+    tag?: string;
+    "attr-name"?: string;
+    border?: string;
+    focus?: string;
+    selectionBg?: string;
+    selectionFg?: string;
+    shadow?: string;
+    [key: string]: string | undefined;
   };
 }
 
+export function isColorLight(hexColor: string): boolean {
+  if (!hexColor?.startsWith("#")) return false;
+  let hex = hexColor.slice(1);
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  // Standard relative luminance formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5;
+}
+
+export function isThemeLight(theme: Theme): boolean {
+  const bg = theme.colors.background || "#121212";
+  return isColorLight(bg);
+}
+
 export function adjustLightness(hexColor: string, percent: number): string {
-  if (!hexColor.startsWith("#")) return hexColor;
+  if (!hexColor?.startsWith("#")) return hexColor;
   let hex = hexColor.slice(1);
   if (hex.length === 3) {
     hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
@@ -54,7 +95,9 @@ export function deriveTheme(
   const derivedColors = { ...baseTheme.colors };
   if (options.adjustLightness !== undefined) {
     for (const [key, val] of Object.entries(derivedColors)) {
-      derivedColors[key] = adjustLightness(val, options.adjustLightness);
+      if (val) {
+        derivedColors[key] = adjustLightness(val, options.adjustLightness);
+      }
     }
   }
   return {
@@ -163,6 +206,18 @@ export class ThemeManager {
         success: "#a6e3a1",
         warning: "#f9e2af",
         error: "#f38ba8",
+        comment: "#6c7086",
+        placeholder: "#585b70",
+        gutter: "#7f849c",
+        dimmed: "#6c7086",
+        keyword: "#cba6f7",
+        string: "#a6e3a1",
+        number: "#fab387",
+        function: "#89b4fa",
+        selectionBg: "#585b70",
+        selectionFg: "#cdd6f4",
+        border: "#313244",
+        focus: "#cba6f7",
       },
     });
 
@@ -180,6 +235,14 @@ export class ThemeManager {
         success: "#a6da95",
         warning: "#eed49f",
         error: "#ed8796",
+        comment: "#6e738d",
+        placeholder: "#5b6078",
+        gutter: "#8087a2",
+        dimmed: "#6e738d",
+        keyword: "#c6a0f6",
+        string: "#a6da95",
+        number: "#f5a97f",
+        function: "#8bd5ca",
       },
     });
 
@@ -197,6 +260,14 @@ export class ThemeManager {
         success: "#a6d189",
         warning: "#e5c890",
         error: "#e78284",
+        comment: "#737994",
+        placeholder: "#626880",
+        gutter: "#838ba7",
+        dimmed: "#737994",
+        keyword: "#ca9ee6",
+        string: "#a6d189",
+        number: "#ef9f76",
+        function: "#81c8be",
       },
     });
 
@@ -214,6 +285,18 @@ export class ThemeManager {
         success: "#40a02b",
         warning: "#df8e1d",
         error: "#d20f39",
+        comment: "#6c6f85",
+        placeholder: "#6c6f85",
+        gutter: "#6c6f85",
+        dimmed: "#6c6f85",
+        keyword: "#8839ef",
+        string: "#40a02b",
+        number: "#df8e1d",
+        function: "#1e66f5",
+        selectionBg: "#acb0be",
+        selectionFg: "#4c4f69",
+        border: "#ccd0da",
+        focus: "#8839ef",
       },
     });
 
@@ -231,6 +314,18 @@ export class ThemeManager {
         success: "#a3be8c",
         warning: "#ebcb8b",
         error: "#bf616a",
+        comment: "#74819a",
+        placeholder: "#74819a",
+        gutter: "#74819a",
+        dimmed: "#74819a",
+        keyword: "#81a1c1",
+        string: "#a3be8c",
+        number: "#b48ead",
+        function: "#88c0d0",
+        selectionBg: "#434c5e",
+        selectionFg: "#d8dee9",
+        border: "#3b4252",
+        focus: "#88c0d0",
       },
     });
 
@@ -248,6 +343,18 @@ export class ThemeManager {
         success: "#50fa7b",
         warning: "#f1fa8c",
         error: "#ff5555",
+        comment: "#6272a4",
+        placeholder: "#6272a4",
+        gutter: "#6272a4",
+        dimmed: "#6272a4",
+        keyword: "#ff79c6",
+        string: "#f1fa8c",
+        number: "#bd93f9",
+        function: "#50fa7b",
+        selectionBg: "#44475a",
+        selectionFg: "#f8f8f2",
+        border: "#44475a",
+        focus: "#bd93f9",
       },
     });
 
@@ -265,6 +372,14 @@ export class ThemeManager {
         success: "#98971a",
         warning: "#fabd2f",
         error: "#cc241d",
+        comment: "#928374",
+        placeholder: "#7c6f64",
+        gutter: "#7c6f64",
+        dimmed: "#928374",
+        keyword: "#fb4934",
+        string: "#b8bb26",
+        number: "#d3869b",
+        function: "#859900",
       },
     });
 
@@ -282,6 +397,14 @@ export class ThemeManager {
         success: "#79740e",
         warning: "#b57614",
         error: "#9d0006",
+        comment: "#928374",
+        placeholder: "#bdae93",
+        gutter: "#928374",
+        dimmed: "#928374",
+        keyword: "#9d0006",
+        string: "#79740e",
+        number: "#8f3f71",
+        function: "#076678",
       },
     });
 
@@ -299,6 +422,14 @@ export class ThemeManager {
         success: "#9ece6a",
         warning: "#e0af68",
         error: "#f7768e",
+        comment: "#565f89",
+        placeholder: "#3b4261",
+        gutter: "#565f89",
+        dimmed: "#565f89",
+        keyword: "#bb9af3",
+        string: "#9ece6a",
+        number: "#ff9e64",
+        function: "#7aa2f7",
       },
     });
 
@@ -316,6 +447,14 @@ export class ThemeManager {
         success: "#98c379",
         warning: "#e5c07b",
         error: "#e06c75",
+        comment: "#5c6370",
+        placeholder: "#4b5263",
+        gutter: "#5c6370",
+        dimmed: "#5c6370",
+        keyword: "#c678dd",
+        string: "#98c379",
+        number: "#d19a66",
+        function: "#61afef",
       },
     });
 
@@ -333,6 +472,14 @@ export class ThemeManager {
         success: "#31748f",
         warning: "#f6c177",
         error: "#eb6f92",
+        comment: "#6e6a86",
+        placeholder: "#555169",
+        gutter: "#6e6a86",
+        dimmed: "#6e6a86",
+        keyword: "#c4a7e7",
+        string: "#f6c177",
+        number: "#ebbcba",
+        function: "#9ccfd8",
       },
     });
 
@@ -350,6 +497,14 @@ export class ThemeManager {
         success: "#a6e22e",
         warning: "#e6db74",
         error: "#fd971f",
+        comment: "#75715e",
+        placeholder: "#49483e",
+        gutter: "#75715e",
+        dimmed: "#75715e",
+        keyword: "#f92672",
+        string: "#e6db74",
+        number: "#ae81ff",
+        function: "#66d9ef",
       },
     });
 
@@ -367,6 +522,14 @@ export class ThemeManager {
         success: "#a7c080",
         warning: "#dbbc7f",
         error: "#e67e80",
+        comment: "#859289",
+        placeholder: "#3d484d",
+        gutter: "#859289",
+        dimmed: "#859289",
+        keyword: "#dbbc7f",
+        string: "#a7c080",
+        number: "#d699b6",
+        function: "#7fbbb3",
       },
     });
 
@@ -384,6 +547,18 @@ export class ThemeManager {
         success: "#859900",
         warning: "#b58900",
         error: "#dc322f",
+        comment: "#657b83",
+        placeholder: "#657b83",
+        gutter: "#657b83",
+        dimmed: "#657b83",
+        keyword: "#859900",
+        string: "#2aa198",
+        number: "#b58900",
+        function: "#268bd2",
+        selectionBg: "#073642",
+        selectionFg: "#93a1a1",
+        border: "#073642",
+        focus: "#268bd2",
       },
     });
 
@@ -401,6 +576,18 @@ export class ThemeManager {
         success: "#859900",
         warning: "#b58900",
         error: "#dc322f",
+        comment: "#657b83",
+        placeholder: "#657b83",
+        gutter: "#657b83",
+        dimmed: "#657b83",
+        keyword: "#859900",
+        string: "#2aa198",
+        number: "#b58900",
+        function: "#268bd2",
+        selectionBg: "#eee8d5",
+        selectionFg: "#586e75",
+        border: "#eee8d5",
+        focus: "#268bd2",
       },
     });
 
@@ -418,6 +605,14 @@ export class ThemeManager {
         success: "#27D796",
         warning: "#ff9d00",
         error: "#ff628c",
+        comment: "#5f85aa",
+        placeholder: "#122738",
+        gutter: "#5f85aa",
+        dimmed: "#5f85aa",
+        keyword: "#ff9d00",
+        string: "#3ad900",
+        number: "#ff628c",
+        function: "#ffc600",
       },
     });
 
@@ -435,6 +630,14 @@ export class ThemeManager {
         success: "#5de4c7",
         warning: "#fffac2",
         error: "#ff5874",
+        comment: "#767c9d",
+        placeholder: "#16161e",
+        gutter: "#767c9d",
+        dimmed: "#767c9d",
+        keyword: "#5de4c7",
+        string: "#fffac2",
+        number: "#ff5874",
+        function: "#89ddff",
       },
     });
 
@@ -452,6 +655,14 @@ export class ThemeManager {
         success: "#76946a",
         warning: "#e6c384",
         error: "#c34043",
+        comment: "#727169",
+        placeholder: "#16161d",
+        gutter: "#727169",
+        dimmed: "#727169",
+        keyword: "#957fb8",
+        string: "#98bb6c",
+        number: "#ff9e3b",
+        function: "#7e9cd8",
       },
     });
 
@@ -469,6 +680,14 @@ export class ThemeManager {
         success: "#3fb950",
         warning: "#d29922",
         error: "#f85149",
+        comment: "#8b949e",
+        placeholder: "#30363d",
+        gutter: "#8b949e",
+        dimmed: "#8b949e",
+        keyword: "#ff7b72",
+        string: "#a5d6ff",
+        number: "#79c0ff",
+        function: "#d2a8ff",
       },
     });
 
@@ -486,6 +705,14 @@ export class ThemeManager {
         success: "#09F7A0",
         warning: "#FAC29A",
         error: "#F43E5C",
+        comment: "#474A5E",
+        placeholder: "#2E303E",
+        gutter: "#474A5E",
+        dimmed: "#474A5E",
+        keyword: "#E95678",
+        string: "#FAC29A",
+        number: "#FAB795",
+        function: "#25B2BC",
       },
     });
 
@@ -503,6 +730,14 @@ export class ThemeManager {
         success: "#21c7a8",
         warning: "#e6db74",
         error: "#ff5874",
+        comment: "#7c8f8f",
+        placeholder: "#091f30",
+        gutter: "#7c8f8f",
+        dimmed: "#7c8f8f",
+        keyword: "#82aaff",
+        string: "#ecc48d",
+        number: "#f78c6c",
+        function: "#21c7a8",
       },
     });
   }

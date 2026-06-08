@@ -1,5 +1,6 @@
 import { renderMermaidASCII, renderMermaidSVG } from "beautiful-mermaid";
 import { App } from "../core/app.ts";
+import { isThemeLight } from "../core/theme.ts";
 import type { DOMNode } from "../dom/dom.ts";
 import { Widget } from "../dom/widget.ts";
 import { Spacing } from "../geometry/spacing.ts";
@@ -15,14 +16,15 @@ export class MermaidWidget extends Widget {
   public code = "";
   public showDiagram = true;
 
-  private _theme: "ansi_dark" | "ansi_light" = "ansi_dark";
-  public get theme(): "ansi_dark" | "ansi_light" {
-    return this._theme;
+  private _mermaidTheme?: string = "theme";
+  public override get theme(): string | undefined {
+    return this._mermaidTheme;
   }
-  public set theme(val: "ansi_dark" | "ansi_light") {
-    if (this._theme !== val) {
-      this._theme = val;
+  public override set theme(val: string | undefined) {
+    if (this._mermaidTheme !== val) {
+      this._mermaidTheme = val;
       this.updateButtonState();
+      this.cachedPixels = null;
     }
   }
 
@@ -70,14 +72,8 @@ export class MermaidWidget extends Widget {
 
   private updateButtonState(): void {
     this.toggleButton.children = [new TextNode(this.showDiagram ? "[Code]" : "[Diag]")];
-    this.toggleButton.style.color = this.showDiagram
-      ? this.theme === "ansi_dark"
-        ? "#f9e2af"
-        : "#2563eb"
-      : this.theme === "ansi_dark"
-        ? "#89b4fa"
-        : "#d97706";
-    this.toggleButton.style.background = this.theme === "ansi_dark" ? "#313244" : "#e2e8f0";
+    this.toggleButton.style.color = this.showDiagram ? "$warning" : "$primary";
+    this.toggleButton.style.background = "$surface";
   }
 
   public override appendChild(child: DOMNode): void {
@@ -129,7 +125,12 @@ export class MermaidWidget extends Widget {
     });
 
     if (!this.showDiagram) {
-      const syntaxLines = Syntax.renderToLines(this.code.trim(), "mermaid", false, this.theme);
+      const syntaxLines = Syntax.renderToLines(
+        this.code.trim(),
+        "mermaid",
+        false,
+        this.theme || "theme",
+      );
       let currentY = client.y;
       for (const line of syntaxLines) {
         if (currentY >= client.bottom) break;
@@ -191,12 +192,25 @@ export class MermaidWidget extends Widget {
       }
     } else {
       try {
+        const resolver = App.instance?.cssResolver;
+        const activeTheme = resolver?.getActiveThemeForWidget(this);
+        const isLight = activeTheme ? isThemeLight(activeTheme) : false;
+
         const mermaidBg =
-          bgHex === "default" ? (this.theme === "ansi_dark" ? "#1e1e2e" : "#ffffff") : bgHex;
-        const mermaidFg = this.theme === "ansi_dark" ? "#cdd6f4" : "#1e1e2e";
-        const mermaidLine = this.theme === "ansi_dark" ? "#45475a" : "#e2e8f0";
-        const mermaidAccent = this.theme === "ansi_dark" ? "#89b4fa" : "#2563eb";
-        const mermaidMuted = this.theme === "ansi_dark" ? "#7f849c" : "#64748b";
+          bgHex === "default" ? activeTheme?.colors?.background || "#121212" : bgHex;
+        const mermaidFg = activeTheme?.colors?.foreground || "#ffffff";
+        const mermaidLine =
+          activeTheme?.colors?.panel ||
+          activeTheme?.colors?.surface ||
+          (isLight ? "#e2e8f0" : "#45475a");
+        const mermaidAccent =
+          activeTheme?.colors?.accent ||
+          activeTheme?.colors?.primary ||
+          (isLight ? "#2563eb" : "#89b4fa");
+        const mermaidMuted =
+          activeTheme?.colors?.comment ||
+          activeTheme?.colors?.dimmed ||
+          (isLight ? "#64748b" : "#7f849c");
 
         const mermaidTheme = {
           bg: mermaidBg,

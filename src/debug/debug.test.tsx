@@ -207,7 +207,7 @@ describe("first-class isolated debugging", () => {
 
     // Verify input is not focused initially (no caret '█' in render)
     const htmlBefore = renderBufferToHTML((app as any).currentBuffer);
-    expect(htmlBefore.includes("test█")).toBe(false);
+    expect(htmlBefore.includes("█")).toBe(false);
 
     // Click on the input box
     const inp = app.activeScreen.children[0].children[0] as any;
@@ -220,7 +220,8 @@ describe("first-class isolated debugging", () => {
 
     // Now it should be focused and show the caret
     const htmlAfter = renderBufferToHTML((app as any).currentBuffer);
-    expect(htmlAfter.includes("test█")).toBe(true);
+    expect(htmlAfter.includes("test")).toBe(true);
+    expect(htmlAfter.includes("█")).toBe(true);
 
     app.stop();
   });
