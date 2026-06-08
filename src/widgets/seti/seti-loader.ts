@@ -99,30 +99,45 @@ function ensureFontLoaded(customResourcesDir?: string): void {
 /**
  * Lazily extract a single glyph from the Seti font and register it.
  * Subsequent calls for the same key are no-ops (cached in `registeredKeys`).
+ *
+ * @param customResourcesDir Optional path override; forwarded to ensureFontLoaded on first call.
  */
-export function registerSetiIcon(key: string): void {
+export function registerSetiIcon(key: string, customResourcesDir?: string): void {
   if (registeredKeys.has(key)) return;
-  registeredKeys.add(key);
 
   if (!setiTheme) return;
 
   const def = setiTheme.iconDefinitions[key];
-  if (!def) return;
+  if (!def) {
+    // Mark unresolvable keys so we don't retry on every render
+    registeredKeys.add(key);
+    return;
+  }
 
   try {
-    ensureFontLoaded();
+    ensureFontLoaded(customResourcesDir);
   } catch {
-    // Font unavailable — register a fallback-only entry
+    // Font unavailable — register a fallback-only entry and cache the key
+    registeredKeys.add(key);
     iconRegistry.registerIcon({ name: `seti:${key}`, svg: "", textFallback: " " });
     return;
   }
 
-  if (!setiFont) return;
+  // setiFont must be set after ensureFontLoaded() succeeds; guard defensively
+  if (!setiFont) {
+    registeredKeys.add(key);
+    iconRegistry.registerIcon({ name: `seti:${key}`, svg: "", textFallback: " " });
+    return;
+  }
 
   try {
     const hexVal = def.fontCharacter.replace(/\\/gi, "");
     const codePoint = parseInt(hexVal, 16);
-    if (Number.isNaN(codePoint)) return;
+    if (Number.isNaN(codePoint)) {
+      registeredKeys.add(key);
+      iconRegistry.registerIcon({ name: `seti:${key}`, svg: "", textFallback: " " });
+      return;
+    }
 
     const char = String.fromCodePoint(codePoint);
     const glyph = setiFont.charToGlyph(char);
@@ -149,9 +164,11 @@ export function registerSetiIcon(key: string): void {
       svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"></svg>`;
     }
 
+    registeredKeys.add(key);
     iconRegistry.registerIcon({ name: `seti:${key}`, svg, textFallback: char });
   } catch {
     // Ignore failures for specific glyphs
+    registeredKeys.add(key);
     iconRegistry.registerIcon({ name: `seti:${key}`, svg: "", textFallback: " " });
   }
 }
@@ -167,7 +184,7 @@ export function loadSetiIcons(customResourcesDir?: string): void {
   if (!setiTheme) return;
 
   for (const key of Object.keys(setiTheme.iconDefinitions)) {
-    registerSetiIcon(key);
+    registerSetiIcon(key, customResourcesDir);
   }
 }
 

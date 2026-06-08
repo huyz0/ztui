@@ -55,7 +55,7 @@ export function FileIcon({
   ...rest
 }: FileIconProps) {
   // Derive effective filename: prefer explicit filename, fall back to extension hint
-  const effectiveFilename = filename ?? (extension ? `_ext.${extension}` : "_placeholder");
+  const effectiveFilename = filename ?? (extension ? `_placeholder.${extension}` : "_placeholder");
 
   const resolved = resolveFileIcon(effectiveFilename, isFolder, languageId ?? undefined);
 
