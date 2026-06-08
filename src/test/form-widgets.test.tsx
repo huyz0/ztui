@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import {
   App,
   Checkbox,
+  EmailInput,
   PasswordInput,
   RadioGroup,
   render,
@@ -386,6 +388,352 @@ describe("ZTUI Form Widgets Suite", () => {
 
     expect(chk.measuredWidth).toBeGreaterThan(0);
     expect(sw.measuredWidth).toBeGreaterThan(0);
+
+    app.stop();
+  });
+
+  test("Mouse interactions for form widgets (Checkbox, RadioGroup, Slider, Select)", async () => {
+    let currentRadio = "A";
+    let currentSlider = 50;
+    let currentSelect = "Apple";
+    let currentChecked = false;
+
+    function TestWrapper() {
+      const [checkedVal, setCheckedVal] = useState(false);
+      const [radioVal, setRadioVal] = useState("A");
+      const [sliderVal, setSliderVal] = useState(50);
+      const [selectVal, setSelectVal] = useState("Apple");
+
+      currentChecked = checkedVal;
+      currentRadio = radioVal;
+      currentSlider = sliderVal;
+      currentSelect = selectVal;
+
+      return (
+        <VBox>
+          <Checkbox id="chk" checked={checkedVal} label="Accept" onChange={setCheckedVal} />
+          <RadioGroup
+            id="radio-v"
+            options={["A", "B"]}
+            value={radioVal}
+            orientation="vertical"
+            onChange={setRadioVal}
+          />
+          <RadioGroup
+            id="radio-h"
+            options={["A", "B"]}
+            value={radioVal}
+            orientation="horizontal"
+            onChange={setRadioVal}
+          />
+          <Slider id="sld" value={sliderVal} min={0} max={100} step={10} onChange={setSliderVal} />
+          <Select
+            id="sel"
+            value={selectVal}
+            options={["Apple", "Banana", "Cherry"]}
+            onChange={setSelectVal}
+          />
+        </VBox>
+      );
+    }
+
+    const driver = new VTEDriver(40, 15);
+    const app = new App(driver);
+
+    render(<TestWrapper />, app.activeScreen);
+
+    app.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // 1. Checkbox mouse click
+    const chk = findWidgetById(app.activeScreen, "chk");
+    chk.handleMouse({ type: "press", button: "left" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(currentChecked).toBe(true);
+
+    // 2. RadioGroup vertical mouse click
+    const radioV = findWidgetById(app.activeScreen, "radio-v");
+    const rectV = radioV.getContentRect();
+    // Click on B (index 1, offset y = 1)
+    radioV.handleMouse({ type: "press", button: "left", x: rectV.x, y: rectV.y + 1 });
+    // Wait for React state update to propagate
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(currentRadio).toBe("B");
+
+    // 3. RadioGroup horizontal mouse click
+    const radioH = findWidgetById(app.activeScreen, "radio-h");
+    const rectH = radioH.getContentRect();
+    // Option A starts at rectH.x, length is roughly 2 + 1 + 3 = 6
+    radioH.handleMouse({ type: "press", button: "left", x: rectH.x + 1, y: rectH.y });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(currentRadio).toBe("A");
+
+    // 4. Slider mouse drag/press
+    const sld = findWidgetById(app.activeScreen, "sld");
+    const rectS = sld.getContentRect();
+    // Click at the start of track to set value to 0
+    sld.handleMouse({ type: "press", button: "left", x: rectS.x, y: rectS.y });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(currentSlider).toBe(0);
+
+    // 5. Select dropdown option click on overlay
+    const sel = findWidgetById(app.activeScreen, "sel");
+    // Click select header to open
+    sel.handleMouse({ type: "press", button: "left" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sel.isOpen).toBe(true);
+    expect(app.activeScreen.overlays.length).toBe(1);
+
+    const overlay = app.activeScreen.overlays[0] as any;
+    console.log("DEBUG Select dropdown bounds:", {
+      dropdownX: overlay.dropdownX,
+      dropdownY: overlay.dropdownY,
+      dropdownWidth: overlay.dropdownWidth,
+      dropdownHeight: overlay.dropdownHeight,
+    });
+    // Click on Banana (index 1)
+    overlay.handleMouse({
+      type: "press",
+      button: "left",
+      x: overlay.dropdownX + 2,
+      y: overlay.dropdownY + 2, // dropdownY + 1 (border) + 1 (Banana index)
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    console.log("DEBUG Select after click:", { currentSelect, isOpen: sel.isOpen });
+    expect(currentSelect).toBe("Banana");
+    expect(sel.isOpen).toBe(false);
+
+    app.stop();
+  });
+
+  test("Additional form widget edge cases for full coverage", async () => {
+    let emailVal = "";
+    let chkVal = false;
+    let swVal = false;
+    let radioVal = "A";
+    let sliderVal = 50;
+    let selectVal = "ExtremelyLongBananaOptionName";
+    let toggleActive = false;
+    let clickSpied = false;
+
+    function ExtraTestWrapper() {
+      const [email, setEmail] = useState("");
+      const [chk, setChk] = useState(false);
+      const [sw, setSw] = useState(false);
+      const [radio, setRadio] = useState("A");
+      const [slider, setSlider] = useState(50);
+      const [sel, setSel] = useState("ExtremelyLongBananaOptionName");
+      const [toggle, setToggle] = useState(false);
+
+      emailVal = email;
+      chkVal = chk;
+      swVal = sw;
+      radioVal = radio;
+      sliderVal = slider;
+      selectVal = sel;
+      toggleActive = toggle;
+
+      return (
+        <VBox>
+          <EmailInput id="email" value={email} onChange={setEmail} />
+          <Checkbox
+            id="chk-custom"
+            checked={chk}
+            style={{ width: 20, height: 2 }}
+            onChange={setChk}
+          />
+          <Switch id="sw-custom" active={sw} style={{ width: 20, height: 2 }} onChange={setSw} />
+          <RadioGroup
+            id="radio-h-nav"
+            options={["A", "B", "C"]}
+            value={radio}
+            orientation="horizontal"
+            onChange={setRadio}
+          />
+          <RadioGroup
+            id="radio-v-nav"
+            options={["A", "B"]}
+            value={radio}
+            orientation="vertical"
+            onChange={setRadio}
+          />
+          <Slider
+            id="slider-nav"
+            value={slider}
+            min={0}
+            max={100}
+            step={10}
+            style={{ width: 30 }}
+            onChange={setSlider}
+          />
+          <Select
+            id="sel-narrow"
+            value={sel}
+            options={["ExtremelyLongBananaOptionName", "B"]}
+            style={{ width: 5 }}
+            onChange={setSel}
+          />
+          <ToggleButton
+            id="tgl-children"
+            active={toggle}
+            onChange={setToggle}
+            onClick={() => {
+              clickSpied = true;
+            }}
+          >
+            ToggleMe
+          </ToggleButton>
+        </VBox>
+      );
+    }
+
+    const driver = new VTEDriver(80, 24);
+    const app = new App(driver);
+
+    render(<ExtraTestWrapper />, app.activeScreen);
+    app.run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // Focus and click test for EmailInput
+    const emailWidget = findWidgetById(app.activeScreen, "email");
+    expect(emailWidget).toBeDefined();
+
+    // Checkbox and Switch custom size measurement validation
+    const chkCustom = findWidgetById(app.activeScreen, "chk-custom");
+    const swCustom = findWidgetById(app.activeScreen, "sw-custom");
+    expect(chkCustom.measuredWidth).toBe(20);
+    expect(chkCustom.measuredHeight).toBe(2);
+    expect(swCustom.measuredWidth).toBe(20);
+    expect(swCustom.measuredHeight).toBe(2);
+
+    // Checkbox and Switch Enter key toggle
+    app.activeScreen.focusWidget(chkCustom);
+    chkCustom.handleKey({ key: "enter" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(chkVal).toBe(true);
+
+    app.activeScreen.focusWidget(swCustom);
+    swCustom.handleKey({ key: "enter" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(swVal).toBe(true);
+
+    // RadioGroup horizontal navigation keys
+    const radioHNav = findWidgetById(app.activeScreen, "radio-h-nav");
+    app.activeScreen.focusWidget(radioHNav);
+    radioHNav.handleKey({ key: "right" });
+    radioHNav.handleKey({ key: "enter" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(radioVal).toBe("B");
+
+    radioHNav.handleKey({ key: "left" });
+    radioHNav.handleKey({ key: "space" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(radioVal).toBe("A");
+
+    // RadioGroup vertical navigation keys
+    const radioVNav = findWidgetById(app.activeScreen, "radio-v-nav");
+    app.activeScreen.focusWidget(radioVNav);
+    radioVNav.handleKey({ key: "down" });
+    radioVNav.handleKey({ key: "enter" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(radioVal).toBe("B");
+
+    radioVNav.handleKey({ key: "up" });
+    radioVNav.handleKey({ key: "enter" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(radioVal).toBe("A");
+
+    // Click on RadioGroup horizontal spacing (empty clicks) to test boundary branches
+    const rectRadioH = radioHNav.getContentRect();
+    radioHNav.handleMouse({
+      type: "press",
+      button: "left",
+      x: rectRadioH.right + 10,
+      y: rectRadioH.y,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Click on RadioGroup vertical out of bounds
+    const radioVNavRect = radioVNav.getContentRect();
+    radioVNav.handleMouse({
+      type: "press",
+      button: "left",
+      x: radioVNavRect.x,
+      y: radioVNavRect.bottom + 5,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // Slider focus and keyboard navigation (up/down/left/right)
+    const sliderNav = findWidgetById(app.activeScreen, "slider-nav");
+    app.activeScreen.focusWidget(sliderNav);
+    sliderNav.handleKey({ key: "right" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sliderVal).toBe(60);
+
+    sliderNav.handleKey({ key: "left" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sliderVal).toBe(50);
+
+    sliderNav.handleKey({ key: "up" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sliderVal).toBe(60);
+
+    sliderNav.handleKey({ key: "down" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sliderVal).toBe(50);
+
+    sliderNav.handleKey({ key: "escape" }); // unhandled key branch
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // Slider drag mouse press out of bounds
+    const rectS = sliderNav.getContentRect();
+    sliderNav.handleMouse({ type: "press", button: "left", x: rectS.right + 10, y: rectS.y });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sliderVal).toBe(100);
+
+    sliderNav.handleMouse({ type: "press", button: "left", x: rectS.x - 5, y: rectS.y });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sliderVal).toBe(0);
+
+    // Narrow Select widget character truncation and rendering test
+    const selNarrow = findWidgetById(app.activeScreen, "sel-narrow");
+    app.queueRender();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // Open narrow select
+    selNarrow.handleMouse({ type: "press", button: "left" });
+    expect(selNarrow.isOpen).toBe(true);
+    // Wait for dropdown overlay rendering to execute
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // Close it by clicking outside the dropdown overlay
+    expect(app.activeScreen.overlays.length).toBe(1);
+    const activeOverlay = app.activeScreen.overlays[0];
+    activeOverlay.handleMouse({
+      type: "press",
+      button: "left",
+      x: 0,
+      y: 0,
+    });
+    expect(selNarrow.isOpen).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // ToggleButton children TextNode and onClick spy
+    const tglChildren = findWidgetById(app.activeScreen, "tgl-children");
+    expect(tglChildren.getTextContent()).toBe("ToggleMe");
+
+    app.activeScreen.focusWidget(tglChildren);
+    tglChildren.handleKey({ key: "enter" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(toggleActive).toBe(true);
+    expect(clickSpied).toBe(true);
+
+    tglChildren.handleMouse({ type: "press", button: "left" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(toggleActive).toBe(false);
+
+    expect(emailVal).toBe("");
+    expect(selNarrow.value).toBe("ExtremelyLongBananaOptionName");
+    expect(selectVal).toBe("ExtremelyLongBananaOptionName");
 
     app.stop();
   });

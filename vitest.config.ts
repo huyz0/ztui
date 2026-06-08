@@ -18,6 +18,7 @@ export default defineConfig({
         "src/core/inspector.ts",
         "src/utils/sharp-render-sync.ts",
         "src/widgets/mermaid.ts",
+        "src/react/components/mermaid.tsx",
       ],
       thresholds: {
         lines: 90,
