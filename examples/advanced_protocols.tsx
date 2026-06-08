@@ -6,7 +6,7 @@ import {
   Footer,
   HBox,
   Header,
-  HeroicIcon,
+  HeroIcon,
   Icon,
   iconRegistry,
   Label,
@@ -170,11 +170,11 @@ function AdvancedProtocolsApp() {
             <Label> Home </Label>
             <Icon name="settings" style={{ color: "#89b4fa" }} />
             <Label> Settings </Label>
-            <HeroicIcon name="beaker" variant="solid" style={{ color: "#f9e2af" }} />
+            <HeroIcon name="beaker" variant="solid" style={{ color: "#f9e2af" }} />
             <Label> Solid Beaker </Label>
-            <HeroicIcon name="heart" variant="outline" style={{ color: "#f38ba8" }} />
+            <HeroIcon name="heart" variant="outline" style={{ color: "#f38ba8" }} />
             <Label> Outline Heart </Label>
-            <HeroicIcon name="bell" variant="mini" style={{ color: "#cba6f7" }} />
+            <HeroIcon name="bell" variant="mini" style={{ color: "#cba6f7" }} />
             <Label> Mini Bell </Label>
           </HBox>
 

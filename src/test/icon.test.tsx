@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { App, HeroicIcon, Icon, iconRegistry, render, VBox } from "../index.ts";
+import { App, HeroIcon, Icon, iconRegistry, render, VBox } from "../index.ts";
 import { parseColorToRGB } from "../widgets/icon-registry.ts";
 import { VTEDriver } from "./vte-runner.ts";
 
@@ -174,7 +174,7 @@ describe("SVG Icon Support Engine", () => {
     app.stop();
   });
 
-  test("Resolves and registers Heroicons dynamically via HeroicIcon component", async () => {
+  test("Resolves and registers Heroicons dynamically via HeroIcon component", async () => {
     const driver = new VTEDriver(40, 10, {
       glyphProtocol: false,
       graphicsProtocol: "sixel",
@@ -183,7 +183,7 @@ describe("SVG Icon Support Engine", () => {
 
     // Render solid beaker
     render(
-      <HeroicIcon name="beaker" variant="solid" style={{ color: "yellow" }} />,
+      <HeroIcon name="beaker" variant="solid" style={{ color: "yellow" }} />,
       app.activeScreen,
     );
     app.run();
@@ -202,7 +202,7 @@ describe("SVG Icon Support Engine", () => {
     app.stop();
   });
 
-  test("Supports other HeroicIcon variants (outline, mini, micro)", async () => {
+  test("Supports other HeroIcon variants (outline, mini, micro)", async () => {
     const driver = new VTEDriver(40, 10, {
       glyphProtocol: false,
       graphicsProtocol: "none",
@@ -211,9 +211,9 @@ describe("SVG Icon Support Engine", () => {
 
     render(
       <VBox>
-        <HeroicIcon name="heart" variant="outline" />
-        <HeroicIcon name="bell" variant="mini" />
-        <HeroicIcon name="home" variant="micro" />
+        <HeroIcon name="heart" variant="outline" />
+        <HeroIcon name="bell" variant="mini" />
+        <HeroIcon name="home" variant="micro" />
       </VBox>,
       app.activeScreen,
     );

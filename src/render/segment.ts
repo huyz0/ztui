@@ -1,3 +1,4 @@
+import stringWidthLib from "string-width";
 import { Style } from "./style.ts";
 
 export function charWidth(char: string): number {
@@ -6,67 +7,10 @@ export function charWidth(char: string): number {
   // ASCII Control characters
   if (code < 32 || (code >= 127 && code < 160)) return 0;
 
-  // Zero-width/combining characters (variation selectors, joiners, BOM)
-  if (
-    (code >= 0xfe00 && code <= 0xfe0f) ||
-    (code >= 0xe0100 && code <= 0xe01ef) ||
-    code === 0x200b ||
-    code === 0x200c ||
-    code === 0x200d ||
-    code === 0xfeff
-  ) {
-    return 0;
-  }
-
   // Custom SVG icon PUA characters span 2 columns
   if (code >= 0xe000 && code <= 0xefff) return 2;
 
-  // CJK and wide characters:
-  // 0x1100 - 0x115F: Hangul Jamo
-  // 0x2E80 - 0xA4CF: CJK Radicals, Symbols, Bopomofo, Kana, Yi, etc.
-  // 0xAC00 - 0xD7A3: Hangul Syllables
-  // 0xF900 - 0xFAFF: CJK Compatibility Ideographs
-  // 0xFE10 - 0xFE19: Vertical Forms
-  // 0xFE30 - 0xFE6F: CJK Compatibility Forms
-  // 0xFF00 - 0xFF60: Fullwidth ASCII
-  // 0xFFE0 - 0xFFE6: Fullwidth Symbol
-  // 0x1F300 - 0x1F9FF: Emojis
-  // 0x20000 - 0x3FFFD: CJK Unified Ideographs Extension B/C/D/E/F, etc.
-  if (
-    (code >= 0x1100 && code <= 0x115f) ||
-    (code >= 0x2e80 && code <= 0xa4cf && code !== 0x303f) ||
-    (code >= 0xac00 && code <= 0xd7a3) ||
-    (code >= 0xf900 && code <= 0xfaff) ||
-    (code >= 0xfe10 && code <= 0xfe19) ||
-    (code >= 0xfe30 && code <= 0xfe6f) ||
-    (code >= 0xff00 && code <= 0xff60) ||
-    (code >= 0xffe0 && code <= 0xffe6) ||
-    (code >= 0x1f300 && code <= 0x1faff) ||
-    (code >= 0x20000 && code <= 0x2fa1f) ||
-    (code >= 0x23e9 && code <= 0x23f3) ||
-    code === 0x2b50 ||
-    // Wide symbols in the 0x2600 - 0x27BF block
-    (code >= 0x26a0 && code <= 0x26a1) ||
-    code === 0x26aa ||
-    code === 0x26ab ||
-    code === 0x26bd ||
-    code === 0x26be ||
-    (code >= 0x26c4 && code <= 0x26c5) ||
-    (code >= 0x26f2 && code <= 0x26f5) ||
-    code === 0x26fa ||
-    code === 0x26fd ||
-    code === 0x2705 ||
-    code === 0x2728 ||
-    code === 0x274c ||
-    code === 0x274e ||
-    (code >= 0x2753 && code <= 0x2757) ||
-    (code >= 0x2795 && code <= 0x2797) ||
-    code === 0x27b0 ||
-    code === 0x27bf
-  ) {
-    return 2;
-  }
-  return 1;
+  return stringWidthLib(char);
 }
 
 export function stringWidth(str: string): number {

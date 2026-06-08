@@ -8,6 +8,10 @@ export interface ComponentProps {
   theme?: string;
   label?: string;
   children?: React.ReactNode;
+  focusable?: boolean;
+  onClick?: (ev: any) => void;
+  onKey?: (ev: any) => void;
+  onScroll?: (ev: any) => void;
   onMouseEnter?: (ev: any) => void;
   onMouseLeave?: (ev: any) => void;
 }

@@ -18,6 +18,8 @@ export { Offset } from "./geometry/offset.ts";
 export { Region } from "./geometry/region.ts";
 export { Size } from "./geometry/size.ts";
 export { Spacing } from "./geometry/spacing.ts";
+// Heroicons — lazy loading
+export { registerHeroIcon, resolveHeroIcon } from "./react/components/heroic-icon.tsx";
 export {
   Box,
   Button,
@@ -26,12 +28,15 @@ export {
   Dock,
   EmailInput,
   type EmailInputProps,
+  FileIcon,
+  type FileIconProps,
   Footer,
   Grid,
   HBox,
   Header,
-  HeroicIcon,
-  type HeroicIconProps,
+  HeroIcon,
+  type HeroIconProps,
+  type HeroIconVariant,
   Icon,
   type IconProps,
   Image,
@@ -81,6 +86,7 @@ export type { StyleProps } from "./render/style.ts";
 // Rendering & Styling
 export { Style } from "./render/style.ts";
 export { CheckboxWidget } from "./widgets/checkbox.ts";
+export { FileIconWidget } from "./widgets/file-icon.ts";
 export { IconWidget } from "./widgets/icon.ts";
 // Icon Registry
 export { IconRegistry, iconRegistry } from "./widgets/icon-registry.ts";
@@ -91,6 +97,13 @@ export { MermaidWidget } from "./widgets/mermaid.ts";
 export { RadioGroupWidget } from "./widgets/radio-group.ts";
 export { RichTextWidget } from "./widgets/rich-text.ts";
 export { SelectWidget } from "./widgets/select.ts";
+// Seti File Icons — lazy loading
+export {
+  loadSetiIcons,
+  loadSetiTheme,
+  registerSetiIcon,
+  resolveFileIcon,
+} from "./widgets/seti/seti-loader.ts";
 export { SliderWidget } from "./widgets/slider.ts";
 export { SvgImageWidget } from "./widgets/svg-image.ts";
 export { SwitchWidget } from "./widgets/switch.ts";

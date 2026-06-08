@@ -112,6 +112,12 @@ declare global {
           activeIndex?: number;
           onChange?: (index: number) => void;
         };
+        "ztui-file-icon": ZTUIElementProps & {
+          extension?: string;
+          filename?: string;
+          isFolder?: boolean;
+          languageId?: string;
+        };
       }
     }
   }

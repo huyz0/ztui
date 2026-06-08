@@ -5,11 +5,11 @@ import { iconRegistry } from "../../widgets/icon-registry.ts";
 import { Icon } from "./icon.tsx";
 import type { ComponentProps } from "./types.ts";
 
-export type HeroicIconVariant = "solid" | "outline" | "mini" | "micro";
+export type HeroIconVariant = "solid" | "outline" | "mini" | "micro";
 
-export interface HeroicIconProps extends ComponentProps {
+export interface HeroIconProps extends ComponentProps {
   name: string;
-  variant?: HeroicIconVariant;
+  variant?: HeroIconVariant;
 }
 
 const fallbackMap: Record<string, string> = {
@@ -46,6 +46,7 @@ const fallbackMap: Record<string, string> = {
   "map-pin": "📍",
 };
 
+// Resolve the heroicons package directory lazily (once, at module load — just a path lookup, no I/O)
 let heroiconsDir = "";
 try {
   const require = createRequire(import.meta.url);
@@ -60,7 +61,11 @@ try {
   } catch {}
 }
 
-export function resolveHeroIcon(iconName: string, variant: HeroicIconVariant = "solid"): string {
+/**
+ * Reads the raw SVG string for a heroicon by name + variant.
+ * Throws if heroicons is not installed or the icon doesn't exist.
+ */
+export function resolveHeroIcon(iconName: string, variant: HeroIconVariant = "solid"): string {
   if (!heroiconsDir) {
     throw new Error(
       "Heroicons directory not resolved. Package may not be installed or path resolution failed.",
@@ -82,35 +87,45 @@ export function resolveHeroIcon(iconName: string, variant: HeroicIconVariant = "
 
   const filePath = join(heroiconsDir, size, style, `${iconName}.svg`);
   if (!existsSync(filePath)) {
-    throw new Error(`File does not exist: ${filePath}`);
+    throw new Error(`Heroicon file does not exist: ${filePath}`);
   }
   return readFileSync(filePath, "utf-8");
 }
 
-export function HeroicIcon({
+/**
+ * Lazily registers a heroicon in the global icon registry.
+ * The SVG file is read from disk only on the first call for a given name+variant.
+ * Subsequent calls for the same key are no-ops.
+ */
+export function registerHeroIcon(iconName: string, variant: HeroIconVariant = "solid"): string {
+  const registryName = `hero:${variant}:${iconName}`;
+  if (!iconRegistry.get(registryName)) {
+    try {
+      const svg = resolveHeroIcon(iconName, variant);
+      iconRegistry.registerIcon({
+        name: registryName,
+        svg,
+        textFallback: fallbackMap[iconName] ?? "❖",
+      });
+    } catch (err) {
+      console.error("HeroIcon registration error:", err);
+    }
+  }
+  return registryName;
+}
+
+/**
+ * A React component that renders a Heroicon.
+ * The SVG is loaded from disk lazily on first render and cached in the icon registry.
+ */
+export function HeroIcon({
   id,
   className,
   style,
   name,
   variant = "solid",
   ...rest
-}: HeroicIconProps) {
-  const registryName = `hero:${variant}:${name}`;
-
-  if (!iconRegistry.get(registryName)) {
-    try {
-      const svg = resolveHeroIcon(name, variant);
-      const textFallback = fallbackMap[name] || "❖";
-      iconRegistry.registerIcon({
-        name: registryName,
-        svg,
-        textFallback,
-      });
-    } catch (err) {
-      console.error("HeroicIcon resolution error:", err);
-      // Gracefully fall back, standard <Icon> will show fallback if not registered
-    }
-  }
-
+}: HeroIconProps) {
+  const registryName = registerHeroIcon(name, variant);
   return <Icon id={id} className={className} style={style} name={registryName} {...rest} />;
 }
