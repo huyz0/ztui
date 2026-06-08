@@ -12,10 +12,12 @@ export class ButtonWidget extends Widget {
     this.focusable = true;
     this.defaultStyle = { height: 1, padding: new Spacing(0, 1, 0, 1) };
     this.onKey = (ev) => {
-      if (ev.key === "enter" || ev.key === " ") {
+      const keyName = ev.name || ev.key;
+      if (keyName === "enter" || keyName === "space" || keyName === " ") {
         if (this.onClick) {
           this.onClick(ev);
         }
+        ev.handled = true;
       }
     };
   }

@@ -195,7 +195,7 @@ export class TextAreaWidget extends Widget {
       this.scrollX = this.cursorCol - textViewportWidth + 1;
     }
     const maxLineLen = [...lines[this.cursorRow]].length;
-    const maxScrollX = Math.max(0, maxLineLen - textViewportWidth);
+    const maxScrollX = Math.max(0, maxLineLen - textViewportWidth + 1);
     this.scrollX = Math.max(0, Math.min(maxScrollX, this.scrollX));
   }
 

@@ -120,7 +120,7 @@ export class InputWidget extends Widget {
     } else if (this.cursorCol >= this.scrollX + textWidth) {
       this.scrollX = this.cursorCol - textWidth + 1;
     }
-    this.scrollX = Math.max(0, Math.min(chars.length - textWidth, this.scrollX));
+    this.scrollX = Math.max(0, Math.min(chars.length - textWidth + 1, this.scrollX));
 
     if (this.value !== originalValue && this.onChange) {
       this.onChange(this.value);

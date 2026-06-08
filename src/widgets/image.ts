@@ -97,7 +97,7 @@ export class ImageWidget extends Widget {
         this.lastPixelHeight === pixelHeight &&
         this.lastBgHex === bgHex &&
         this.lastSrc === (this.src || "") &&
-        this.lastBuffer === this.buffer;
+        this.lastBuffer === (this.buffer || null);
 
       let scaledPixels: Uint8Array;
       let pngBase64: string;

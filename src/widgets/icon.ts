@@ -42,6 +42,10 @@ export class IconWidget extends Widget {
     const icon = iconRegistry.get(this.name);
     const textFallback = icon ? icon.textFallback : "";
 
+    if (client.y < 0 || client.y >= buffer.height || client.x < 0 || client.x >= buffer.width) {
+      return;
+    }
+
     buffer.cells[client.y][client.x] = {
       char: textFallback,
       style,

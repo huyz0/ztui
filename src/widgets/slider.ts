@@ -48,7 +48,7 @@ export class SliderWidget extends Widget {
       const trackWidth = Math.max(5, contentRect.width - pctWidth);
 
       const clickCol = ev.x - contentRect.x;
-      const pct = Math.max(0, Math.min(1, clickCol / trackWidth));
+      const pct = Math.max(0, Math.min(1, clickCol / (trackWidth - 1)));
       const rawVal = this.min + pct * (this.max - this.min);
       const steppedVal = Math.round(rawVal / this.step) * this.step;
       const finalVal = Math.max(this.min, Math.min(this.max, steppedVal));

@@ -176,7 +176,9 @@ export class Syntax {
    * Highlights diff code block line-by-line.
    */
   private static highlightDiff(code: string, _themeName: string): RichText {
-    const rawLines = code.split(/\r?\n/);
+    // Split while preserving the exact newline characters so span offsets stay
+    // aligned with `code` (which may contain CRLF line endings).
+    const rawLines = code.split(/(\r?\n)/);
     const spans: Span[] = [];
 
     const addedStyle = new Style({ color: "$diff-added" });
@@ -184,7 +186,13 @@ export class Syntax {
     const headerStyle = new Style({ color: "$diff-header" });
 
     let currentOffset = 0;
-    for (const line of rawLines) {
+    for (const part of rawLines) {
+      // Newline separators captured by the split group: advance offset only.
+      if (part === "\n" || part === "\r\n") {
+        currentOffset += part.length;
+        continue;
+      }
+      const line = part;
       const lineLength = line.length;
 
       if (line.startsWith("+")) {
@@ -195,7 +203,7 @@ export class Syntax {
         spans.push({ start: currentOffset, end: currentOffset + lineLength, style: headerStyle });
       }
 
-      currentOffset += lineLength + 1; // +1 for the newline
+      currentOffset += lineLength;
     }
 
     return new RichText(code, spans);

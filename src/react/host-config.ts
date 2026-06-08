@@ -35,7 +35,8 @@ function applyProps(instance: DOMNode, props: any) {
   if (instance instanceof Widget) {
     if (props.id !== undefined) instance.id = props.id;
     if (props.className !== undefined) {
-      instance.classes = new Set(props.className.trim().split(/\s+/));
+      const trimmed = props.className.trim();
+      instance.classes = new Set(trimmed ? trimmed.split(/\s+/) : []);
     }
     if (props.style !== undefined) {
       instance.style = props.style;
