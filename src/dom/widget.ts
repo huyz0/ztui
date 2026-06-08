@@ -63,6 +63,7 @@ export class Widget extends DOMNode {
   public focusable = false;
   public focused = false;
   public visible = true;
+  public label?: string;
   private _theme?: string;
   public get theme(): string | undefined {
     return this._theme;

@@ -9,6 +9,7 @@ declare global {
         className?: string;
         id?: string;
         theme?: string;
+        label?: string;
         children?: React.ReactNode;
         onMouseEnter?: (ev: any) => void;
         onMouseLeave?: (ev: any) => void;
@@ -106,6 +107,10 @@ declare global {
           label?: string;
           onChange?: (val: boolean) => void;
           onClick?: (ev: any) => void;
+        };
+        "ztui-tabcontainer": ZTUIElementProps & {
+          activeIndex?: number;
+          onChange?: (index: number) => void;
         };
       }
     }

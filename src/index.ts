@@ -60,6 +60,8 @@ export {
   type SwitchProps,
   Syntax,
   type SyntaxProps,
+  TabContainer,
+  type TabContainerProps,
   TextArea,
   type TextAreaProps,
   ToggleButton,
@@ -93,6 +95,7 @@ export { SliderWidget } from "./widgets/slider.ts";
 export { SvgImageWidget } from "./widgets/svg-image.ts";
 export { SwitchWidget } from "./widgets/switch.ts";
 export { SyntaxWidget } from "./widgets/syntax.ts";
+export { TabContainerWidget } from "./widgets/tabcontainer.ts";
 export { TextAreaWidget } from "./widgets/textarea.ts";
 export { ToggleButtonWidget } from "./widgets/toggle-button.ts";
 

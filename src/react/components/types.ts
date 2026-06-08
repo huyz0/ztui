@@ -6,6 +6,7 @@ export interface ComponentProps {
   className?: string;
   style?: WidgetStyles;
   theme?: string;
+  label?: string;
   children?: React.ReactNode;
   onMouseEnter?: (ev: any) => void;
   onMouseLeave?: (ev: any) => void;

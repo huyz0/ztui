@@ -37,6 +37,8 @@ export type { SwitchProps } from "./components/switch.tsx";
 export { Switch } from "./components/switch.tsx";
 export type { SyntaxProps } from "./components/syntax.tsx";
 export { Syntax } from "./components/syntax.tsx";
+export type { TabContainerProps } from "./components/tabcontainer.tsx";
+export { TabContainer } from "./components/tabcontainer.tsx";
 export type { TextAreaProps } from "./components/textarea.tsx";
 export { TextArea } from "./components/textarea.tsx";
 export type { ToggleButtonProps } from "./components/toggle-button.tsx";

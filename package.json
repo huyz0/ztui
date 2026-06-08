@@ -18,6 +18,7 @@
     "demo:genui": "bun run examples/generative_ui.tsx",
     "demo:themes": "bun run examples/theme_explorer.tsx",
     "demo:text": "bun run examples/textarea_demo.tsx",
+    "demo:tabs": "bun run examples/tabcontainer_demo.tsx",
     "test": "vitest run --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

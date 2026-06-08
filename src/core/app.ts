@@ -334,7 +334,18 @@ export class App extends DOMNode {
       layoutType = flexDirection === "row" ? "horizontal" : "vertical";
     }
 
-    if (layoutType === "vertical" || layoutType === "horizontal") {
+    if (parent.tagName === "tabcontainer") {
+      const inner = parent.getContentRect();
+      const tabBarHeight = 1;
+      for (const child of parent.children) {
+        if (child instanceof Widget && child.visible) {
+          child.region = new Region(
+            new Offset(inner.x, inner.y + tabBarHeight),
+            new Size(inner.width, Math.max(0, inner.height - tabBarHeight)),
+          );
+        }
+      }
+    } else if (layoutType === "vertical" || layoutType === "horizontal") {
       new BoxLayout(layoutType).resolve(parent);
     } else if (layoutType === "dock") {
       new DockLayout().resolve(parent);
