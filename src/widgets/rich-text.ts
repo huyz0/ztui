@@ -1,3 +1,4 @@
+import { logger } from "../core/logger.ts";
 import { Widget } from "../dom/widget.ts";
 import { TextNode } from "../react/host-config.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
@@ -40,7 +41,14 @@ export class RichTextWidget extends Widget {
       link: this.computedStyle.link,
     });
 
-    const rich = RichText.fromMarkup(rawText);
+    // Bad markup must not blank the widget — fall back to the raw text and log.
+    let rich: RichText;
+    try {
+      rich = RichText.fromMarkup(rawText);
+    } catch (err) {
+      logger.warn("richtext", `invalid markup; rendering as plain text: ${this.describe()}`, err);
+      rich = new RichText(rawText, []);
+    }
     const segments = rich.toSegments(baseStyle);
 
     let x = contentRect.x;

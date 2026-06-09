@@ -1,6 +1,7 @@
 import { marked, type Token } from "marked";
 import remend from "remend";
 import { App } from "../core/app.ts";
+import { logger } from "../core/logger.ts";
 import type { DOMNode } from "../dom/dom.ts";
 import { Scrollable } from "../dom/scrollable.ts";
 import { Widget } from "../dom/widget.ts";
@@ -163,57 +164,76 @@ export class MarkdownWidget extends Scrollable(Widget) {
         }
         this.lastBlocks = [];
       } else {
-        const tokens = marked.lexer(processedMarkdown);
-        const blockTokens = tokens.filter((t) => t.type !== "space");
+        try {
+          const tokens = marked.lexer(processedMarkdown);
+          const blockTokens = tokens.filter((t) => t.type !== "space");
 
-        const nextBlocks: { token: Token; widget: Widget | null }[] = [];
+          const nextBlocks: { token: Token; widget: Widget | null }[] = [];
 
-        // Reconciliation
-        const len = Math.max(blockTokens.length, this.lastBlocks.length);
-        for (let i = 0; i < len; i++) {
-          const newToken = blockTokens[i];
-          const oldBlock = this.lastBlocks[i];
+          // Reconciliation
+          const len = Math.max(blockTokens.length, this.lastBlocks.length);
+          for (let i = 0; i < len; i++) {
+            const newToken = blockTokens[i];
+            const oldBlock = this.lastBlocks[i];
 
-          if (newToken && oldBlock) {
-            if (areTokensEqual(newToken, oldBlock.token)) {
-              // Reuse existing block widget
-              nextBlocks.push({ token: newToken, widget: oldBlock.widget });
-            } else {
-              // Recreate widget
-              if (oldBlock.widget) {
-                super.removeChild(oldBlock.widget);
+            if (newToken && oldBlock) {
+              if (areTokensEqual(newToken, oldBlock.token)) {
+                // Reuse existing block widget
+                nextBlocks.push({ token: newToken, widget: oldBlock.widget });
+              } else {
+                // Recreate widget
+                if (oldBlock.widget) {
+                  super.removeChild(oldBlock.widget);
+                }
+                const newWidget = this.buildWidgetFromToken(newToken);
+                if (newWidget) {
+                  this.resolveStylesForGenerated(newWidget);
+                }
+                nextBlocks.push({ token: newToken, widget: newWidget });
               }
+            } else if (newToken) {
+              // New block added
               const newWidget = this.buildWidgetFromToken(newToken);
               if (newWidget) {
                 this.resolveStylesForGenerated(newWidget);
               }
               nextBlocks.push({ token: newToken, widget: newWidget });
-            }
-          } else if (newToken) {
-            // New block added
-            const newWidget = this.buildWidgetFromToken(newToken);
-            if (newWidget) {
-              this.resolveStylesForGenerated(newWidget);
-            }
-            nextBlocks.push({ token: newToken, widget: newWidget });
-          } else if (oldBlock) {
-            // Old block removed
-            if (oldBlock.widget) {
-              super.removeChild(oldBlock.widget);
+            } else if (oldBlock) {
+              // Old block removed
+              if (oldBlock.widget) {
+                super.removeChild(oldBlock.widget);
+              }
             }
           }
-        }
 
-        // Apply updated active widgets to this.children
-        const activeWidgets = nextBlocks
-          .map((b) => b.widget)
-          .filter((w): w is Widget => w !== null);
+          // Apply updated active widgets to this.children
+          const activeWidgets = nextBlocks
+            .map((b) => b.widget)
+            .filter((w): w is Widget => w !== null);
 
-        for (const widget of activeWidgets) {
-          widget.parent = this;
+          for (const widget of activeWidgets) {
+            widget.parent = this;
+          }
+          this.children = activeWidgets;
+          this.lastBlocks = nextBlocks;
+        } catch (err) {
+          // Malformed markdown must not blank the widget or crash layout:
+          // show the raw text and log so the bad input is visible.
+          logger.warn(
+            "markdown",
+            `failed to parse markdown; showing raw text: ${this.describe()}`,
+            err,
+          );
+          while (this.children.length > 0) {
+            super.removeChild(this.children[0]);
+          }
+          const fallback = new RichTextWidget();
+          fallback.appendChild(new TextNode(rawMarkdown));
+          this.resolveStylesForGenerated(fallback);
+          fallback.parent = this;
+          this.children = [fallback];
+          this.lastBlocks = [];
         }
-        this.children = activeWidgets;
-        this.lastBlocks = nextBlocks;
       }
     }
 

@@ -1,9 +1,11 @@
 import { App } from "../core/app.ts";
+import { logger } from "../core/logger.ts";
 import { Widget } from "../dom/widget.ts";
 import { parseDimension } from "../layout/layout.ts";
 import { TextNode } from "../react/host-config.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Syntax } from "../render/rich/syntax.ts";
+import { RichText } from "../render/rich/text.ts";
 import { Segment, stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 
@@ -59,12 +61,18 @@ export class SyntaxWidget extends Widget {
     const rawCode = this.getTextContent();
     if (!rawCode) return;
 
-    const lines = Syntax.renderToLines(
-      rawCode,
-      this.language,
-      this.lineNumbers,
-      this.theme || "theme",
-    );
+    // Highlighting must never blank the widget — fall back to plain lines + log.
+    let lines: RichText[];
+    try {
+      lines = Syntax.renderToLines(rawCode, this.language, this.lineNumbers, this.theme || "theme");
+    } catch (err) {
+      logger.warn(
+        "syntax",
+        `highlight failed for language "${this.language}"; rendering plain: ${this.describe()}`,
+        err,
+      );
+      lines = rawCode.split("\n").map((l) => new RichText(l, []));
+    }
 
     const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
