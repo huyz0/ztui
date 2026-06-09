@@ -39,6 +39,7 @@ const KNOWN_HANDLER_PROPS = [
   "onAction",
   "onChange",
   "onSelect",
+  "onActivate",
   "onSortChange",
   "onViewportChange",
   "onToggle",
@@ -95,6 +96,9 @@ function applyProps(instance: DOMNode, props: any, oldProps?: any) {
     }
     if (props.onSelect !== undefined) {
       (instance as any).onSelect = props.onSelect;
+    }
+    if (props.onActivate !== undefined) {
+      (instance as any).onActivate = props.onActivate;
     }
     if (props.onSortChange !== undefined) {
       (instance as any).onSortChange = props.onSortChange;

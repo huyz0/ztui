@@ -207,6 +207,41 @@ describe("Tree selection & toggling", () => {
     expect(t.text()).toContain("app.ts");
   });
 
+  test("Enter and Space activate; double-click activates", async () => {
+    const selects: string[] = [];
+    let activated = "";
+    const t = await mountApp(
+      <Tree
+        data={workspace}
+        expanded={["src"]}
+        onSelect={(n) => selects.push(n.id)}
+        onActivate={(n) => {
+          activated = n.id;
+        }}
+        style={{ height: "100%" }}
+      />,
+    );
+    const tree = findTree(t);
+    t.screen.focusWidget(tree);
+
+    tree.handleKey({ name: "down" } as any); // select "src"
+    expect(selects).toContain("src");
+    expect(activated).toBe(""); // navigation does not activate
+
+    tree.handleKey({ name: "enter" } as any);
+    expect(activated).toBe("src");
+
+    // Double-click a row activates it.
+    activated = "";
+    const c = tree.getContentRect();
+    const press = (y: number) =>
+      tree.handleMouse({ type: "press", button: "left", x: c.x + 6, y } as any);
+    press(c.y); // single click "src"
+    expect(activated).toBe("");
+    press(c.y); // second click -> activate
+    expect(activated).toBe("src");
+  });
+
   test("controlled expansion defers to onExpandedChange", async () => {
     let next: string[] | undefined;
     const t = await mountApp(

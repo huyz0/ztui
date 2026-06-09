@@ -14,7 +14,10 @@ export interface TableProps<Row = any> extends Omit<ComponentProps, "children"> 
   selectedIndex?: number;
   /** Active sort. Controlled when `onSortChange` is provided. */
   sort?: SortState | null;
+  /** Selection changed (arrow navigation or single click). */
   onSelect?: (row: Row, viewIndex: number) => void;
+  /** Row activated — Enter or double-click. */
+  onActivate?: (row: Row, viewIndex: number) => void;
   onSortChange?: (sort: SortState | null) => void;
 }
 

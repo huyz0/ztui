@@ -12,7 +12,10 @@ export interface TreeProps extends Omit<ComponentProps, "children"> {
   expanded?: string[];
   /** Selected node id, or null. */
   selectedId?: string | null;
+  /** Selection changed (arrow navigation or single click). */
   onSelect?: (node: TreeNode) => void;
+  /** Item activated — Enter, Space, or double-click. */
+  onActivate?: (node: TreeNode) => void;
   onToggle?: (node: TreeNode, expanded: boolean) => void;
   onExpandedChange?: (expanded: string[]) => void;
 }

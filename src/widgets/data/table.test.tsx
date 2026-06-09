@@ -249,23 +249,51 @@ describe("Table selection (phase 2/4)", () => {
     expect(widget.selectedIndex).toBe(0);
   });
 
-  test("enter activates the selected row", async () => {
-    let selectedIdx = -1;
+  test("arrow navigation fires onSelect; Enter fires onActivate (not onSelect)", async () => {
+    const selects: number[] = [];
+    let activated = -1;
     const t = await mountApp(
       <Table
         data={people}
         columns={columns}
-        onSelect={(_row, idx) => {
-          selectedIdx = idx;
+        onSelect={(_row, idx) => selects.push(idx)}
+        onActivate={(_row, idx) => {
+          activated = idx;
         }}
         style={{ height: "100%" }}
       />,
     );
     const widget = findTable(t);
     t.screen.focusWidget(widget);
-    widget.handleKey({ name: "down", key: "down" } as any);
+    widget.handleKey({ name: "down", key: "down" } as any); // select 0
+    widget.handleKey({ name: "down", key: "down" } as any); // select 1
+    expect(selects).toEqual([0, 1]);
+    expect(activated).toBe(-1); // navigation never activates
+
     widget.handleKey({ name: "enter", key: "enter" } as any);
-    expect(selectedIdx).toBe(0);
+    expect(activated).toBe(1);
+  });
+
+  test("double-click activates the row", async () => {
+    let activated = -1;
+    const t = await mountApp(
+      <Table
+        data={people}
+        columns={columns}
+        onActivate={(_row, idx) => {
+          activated = idx;
+        }}
+        style={{ height: "100%" }}
+      />,
+    );
+    const widget = findTable(t);
+    const c = widget.getContentRect();
+    const press = () =>
+      widget.handleMouse({ type: "press", button: "left", x: c.x + 1, y: c.y + 1 } as any);
+    press();
+    expect(activated).toBe(-1); // single click selects only
+    press(); // second click within the double-click window
+    expect(activated).toBe(0);
   });
 });
 

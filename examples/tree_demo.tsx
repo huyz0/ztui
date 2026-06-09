@@ -39,13 +39,15 @@ const workspace: TreeNode[] = [
 function TreeDemo() {
   const [expanded, setExpanded] = useState<string[]>(["src"]);
   const [selected, setSelected] = useState<string>("");
+  const [opened, setOpened] = useState<string>("");
 
   return (
     <Dock style={{ background: "#11111b" }}>
       <Header>🗂️ ZTUI Tree — workspace navigation (virtualized)</Header>
       <Footer>
-        ↑/↓ move · →/← expand/collapse · Enter toggle · Ctrl+C quit ·{" "}
-        {selected ? `selected: ${selected}` : "nothing selected"}
+        ↑/↓ move · →/← expand · Enter/dbl-click open · Ctrl+C quit ·{" "}
+        {selected ? `sel: ${selected}` : "—"}
+        {opened ? ` · opened: ${opened}` : ""}
       </Footer>
 
       <Tree
@@ -54,6 +56,7 @@ function TreeDemo() {
         expanded={expanded}
         onExpandedChange={setExpanded}
         onSelect={(node) => setSelected(node.id)}
+        onActivate={(node) => setOpened(node.id)}
       />
     </Dock>
   );
