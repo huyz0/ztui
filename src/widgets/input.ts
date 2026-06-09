@@ -1,9 +1,9 @@
 import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
+import { iconRegistry } from "../render/icon-registry.ts";
 import { Segment, stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
-import { iconRegistry } from "./icon-registry.ts";
 
 export class InputWidget extends Widget {
   private _value = "";

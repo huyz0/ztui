@@ -3,9 +3,9 @@ import { App } from "../core/app.ts";
 import { logger } from "../core/logger.ts";
 import { Widget } from "../dom/widget.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
+import { parseColorToRGB } from "../render/icon-registry.ts";
 import { Style } from "../render/style.ts";
 import { renderSvgSync } from "../utils/sharp-sync.ts";
-import { parseColorToRGB } from "./icon-registry.ts";
 import { renderAnsiFallback } from "./image-renderers.ts";
 
 export class SvgImageWidget extends Widget {

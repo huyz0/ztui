@@ -1,7 +1,7 @@
 import { Widget } from "../dom/widget.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
+import { iconRegistry } from "../render/icon-registry.ts";
 import { Style } from "../render/style.ts";
-import { iconRegistry } from "./icon-registry.ts";
 import { type ResolvedIcon, resolveFileIcon } from "./seti/seti-loader.ts";
 
 /**

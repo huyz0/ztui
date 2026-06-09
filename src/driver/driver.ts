@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { Size } from "../geometry/size.ts";
-import { iconRegistry } from "../widgets/icon-registry.ts";
+import { iconRegistry } from "../render/icon-registry.ts";
 
 export interface KeyEvent {
   key: string;

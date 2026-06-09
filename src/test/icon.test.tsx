@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { App, HeroIcon, Icon, iconRegistry, render, VBox } from "../index.ts";
-import { parseColorToRGB } from "../widgets/icon-registry.ts";
+import { parseColorToRGB } from "../render/icon-registry.ts";
 import { VTEDriver } from "./vte-runner.ts";
 
 const mockSvg = `

@@ -79,6 +79,8 @@ export {
 export { render } from "./react/reconciler.ts";
 export { ScreenBuffer } from "./render/buffer.ts";
 export { renderBufferToHTML } from "./render/html-renderer.ts";
+// Icon Registry
+export { IconRegistry, iconRegistry } from "./render/icon-registry.ts";
 export { Markdown as MarkdownEngine } from "./render/rich/markdown.ts";
 export { Syntax as SyntaxEngine } from "./render/rich/syntax.ts";
 export { RichText as RichTextEngine } from "./render/rich/text.ts";
@@ -89,8 +91,6 @@ export { Style } from "./render/style.ts";
 export { CheckboxWidget } from "./widgets/checkbox.ts";
 export { FileIconWidget } from "./widgets/file-icon.ts";
 export { IconWidget } from "./widgets/icon.ts";
-// Icon Registry
-export { IconRegistry, iconRegistry } from "./widgets/icon-registry.ts";
 export { ImageWidget } from "./widgets/image.ts";
 export { JSONUIWidget } from "./widgets/json-ui.ts";
 export { MarkdownWidget } from "./widgets/markdown.ts";

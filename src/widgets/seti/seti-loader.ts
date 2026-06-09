@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { logger } from "../../core/logger.ts";
-import { iconRegistry } from "../icon-registry.ts";
+import { iconRegistry } from "../../render/icon-registry.ts";
 
 export interface SetiTheme {
   iconDefinitions: Record<string, { fontCharacter: string; fontColor: string }>;

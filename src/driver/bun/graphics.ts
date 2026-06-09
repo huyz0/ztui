@@ -1,10 +1,10 @@
-import { encodePNG } from "../../utils/png.ts";
 import {
   iconRegistry,
   parseColorToRGB,
   type RasterizedIcon,
   rasterizeSVG,
-} from "../../widgets/icon-registry.ts";
+} from "../../render/icon-registry.ts";
+import { encodePNG } from "../../utils/png.ts";
 import type { TerminalCapabilities } from "../driver.ts";
 
 export { encodePNG };

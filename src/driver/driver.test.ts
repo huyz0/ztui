@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Size } from "../geometry/size.ts";
-import { iconRegistry } from "../widgets/icon-registry.ts";
+import { iconRegistry } from "../render/icon-registry.ts";
 import { BunDriver } from "./bun/index.ts";
 import { Driver, type TerminalCapabilities } from "./driver.ts";
 import { MockDriver } from "./mock/index.ts";

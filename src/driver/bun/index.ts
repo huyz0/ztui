@@ -1,6 +1,6 @@
 import { logger } from "../../core/logger.ts";
 import { Size } from "../../geometry/size.ts";
-import { iconRegistry } from "../../widgets/icon-registry.ts";
+import { iconRegistry } from "../../render/icon-registry.ts";
 import { type Clipboard, Driver, type TerminalCapabilities } from "../driver.ts";
 import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
