@@ -5,7 +5,6 @@ export class MockDriver extends Driver {
   public writtenData = "";
   public override readonly capabilities: TerminalCapabilities;
   public override readonly clipboard: Clipboard;
-  private isRunning = false;
   private width: number;
   private height: number;
 
@@ -41,15 +40,12 @@ export class MockDriver extends Driver {
   }
 
   public start(): void {
-    this.isRunning = true;
     this.writtenData = "";
     this.capabilitiesResolved = true;
     this.emit("capabilities_resolved");
   }
 
-  public stop(): void {
-    this.isRunning = false;
-  }
+  public stop(): void {}
 
   public write(data: string): void {
     this.writtenData += data;
