@@ -135,6 +135,36 @@ export function parseInput(
         continue;
       }
 
+      // Navigation keys. Both the xterm (\x1b[H / \x1b[F) and VT-220
+      // (\x1b[<n>~) encodings are recognized so PageUp/PageDown/Home/End/Delete
+      // work across terminals.
+      const navTilde = remaining.match(/^\x1b\[(\d+)~/);
+      if (navTilde) {
+        const tildeMap: Record<string, string> = {
+          "1": "home",
+          "7": "home",
+          "4": "end",
+          "8": "end",
+          "5": "pageup",
+          "6": "pagedown",
+          "3": "delete",
+          "2": "insert",
+        };
+        const name = tildeMap[navTilde[1]];
+        if (name) {
+          onKey({ key: name, name, ctrl: false, meta: false, shift: false });
+          i += navTilde[0].length;
+          continue;
+        }
+      }
+      const navXterm = remaining.match(/^\x1b\[([HF])/);
+      if (navXterm) {
+        const name = navXterm[1] === "H" ? "home" : "end";
+        onKey({ key: name, name, ctrl: false, meta: false, shift: false });
+        i += navXterm[0].length;
+        continue;
+      }
+
       // Shift-Tab: \x1b[Z
       if (remaining.startsWith("\x1b[Z")) {
         onKey({

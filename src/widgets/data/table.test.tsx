@@ -312,6 +312,30 @@ describe("Table navigation & layout edge cases", () => {
     });
     expect(t.text()).toContain("█");
   });
+
+  test("pressing the scrollbar track jumps the scroll position", async () => {
+    const data = bigData(1000);
+    const t = await mountApp(<Table data={data} columns={columns} style={{ height: 12 }} />, {
+      screenStyle: { flexDirection: "column" },
+    });
+    const widget = findTable(t);
+    const content = widget.getContentRect();
+    const scrollbarX = content.right - 1;
+    // Press near the bottom of the track -> large scroll offset.
+    widget.handleMouse({
+      type: "press",
+      button: "left",
+      x: scrollbarX,
+      y: content.bottom - 1,
+    } as any);
+    await t.settle();
+    expect(t.text()).not.toContain("Row0\n");
+    // Drag back to the top of the track -> scrolls home.
+    widget.handleMouse({ type: "drag", button: "left", x: scrollbarX, y: content.y + 1 } as any);
+    await t.settle();
+    expect(t.text()).toContain("Row0");
+    widget.handleMouse({ type: "release", button: "left", x: scrollbarX, y: content.y } as any);
+  });
 });
 
 describe("Table rich (widget-bearing) cells (phase 5)", () => {

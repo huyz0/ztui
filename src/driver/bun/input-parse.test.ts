@@ -1,6 +1,18 @@
 import { describe, expect, test } from "vitest";
-import type { MouseEvent } from "../driver.ts";
+import type { KeyEvent, MouseEvent } from "../driver.ts";
 import { parseInput } from "./input.ts";
+
+function firstKey(seq: string): KeyEvent | undefined {
+  let ev: KeyEvent | undefined;
+  parseInput(
+    seq,
+    (k) => {
+      ev ??= k;
+    },
+    () => {},
+  );
+  return ev;
+}
 
 function firstMouse(seq: string): MouseEvent | undefined {
   let ev: MouseEvent | undefined;
@@ -57,5 +69,33 @@ describe("parseInput — SGR mouse decoding", () => {
     const ev = firstMouse("\x1b[<0;10;5M");
     expect(ev?.x).toBe(9);
     expect(ev?.y).toBe(4);
+  });
+});
+
+describe("parseInput — navigation keys", () => {
+  test("arrows still decode", () => {
+    expect(firstKey("\x1b[A")?.name).toBe("up");
+    expect(firstKey("\x1b[B")?.name).toBe("down");
+    expect(firstKey("\x1b[C")?.name).toBe("right");
+    expect(firstKey("\x1b[D")?.name).toBe("left");
+  });
+
+  test("PageUp/PageDown (VT-220 tilde) decode to named keys", () => {
+    expect(firstKey("\x1b[5~")?.name).toBe("pageup");
+    expect(firstKey("\x1b[6~")?.name).toBe("pagedown");
+  });
+
+  test("Home/End decode from both xterm and VT-220 encodings", () => {
+    expect(firstKey("\x1b[H")?.name).toBe("home");
+    expect(firstKey("\x1b[F")?.name).toBe("end");
+    expect(firstKey("\x1b[1~")?.name).toBe("home");
+    expect(firstKey("\x1b[7~")?.name).toBe("home");
+    expect(firstKey("\x1b[4~")?.name).toBe("end");
+    expect(firstKey("\x1b[8~")?.name).toBe("end");
+  });
+
+  test("Insert/Delete decode", () => {
+    expect(firstKey("\x1b[2~")?.name).toBe("insert");
+    expect(firstKey("\x1b[3~")?.name).toBe("delete");
   });
 });
