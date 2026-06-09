@@ -381,6 +381,8 @@ export class CSSResolver {
       if (parts.some(Number.isNaN)) return 0;
       if (parts.length === 1) return new Spacing(parts[0], parts[0], parts[0], parts[0]);
       if (parts.length === 2) return new Spacing(parts[0], parts[1], parts[0], parts[1]);
+      // 3 values: top | horizontal | bottom
+      if (parts.length === 3) return new Spacing(parts[0], parts[1], parts[2], parts[1]);
       if (parts.length === 4) return new Spacing(parts[0], parts[1], parts[2], parts[3]);
       return 0;
     }

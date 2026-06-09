@@ -17,7 +17,7 @@ export class GridLayout extends Layout {
     );
     if (children.length === 0) return;
 
-    const cols = this.columns;
+    const cols = Math.max(1, this.columns);
     const rows = Math.ceil(children.length / cols);
 
     const cellWidth = Math.floor(parentRect.width / cols);

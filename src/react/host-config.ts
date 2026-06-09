@@ -241,6 +241,10 @@ export const hostConfig: any = {
   unhideTextInstance(_textInstance: TextNode, _text: string) {},
 
   clearContainer(container: DOMNode) {
+    // Detach children so they don't retain a dangling parent pointer.
+    for (const child of container.children) {
+      child.parent = null;
+    }
     container.children = [];
   },
 
