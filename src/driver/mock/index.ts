@@ -5,6 +5,7 @@ export class MockDriver extends Driver {
   public writtenData = "";
   public override readonly capabilities: TerminalCapabilities;
   public override readonly clipboard: Clipboard;
+  private isRunning = false;
   private width: number;
   private height: number;
 

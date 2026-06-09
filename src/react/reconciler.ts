@@ -14,8 +14,10 @@ export function render(element: React.ReactNode, rootNode: DOMNode): any {
     false,
     null,
     "",
-    console.error,
-    null,
+    console.error, // onUncaughtError
+    console.error, // onCaughtError
+    console.error, // onRecoverableError
+    () => {}, // onDefaultTransitionIndicator
   );
 
   reconciler.updateContainer(element, container, null, () => {});
