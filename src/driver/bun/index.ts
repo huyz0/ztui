@@ -1,3 +1,4 @@
+import { logger } from "../../core/logger.ts";
 import { Size } from "../../geometry/size.ts";
 import { iconRegistry } from "../../widgets/icon-registry.ts";
 import { type Clipboard, Driver, type TerminalCapabilities } from "../driver.ts";
@@ -339,11 +340,17 @@ export class BunDriver extends Driver {
       process.exit(0);
     }
 
-    parseInput(
-      data,
-      (ev) => this.emit("key", ev),
-      (ev) => this.emit("mouse", ev),
-    );
+    try {
+      parseInput(
+        data,
+        (ev) => this.emit("key", ev),
+        (ev) => this.emit("mouse", ev),
+      );
+    } catch (err) {
+      // Malformed input bytes (or a throwing event listener) must not kill the
+      // read loop and freeze all input.
+      logger.error("input", `failed to process input chunk (${data.length} bytes)`, err);
+    }
   }
 
   public override getIconSequence(name: string, color?: string, bgColor?: string): string {

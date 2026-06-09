@@ -346,7 +346,14 @@ export class App extends DOMNode {
   private resolveAllStyles(node: DOMNode): void {
     if (node instanceof Widget) {
       const isHovered = this.hoveredWidget === node;
-      node.computedStyle = this.cssResolver.resolveStyles(node, isHovered);
+      try {
+        node.computedStyle = this.cssResolver.resolveStyles(node, isHovered);
+      } catch (err) {
+        // A bad style value for one widget must not abort styling the whole tree;
+        // fall back to its inline style and log.
+        logger.error("style", `style resolution failed: ${node.describe()}`, err);
+        node.computedStyle = node.style;
+      }
     }
     for (const child of node.children) {
       this.resolveAllStyles(child);
