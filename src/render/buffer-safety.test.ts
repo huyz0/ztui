@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { ScreenBuffer } from "../render/buffer.ts";
-import { Segment } from "../render/segment.ts";
-import { Style } from "../render/style.ts";
+import { ScreenBuffer } from "./buffer.ts";
+import { Segment } from "./segment.ts";
+import { Style } from "./style.ts";
 
 function cellChars(buf: ScreenBuffer, y: number): string {
   return buf.cells[y].map((c) => c.char).join("");

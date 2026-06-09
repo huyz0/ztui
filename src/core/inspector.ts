@@ -125,13 +125,13 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
   }
 
   if (url.pathname === "/screenshot" && req.method === "GET") {
-    return new Response(renderBufferToText((app as any).currentBuffer), {
+    return new Response(renderBufferToText(app.buffer), {
       headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" },
     });
   }
 
   if (url.pathname === "/render" && req.method === "GET") {
-    const html = renderBufferToHTML((app as any).currentBuffer);
+    const html = renderBufferToHTML(app.buffer);
     return new Response(html, {
       headers: {
         "Content-Type": "text/html",

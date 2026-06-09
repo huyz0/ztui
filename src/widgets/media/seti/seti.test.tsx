@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { App, FileIcon, iconRegistry, loadSetiIcons, render, resolveFileIcon } from "../index.ts";
-import { VTEDriver } from "./vte-runner.ts";
+import { FileIcon, iconRegistry, loadSetiIcons, resolveFileIcon } from "../../../index.ts";
+import { mountApp } from "../../../test/harness.tsx";
 
 describe("Seti File Icon Theme Loader and Component", () => {
   beforeAll(() => {
@@ -45,25 +45,14 @@ describe("Seti File Icon Theme Loader and Component", () => {
   });
 
   test("Renders <FileIcon> component within ZTUI render context", async () => {
-    const driver = new VTEDriver(40, 5, {
-      glyphProtocol: false,
-      graphicsProtocol: "none",
+    const { cellAt } = await mountApp(<FileIcon filename="server.go" id="icon-under-test" />, {
+      cols: 40,
+      rows: 5,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
     });
-    const app = new App(driver);
 
-    render(<FileIcon filename="server.go" id="icon-under-test" />, app.activeScreen);
-
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    await driver.waitWrite();
-
-    // Verify cell output
-    const buffer = (app as any).currentBuffer;
-    const cell = buffer.cells[0][0];
-
+    const cell = cellAt(0, 0);
     expect(cell.icon).toBe("seti:_go2");
     expect(cell.style.color).toBe("#519aba"); // VS Code's Seti go color
-
-    app.stop();
   });
 });

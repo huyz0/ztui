@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseDimension } from "../layout/layout.ts";
+import { parseDimension } from "./layout.ts";
 
 describe("parseDimension robustness", () => {
   test("valid inputs resolve as expected", () => {

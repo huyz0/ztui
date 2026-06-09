@@ -1,35 +1,22 @@
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import {
-  App,
   Checkbox,
   EmailInput,
   PasswordInput,
   RadioGroup,
-  render,
   Select,
   Slider,
   Switch,
   ToggleButton,
   VBox,
 } from "../index.ts";
-import { VTEDriver } from "./vte-runner.ts";
-
-function findWidgetById(screen: any, id: string): any {
-  let found: any;
-  screen.walk((n: any) => {
-    if (n.id === id) found = n;
-  });
-  return found;
-}
+import { mountApp } from "./harness.tsx";
 
 describe("ZTUI Form Widgets Suite", () => {
   test("Checkbox toggle state and keypress", async () => {
     let checkedVal = false;
-    const driver = new VTEDriver(30, 5);
-    const app = new App(driver);
-
-    render(
+    const { screen, findById } = await mountApp(
       <Checkbox
         id="chk"
         checked={checkedVal}
@@ -38,34 +25,26 @@ describe("ZTUI Form Widgets Suite", () => {
           checkedVal = val;
         }}
       />,
-      app.activeScreen,
+      { cols: 30, rows: 5 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const chkWidget = findWidgetById(app.activeScreen, "chk");
+    const chkWidget = findById("chk");
     expect(chkWidget).toBeDefined();
     expect(chkWidget.checked).toBe(false);
 
     // Focus widget
-    app.activeScreen.focusWidget(chkWidget);
+    screen.focusWidget(chkWidget);
     expect(chkWidget.focused).toBe(true);
 
     // Simulate space key
     chkWidget.handleKey({ key: "space" });
     expect(checkedVal).toBe(true);
     expect(chkWidget.checked).toBe(true);
-
-    app.stop();
   });
 
   test("Switch toggle state and mouse click", async () => {
     let activeVal = false;
-    const driver = new VTEDriver(30, 5);
-    const app = new App(driver);
-
-    render(
+    const { findById } = await mountApp(
       <Switch
         id="sw"
         active={activeVal}
@@ -74,13 +53,10 @@ describe("ZTUI Form Widgets Suite", () => {
           activeVal = val;
         }}
       />,
-      app.activeScreen,
+      { cols: 30, rows: 5 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const swWidget = findWidgetById(app.activeScreen, "sw");
+    const swWidget = findById("sw");
     expect(swWidget).toBeDefined();
     expect(swWidget.active).toBe(false);
 
@@ -88,16 +64,11 @@ describe("ZTUI Form Widgets Suite", () => {
     swWidget.handleMouse({ type: "press", button: "left" });
     expect(activeVal).toBe(true);
     expect(swWidget.active).toBe(true);
-
-    app.stop();
   });
 
   test("Slider boundary validation and arrow keys", async () => {
     let sliderVal = 50;
-    const driver = new VTEDriver(30, 5);
-    const app = new App(driver);
-
-    render(
+    const { findById } = await mountApp(
       <Slider
         id="sld"
         value={sliderVal}
@@ -108,13 +79,10 @@ describe("ZTUI Form Widgets Suite", () => {
           sliderVal = val;
         }}
       />,
-      app.activeScreen,
+      { cols: 30, rows: 5 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const sldWidget = findWidgetById(app.activeScreen, "sld");
+    const sldWidget = findById("sld");
     expect(sldWidget).toBeDefined();
     expect(sldWidget.value).toBe(50);
 
@@ -131,16 +99,11 @@ describe("ZTUI Form Widgets Suite", () => {
     sldWidget.value = 100;
     sldWidget.handleKey({ key: "right" });
     expect(sldWidget.value).toBe(100);
-
-    app.stop();
   });
 
   test("Select dropdown open/close and keyboard choices", async () => {
     let selectVal = "";
-    const driver = new VTEDriver(40, 15);
-    const app = new App(driver);
-
-    render(
+    const { screen, findById } = await mountApp(
       <Select
         id="sel"
         value={selectVal}
@@ -149,13 +112,10 @@ describe("ZTUI Form Widgets Suite", () => {
           selectVal = val;
         }}
       />,
-      app.activeScreen,
+      { cols: 40, rows: 15 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const selWidget = findWidgetById(app.activeScreen, "sel");
+    const selWidget = findById("sel");
     expect(selWidget).toBeDefined();
     expect(selWidget.isOpen).toBe(false);
 
@@ -164,7 +124,7 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(selWidget.isOpen).toBe(true);
 
     // Check overlay has been added to Screen
-    expect(app.activeScreen.overlays.length).toBe(1);
+    expect(screen.overlays.length).toBe(1);
 
     // Navigate to next option (Banana)
     selWidget.handleKey({ key: "down" });
@@ -174,15 +134,15 @@ describe("ZTUI Form Widgets Suite", () => {
     selWidget.handleKey({ key: "enter" });
     expect(selectVal).toBe("Banana");
     expect(selWidget.isOpen).toBe(false);
-    expect(app.activeScreen.overlays.length).toBe(0);
+    expect(screen.overlays.length).toBe(0);
 
     // Reopen using enter
     selWidget.handleKey({ key: "enter" });
     expect(selWidget.isOpen).toBe(true);
-    expect(app.activeScreen.overlays.length).toBe(1);
+    expect(screen.overlays.length).toBe(1);
 
     // Simulate clicking outside of the dropdown boundary to close
-    const activeOverlay = app.activeScreen.overlays[0];
+    const activeOverlay = screen.overlays[0];
     activeOverlay.handleMouse({
       type: "press",
       button: "left",
@@ -190,17 +150,12 @@ describe("ZTUI Form Widgets Suite", () => {
       y: 0, // Top-left click (outside dropdown)
     });
     expect(selWidget.isOpen).toBe(false);
-    expect(app.activeScreen.overlays.length).toBe(0);
-
-    app.stop();
+    expect(screen.overlays.length).toBe(0);
   });
 
   test("Select dropdown multiselect toggles on Space and keeps open", async () => {
     let selectVal: string[] = [];
-    const driver = new VTEDriver(40, 15);
-    const app = new App(driver);
-
-    render(
+    const { screen, findById } = await mountApp(
       <Select
         id="sel-multi"
         multiple={true}
@@ -210,19 +165,16 @@ describe("ZTUI Form Widgets Suite", () => {
           selectVal = val;
         }}
       />,
-      app.activeScreen,
+      { cols: 40, rows: 15 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const selWidget = findWidgetById(app.activeScreen, "sel-multi");
+    const selWidget = findById("sel-multi");
     expect(selWidget.isOpen).toBe(false);
 
     // Open dropdown
     selWidget.handleKey({ key: "enter" });
     expect(selWidget.isOpen).toBe(true);
-    expect(app.activeScreen.overlays.length).toBe(1);
+    expect(screen.overlays.length).toBe(1);
 
     // Highlight A (hoveredIndex 0) and toggle using space
     selWidget.handleKey({ key: "space" });
@@ -243,39 +195,27 @@ describe("ZTUI Form Widgets Suite", () => {
     // Close using escape
     selWidget.handleKey({ key: "escape" });
     expect(selWidget.isOpen).toBe(false);
-    expect(app.activeScreen.overlays.length).toBe(0);
-
-    app.stop();
+    expect(screen.overlays.length).toBe(0);
   });
 
   test("Password input masks characters with bullets", async () => {
-    const driver = new VTEDriver(40, 5);
-    const app = new App(driver);
+    const { buffer, findById } = await mountApp(<PasswordInput id="pass" value="secret123" />, {
+      cols: 40,
+      rows: 5,
+    });
 
-    render(<PasswordInput id="pass" value="secret123" />, app.activeScreen);
-
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    await driver.waitWrite();
-
-    const buffer = (app as any).currentBuffer;
-    const contentRect = findWidgetById(app.activeScreen, "pass").getContentRect();
+    const contentRect = findById("pass").getContentRect();
 
     // Verify cell contents
     const passCell = buffer.cells[contentRect.y][contentRect.x + 4]; // Lock icon takes 2 + 1 space = 3, so index 3 is space, 4 is start of text
     expect(passCell.char).toBe("•");
-
-    app.stop();
   });
 
   test("Space character key toggles Switch and Checkbox and selects RadioGroup", async () => {
     let checkedVal = false;
     let switchActive = false;
     let radioVal = "A";
-    const driver = new VTEDriver(30, 10);
-    const app = new App(driver);
-
-    render(
+    const { screen, findById } = await mountApp(
       <VBox>
         <Checkbox
           id="chk"
@@ -302,41 +242,33 @@ describe("ZTUI Form Widgets Suite", () => {
           }}
         />
       </VBox>,
-      app.activeScreen,
+      { cols: 30, rows: 10 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const chk = findWidgetById(app.activeScreen, "chk");
-    const sw = findWidgetById(app.activeScreen, "sw");
-    const radio = findWidgetById(app.activeScreen, "radio");
+    const chk = findById("chk");
+    const sw = findById("sw");
+    const radio = findById("radio");
 
     // Toggle Checkbox using Space character
-    app.activeScreen.focusWidget(chk);
+    screen.focusWidget(chk);
     chk.handleKey({ key: " " });
     expect(checkedVal).toBe(true);
 
     // Toggle Switch using Space character
-    app.activeScreen.focusWidget(sw);
+    screen.focusWidget(sw);
     sw.handleKey({ key: " " });
     expect(switchActive).toBe(true);
 
     // Select Radio option using Space character
-    app.activeScreen.focusWidget(radio);
+    screen.focusWidget(radio);
     radio.hoveredIndex = 1;
     radio.handleKey({ key: " " });
     expect(radioVal).toBe("B");
-
-    app.stop();
   });
 
   test("ToggleButton widget functionality", async () => {
     let toggled = false;
-    const driver = new VTEDriver(30, 5);
-    const app = new App(driver);
-
-    render(
+    const { screen, findById } = await mountApp(
       <ToggleButton
         id="tgl"
         active={toggled}
@@ -345,13 +277,10 @@ describe("ZTUI Form Widgets Suite", () => {
           toggled = v;
         }}
       />,
-      app.activeScreen,
+      { cols: 30, rows: 5 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const tgl = findWidgetById(app.activeScreen, "tgl");
+    const tgl = findById("tgl");
     expect(tgl.active).toBe(false);
 
     // Toggles active state on click
@@ -360,36 +289,26 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(tgl.active).toBe(true);
 
     // Toggles active state back on Space character keypress
-    app.activeScreen.focusWidget(tgl);
+    screen.focusWidget(tgl);
     tgl.handleKey({ key: " " });
     expect(toggled).toBe(false);
     expect(tgl.active).toBe(false);
-
-    app.stop();
   });
 
   test("Form widgets measurement logic prevents zero width when height is specified", async () => {
-    const driver = new VTEDriver(40, 10);
-    const app = new App(driver);
-
-    render(
+    const { findById } = await mountApp(
       <VBox>
         <Checkbox id="chk" label="Accept" style={{ height: 1 }} />
         <Switch id="sw" label="News" style={{ height: 1 }} />
       </VBox>,
-      app.activeScreen,
+      { cols: 40, rows: 10 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const chk = findWidgetById(app.activeScreen, "chk");
-    const sw = findWidgetById(app.activeScreen, "sw");
+    const chk = findById("chk");
+    const sw = findById("sw");
 
     expect(chk.measuredWidth).toBeGreaterThan(0);
     expect(sw.measuredWidth).toBeGreaterThan(0);
-
-    app.stop();
   });
 
   test("Mouse interactions for form widgets (Checkbox, RadioGroup, Slider, Select)", async () => {
@@ -437,60 +356,48 @@ describe("ZTUI Form Widgets Suite", () => {
       );
     }
 
-    const driver = new VTEDriver(40, 15);
-    const app = new App(driver);
-
-    render(<TestWrapper />, app.activeScreen);
-
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const { screen, findById, settle } = await mountApp(<TestWrapper />, { cols: 40, rows: 15 });
 
     // 1. Checkbox mouse click
-    const chk = findWidgetById(app.activeScreen, "chk");
+    const chk = findById("chk");
     chk.handleMouse({ type: "press", button: "left" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(currentChecked).toBe(true);
 
     // 2. RadioGroup vertical mouse click
-    const radioV = findWidgetById(app.activeScreen, "radio-v");
+    const radioV = findById("radio-v");
     const rectV = radioV.getContentRect();
     // Click on B (index 1, offset y = 1)
     radioV.handleMouse({ type: "press", button: "left", x: rectV.x, y: rectV.y + 1 });
     // Wait for React state update to propagate
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(currentRadio).toBe("B");
 
     // 3. RadioGroup horizontal mouse click
-    const radioH = findWidgetById(app.activeScreen, "radio-h");
+    const radioH = findById("radio-h");
     const rectH = radioH.getContentRect();
     // Option A starts at rectH.x, length is roughly 2 + 1 + 3 = 6
     radioH.handleMouse({ type: "press", button: "left", x: rectH.x + 1, y: rectH.y });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(currentRadio).toBe("A");
 
     // 4. Slider mouse drag/press
-    const sld = findWidgetById(app.activeScreen, "sld");
+    const sld = findById("sld");
     const rectS = sld.getContentRect();
     // Click at the start of track to set value to 0
     sld.handleMouse({ type: "press", button: "left", x: rectS.x, y: rectS.y });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(currentSlider).toBe(0);
 
     // 5. Select dropdown option click on overlay
-    const sel = findWidgetById(app.activeScreen, "sel");
+    const sel = findById("sel");
     // Click select header to open
     sel.handleMouse({ type: "press", button: "left" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(sel.isOpen).toBe(true);
-    expect(app.activeScreen.overlays.length).toBe(1);
+    expect(screen.overlays.length).toBe(1);
 
-    const overlay = app.activeScreen.overlays[0] as any;
-    console.log("DEBUG Select dropdown bounds:", {
-      dropdownX: overlay.dropdownX,
-      dropdownY: overlay.dropdownY,
-      dropdownWidth: overlay.dropdownWidth,
-      dropdownHeight: overlay.dropdownHeight,
-    });
+    const overlay = screen.overlays[0] as any;
     // Click on Banana (index 1)
     overlay.handleMouse({
       type: "press",
@@ -498,12 +405,9 @@ describe("ZTUI Form Widgets Suite", () => {
       x: overlay.dropdownX + 2,
       y: overlay.dropdownY + 2, // dropdownY + 1 (border) + 1 (Banana index)
     });
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    console.log("DEBUG Select after click:", { currentSelect, isOpen: sel.isOpen });
+    await settle();
     expect(currentSelect).toBe("Banana");
     expect(sel.isOpen).toBe(false);
-
-    app.stop();
   });
 
   test("Additional form widget edge cases for full coverage", async () => {
@@ -587,60 +491,58 @@ describe("ZTUI Form Widgets Suite", () => {
       );
     }
 
-    const driver = new VTEDriver(80, 24);
-    const app = new App(driver);
-
-    render(<ExtraTestWrapper />, app.activeScreen);
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const { app, screen, findById, settle } = await mountApp(<ExtraTestWrapper />, {
+      cols: 80,
+      rows: 24,
+    });
 
     // Focus and click test for EmailInput
-    const emailWidget = findWidgetById(app.activeScreen, "email");
+    const emailWidget = findById("email");
     expect(emailWidget).toBeDefined();
 
     // Checkbox and Switch custom size measurement validation
-    const chkCustom = findWidgetById(app.activeScreen, "chk-custom");
-    const swCustom = findWidgetById(app.activeScreen, "sw-custom");
+    const chkCustom = findById("chk-custom");
+    const swCustom = findById("sw-custom");
     expect(chkCustom.measuredWidth).toBe(20);
     expect(chkCustom.measuredHeight).toBe(2);
     expect(swCustom.measuredWidth).toBe(20);
     expect(swCustom.measuredHeight).toBe(2);
 
     // Checkbox and Switch Enter key toggle
-    app.activeScreen.focusWidget(chkCustom);
+    screen.focusWidget(chkCustom);
     chkCustom.handleKey({ key: "enter" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(chkVal).toBe(true);
 
-    app.activeScreen.focusWidget(swCustom);
+    screen.focusWidget(swCustom);
     swCustom.handleKey({ key: "enter" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(swVal).toBe(true);
 
     // RadioGroup horizontal navigation keys
-    const radioHNav = findWidgetById(app.activeScreen, "radio-h-nav");
-    app.activeScreen.focusWidget(radioHNav);
+    const radioHNav = findById("radio-h-nav");
+    screen.focusWidget(radioHNav);
     radioHNav.handleKey({ key: "right" });
     radioHNav.handleKey({ key: "enter" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(radioVal).toBe("B");
 
     radioHNav.handleKey({ key: "left" });
     radioHNav.handleKey({ key: "space" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(radioVal).toBe("A");
 
     // RadioGroup vertical navigation keys
-    const radioVNav = findWidgetById(app.activeScreen, "radio-v-nav");
-    app.activeScreen.focusWidget(radioVNav);
+    const radioVNav = findById("radio-v-nav");
+    screen.focusWidget(radioVNav);
     radioVNav.handleKey({ key: "down" });
     radioVNav.handleKey({ key: "enter" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(radioVal).toBe("B");
 
     radioVNav.handleKey({ key: "up" });
     radioVNav.handleKey({ key: "enter" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(radioVal).toBe("A");
 
     // Click on RadioGroup horizontal spacing (empty clicks) to test boundary branches
@@ -651,7 +553,7 @@ describe("ZTUI Form Widgets Suite", () => {
       x: rectRadioH.right + 10,
       y: rectRadioH.y,
     });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     // Click on RadioGroup vertical out of bounds
     const radioVNavRect = radioVNav.getContentRect();
     radioVNav.handleMouse({
@@ -660,54 +562,54 @@ describe("ZTUI Form Widgets Suite", () => {
       x: radioVNavRect.x,
       y: radioVNavRect.bottom + 5,
     });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
 
     // Slider focus and keyboard navigation (up/down/left/right)
-    const sliderNav = findWidgetById(app.activeScreen, "slider-nav");
-    app.activeScreen.focusWidget(sliderNav);
+    const sliderNav = findById("slider-nav");
+    screen.focusWidget(sliderNav);
     sliderNav.handleKey({ key: "right" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(sliderVal).toBe(60);
 
     sliderNav.handleKey({ key: "left" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(sliderVal).toBe(50);
 
     sliderNav.handleKey({ key: "up" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(sliderVal).toBe(60);
 
     sliderNav.handleKey({ key: "down" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(sliderVal).toBe(50);
 
     sliderNav.handleKey({ key: "escape" }); // unhandled key branch
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
 
     // Slider drag mouse press out of bounds
     const rectS = sliderNav.getContentRect();
     sliderNav.handleMouse({ type: "press", button: "left", x: rectS.right + 10, y: rectS.y });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(sliderVal).toBe(100);
 
     sliderNav.handleMouse({ type: "press", button: "left", x: rectS.x - 5, y: rectS.y });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(sliderVal).toBe(0);
 
     // Narrow Select widget character truncation and rendering test
-    const selNarrow = findWidgetById(app.activeScreen, "sel-narrow");
+    const selNarrow = findById("sel-narrow");
     app.queueRender();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
 
     // Open narrow select
     selNarrow.handleMouse({ type: "press", button: "left" });
     expect(selNarrow.isOpen).toBe(true);
     // Wait for dropdown overlay rendering to execute
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
 
     // Close it by clicking outside the dropdown overlay
-    expect(app.activeScreen.overlays.length).toBe(1);
-    const activeOverlay = app.activeScreen.overlays[0];
+    expect(screen.overlays.length).toBe(1);
+    const activeOverlay = screen.overlays[0];
     activeOverlay.handleMouse({
       type: "press",
       button: "left",
@@ -715,26 +617,24 @@ describe("ZTUI Form Widgets Suite", () => {
       y: 0,
     });
     expect(selNarrow.isOpen).toBe(false);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
 
     // ToggleButton children TextNode and onClick spy
-    const tglChildren = findWidgetById(app.activeScreen, "tgl-children");
+    const tglChildren = findById("tgl-children");
     expect(tglChildren.getTextContent()).toBe("ToggleMe");
 
-    app.activeScreen.focusWidget(tglChildren);
+    screen.focusWidget(tglChildren);
     tglChildren.handleKey({ key: "enter" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(toggleActive).toBe(true);
     expect(clickSpied).toBe(true);
 
     tglChildren.handleMouse({ type: "press", button: "left" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
     expect(toggleActive).toBe(false);
 
     expect(emailVal).toBe("");
     expect(selNarrow.value).toBe("ExtremelyLongBananaOptionName");
     expect(selectVal).toBe("ExtremelyLongBananaOptionName");
-
-    app.stop();
   });
 });

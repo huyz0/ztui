@@ -1,0 +1,183 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { describe, expect, test } from "vitest";
+import { fullColorRgbaToSixel } from "../../driver/bun/graphics.ts";
+import { Image, SvgImage } from "../../index.ts";
+import { mountApp } from "../../test/harness.tsx";
+import { decodeImage, resizeImage } from "./image.ts";
+
+const TINY_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const TINY_GIF_BASE64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const TINY_JPEG_BASE64 =
+  "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAP/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJgA/9k=";
+
+const TINY_SVG = `
+<svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+  <rect width="10" height="10" fill="red"/>
+</svg>
+`;
+
+const pngDataUri = `data:image/png;base64,${TINY_PNG_BASE64}`;
+
+describe("Image & SVG Image Widgets", () => {
+  test("Successfully decodes PNG, GIF, and JPEG images from buffers", () => {
+    for (const b64 of [TINY_PNG_BASE64, TINY_GIF_BASE64, TINY_JPEG_BASE64]) {
+      const decoded = decodeImage(new Uint8Array(Buffer.from(b64, "base64")));
+      expect(decoded.width).toBe(1);
+      expect(decoded.height).toBe(1);
+      expect(decoded.pixels.length).toBe(4);
+    }
+  });
+
+  test("Throws an error when decoding invalid image formats", () => {
+    expect(() => decodeImage(new Uint8Array([1, 2, 3, 4]))).toThrow();
+  });
+
+  test("Correctly resizes pixel buffers using bilinear filter", () => {
+    const src = new Uint8Array([
+      255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+    ]); // 2x2 image
+    const dest = resizeImage(src, 2, 2, 1, 1); // downscale to 1x1
+    expect(dest.length).toBe(4);
+    // Bilinear downscaling result should be an average/interpolation
+    expect(dest[0]).toBeGreaterThanOrEqual(0);
+    expect(dest[3]).toBe(255);
+  });
+
+  test("Renders fullColorRgbaToSixel with quantization and RLE", () => {
+    const rgba = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255]);
+    const sixel = fullColorRgbaToSixel(rgba, 2, 1, "#000000");
+    expect(sixel).toContain("\x1bPq");
+    expect(sixel).toContain("\x1b\\");
+  });
+
+  test("Renders Image Widget with ANSI Half-Block fallback when graphics are unsupported", async () => {
+    const { cellAt } = await mountApp(<Image src={pngDataUri} style={{ width: 4, height: 2 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "none" },
+    });
+
+    const cell = cellAt(0, 0);
+    expect([" ", "█"]).toContain(cell.char);
+    expect(cell.style.color).toBeDefined();
+    expect(cell.style.background).toBeDefined();
+  });
+
+  test("Renders Image Widget with Sixel protocol when supported", async () => {
+    const { cellAt } = await mountApp(<Image src={pngDataUri} style={{ width: 4, height: 2 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "sixel" },
+    });
+
+    // Top-left cell should carry the graphic metadata; the rest are continuations.
+    const cell0 = cellAt(0, 0);
+    expect(cell0.graphic).toBeDefined();
+    expect(cell0.graphic?.type).toBe("image");
+    expect(cell0.graphic?.cellWidth).toBe(80);
+    expect(cell0.graphic?.cellHeight).toBe(24);
+    expect(cellAt(1, 0).wideContinuation).toBe(true);
+  });
+
+  test("Renders SvgImage Widget with iTerm2 protocol when supported", async () => {
+    const { cellAt } = await mountApp(<SvgImage src={TINY_SVG} style={{ width: 5, height: 3 }} />, {
+      cols: 15,
+      rows: 6,
+      capabilities: { graphicsProtocol: "iterm2" },
+    });
+
+    const cell = cellAt(0, 0);
+    expect(cell.graphic).toBeDefined();
+    expect(cell.graphic?.cellWidth).toBe(80);
+    expect(cell.graphic?.cellHeight).toBe(24);
+  });
+
+  test("Loads Image from a file path correctly", async () => {
+    const tempFile = path.join(__dirname, "temp_test_image.png");
+    fs.writeFileSync(tempFile, Buffer.from(TINY_PNG_BASE64, "base64"));
+    try {
+      const { cellAt } = await mountApp(<Image src={tempFile} style={{ width: 2, height: 1 }} />, {
+        cols: 10,
+        rows: 5,
+        capabilities: { graphicsProtocol: "none" },
+      });
+      expect([" ", "█"]).toContain(cellAt(0, 0).char);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
+  test("Renders clean placeholder on image load/decode failure", async () => {
+    const { cellAt } = await mountApp(
+      <Image src="invalid_non_existent_file.png" style={{ width: 10, height: 2 }} />,
+      { cols: 20, rows: 5, capabilities: { graphicsProtocol: "none" } },
+    );
+
+    // Top-left cell shows the error placeholder, e.g. "E".
+    expect(cellAt(0, 0).char).toBe("E");
+  });
+
+  test("Forces ANSI half-block rendering when ansi=true prop is set", async () => {
+    const { cellAt } = await mountApp(
+      <Image src={pngDataUri} ansi={true} style={{ width: 4, height: 2 }} />,
+      { cols: 10, rows: 5, capabilities: { graphicsProtocol: "kitty" } },
+    );
+
+    const cell = cellAt(0, 0);
+    expect([" ", "█"]).toContain(cell.char);
+    expect(cell.graphic).toBeUndefined();
+  });
+
+  test("Dynamically selects quadrant characters depending on image content", async () => {
+    // A vertical division SVG should trigger left/right half-block characters.
+    const vertSvg = `
+      <svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="5" height="10" fill="white"/>
+        <rect x="5" y="0" width="5" height="10" fill="black"/>
+      </svg>
+    `;
+    const vert = await mountApp(<SvgImage src={vertSvg} style={{ width: 1, height: 1 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "none" },
+      screenStyle: { layout: "vertical" },
+    });
+    expect(["▌", "▐"]).toContain(vert.cellAt(0, 0).char);
+
+    // A horizontal gradient should also resolve to a left/right half-block.
+    const gradSvg = `
+      <svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="black"/>
+            <stop offset="100%" stop-color="white"/>
+          </linearGradient>
+        </defs>
+        <rect width="10" height="10" fill="url(#g)"/>
+      </svg>
+    `;
+    const grad = await mountApp(<SvgImage src={gradSvg} style={{ width: 1, height: 1 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "none" },
+      screenStyle: { layout: "vertical" },
+    });
+    expect(["▌", "▐"]).toContain(grad.cellAt(0, 0).char);
+
+    // A fine diagonal line should trigger a diagonal quadrant character.
+    const lineSvg = `
+      <svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="0" x2="100" y2="100" stroke="white" stroke-width="20"/>
+      </svg>
+    `;
+    const line = await mountApp(<SvgImage src={lineSvg} style={{ width: 1, height: 1 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "none" },
+      screenStyle: { layout: "vertical" },
+    });
+    expect(["▚", "▞"]).toContain(line.cellAt(0, 0).char);
+  });
+});

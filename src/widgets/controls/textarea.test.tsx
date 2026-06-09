@@ -1,22 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { App, render, TextArea, VBox } from "../index.ts";
-import { VTEDriver } from "./vte-runner.ts";
-
-function findWidgetById(screen: any, id: string): any {
-  let found: any;
-  screen.walk((n: any) => {
-    if (n.id === id) found = n;
-  });
-  return found;
-}
+import { TextArea, VBox } from "../../index.ts";
+import { mountApp } from "../../test/harness.tsx";
 
 describe("ZTUI TextArea Widget Suite", () => {
   test("TextArea values, keys and navigation", async () => {
     let currentVal = "Line 1\nLine 2";
-    const driver = new VTEDriver(40, 10);
-    const app = new App(driver);
-
-    render(
+    const { screen, findById } = await mountApp(
       <TextArea
         id="txt"
         value={currentVal}
@@ -25,32 +14,28 @@ describe("ZTUI TextArea Widget Suite", () => {
           currentVal = val;
         }}
       />,
-      app.activeScreen,
+      { cols: 40, rows: 10 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const txt = findWidgetById(app.activeScreen, "txt");
+    const txt = findById("txt");
     expect(txt).toBeDefined();
+    if (!txt) return;
     expect(txt.value).toBe("Line 1\nLine 2");
 
     // Focus the widget to start blinking
-    app.activeScreen.focusWidget(txt);
+    screen.focusWidget(txt);
     expect(txt.focused).toBe(true);
 
-    // Let's test typing a letter 'a' at the end of the text
+    // Type a letter 'a' at the end of the text.
     // Cursor is initially placed at the end: row 1, col 6 ("Line 2" has length 6)
     txt.handleKey({ key: "a" });
     expect(currentVal).toBe("Line 1\nLine 2a");
     expect(txt.cursorCol).toBe(7);
 
-    // Let's test arrow keys
-    // Left arrow
+    // Arrow keys
     txt.handleKey({ key: "left" });
     expect(txt.cursorCol).toBe(6);
 
-    // Up arrow
     txt.handleKey({ key: "up" });
     expect(txt.cursorRow).toBe(0);
     expect(txt.cursorCol).toBe(6); // Col remains 6 because "Line 1" length is 6
@@ -65,16 +50,13 @@ describe("ZTUI TextArea Widget Suite", () => {
     expect(txt.cursorRow).toBe(0);
     expect(txt.cursorCol).toBe(6);
 
-    // Down arrow
     txt.handleKey({ key: "down" });
     expect(txt.cursorRow).toBe(1);
     expect(txt.cursorCol).toBe(6);
 
-    // Home key
     txt.handleKey({ key: "home" });
     expect(txt.cursorCol).toBe(0);
 
-    // End key
     txt.handleKey({ key: "end" });
     expect(txt.cursorCol).toBe(7); // "Line 2a" length is 7
 
@@ -105,16 +87,11 @@ describe("ZTUI TextArea Widget Suite", () => {
     expect(txt.cursorRow).toBe(0);
     txt.handleKey({ key: "pagedown" });
     expect(txt.cursorRow).toBe(1);
-
-    app.stop();
   });
 
   test("TextArea scroll, mouse click, and unmount", async () => {
     let currentVal = "";
-    const driver = new VTEDriver(20, 5);
-    const app = new App(driver);
-
-    render(
+    const { screen, findById, settle } = await mountApp(
       <VBox>
         <TextArea
           id="txt2"
@@ -127,25 +104,20 @@ describe("ZTUI TextArea Widget Suite", () => {
           }}
         />
       </VBox>,
-      app.activeScreen,
+      { cols: 20, rows: 5 },
     );
 
-    app.run();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    const txt = findWidgetById(app.activeScreen, "txt2");
-    app.activeScreen.focusWidget(txt);
+    const txt = findById("txt2");
+    expect(txt).toBeDefined();
+    if (!txt) return;
+    screen.focusWidget(txt);
 
     // Set large text to trigger scrolling
     txt.value = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10";
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await settle();
 
     // Move cursor down to trigger scrollY change
-    txt.handleKey({ key: "down" });
-    txt.handleKey({ key: "down" });
-    txt.handleKey({ key: "down" });
-    txt.handleKey({ key: "down" });
-    txt.handleKey({ key: "down" });
+    for (let i = 0; i < 5; i++) txt.handleKey({ key: "down" });
     expect(txt.scrollY).toBeGreaterThan(0);
 
     // Move cursor right beyond viewport width to trigger scrollX change
@@ -157,7 +129,7 @@ describe("ZTUI TextArea Widget Suite", () => {
     }
     expect(txt.scrollX).toBeGreaterThan(0);
 
-    // Test mouse click positioning
+    // Mouse click positioning
     const rect = txt.getContentRect();
     txt.handleMouse({
       type: "press",
@@ -167,12 +139,10 @@ describe("ZTUI TextArea Widget Suite", () => {
     });
     expect(txt.cursorVisible).toBe(true);
 
-    // Wait for cursor blink interval to trigger
-    await new Promise((resolve) => setTimeout(resolve, 550));
+    // Wait for cursor blink interval to flip visibility off
+    await settle(550);
     expect(txt.cursorVisible).toBe(false);
 
-    // Unmount
-    app.stop();
     txt.onUnmount();
   });
 });

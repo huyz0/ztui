@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { parseInput } from "../driver/bun/input.ts";
-import type { MouseEvent } from "../driver/driver.ts";
+import type { MouseEvent } from "../driver.ts";
+import { parseInput } from "./input.ts";
 
 function firstMouse(seq: string): MouseEvent | undefined {
   let ev: MouseEvent | undefined;

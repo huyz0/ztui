@@ -15,14 +15,26 @@ All unit and integration tests must run safely in headless CI pipelines without 
 ### 1.3 Strict Teardown & Resource Cleanup
 Since the framework binds process events and sets up async render loops, test instances must be cleaned up properly. Failing to tear down applications leads to memory leaks, socket address conflicts, and event listener pollution.
 
+### 1.4 Test Taxonomy (Unit / Integration / E2E)
+Tests are organized into three layers by how much of the system they exercise and where they live:
+
+| Layer | Exercises | Driver | Location | Runner |
+|---|---|---|---|---|
+| **Unit** | One module's pure logic (geometry, layout, `parseDimension`, `ScreenBuffer`, rich-text engines, CSS resolver). | none | Colocated `*.test.ts(x)` beside the source. | `bun run test` |
+| **Integration** | The wired pipeline — React → DOM → layout → `ScreenBuffer` → ANSI — driven in-process and parsed by an emulator. Includes single-widget render tests. | `VTEDriver` (`@xterm/headless`) via the `mountApp` harness. | Single-module → colocated; multi-module suites → `src/test/`. | `bun run test` |
+| **E2E** | The real binary as a separate OS process: real `BunDriver`, raw stdin/stdout, alternate-screen, capability handling, and signal/exit lifecycle. | Real `BunDriver` (spawned with `bun run`). | `e2e/` (fixtures in `e2e/fixtures/`). | `bun run test:e2e` |
+
+- **Rule**: Reach for the lowest layer that can prove the behavior. Only write an E2E test for things the in-process `VTEDriver` cannot exercise — alternate-screen entry/exit, cursor hide/show, mouse-tracking enablement and real SGR click routing, signal handling (SIGINT/SIGTERM exit codes), and real stdin→render round-trips.
+- **Rule**: E2E tests run under their own config (`vitest.config.e2e.ts`), are **excluded from the coverage gate** (they have no meaningful `src` line coverage and are slower), and are kept deterministic by asserting on a reconstructed screen (real stdout piped through `@xterm/headless`) plus raw control-sequence checks.
+
 ---
 
 ## 2. Specific Rules & Requirements
 
 ### 2.1 Test Execution & Runner
 - **Rule**: ZTUI uses **Vitest** for testing and **v8** for coverage collection. All tests are run via the default package scripts.
-- **Rule**: Test files must reside immediately alongside the code they test (e.g. `src/dom/dom.test.ts` for files in `src/dom/`).
-- **Rule**: Use React component integration tests inside `.tsx` test files (such as `src/debug/debug.test.tsx`) to assert reconciler mutations, JSX tags, and layouts.
+- **Rule**: Unit and single-module tests reside immediately alongside the code they test (e.g. `src/dom/dom.test.ts`, `src/widgets/controls/textarea.test.tsx`). Cross-module integration suites live in `src/test/`; end-to-end suites live in `e2e/`.
+- **Rule**: Spin up the full App↔React↔driver pipeline with the shared `mountApp` harness (`src/test/harness.tsx`) — never hand-roll the `new VTEDriver`/`new App`/`render`/`run`/`sleep` dance. It returns `{ app, driver, screen, container, findById, settle, buffer, cellAt, text }` and auto-stops every app in an `afterEach`.
 
 ### 2.2 Coverage Thresholds & Gates
 - **Rule**: Every code change **MUST** maintain or improve test coverage. Global thresholds configured in `vitest.config.ts` are strictly enforced by pre-commit hooks:
@@ -77,8 +89,8 @@ test("renders custom widget", async () => {
 ```
 
 ### Quick Commands Checklist
-- Run tests: `bun run test`
-- Run coverage verification: `bun run test --coverage`
+- Run unit + integration tests with coverage: `bun run test`
+- Run end-to-end tests (spawns real processes): `bun run test:e2e`
 
 ---
 

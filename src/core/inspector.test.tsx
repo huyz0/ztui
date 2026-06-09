@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { App, Button, Label, render, startInspector, VBox, View } from "../index.ts";
-import { VTEDriver } from "./vte-runner.ts";
+import { VTEDriver } from "../test/vte-runner.ts";
 
 const PORT = 8765;
 const BASE = `http://localhost:${PORT}`;

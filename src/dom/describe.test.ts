@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { DOMNode } from "../dom/dom.ts";
-import { Widget } from "../dom/widget.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { Spacing } from "../geometry/spacing.ts";
+import { DOMNode } from "./dom.ts";
+import { Widget } from "./widget.ts";
 
 describe("geometry toString", () => {
   test("Offset / Size / Region / Spacing render readably", () => {

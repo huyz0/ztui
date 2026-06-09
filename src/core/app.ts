@@ -49,6 +49,14 @@ export class App extends DOMNode {
     return this.screenStack[this.screenStack.length - 1];
   }
 
+  /**
+   * The most recently rendered frame buffer (read-only view).
+   * Exposed for inspection/testing — callers must not mutate it.
+   */
+  public get buffer(): ScreenBuffer {
+    return this.currentBuffer;
+  }
+
   public pushScreen(screen: Screen): void {
     screen.parent = this;
     this.screenStack.push(screen);
