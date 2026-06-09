@@ -234,7 +234,8 @@ export class Widget extends DOMNode {
     if (type === "double") {
       chars = ["╔", "═", "╗", "║", "╝", "╚"];
     } else if (type === "dashed") {
-      chars = ["┌", "╌", "┐", "┆", "┘", "└"];
+      // Rounded corners with dashed edges (corners themselves aren't dashed).
+      chars = ["╭", "╌", "╮", "┆", "╯", "╰"];
     } else if (type === "solid" || type === "single") {
       chars = ["┌", "─", "┐", "│", "┘", "└"];
     }
