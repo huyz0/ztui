@@ -26,6 +26,8 @@ export {
   Button,
   Checkbox,
   type CheckboxProps,
+  CompactProgressBar,
+  type CompactProgressBarProps,
   Dock,
   EmailInput,
   type EmailInputProps,
@@ -56,6 +58,8 @@ export {
   type MermaidProps,
   PasswordInput,
   type PasswordInputProps,
+  ProgressBar,
+  type ProgressBarProps,
   RadioGroup,
   type RadioGroupProps,
   RichText,
@@ -101,6 +105,7 @@ export { Style } from "./render/style.ts";
 export { CheckboxWidget } from "./widgets/controls/checkbox.ts";
 export { FieldErrorWidget } from "./widgets/controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./widgets/controls/form.ts";
+export { ProgressBarWidget } from "./widgets/controls/progress-bar.ts";
 export { RadioGroupWidget } from "./widgets/controls/radio-group.ts";
 export { SelectWidget } from "./widgets/controls/select.ts";
 export { SliderWidget } from "./widgets/controls/slider.ts";

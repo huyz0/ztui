@@ -1,0 +1,188 @@
+import { App } from "../../core/app.ts";
+import { Widget } from "../../dom/widget.ts";
+import { parseDimension } from "../../layout/layout.ts";
+import type { ScreenBuffer } from "../../render/buffer.ts";
+import { Segment } from "../../render/segment.ts";
+import { Style } from "../../render/style.ts";
+
+/** Every cell is a solid full block; progress is shown through colour alone. */
+const BLOCK = "█";
+
+/** How dark the empty track is relative to the fill colour (0 = black). */
+const TRACK_DIM = 0.22;
+
+type RGB = { r: number; g: number; b: number };
+
+const FALLBACK_RGB: RGB = { r: 0, g: 255, b: 255 };
+
+/** Parse `#rgb`, `#rrggbb`, or `rgb(r,g,b)` to channels; null if unrecognised. */
+function parseRgb(color: string): RGB | null {
+  const norm = color.trim().toLowerCase();
+  if (norm.startsWith("#")) {
+    const hex = norm.slice(1);
+    if (hex.length === 3) {
+      return {
+        r: Number.parseInt(hex[0] + hex[0], 16),
+        g: Number.parseInt(hex[1] + hex[1], 16),
+        b: Number.parseInt(hex[2] + hex[2], 16),
+      };
+    }
+    if (hex.length === 6) {
+      return {
+        r: Number.parseInt(hex.slice(0, 2), 16),
+        g: Number.parseInt(hex.slice(2, 4), 16),
+        b: Number.parseInt(hex.slice(4, 6), 16),
+      };
+    }
+    return null;
+  }
+  const m = norm.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
+  if (m) return { r: +m[1], g: +m[2], b: +m[3] };
+  return null;
+}
+
+/** Linear blend between two colours; `t` 0 → `a`, 1 → `b`. */
+function mix(a: RGB, b: RGB, t: number): RGB {
+  return {
+    r: Math.round(a.r + (b.r - a.r) * t),
+    g: Math.round(a.g + (b.g - a.g) * t),
+    b: Math.round(a.b + (b.b - a.b) * t),
+  };
+}
+
+const rgbStr = (c: RGB): string => `rgb(${c.r}, ${c.g}, ${c.b})`;
+
+export class ProgressBarWidget extends Widget {
+  public value = 0;
+  public min = 0;
+  public max = 100;
+  /** When true, render `100%` after the bar. Off by default to stay compact. */
+  public showPercent = false;
+  /** Render an indeterminate sweep instead of a value-driven fill. */
+  public indeterminate = false;
+
+  constructor() {
+    super("progress-bar");
+    this.defaultStyle = { height: 1 };
+  }
+
+  public override measure(maxW: number, maxH: number): void {
+    const b = this.borderSize;
+    const p = this.padding;
+
+    // A compact default: 20 cells of track, plus room for " 100%" if shown.
+    const intrinsic = 20 + (this.showPercent ? 5 : 0);
+    if (this.computedStyle.width === undefined) {
+      this.measuredWidth = intrinsic + b.width + p.width;
+    } else {
+      const wVal = parseDimension(this.computedStyle.width, maxW, -1);
+      this.measuredWidth = typeof wVal === "number" ? wVal : intrinsic + b.width + p.width;
+    }
+
+    if (this.computedStyle.height === undefined) {
+      this.measuredHeight = 1 + b.height + p.height;
+    } else {
+      const hVal = parseDimension(this.computedStyle.height, maxH, -1);
+      this.measuredHeight = typeof hVal === "number" ? hVal : 1 + b.height + p.height;
+    }
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    super.render(buffer);
+    const contentRect = this.getContentRect();
+    if (contentRect.width <= 0) return;
+
+    const bg = this.findResolvedBackground();
+    const primaryColor =
+      this.computedStyle.color ||
+      App.instance?.cssResolver.resolveVariable(this, "$primary") ||
+      "cyan";
+
+    // The bar is one solid band whose cells run from a dark shade of the fill
+    // colour (empty) to the full fill colour (complete); the boundary cell takes
+    // an in-between shade for sub-cell progress. No partial glyphs, so every
+    // cell has the same weight and height.
+    const fillRgb = parseRgb(primaryColor) ?? FALLBACK_RGB;
+    const trackRgb = mix({ r: 0, g: 0, b: 0 }, fillRgb, TRACK_DIM);
+
+    // Reserve trailing " 100%" when requested; never let it eat the whole row.
+    const pctWidth = this.showPercent ? 5 : 0;
+    const trackWidth = Math.max(1, contentRect.width - pctWidth);
+    const y = contentRect.y;
+
+    if (this.indeterminate) {
+      this.renderIndeterminate(buffer, contentRect.x, y, trackWidth, fillRgb, trackRgb, bg);
+    } else {
+      this.renderDeterminate(buffer, contentRect.x, y, trackWidth, fillRgb, trackRgb, bg);
+    }
+
+    if (this.showPercent) {
+      const range = this.max - this.min;
+      const pct = range === 0 ? 0 : (this.value - this.min) / range;
+      const clamped = Math.max(0, Math.min(1, pct));
+      const text = `${String(Math.round(clamped * 100)).padStart(4)}%`;
+      buffer.drawSegment(
+        contentRect.x + trackWidth,
+        y,
+        new Segment(text, new Style({ color: primaryColor, background: bg })),
+        contentRect,
+      );
+    }
+  }
+
+  private renderDeterminate(
+    buffer: ScreenBuffer,
+    x: number,
+    y: number,
+    trackWidth: number,
+    fillRgb: RGB,
+    trackRgb: RGB,
+    bg: string,
+  ): void {
+    const range = this.max - this.min;
+    const pct = range === 0 ? 0 : (this.value - this.min) / range;
+    const clamped = Math.max(0, Math.min(1, pct));
+
+    const fillExact = clamped * trackWidth;
+    const fullCells = Math.floor(fillExact);
+    const fraction = fillExact - fullCells; // sub-cell fill of the boundary cell
+
+    for (let i = 0; i < trackWidth; i++) {
+      let color: RGB;
+      if (i < fullCells) {
+        color = fillRgb;
+      } else if (i === fullCells && fraction > 0) {
+        color = mix(trackRgb, fillRgb, fraction);
+      } else {
+        color = trackRgb;
+      }
+      buffer.setCell(x + i, y, BLOCK, new Style({ color: rgbStr(color), background: bg }));
+    }
+  }
+
+  private renderIndeterminate(
+    buffer: ScreenBuffer,
+    x: number,
+    y: number,
+    trackWidth: number,
+    fillRgb: RGB,
+    trackRgb: RGB,
+    bg: string,
+  ): void {
+    // A bright crest sweeps back and forth, fading into the dark track at its
+    // edges. Driven by the render clock so it animates without the caller
+    // mutating `value`.
+    const span = Math.max(1, trackWidth - 1);
+    const t = (Date.now() / 60) % (span * 2);
+    const head = t <= span ? t : span * 2 - t;
+    const falloff = Math.max(2, trackWidth / 5);
+
+    for (let i = 0; i < trackWidth; i++) {
+      const dist = Math.abs(i - head);
+      const intensity = Math.max(0, 1 - dist / falloff);
+      const color = mix(trackRgb, fillRgb, intensity);
+      buffer.setCell(x + i, y, BLOCK, new Style({ color: rgbStr(color), background: bg }));
+    }
+    App.instance?.queueRender();
+  }
+}

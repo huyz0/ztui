@@ -12,6 +12,11 @@ export type {
   PasswordInputProps,
 } from "./components/controls/input.tsx";
 export { EmailInput, Input, PasswordInput } from "./components/controls/input.tsx";
+export type {
+  CompactProgressBarProps,
+  ProgressBarProps,
+} from "./components/controls/progress-bar.tsx";
+export { CompactProgressBar, ProgressBar } from "./components/controls/progress-bar.tsx";
 export type { RadioGroupProps } from "./components/controls/radio-group.tsx";
 export { RadioGroup } from "./components/controls/radio-group.tsx";
 export type { SelectProps } from "./components/controls/select.tsx";

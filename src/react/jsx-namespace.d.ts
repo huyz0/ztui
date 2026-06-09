@@ -143,6 +143,13 @@ declare global {
           validateOn?: ValidateTrigger;
           onValidate?: (result: ValidationResult) => void;
         };
+        "ztui-progress-bar": ZTUIElementProps & {
+          value?: number;
+          min?: number;
+          max?: number;
+          showPercent?: boolean;
+          indeterminate?: boolean;
+        };
         "ztui-toggle-button": ZTUIElementProps & {
           active?: boolean;
           label?: string;
