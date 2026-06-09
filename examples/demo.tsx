@@ -54,7 +54,7 @@ function DemoApp() {
       {/* Main Split Layout */}
       <HBox style={{ padding: 1 }}>
         {/* Left Column: Form Controls */}
-        <VBox style={{ width: "55%", border: "solid", borderColor: "#a6e3a1", padding: 1 }}>
+        <VBox style={{ width: "55%", border: "rounded", borderColor: "#a6e3a1", padding: 1 }}>
           <Label style={{ color: "#cba6f7", bold: true }}>📋 Interactive Form Controls</Label>
           <View style={{ height: 1 }} />
 
@@ -118,7 +118,7 @@ function DemoApp() {
         </VBox>
 
         {/* Right Column: Dropdowns and Realtime State output */}
-        <VBox style={{ width: "45%", border: "solid", borderColor: "#f9e2af", padding: 1 }}>
+        <VBox style={{ width: "45%", border: "rounded", borderColor: "#f9e2af", padding: 1 }}>
           <Label style={{ color: "#f9e2af", bold: true }}>⚙️ Select Dropdowns</Label>
           <View style={{ height: 1 }} />
 

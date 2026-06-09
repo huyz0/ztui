@@ -144,7 +144,7 @@ function GenerativeUIApp() {
 
         {/* Bottom Panel: Logs & Controls */}
         <HBox
-          style={{ height: "30%", border: "single", padding: 1, margin: new Spacing(1, 0, 0, 0) }}
+          style={{ height: "30%", border: "rounded", padding: 1, margin: new Spacing(1, 0, 0, 0) }}
         >
           {/* Logs Output */}
           <VBox style={{ width: "70%" }}>

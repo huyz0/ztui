@@ -77,7 +77,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
 
       <HBox style={{ padding: 1 }}>
         {/* Navigation Sidebar */}
-        <VBox style={{ width: "30%", border: "solid", padding: 1 }}>
+        <VBox style={{ width: "30%", border: "rounded", padding: 1 }}>
           <Button
             style={{
               background: tab === "markup" ? "#89b4fa" : "#313244",
@@ -116,7 +116,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
         </VBox>
 
         {/* Content Viewer Panel */}
-        <VBox style={{ width: "70%", border: "solid", padding: 1 }}>
+        <VBox style={{ width: "70%", border: "rounded", padding: 1 }}>
           {tab === "markup" && (
             <VBox>
               <RichText style={{ color: "#cba6f7", bold: true, align: "center" }}>

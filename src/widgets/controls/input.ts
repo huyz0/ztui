@@ -192,7 +192,7 @@ export class InputWidget extends Widget implements ValidatableField {
     }
 
     if (this.computedStyle.border === undefined) {
-      this.computedStyle.border = "solid";
+      this.computedStyle.border = "rounded";
     }
 
     // Apply severity border color (error/warning) when validation fails.

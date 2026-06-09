@@ -84,7 +84,7 @@ function ThemeExplorerApp() {
 
       <HBox style={{ padding: 1 }}>
         {/* Left column: Theme controls */}
-        <VBox style={{ width: "45%", border: "solid", borderColor: "$secondary", padding: 1 }}>
+        <VBox style={{ width: "45%", border: "rounded", borderColor: "$secondary", padding: 1 }}>
           <Label style={{ bold: true, color: "$primary" }}>Global App Theme</Label>
           <Label style={{ color: "$foreground", dim: true }}>Active: {activeTheme}</Label>
           <View style={{ height: 1 }} />
@@ -260,7 +260,7 @@ function ThemeExplorerApp() {
         {/* Right column: Interactive widgets demonstrating variables & scoped themes */}
         <VBox style={{ width: "55%", padding: new Spacing(0, 0, 0, 1) }}>
           {/* Section 1: Standard variables */}
-          <VBox style={{ border: "solid", borderColor: "$secondary", padding: 1 }}>
+          <VBox style={{ border: "rounded", borderColor: "$secondary", padding: 1 }}>
             <Label style={{ bold: true, color: "$accent" }}>Standard Widget Elements</Label>
             <Label style={{ color: "$success" }}>✔ Success State Label ($success)</Label>
             <Label style={{ color: "$warning" }}>⚠ Warning State Label ($warning)</Label>

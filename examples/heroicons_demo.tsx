@@ -68,7 +68,7 @@ function HeroiconsDemo() {
           </Button>
         </HBox>
 
-        <VBox style={{ flexGrow: 1, border: "single", padding: 1 }}>
+        <VBox style={{ flexGrow: 1, border: "rounded", padding: 1 }}>
           <Label style={{ color: "#f5e0dc", bold: true }}>1. Solid Style (24x24 px)</Label>
           <HBox style={{ height: 1, margin: new Spacing(0, 0, 1, 0) }}>
             <HeroIcon name="home" variant="solid" style={{ color: activeColor }} />

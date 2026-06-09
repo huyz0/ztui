@@ -77,14 +77,14 @@ export class DropdownOverlayWidget extends Widget {
       buffer.setCell(this.dropdownX, y, "│", borderStyle);
       buffer.setCell(this.dropdownX + this.dropdownWidth - 1, y, "│", borderStyle);
     }
-    // Corners
-    buffer.setCell(this.dropdownX, this.dropdownY, "┌", borderStyle);
-    buffer.setCell(this.dropdownX + this.dropdownWidth - 1, this.dropdownY, "┐", borderStyle);
-    buffer.setCell(this.dropdownX, this.dropdownY + this.dropdownHeight - 1, "└", borderStyle);
+    // Corners (rounded, matching the default border style)
+    buffer.setCell(this.dropdownX, this.dropdownY, "╭", borderStyle);
+    buffer.setCell(this.dropdownX + this.dropdownWidth - 1, this.dropdownY, "╮", borderStyle);
+    buffer.setCell(this.dropdownX, this.dropdownY + this.dropdownHeight - 1, "╰", borderStyle);
     buffer.setCell(
       this.dropdownX + this.dropdownWidth - 1,
       this.dropdownY + this.dropdownHeight - 1,
-      "┘",
+      "╯",
       borderStyle,
     );
 
@@ -315,7 +315,7 @@ export class SelectWidget extends Widget {
 
   public override render(buffer: ScreenBuffer): void {
     if (this.computedStyle.border === undefined) {
-      this.computedStyle.border = "solid";
+      this.computedStyle.border = "rounded";
     }
     const severityColor = this.validation.resolveColor();
     if (severityColor) {

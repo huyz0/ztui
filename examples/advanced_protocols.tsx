@@ -129,7 +129,7 @@ function AdvancedProtocolsApp() {
 
       <HBox style={{ padding: 1 }}>
         {/* Left Column - Hyperlinks, Font Formats & Capabilities */}
-        <VBox style={{ width: "50%", border: "solid", padding: 1 }}>
+        <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
           <Label style={{ color: "#cba6f7", bold: true }}>1. Font Formats (SGR 1/2/3/4/9)</Label>
           <HBox style={{ margin: new Spacing(0, 1, 0, 1) }}>
             <Label style={{ bold: true }}>Bold </Label>
@@ -200,7 +200,7 @@ function AdvancedProtocolsApp() {
         </VBox>
 
         {/* Right Column - OS Integration & Media */}
-        <VBox style={{ width: "50%", border: "solid", padding: 1 }}>
+        <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
           <Label style={{ color: "#f5e0dc", bold: true }}>5. OS Integration & Media</Label>
 
           <HBox style={{ margin: new Spacing(0, 1, 1, 1) }}>

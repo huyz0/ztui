@@ -242,7 +242,7 @@ export class TextAreaWidget extends Widget {
     }
 
     if (this.computedStyle.border === undefined) {
-      this.computedStyle.border = "solid";
+      this.computedStyle.border = "rounded";
     }
     const severityColor = this.validation.resolveColor();
     if (severityColor) {

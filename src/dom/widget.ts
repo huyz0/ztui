@@ -22,7 +22,7 @@ export interface WidgetStyles {
   maxHeight?: number;
   margin?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
   padding?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
-  border?: string; // "solid", "double", "dashed", "none"
+  border?: string; // "rounded" (default), "solid", "double", "dashed", "none"
   borderColor?: string;
   layout?: "vertical" | "horizontal" | "dock" | "grid";
   dock?: "top" | "right" | "bottom" | "left";
@@ -227,12 +227,16 @@ export class Widget extends DOMNode {
 
   private drawBorder(buffer: ScreenBuffer, rect: Region, style: Style): void {
     const type = this.computedStyle.border;
-    let chars = ["┌", "─", "┐", "│", "┘", "└"]; // solid default
+    // Rounded corners are the default (matches Textual's "round"): solid edges,
+    // rounded corner glyphs.
+    let chars = ["╭", "─", "╮", "│", "╯", "╰"];
 
     if (type === "double") {
       chars = ["╔", "═", "╗", "║", "╝", "╚"];
     } else if (type === "dashed") {
       chars = ["┌", "╌", "┐", "┆", "┘", "└"];
+    } else if (type === "solid" || type === "single") {
+      chars = ["┌", "─", "┐", "│", "┘", "└"];
     }
 
     const [tl, h, tr, v, br, bl] = chars;

@@ -89,7 +89,7 @@ function FileIconDemo() {
           onKey={handleKey}
           style={{
             width: 40,
-            border: "single",
+            border: "rounded",
             borderColor: "#cba6f7",
             padding: 1,
             background: "#181825",
@@ -131,7 +131,7 @@ function FileIconDemo() {
         <VBox
           style={{
             flexGrow: 1,
-            border: "single",
+            border: "rounded",
             borderColor: "#89b4fa",
             padding: 1,
             background: "#181825",
