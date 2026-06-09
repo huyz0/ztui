@@ -25,6 +25,7 @@ Grid border lines consume space. When planning element sizes, developers must ac
 - **Rule**: **App State Snapshot (`GET /state`)** returns terminal size, screen-stack depth, focused/hovered widget identity (via `DOMNode.describe()`), active theme, driver capabilities, and the active log file path + level.
 - **Rule**: **ASCII Tree (`GET /tree`)** returns an indented, one-node-per-line view of the widget tree (via `DOMNode.describe()`), for fast human/LLM scanning.
 - **Rule**: **Log Tail (`GET /log?lines=N`)** returns the last `N` lines (default 200) of the centralized log file as plain text, so the run log is reachable without filesystem access.
+- **Rule**: **Text Screenshot (`GET /screenshot`)** returns a plain-text grid of exactly the characters currently painted (style/color dropped, wide-char continuations skipped) — the fastest way to "see" the screen in CI or over SSH.
 - **Rule**: **HTML Render Output (`GET /render`)** MUST return a raw HTML string mapping ScreenBuffer cell formatting to CSS styles.
 - **Rule**: **Input Simulation (`POST /input`)** MUST accept mouse or keyboard JSON payload structures and inject them directly into the driver event queue.
 
@@ -58,6 +59,7 @@ inspector.stop();
 curl localhost:8000/state          # terminal size, focus, theme, capabilities, log path
 curl 'localhost:8000/log?lines=50' # tail the run log
 curl localhost:8000/tree           # indented ASCII widget tree (quick scan)
+curl localhost:8000/screenshot     # plain-text grid of what's on screen now
 curl localhost:8000/dom            # full widget tree with regions + text (JSON)
 ```
 

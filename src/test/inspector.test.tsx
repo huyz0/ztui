@@ -62,6 +62,13 @@ describe("inspector endpoints", () => {
     expect(text).toMatch(/\n {2,}button#ok/);
   });
 
+  test("GET /screenshot returns the on-screen text grid", async () => {
+    const text = await (await fetch(`${BASE}/screenshot`)).text();
+    // The Button label and the Label text should both appear in the paint.
+    expect(text).toContain("Click");
+    expect(text).toContain("hello text");
+  });
+
   test("GET /dom includes text nodes, focusable, and visibility", async () => {
     const dump = await (await fetch(`${BASE}/dom`)).json();
     const json = JSON.stringify(dump);

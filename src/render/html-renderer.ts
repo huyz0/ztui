@@ -1,5 +1,25 @@
 import type { ScreenBuffer } from "./buffer.ts";
 
+/**
+ * Render the screen buffer as a plain-text grid — a "screenshot" of exactly the
+ * characters currently on screen. Style/color is dropped (use renderBufferToHTML
+ * for that); this is the fastest way for a human or LLM to see the layout.
+ * Wide-character continuation cells are skipped and trailing whitespace trimmed.
+ */
+export function renderBufferToText(buffer: ScreenBuffer): string {
+  const lines: string[] = [];
+  for (let y = 0; y < buffer.height; y++) {
+    let row = "";
+    for (let x = 0; x < buffer.width; x++) {
+      const cell = buffer.cells[y][x];
+      if (cell.wideContinuation) continue;
+      row += cell.char === "" ? " " : cell.char;
+    }
+    lines.push(row.replace(/\s+$/, ""));
+  }
+  return lines.join("\n");
+}
+
 export function renderBufferToHTML(buffer: ScreenBuffer): string {
   let html = `<div style="font-family: 'Courier New', Courier, monospace; font-size: 14px; line-height: 1.25; background-color: #1e1e2e; color: #cdd6f4; padding: 10px; display: inline-block; white-space: pre; border-radius: 4px;">`;
 

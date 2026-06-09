@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { renderBufferToHTML } from "../render/html-renderer.ts";
+import { renderBufferToHTML, renderBufferToText } from "../render/html-renderer.ts";
 import type { App } from "./app.ts";
 import { logger } from "./logger.ts";
 import { ThemeManager } from "./theme.ts";
@@ -124,6 +124,12 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
     });
   }
 
+  if (url.pathname === "/screenshot" && req.method === "GET") {
+    return new Response(renderBufferToText((app as any).currentBuffer), {
+      headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
   if (url.pathname === "/render" && req.method === "GET") {
     const html = renderBufferToHTML((app as any).currentBuffer);
     return new Response(html, {
@@ -178,7 +184,7 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
   }
 
   return new Response(
-    "ZTUI Inspector Running. Endpoints: GET /dom, GET /tree, GET /state, GET /log?lines=N, GET /render, POST /input",
+    "ZTUI Inspector Running. Endpoints: GET /dom, GET /tree, GET /state, GET /log?lines=N, GET /screenshot, GET /render, POST /input",
     {
       status: 200,
       headers: { "Access-Control-Allow-Origin": "*" },
