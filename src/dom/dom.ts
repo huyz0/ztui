@@ -38,6 +38,25 @@ export class DOMNode {
     }
   }
 
+  /**
+   * Human/LLM-readable identity for logs and diagnostics, e.g.
+   * `button#submit.primary @ (2,1 10x1)`. Includes the laid-out region when
+   * one is present (widgets), and the text preview for text nodes.
+   */
+  public describe(): string {
+    const text = (this as { text?: unknown }).text;
+    if (typeof text === "string") {
+      const preview = text.length > 20 ? `${text.slice(0, 20).trimEnd()}…` : text;
+      return `${this.tagName}("${preview}")`;
+    }
+    let sel = this.tagName || "node";
+    if (this.id) sel += `#${this.id}`;
+    if (this.classes.size > 0) sel += `.${[...this.classes].join(".")}`;
+    const region = (this as { region?: { toString(): string } }).region;
+    if (region) sel += ` @ ${region.toString()}`;
+    return sel;
+  }
+
   public walk(callback: (node: DOMNode) => void): void {
     callback(this);
     const sorted = [...this.children].sort((a, b) => {

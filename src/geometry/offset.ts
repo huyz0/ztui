@@ -21,4 +21,8 @@ export class Offset {
   public clone(): Offset {
     return new Offset(this.x, this.y);
   }
+
+  public toString(): string {
+    return `(${this.x}, ${this.y})`;
+  }
 }

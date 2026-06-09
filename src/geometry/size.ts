@@ -13,4 +13,8 @@ export class Size {
   public clone(): Size {
     return new Size(this.width, this.height);
   }
+
+  public toString(): string {
+    return `${this.width}x${this.height}`;
+  }
 }

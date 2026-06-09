@@ -192,13 +192,12 @@ function dumpAppState(app: App): any {
   } catch {
     size = null;
   }
+  const hovered = (app as any).hoveredWidget;
   return {
     terminalSize: size,
     screenStackDepth: app.screenStack.length,
-    focusedWidget: focused ? `${focused.tagName}${focused.id ? `#${focused.id}` : ""}` : null,
-    hoveredWidget: (app as any).hoveredWidget
-      ? `${(app as any).hoveredWidget.tagName}${(app as any).hoveredWidget.id ? `#${(app as any).hoveredWidget.id}` : ""}`
-      : null,
+    focusedWidget: focused ? focused.describe() : null,
+    hoveredWidget: hovered ? hovered.describe() : null,
     activeTheme: ThemeManager.getInstance().getActiveTheme().name,
     capabilities: driver.capabilities,
     log: { file: logger.getFilePath(), level: logger.getLevel() },

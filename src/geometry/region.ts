@@ -69,4 +69,8 @@ export class Region {
   public clone(): Region {
     return new Region(this.offset.clone(), this.size.clone());
   }
+
+  public toString(): string {
+    return `(${this.x},${this.y} ${this.width}x${this.height})`;
+  }
 }

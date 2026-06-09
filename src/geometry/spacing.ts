@@ -28,4 +28,8 @@ export class Spacing {
   public clone(): Spacing {
     return new Spacing(this.top, this.right, this.bottom, this.left);
   }
+
+  public toString(): string {
+    return `[t:${this.top} r:${this.right} b:${this.bottom} l:${this.left}]`;
+  }
 }

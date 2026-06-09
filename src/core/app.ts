@@ -127,9 +127,7 @@ export class App extends DOMNode {
       }
       if (ev.key === "tab") {
         this.activeScreen.focusNext(ev.shift);
-        log(
-          `Focus moved to: ${this.activeScreen.focusedWidget?.tagName}#${this.activeScreen.focusedWidget?.id || ""}`,
-        );
+        log(`Focus moved to: ${this.activeScreen.focusedWidget?.describe() ?? "(none)"}`);
         this.queueRender();
         return;
       }
