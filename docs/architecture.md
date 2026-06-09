@@ -102,6 +102,14 @@ The framework is organized around several high-level visual and structural abstr
 - **Why it makes sense**: Parent containers must decide how to distribute spatial regions to children dynamically. Offloading coordinate calculations to dedicated layout engines keeps widget modules small and single-purpose, allowing layout algorithms to evolve independently.
 - **Requirement Met**: *Layout Extensibility & Composable UI* — Provides pluggable placement solvers to enforce layout strategies (such as flexbox space divisions and remainder sharing) without baking coordinate logic into widgets.
 
+### 2.8a `TableWidget` (Virtualized Data Grid) — `src/widgets/data/`
+- **Role**: A space-constrained, scrollable, sortable data grid for very large row sets.
+- **What it does**: Self-renders the body (no per-row child widgets) so only the rows inside the current viewport window are drawn each frame — this is what lets it handle 10^5+ rows. Sorting reorders an *index array* over the untouched `data`; columns size via fixed / `<n>fr` / `auto` (sampled from the visible window); the header is pinned and tracks horizontal column scroll; text is truncated with wide-char-correct ellipsis.
+- **Widget-bearing cells**: A column may supply `render(row)` returning a framework node. The stateful React `<Table>` materializes those cells **only for the rows the widget reports as visible** via the `onViewportChange` callback, keeping rich cells virtualized. `TableWidget.layoutChildren()` then positions each `ztui-table-cell` into its row/column slot (and hides off-window cells) so nested content lays out and routes events normally.
+- **Layout hook**: The App layout pass calls an optional `layoutChildren()` on any widget; returning `true` lets the widget own its children's placement while the pass still recurses into each subtree. This generalizes the prior `tabcontainer` special-case and keeps table-specific geometry out of `core/`.
+- **Framework neutrality**: `column.render` is typed `() => unknown` in the widget layer (the widget only checks its presence, never calls it); the React `<Table>` narrows it to `ReactNode`. No driver or React import leaks into the widget.
+- **Requirement Met**: *Viewport Constraint Resilience* and *Composable Primitives* — bounded per-frame work regardless of data size, with both pure-text and nested-widget cells.
+
 ### 2.9 `hostConfig` (The React Fiber Reconciler)
 - **Role**: Maps React visual representation commits to the custom DOM structure.
 - **What it does**: Integrates custom renderer callbacks mapping React fiber tree mutations (element instantiation, child insertions, text updates) into corresponding DOM tree operations.
