@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
 import { renderBufferToHTML } from "../render/html-renderer.ts";
 import type { App } from "./app.ts";
+import { logger } from "./logger.ts";
+import { ThemeManager } from "./theme.ts";
 
 declare const Bun: any;
 
@@ -15,9 +18,11 @@ export function startInspector(app: App, port = 8000): InspectorServer {
         return handleRequest(app, req);
       },
     });
+    logger.info("inspector", `listening on http://localhost:${port} (bun)`);
     return {
       stop() {
         server.stop();
+        logger.info("inspector", "stopped");
       },
     };
   }
@@ -60,18 +65,26 @@ export function startInspector(app: App, port = 8000): InspectorServer {
       nodeRes.writeHead(response.status, resHeaders);
       nodeRes.end(await response.text());
     } catch (err: any) {
+      logger.error("inspector", `request handler failed for ${nodeReq.url}`, err);
       nodeRes.writeHead(500, { "Content-Type": "application/json" });
       nodeRes.end(JSON.stringify({ status: "error", msg: err.message }));
     }
   });
 
   server.listen(port);
+  logger.info("inspector", `listening on http://localhost:${port} (node)`);
   return {
     stop() {
       server.close();
+      logger.info("inspector", "stopped");
     },
   };
 }
+
+const JSON_HEADERS = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+};
 
 async function handleRequest(app: App, req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -83,6 +96,25 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
       },
+    });
+  }
+
+  if (url.pathname === "/state" && req.method === "GET") {
+    return new Response(JSON.stringify(dumpAppState(app), null, 2), { headers: JSON_HEADERS });
+  }
+
+  if (url.pathname === "/log" && req.method === "GET") {
+    const requested = Number.parseInt(url.searchParams.get("lines") || "200", 10);
+    const maxLines = Number.isFinite(requested) && requested > 0 ? requested : 200;
+    let body: string;
+    try {
+      const all = readFileSync(logger.getFilePath(), "utf-8").split("\n");
+      body = all.slice(-maxLines).join("\n");
+    } catch (err: any) {
+      body = `(no log available at ${logger.getFilePath()}: ${err?.message ?? err})`;
+    }
+    return new Response(body, {
+      headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" },
     });
   }
 
@@ -139,18 +171,58 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
     }
   }
 
-  return new Response("ZTUI Inspector Running. Endpoints: GET /dom, GET /render, POST /input", {
-    status: 200,
-    headers: { "Access-Control-Allow-Origin": "*" },
-  });
+  return new Response(
+    "ZTUI Inspector Running. Endpoints: GET /dom, GET /state, GET /log?lines=N, GET /render, POST /input",
+    {
+      status: 200,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    },
+  );
+}
+
+/** High-level snapshot of the running app, for quick human/LLM diagnosis. */
+function dumpAppState(app: App): any {
+  const screen = app.activeScreen;
+  const focused = (screen as any).focusedWidget;
+  const driver = app.driver;
+  let size: any;
+  try {
+    const s = driver.getSize();
+    size = { width: s.width, height: s.height };
+  } catch {
+    size = null;
+  }
+  return {
+    terminalSize: size,
+    screenStackDepth: app.screenStack.length,
+    focusedWidget: focused ? `${focused.tagName}${focused.id ? `#${focused.id}` : ""}` : null,
+    hoveredWidget: (app as any).hoveredWidget
+      ? `${(app as any).hoveredWidget.tagName}${(app as any).hoveredWidget.id ? `#${(app as any).hoveredWidget.id}` : ""}`
+      : null,
+    activeTheme: ThemeManager.getInstance().getActiveTheme().name,
+    capabilities: driver.capabilities,
+    log: { file: logger.getFilePath(), level: logger.getLevel() },
+  };
 }
 
 function dumpDOMTree(node: any): any {
+  // Text nodes carry their string content but none of the widget machinery.
+  if (typeof node.text === "string" && !node.region) {
+    return { tagName: node.tagName, text: node.text };
+  }
+
   const result: any = {
     tagName: node.tagName,
     id: node.id || undefined,
     classes: Array.from(node.classes || []),
   };
+
+  if (node.visible === false) {
+    result.visible = false;
+  }
+  if (node.focusable) {
+    result.focusable = true;
+  }
 
   if (node.region) {
     result.region = {
