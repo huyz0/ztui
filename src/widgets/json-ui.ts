@@ -13,7 +13,9 @@ export function parsePartialJson(jsonStr: string): any {
   let cleaned = jsonStr.trim();
   if (!cleaned) return null;
 
-  // Try parsing directly first
+  // Fast path: try parsing as-is. A failure here is expected for partial/
+  // streamed input, so it is intentionally swallowed — we fall through to the
+  // balancing repair pass below rather than logging a non-error.
   try {
     return JSON.parse(cleaned);
   } catch {}
