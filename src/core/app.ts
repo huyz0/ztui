@@ -14,6 +14,7 @@ import { GridLayout } from "../layout/grid-layout.ts";
 import { parseDimension } from "../layout/layout.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
+import { logger } from "./logger.ts";
 import { ThemeManager } from "./theme.ts";
 
 export class App extends DOMNode {
@@ -72,11 +73,8 @@ export class App extends DOMNode {
   }
 
   public run(options?: { inspectorPort?: number }): void {
-    const fs = require("node:fs");
-    fs.writeFileSync("ztui.log", "App started\n");
-    const log = (msg: string) => {
-      fs.appendFileSync("ztui.log", `[${new Date().toISOString()}] ${msg}\n`);
-    };
+    logger.init("App started");
+    const log = (msg: string) => logger.debug("app", msg);
 
     if (options?.inspectorPort) {
       this.inspectorServer = startInspector(this, options.inspectorPort);

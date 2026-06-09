@@ -1,6 +1,7 @@
 // Core & DOM
 export { App } from "./core/app.ts";
 export { startInspector } from "./core/inspector.ts";
+export { type LogLevel, logger } from "./core/logger.ts";
 export type { Theme } from "./core/theme.ts";
 export { adjustLightness, deriveTheme, ThemeManager } from "./core/theme.ts";
 export { DOMNode } from "./dom/dom.ts";

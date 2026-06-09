@@ -1,6 +1,7 @@
 import type React from "react";
 import ReactReconciler from "react-reconciler";
 import { ConcurrentRoot } from "react-reconciler/constants";
+import { logger } from "../core/logger.ts";
 import type { DOMNode } from "../dom/dom.ts";
 import { hostConfig } from "./host-config.ts";
 
@@ -14,9 +15,9 @@ export function render(element: React.ReactNode, rootNode: DOMNode): any {
     false,
     null,
     "",
-    console.error, // onUncaughtError
-    console.error, // onCaughtError
-    console.error, // onRecoverableError
+    (error) => logger.error("react", "uncaught render error", error), // onUncaughtError
+    (error) => logger.error("react", "caught render error (error boundary)", error), // onCaughtError
+    (error) => logger.warn("react", "recoverable render error", error), // onRecoverableError
     () => {}, // onDefaultTransitionIndicator
   );
 

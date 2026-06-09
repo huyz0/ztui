@@ -1,3 +1,5 @@
+import { logger } from "./logger.ts";
+
 export interface Theme {
   name: string;
   colors: {
@@ -140,7 +142,10 @@ export class ThemeManager {
       this.activeThemeName = name;
       this.emitThemeChange();
     } else {
-      console.warn(`Theme '${name}' not found.`);
+      logger.warn(
+        "theme",
+        `setTheme("${name}") ignored: theme not registered (known: ${[...this.themes.keys()].join(", ")})`,
+      );
     }
   }
 

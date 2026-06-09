@@ -1,6 +1,7 @@
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { logger } from "../../core/logger.ts";
 import { iconRegistry } from "../../widgets/icon-registry.ts";
 import { Icon } from "./icon.tsx";
 import type { ComponentProps } from "./types.ts";
@@ -52,13 +53,8 @@ try {
   const require = createRequire(import.meta.url);
   const packageJsonPath = require.resolve("heroicons/package.json");
   heroiconsDir = dirname(packageJsonPath);
-} catch (err: any) {
-  try {
-    appendFileSync(
-      "ztui.log",
-      `[${new Date().toISOString()}] heroic-icon.tsx top-level resolve error: ${err?.stack || err}\n`,
-    );
-  } catch {}
+} catch (err) {
+  logger.error("heroicon", "failed to resolve heroicons package directory", err);
 }
 
 /**
@@ -108,7 +104,7 @@ export function registerHeroIcon(iconName: string, variant: HeroIconVariant = "s
         textFallback: fallbackMap[iconName] ?? "❖",
       });
     } catch (err) {
-      console.error("HeroIcon registration error:", err);
+      logger.error("heroicon", `failed to register icon "${registryName}"`, err);
     }
   }
   return registryName;

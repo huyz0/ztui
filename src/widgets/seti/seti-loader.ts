@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { logger } from "../../core/logger.ts";
 import { iconRegistry } from "../icon-registry.ts";
 
 export interface SetiTheme {
@@ -116,8 +117,9 @@ export function registerSetiIcon(key: string, customResourcesDir?: string): void
 
   try {
     ensureFontLoaded(customResourcesDir);
-  } catch {
+  } catch (err) {
     // Font unavailable — register a fallback-only entry and cache the key
+    logger.warn("seti", `font unavailable; using blank fallback for "${key}"`, err);
     registeredKeys.add(key);
     iconRegistry.registerIcon({ name: `seti:${key}`, svg: "", textFallback: " " });
     return;
@@ -166,8 +168,9 @@ export function registerSetiIcon(key: string, customResourcesDir?: string): void
 
     registeredKeys.add(key);
     iconRegistry.registerIcon({ name: `seti:${key}`, svg, textFallback: char });
-  } catch {
-    // Ignore failures for specific glyphs
+  } catch (err) {
+    // Glyph extraction failed for this specific key — fall back to a blank cell.
+    logger.debug("seti", `glyph extraction failed for "${key}"`, err);
     registeredKeys.add(key);
     iconRegistry.registerIcon({ name: `seti:${key}`, svg: "", textFallback: " " });
   }
@@ -269,8 +272,9 @@ export function resolveFileIcon(
   if (!themeLoaded) {
     try {
       loadSetiTheme();
-    } catch {
+    } catch (err) {
       // Resources missing — fall through to defaults
+      logger.warn("seti", "failed to load Seti theme; using default file icons", err);
     }
   }
 
