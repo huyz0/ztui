@@ -135,24 +135,24 @@ export class App extends DOMNode {
 
       // Bubble key event up from the focused widget
       let current: DOMNode | null = this.activeScreen.focusedWidget;
-      let handled = false;
+      let handledBy: Widget | null = null;
       while (current) {
         if (current instanceof Widget) {
           if (current.handleKey) {
             current.handleKey(ev);
             if (ev.handled) {
-              handled = true;
+              handledBy = current;
               break;
             }
           }
         }
         current = current.parent;
       }
-      if (handled) {
-        log("Key handled by widget chain");
+      if (handledBy) {
+        log(`Key "${ev.key}" handled by ${handledBy.describe()}`);
         this.queueRender();
       } else {
-        log("Key ignored (no focused widget chain handled the key)");
+        log(`Key "${ev.key}" ignored (no widget in the focused chain handled it)`);
       }
     });
 
@@ -167,7 +167,7 @@ export class App extends DOMNode {
       }
 
       log(
-        `Mouse event: x=${ev.x}, y=${ev.y}, type=${ev.type}, btn=${ev.button} -> hit: ${hit?.tagName || "none"}#${hit?.id || ""}`,
+        `Mouse ${ev.type} @ (${ev.x},${ev.y}) btn=${ev.button} -> hit: ${hit?.describe() ?? "none"}`,
       );
 
       if (ev.type === "release") {
@@ -179,11 +179,11 @@ export class App extends DOMNode {
         this.hoveredWidget = hit;
 
         if (oldHovered?.onMouseLeave) {
-          log(`Triggered onMouseLeave on widget: ${oldHovered.tagName}#${oldHovered.id || ""}`);
+          log(`onMouseLeave -> ${oldHovered.describe()}`);
           oldHovered.onMouseLeave(ev);
         }
         if (hit?.onMouseEnter) {
-          log(`Triggered onMouseEnter on widget: ${hit.tagName}#${hit.id || ""}`);
+          log(`onMouseEnter -> ${hit.describe()}`);
           hit.onMouseEnter(ev);
         }
         this.queueRender();
@@ -198,11 +198,11 @@ export class App extends DOMNode {
           if (ev.type === "press" && ev.button === "left") {
             if (hit.focusable) {
               this.activeScreen.focusWidget(hit);
-              log(`Widget focused via click: ${hit.tagName}#${hit.id || ""}`);
+              log(`Focused via click -> ${hit.describe()}`);
               this.queueRender();
             }
             if (hit.onClick) {
-              log(`Triggered onClick on widget: ${hit.tagName}#${hit.id || ""}`);
+              log(`onClick -> ${hit.describe()}`);
               hit.onClick(ev);
               this.queueRender();
             }
@@ -211,7 +211,7 @@ export class App extends DOMNode {
             while (current) {
               if (current instanceof Widget) {
                 if (current.handleScroll) {
-                  log(`Scroll event forwarded to widget: ${current.tagName}#${current.id || ""}`);
+                  log(`Scroll forwarded to ${current.describe()}`);
                   current.handleScroll(ev);
                   if (ev.handled) {
                     this.queueRender();
