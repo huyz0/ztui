@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   App,
-  Button,
   Dock,
   Footer,
   Header,
@@ -66,28 +65,19 @@ function TableDemo() {
     <Dock style={{ background: "#11111b" }}>
       <Header>🗄️ ZTUI Table — 50,000 rows, virtualized · click headers to sort</Header>
       <Footer>
-        ↑/↓ select · PgUp/PgDn · Home/End · ←/→ scroll columns · Enter to inspect ·{" "}
+        ↑/↓ select · PgUp/PgDn · Home/End · ←/→ scroll cols · Enter inspect · Ctrl+C quit ·{" "}
         {selected ? `selected: ${selected.name}` : "nothing selected"}
       </Footer>
 
+      {/* The table is the sole non-docked child, so it fills the center. */}
       <Table
-        style={{ height: "fr", padding: 1 }}
+        style={{ padding: 1 }}
         data={data}
         columns={columns}
         sort={sort}
         onSortChange={setSort}
         onSelect={(row) => setSelected(row)}
       />
-
-      <Button
-        style={{ background: "#f38ba8", color: "black", width: 12, height: 1, align: "center" }}
-        onClick={() => {
-          App.instance?.stop();
-          process.exit(0);
-        }}
-      >
-        Exit
-      </Button>
     </Dock>
   );
 }
