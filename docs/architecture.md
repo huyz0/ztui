@@ -40,6 +40,12 @@ The entire application state, DOM tree, and drawn buffers must be fully serializ
 ### 1.8 Viewport Constraint Resilience & Discrete Sizing
 - **Discrete Cell Quantization**: Terminal screens operate on a discrete cell grid (character units). Layout solvers must perform integer-based bounding box calculations with zero sub-pixel interpolation.
 - **Constrained Viewport Limits**: Unlike scalable web browsers, console windows are frequently constrained to extremely small dimensions (e.g. 80x24 cells). The architecture must support graceful degradation under constrained bounds, preventing component collapsing crashes and ensuring content remains clipped, truncated, or scrolled instead of overflowing.
+- **Containment guarantees** (enforced in code): auto/content-sized widgets are clamped to the space offered by their parent (`Widget.measure`); `overflow: hidden` clips children to the content box on every container (`Widget.renderChildren`), not just scrollables; wide (2-cell) glyphs that would cross a buffer/clip edge are substituted with a space (`ScreenBuffer.setCell`); raw C0/C1 control characters are never written into a cell; and `parseDimension` clamps to `>= 0` and never returns `NaN`. Together these prevent the classic "item drawn on top of another" and "garbage char breaks the grid" failures.
+
+### 1.9 Backend Portability Boundary (verified)
+The render model is split so a non-terminal backend (web DOM/canvas, WASM) can be added without touching layout or widgets:
+- **Backend-agnostic (reuse as-is)**: `geometry/*`, `layout/*`, `dom/*`, `widgets/*`, `render/style.ts`, `render/segment.ts` (cell-width model), `render/rich/*`, and the `ScreenBuffer` *cell model* (`cells`, `setCell`, `clear`, `resize`, `copyTo`). A scan confirms these contain no ANSI/`process`/`stdout` coupling. The pipeline produces a 2-D grid of styled `Cell`s — the portable hand-off point.
+- **Terminal-specific (swap per backend)**: `ScreenBuffer.renderDiff`/`flushRun` (ANSI delta + cursor moves), and `driver/bun/*` (raw-mode stdin, ANSI/escape parsing, Kitty/iTerm2/Sixel graphics). A web backend implements a `Driver` that, instead of consuming an ANSI diff, renders the cell grid directly — `renderBufferToText` / `renderBufferToHTML` already demonstrate consuming the buffer without ANSI. The `WebDriver` stub (`driver/web/index.ts`) is the seam.
 
 ---
 
