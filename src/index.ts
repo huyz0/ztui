@@ -68,6 +68,8 @@ export {
   type SyntaxProps,
   TabContainer,
   type TabContainerProps,
+  Table,
+  type TableProps,
   TextArea,
   type TextAreaProps,
   ToggleButton,
@@ -95,6 +97,8 @@ export { SliderWidget } from "./widgets/controls/slider.ts";
 export { SwitchWidget } from "./widgets/controls/switch.ts";
 export { TextAreaWidget } from "./widgets/controls/textarea.ts";
 export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";
+export type { SortDirection, SortState, TableColumn } from "./widgets/data/table.ts";
+export { TableWidget } from "./widgets/data/table.ts";
 export { TabContainerWidget } from "./widgets/layout/tabcontainer.ts";
 export { FileIconWidget } from "./widgets/media/file-icon.ts";
 export { IconWidget } from "./widgets/media/icon.ts";

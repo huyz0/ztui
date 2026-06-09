@@ -20,6 +20,8 @@ export type { TextAreaProps } from "./components/controls/textarea.tsx";
 export { TextArea } from "./components/controls/textarea.tsx";
 export type { ToggleButtonProps } from "./components/controls/toggle-button.tsx";
 export { ToggleButton } from "./components/controls/toggle-button.tsx";
+export type { TableProps } from "./components/data/table.tsx";
+export { Table } from "./components/data/table.tsx";
 export { Box } from "./components/layout/box.tsx";
 export { Dock } from "./components/layout/dock.tsx";
 export { Footer } from "./components/layout/footer.tsx";

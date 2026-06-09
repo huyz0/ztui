@@ -38,6 +38,8 @@ const KNOWN_HANDLER_PROPS = [
   "onMouseLeave",
   "onAction",
   "onChange",
+  "onSelect",
+  "onSortChange",
 ];
 
 function applyProps(instance: DOMNode, props: any, oldProps?: any) {
@@ -87,6 +89,12 @@ function applyProps(instance: DOMNode, props: any, oldProps?: any) {
     }
     if (props.onChange !== undefined) {
       (instance as any).onChange = props.onChange;
+    }
+    if (props.onSelect !== undefined) {
+      (instance as any).onSelect = props.onSelect;
+    }
+    if (props.onSortChange !== undefined) {
+      (instance as any).onSortChange = props.onSortChange;
     }
 
     // Generic prop mapping for any properties defined on the widget instance
