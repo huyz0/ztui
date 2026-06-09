@@ -19,16 +19,19 @@ export function parseDimension(
   const str = value.trim();
   if (str.endsWith("%")) {
     const percent = Number.parseFloat(str.slice(0, -1));
-    return Math.floor((percent / 100) * maxAvailable);
+    if (Number.isNaN(percent)) return defaultValue;
+    return Math.max(0, Math.floor((percent / 100) * maxAvailable));
   }
   if (str.endsWith("fr")) {
     const fr = Number.parseFloat(str.slice(0, -2));
-    return { fr };
+    // A malformed/negative fr must not poison fr distribution with NaN.
+    return { fr: Number.isNaN(fr) ? 0 : Math.max(0, fr) };
   }
   if (str.endsWith("h") || str.endsWith("w")) {
-    return Number.parseFloat(str.slice(0, -1));
+    const num = Number.parseFloat(str.slice(0, -1));
+    return Number.isNaN(num) ? defaultValue : Math.max(0, num);
   }
 
   const num = Number.parseFloat(str);
-  return Number.isNaN(num) ? defaultValue : num;
+  return Number.isNaN(num) ? defaultValue : Math.max(0, num);
 }
