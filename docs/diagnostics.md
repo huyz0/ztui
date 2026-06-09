@@ -21,11 +21,19 @@ Grid border lines consume space. When planning element sizes, developers must ac
 
 ### 2.1 Remote REST Inspector (endpoints in `src/core/inspector.ts`)
 - **Rule**: The inspector server runs locally (default port: `8000`) to expose app state and accept input simulation.
-- **Rule**: **JSON DOM Tree Structure (`GET /dom`)** MUST return coordinates, resolved style configurations, value properties, and focus states.
+- **Rule**: **JSON DOM Tree Structure (`GET /dom`)** MUST return coordinates, resolved style configurations, value properties, focus states, text-node content, and `visible`/`focusable` flags.
+- **Rule**: **App State Snapshot (`GET /state`)** returns terminal size, screen-stack depth, focused/hovered widget identity (via `DOMNode.describe()`), active theme, driver capabilities, and the active log file path + level.
+- **Rule**: **Log Tail (`GET /log?lines=N`)** returns the last `N` lines (default 200) of the centralized log file as plain text, so the run log is reachable without filesystem access.
 - **Rule**: **HTML Render Output (`GET /render`)** MUST return a raw HTML string mapping ScreenBuffer cell formatting to CSS styles.
 - **Rule**: **Input Simulation (`POST /input`)** MUST accept mouse or keyboard JSON payload structures and inject them directly into the driver event queue.
 
-### 2.2 Terminal Recovery & Layout Borders
+### 2.2 Centralized Logging (`src/core/logger.ts`)
+- **Rule**: While a TUI owns the terminal, diagnostics MUST NOT be written to `stdout`/`stderr` (it corrupts the live frame). All logging goes through the file-only `logger` singleton.
+- **Rule**: Log lines are leveled (`debug|info|warn|error|silent`), scoped, and ISO-timestamped: `[<iso>] [<LEVEL>] [<scope>] <message>`. `Error` payloads serialize their stack; object payloads serialize as JSON.
+- **Rule**: Logging MUST never throw — every write is guarded so a read-only filesystem cannot crash the app.
+- **Config**: `ZTUI_LOG_LEVEL` (default `info`) and `ZTUI_LOG_FILE` (default `ztui.log`) env vars, or `logger.configure({ level, filePath })` at runtime. `App.run()` calls `logger.init()` to start a fresh session log.
+
+### 2.3 Terminal Recovery & Layout Borders
 - **Rule**: Concrete TTY drivers MUST listen for `exit`, `SIGINT`, and `SIGTERM` signals and cleanly unbind/restore raw-mode streams on termination.
 - **Rule**: These TTY signal handlers MUST be cleanly unregistered inside the driver's `stop()` method to prevent memory leaks.
 - **Rule**: Borders consume exactly **2 vertical cells**. If a bordered widget's height is resolved to `<= 2`, the viewport content height collapses to `0`, clipping all text rendering.
@@ -42,6 +50,13 @@ const inspector = startInspector(app, 8000);
 
 // Stop server inside teardown blocks
 inspector.stop();
+```
+
+### Quick diagnosis of a running app
+```bash
+curl localhost:8000/state          # terminal size, focus, theme, capabilities, log path
+curl 'localhost:8000/log?lines=50' # tail the run log
+curl localhost:8000/dom            # full widget tree with regions + text
 ```
 
 ### Inspector Endpoint Payloads

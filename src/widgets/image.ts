@@ -242,7 +242,13 @@ export function decodeImage(buffer: Uint8Array): {
       height: raw.height,
     };
   } catch (_err) {
-    throw new Error("Unsupported or invalid image format. Must be PNG, JPEG, or GIF.");
+    const magic = Array.from(buffer.subarray(0, 8))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join(" ");
+    throw new Error(
+      `Unsupported or invalid image format (must be PNG, JPEG, or GIF). ` +
+        `Got ${buffer.length} bytes starting with: ${magic || "(empty)"}`,
+    );
   }
 }
 
