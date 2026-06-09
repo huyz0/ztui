@@ -1,5 +1,5 @@
 import { createElement, type ReactElement, type ReactNode, useState } from "react";
-import type { SortState, TableColumn } from "../../../widgets/data/table.ts";
+import type { SortState, TableColumn, TableTextStyle } from "../../../widgets/data/table.ts";
 import type { ComponentProps } from "../types.ts";
 
 export interface TableProps<Row = any> extends Omit<ComponentProps, "children"> {
@@ -8,6 +8,8 @@ export interface TableProps<Row = any> extends Omit<ComponentProps, "children"> 
   columns: TableColumn<Row>[];
   rowHeight?: number;
   showHeader?: boolean;
+  /** Header formatting. Bold by default; pass `{ bold: false }` for a plain header. */
+  headerStyle?: TableTextStyle;
   /** Selected row in display order, or -1. */
   selectedIndex?: number;
   /** Active sort. Controlled when `onSortChange` is provided. */

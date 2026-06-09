@@ -65,6 +65,30 @@ describe("Table rendering (phase 1)", () => {
     expect(t.text()).toContain("30");
     expect(t.text()).toContain("25");
   });
+
+  test("header is bold by default", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    const c = widget.getContentRect();
+    expect(t.cellAt(c.x, c.y).style.bold).toBe(true);
+  });
+
+  test("headerStyle overrides default formatting", async () => {
+    const t = await mountApp(
+      <Table
+        data={people}
+        columns={columns}
+        headerStyle={{ bold: false, underline: true, color: "#ff0000" }}
+        style={{ height: "100%" }}
+      />,
+    );
+    const widget = findTable(t);
+    const c = widget.getContentRect();
+    const cell = t.cellAt(c.x, c.y);
+    expect(cell.style.bold).toBeFalsy();
+    expect(cell.style.underline).toBe(true);
+    expect(cell.style.color).toBe("#ff0000");
+  });
 });
 
 describe("Table virtualization (phase 2)", () => {

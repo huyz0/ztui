@@ -37,7 +37,7 @@ export { SliderWidget } from "./controls/slider.ts";
 export { SwitchWidget } from "./controls/switch.ts";
 export { TextAreaWidget } from "./controls/textarea.ts";
 export { ToggleButtonWidget } from "./controls/toggle-button.ts";
-export type { SortDirection, SortState, TableColumn } from "./data/table.ts";
+export type { SortDirection, SortState, TableColumn, TableTextStyle } from "./data/table.ts";
 export { TableCellWidget, TableWidget } from "./data/table.ts";
 export { BoxWidget, ScrollableBoxWidget } from "./layout/box.ts";
 export { DockWidget } from "./layout/dock.ts";

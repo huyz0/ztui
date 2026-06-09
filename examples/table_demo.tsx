@@ -75,6 +75,7 @@ function TableDemo() {
         style={{ padding: 1 }}
         data={data}
         columns={columns}
+        headerStyle={{ bold: true, underline: true, color: "#89b4fa" }}
         sort={sort}
         onSortChange={setSort}
         onSelect={(row) => setSelected(row)}
