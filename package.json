@@ -22,6 +22,7 @@
     "demo:fileicon": "bun run examples/fileicon_demo.tsx",
     "demo:table": "bun run examples/table_demo.tsx",
     "demo:tree": "bun run examples/tree_demo.tsx",
+    "demo:form": "bun run examples/form_validation_demo.tsx",
     "test": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "lint": "biome check .",

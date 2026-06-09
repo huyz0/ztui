@@ -6,6 +6,9 @@ import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 
 export class ButtonWidget extends Widget {
+  /** Submits or resets the nearest ancestor form when the button activates. */
+  public formAction?: "submit" | "reset";
+
   constructor() {
     super("button");
     this.focusable = true;
@@ -16,9 +19,34 @@ export class ButtonWidget extends Widget {
         if (this.onClick) {
           this.onClick(ev);
         }
+        this.triggerFormAction();
         ev.handled = true;
       }
     };
+  }
+
+  public override handleMouse(ev: any): void {
+    super.handleMouse(ev);
+    if (ev.handled) return;
+    // Run the form action on click; `onClick` is dispatched separately by the app
+    // (we leave `ev.handled` unset so focus + onClick still fire).
+    if (ev.type === "press" && ev.button === "left") {
+      this.triggerFormAction();
+    }
+  }
+
+  /** Walks up to the nearest form (duck-typed) and invokes the action. */
+  private triggerFormAction(): void {
+    if (!this.formAction) return;
+    let cur = this.parent;
+    while (cur) {
+      const f = cur as any;
+      if (f?.isForm === true && typeof f.submit === "function") {
+        this.formAction === "reset" ? f.reset() : f.submit();
+        return;
+      }
+      cur = cur.parent;
+    }
   }
 
   public render(buffer: ScreenBuffer): void {

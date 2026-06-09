@@ -1,5 +1,11 @@
 import "react";
 import type { WidgetStyles } from "../dom/widget.ts";
+import type { FormMessageMode } from "../widgets/controls/form.ts";
+import type {
+  ValidateTrigger,
+  ValidationResult,
+  Validator,
+} from "../widgets/controls/validation.ts";
 
 declare global {
   namespace React {
@@ -19,6 +25,20 @@ declare global {
         "ztui-view": ZTUIElementProps;
         "ztui-button": ZTUIElementProps & {
           onClick?: (ev: any) => void;
+          formAction?: "submit" | "reset";
+        };
+        "ztui-form": ZTUIElementProps & {
+          messageMode?: FormMessageMode;
+          onSubmit?: (values: Record<string, unknown>) => void;
+          onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
+        };
+        "ztui-field-error": ZTUIElementProps & {
+          targetId?: string;
+        };
+        "ztui-validation-summary": ZTUIElementProps & {
+          formId?: string;
+          title?: string;
+          bullet?: string;
         };
         "ztui-label": ZTUIElementProps;
         "ztui-input": ZTUIElementProps & {
@@ -30,6 +50,9 @@ declare global {
           icon?: string;
           suffixIcon?: string;
           invalid?: boolean;
+          validators?: Validator[];
+          validateOn?: ValidateTrigger;
+          onValidate?: (result: ValidationResult) => void;
         };
         "ztui-textarea": ZTUIElementProps & {
           onKey?: (ev: any) => void;
@@ -38,6 +61,9 @@ declare global {
           placeholder?: string;
           lineNumbers?: boolean;
           language?: string;
+          validators?: Validator[];
+          validateOn?: ValidateTrigger;
+          onValidate?: (result: ValidationResult) => void;
         };
         "ztui-header": ZTUIElementProps;
         "ztui-footer": ZTUIElementProps;
@@ -78,22 +104,34 @@ declare global {
           multiple?: boolean;
           onChange?: (val: any) => void;
           placeholder?: string;
+          validators?: Validator[];
+          validateOn?: ValidateTrigger;
+          onValidate?: (result: ValidationResult) => void;
         };
         "ztui-radio-group": ZTUIElementProps & {
           options: any[];
           value?: string;
           orientation?: "horizontal" | "vertical";
           onChange?: (val: string) => void;
+          validators?: Validator[];
+          validateOn?: ValidateTrigger;
+          onValidate?: (result: ValidationResult) => void;
         };
         "ztui-checkbox": ZTUIElementProps & {
           checked?: boolean;
           label?: string;
           onChange?: (val: boolean) => void;
+          validators?: Validator[];
+          validateOn?: ValidateTrigger;
+          onValidate?: (result: ValidationResult) => void;
         };
         "ztui-switch": ZTUIElementProps & {
           active?: boolean;
           label?: string;
           onChange?: (val: boolean) => void;
+          validators?: Validator[];
+          validateOn?: ValidateTrigger;
+          onValidate?: (result: ValidationResult) => void;
         };
         "ztui-slider": ZTUIElementProps & {
           value?: number;
@@ -101,6 +139,9 @@ declare global {
           max?: number;
           step?: number;
           onChange?: (val: number) => void;
+          validators?: Validator[];
+          validateOn?: ValidateTrigger;
+          onValidate?: (result: ValidationResult) => void;
         };
         "ztui-toggle-button": ZTUIElementProps & {
           active?: boolean;

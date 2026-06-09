@@ -1,7 +1,7 @@
 import { hostComponent } from "../factory.tsx";
-import type { ComponentProps } from "../types.ts";
+import type { ComponentProps, FieldValidationProps } from "../types.ts";
 
-export interface SliderProps extends ComponentProps {
+export interface SliderProps extends ComponentProps, FieldValidationProps {
   value?: number;
   min?: number;
   max?: number;

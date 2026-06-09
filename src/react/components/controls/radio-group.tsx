@@ -1,8 +1,8 @@
 import type { RadioOption } from "../../../widgets/controls/radio-group.ts";
 import { hostComponent } from "../factory.tsx";
-import type { ComponentProps } from "../types.ts";
+import type { ComponentProps, FieldValidationProps } from "../types.ts";
 
-export interface RadioGroupProps extends ComponentProps {
+export interface RadioGroupProps extends ComponentProps, FieldValidationProps {
   options: (string | RadioOption)[];
   value?: string;
   orientation?: "horizontal" | "vertical";

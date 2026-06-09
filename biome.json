@@ -6,6 +6,7 @@
       "!**/node_modules",
       "!**/.oss",
       "!**/.gemini",
+      "!**/.claude",
       "!**/bun.lock",
       "!**/ztui.log",
       "!**/coverage"

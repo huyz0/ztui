@@ -29,9 +29,13 @@ export {
   Dock,
   EmailInput,
   type EmailInputProps,
+  FieldError,
+  type FieldErrorProps,
   FileIcon,
   type FileIconProps,
   Footer,
+  Form,
+  type FormProps,
   Grid,
   HBox,
   Header,
@@ -76,6 +80,8 @@ export {
   type ToggleButtonProps,
   Tree,
   type TreeProps,
+  ValidationSummary,
+  type ValidationSummaryProps,
   VBox,
   View,
 } from "./react/components.tsx";
@@ -93,12 +99,16 @@ export type { StyleProps } from "./render/style.ts";
 // Rendering & Styling
 export { Style } from "./render/style.ts";
 export { CheckboxWidget } from "./widgets/controls/checkbox.ts";
+export { FieldErrorWidget } from "./widgets/controls/field-error.ts";
+export { type FormMessageMode, FormWidget } from "./widgets/controls/form.ts";
 export { RadioGroupWidget } from "./widgets/controls/radio-group.ts";
 export { SelectWidget } from "./widgets/controls/select.ts";
 export { SliderWidget } from "./widgets/controls/slider.ts";
 export { SwitchWidget } from "./widgets/controls/switch.ts";
 export { TextAreaWidget } from "./widgets/controls/textarea.ts";
 export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";
+export * from "./widgets/controls/validation.ts";
+export { ValidationSummaryWidget } from "./widgets/controls/validation-summary.ts";
 export type {
   SortDirection,
   SortState,

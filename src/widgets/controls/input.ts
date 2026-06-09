@@ -4,8 +4,9 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { FieldValidation, type ValidatableField } from "./validation.ts";
 
-export class InputWidget extends Widget {
+export class InputWidget extends Widget implements ValidatableField {
   private _value = "";
   public get value(): string {
     return this._value;
@@ -27,7 +28,37 @@ export class InputWidget extends Widget {
   public type: "text" | "password" | "email" = "text";
   public icon = "";
   public suffixIcon = "";
-  public invalid = false;
+
+  // ── Validation ──
+  public readonly validation: FieldValidation = new FieldValidation(this);
+  private _invalidOverride?: boolean;
+  /** True when the field has failed validation (or was set invalid manually). */
+  public get invalid(): boolean {
+    return this._invalidOverride ?? this.validation.invalid;
+  }
+  /** Manual override; `undefined` defers to the validation result. */
+  public set invalid(val: boolean | undefined) {
+    this._invalidOverride = val;
+  }
+  public getValidationValue(): unknown {
+    return this.value;
+  }
+  /** Validators forwarded from props; setter keeps the helper in sync. */
+  public get validators() {
+    return this.validation.validators;
+  }
+  public set validators(v: typeof this.validation.validators) {
+    this.validation.validators = v ?? [];
+  }
+  public get validateOn() {
+    return this.validation.validateOn;
+  }
+  public set validateOn(v: typeof this.validation.validateOn) {
+    this.validation.validateOn = v;
+  }
+  public set onValidate(fn: typeof this.validation.onValidate) {
+    this.validation.onValidate = fn;
+  }
 
   private cursorCol = 0;
   private scrollX = 0;
@@ -122,8 +153,9 @@ export class InputWidget extends Widget {
     }
     this.scrollX = Math.max(0, Math.min(chars.length - textWidth + 1, this.scrollX));
 
-    if (this.value !== originalValue && this.onChange) {
-      this.onChange(this.value);
+    if (this.value !== originalValue) {
+      this.onChange?.(this.value);
+      this.validation.maybeValidate("change");
     }
   }
 
@@ -155,6 +187,7 @@ export class InputWidget extends Widget {
         this.startBlinking();
       } else {
         this.stopBlinking();
+        this.validation.maybeValidate("blur");
       }
     }
 
@@ -162,10 +195,13 @@ export class InputWidget extends Widget {
       this.computedStyle.border = "solid";
     }
 
-    // Apply error border color if invalid
-    if (this.invalid && App.instance) {
-      const errorColor = App.instance.cssResolver.resolveVariable(this, "$error") || "red";
-      this.computedStyle.borderColor = errorColor;
+    // Apply severity border color (error/warning) when validation fails.
+    const severityColor = this.validation.resolveColor();
+    if (this._invalidOverride && App.instance) {
+      this.computedStyle.borderColor =
+        App.instance.cssResolver.resolveVariable(this, "$error") || "red";
+    } else if (severityColor) {
+      this.computedStyle.borderColor = severityColor;
     }
 
     super.render(buffer);
@@ -187,9 +223,10 @@ export class InputWidget extends Widget {
     // Draw prefix icon if defined
     if (this.icon) {
       const iconColor =
-        this.invalid && App.instance
+        this.validation.resolveColor() ??
+        (this._invalidOverride && App.instance
           ? App.instance.cssResolver.resolveVariable(this, "$error") || "red"
-          : fg;
+          : fg);
       const iconStyle = new Style({ color: iconColor, background: bg });
       const regIcon = iconRegistry.get(this.icon);
 
@@ -228,9 +265,10 @@ export class InputWidget extends Widget {
     if (this.suffixIcon) {
       const suffixX = contentRect.right - suffixWidth + 1;
       const iconColor =
-        this.invalid && App.instance
+        this.validation.resolveColor() ??
+        (this._invalidOverride && App.instance
           ? App.instance.cssResolver.resolveVariable(this, "$error") || "red"
-          : fg;
+          : fg);
       const iconStyle = new Style({ color: iconColor, background: bg });
       const regIcon = iconRegistry.get(this.suffixIcon);
 

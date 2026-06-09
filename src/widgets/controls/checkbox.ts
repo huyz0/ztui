@@ -4,11 +4,15 @@ import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class CheckboxWidget extends Widget {
   public checked = false;
   public label = "";
   public onChange?: (val: boolean) => void;
+
+  /** Validation; the validated value is the boolean `checked` state. */
+  public readonly validation: FieldValidation = attachFieldValidation(this, () => this.checked);
 
   constructor() {
     super("checkbox");
@@ -18,11 +22,16 @@ export class CheckboxWidget extends Widget {
     this.onKey = (ev) => {
       const keyName = ev.name || ev.key;
       if (keyName === "space" || keyName === " " || keyName === "enter") {
-        this.checked = !this.checked;
-        this.onChange?.(this.checked);
+        this.toggle();
         ev.handled = true;
       }
     };
+  }
+
+  private toggle(): void {
+    this.checked = !this.checked;
+    this.onChange?.(this.checked);
+    this.validation.maybeValidate("change");
   }
 
   public override handleMouse(ev: any): void {
@@ -30,8 +39,7 @@ export class CheckboxWidget extends Widget {
     if (ev.handled) return;
 
     if (ev.type === "press" && ev.button === "left") {
-      this.checked = !this.checked;
-      this.onChange?.(this.checked);
+      this.toggle();
       App.instance?.queueRender();
     }
   }
@@ -67,6 +75,10 @@ export class CheckboxWidget extends Widget {
     if (this.focused) {
       displayColor = App.instance?.cssResolver.resolveVariable(this, "$focus") || fg;
     }
+    // Validation severity recolors the marker + label (these controls are
+    // border-less, so color is the in-place signal).
+    const severityColor = this.validation.resolveColor();
+    if (severityColor) displayColor = severityColor;
 
     const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan";
 

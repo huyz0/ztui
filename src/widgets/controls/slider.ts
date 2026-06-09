@@ -4,6 +4,7 @@ import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class SliderWidget extends Widget {
   public value = 0;
@@ -11,6 +12,9 @@ export class SliderWidget extends Widget {
   public max = 100;
   public step = 1;
   public onChange?: (val: number) => void;
+
+  /** Validation; the validated value is the numeric `value`. */
+  public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
 
   constructor() {
     super("slider");
@@ -29,13 +33,18 @@ export class SliderWidget extends Widget {
         return;
       }
 
-      if (newValue !== this.value) {
-        this.value = newValue;
-        this.onChange?.(newValue);
-        App.instance?.queueRender();
-      }
+      this.commit(newValue);
       ev.handled = true;
     };
+  }
+
+  /** Sets the value, firing onChange + change-triggered validation once. */
+  private commit(newValue: number): void {
+    if (newValue === this.value) return;
+    this.value = newValue;
+    this.onChange?.(newValue);
+    this.validation.maybeValidate("change");
+    App.instance?.queueRender();
   }
 
   public override handleMouse(ev: any): void {
@@ -53,11 +62,7 @@ export class SliderWidget extends Widget {
       const steppedVal = Math.round(rawVal / this.step) * this.step;
       const finalVal = Math.max(this.min, Math.min(this.max, steppedVal));
 
-      if (finalVal !== this.value) {
-        this.value = finalVal;
-        this.onChange?.(finalVal);
-        App.instance?.queueRender();
-      }
+      this.commit(finalVal);
       ev.handled = true;
     }
   }

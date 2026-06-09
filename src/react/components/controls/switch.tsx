@@ -1,7 +1,7 @@
 import { hostComponent } from "../factory.tsx";
-import type { ComponentProps } from "../types.ts";
+import type { ComponentProps, FieldValidationProps } from "../types.ts";
 
-export interface SwitchProps extends ComponentProps {
+export interface SwitchProps extends ComponentProps, FieldValidationProps {
   active?: boolean;
   label?: string;
   onChange?: (val: boolean) => void;

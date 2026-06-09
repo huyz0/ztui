@@ -5,6 +5,7 @@ import { Syntax } from "../../render/rich/syntax.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class TextAreaWidget extends Widget {
   private _value = "";
@@ -32,6 +33,9 @@ export class TextAreaWidget extends Widget {
   public placeholder = "";
   public lineNumbers = true;
   public language = "text";
+
+  /** Validation; see {@link attachFieldValidation}. */
+  public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
 
   private cursorRow = 0;
   private cursorCol = 0;
@@ -171,8 +175,9 @@ export class TextAreaWidget extends Widget {
     // Adjust scroll view to keep cursor in view
     this.keepCursorInView(lines, viewportHeight, textViewportWidth);
 
-    if (this._value !== originalValue && this.onChange) {
-      this.onChange(this._value);
+    if (this._value !== originalValue) {
+      this.onChange?.(this._value);
+      this.validation.maybeValidate("change");
     }
   }
 
@@ -232,11 +237,16 @@ export class TextAreaWidget extends Widget {
         this.startBlinking();
       } else {
         this.stopBlinking();
+        this.validation.maybeValidate("blur");
       }
     }
 
     if (this.computedStyle.border === undefined) {
       this.computedStyle.border = "solid";
+    }
+    const severityColor = this.validation.resolveColor();
+    if (severityColor) {
+      this.computedStyle.borderColor = severityColor;
     }
     super.render(buffer);
 

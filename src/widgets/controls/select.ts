@@ -4,6 +4,7 @@ import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export interface SelectOption {
   label: string;
@@ -150,6 +151,9 @@ export class SelectWidget extends Widget {
   public isOpen = false;
   public hoveredIndex = 0;
 
+  /** Validation; the validated value is the current selection. */
+  public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
+
   private overlay: DropdownOverlayWidget | null = null;
 
   constructor() {
@@ -193,6 +197,7 @@ export class SelectWidget extends Widget {
       this.value = val;
       this.onChange?.(val);
     }
+    this.validation.maybeValidate("change");
   }
 
   public selectOptionIndex(index: number) {
@@ -311,6 +316,10 @@ export class SelectWidget extends Widget {
   public override render(buffer: ScreenBuffer): void {
     if (this.computedStyle.border === undefined) {
       this.computedStyle.border = "solid";
+    }
+    const severityColor = this.validation.resolveColor();
+    if (severityColor) {
+      this.computedStyle.borderColor = severityColor;
     }
 
     super.render(buffer);

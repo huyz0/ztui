@@ -1,0 +1,124 @@
+import { App } from "../../core/app.ts";
+import { Widget } from "../../dom/widget.ts";
+import type { ScreenBuffer } from "../../render/buffer.ts";
+import { Segment, stringWidth } from "../../render/segment.ts";
+import { Style } from "../../render/style.ts";
+import { BoxWidget } from "../layout/box.ts";
+import { FieldValidation, type ValidatableField } from "./validation.ts";
+
+/** How a form surfaces field error messages, balanced against TUI screen space. */
+export type FormMessageMode = "auto" | "shared" | "inline" | "none";
+
+function isField(w: Widget): w is ValidatableField {
+  return (w as any).validation instanceof FieldValidation;
+}
+
+/**
+ * A container that coordinates validation across its descendant fields.
+ *
+ * Layout-wise it is a vertical box. Submission is triggered by a descendant
+ * `<Button formAction="submit">` (or an imperative {@link submit} call); on
+ * submit every field validates, the first invalid one is focused, and
+ * `onSubmit(values)` only fires when all fields pass.
+ *
+ * Messages are shown space-frugally: in `auto`/`shared` mode the whole form
+ * shares a single bottom status line that reflects the focused field, so a dense
+ * form never reserves a row per field. `inline` defers to per-field
+ * {@link FieldErrorWidget}s; `none` relies on border/icon coloring alone.
+ */
+export class FormWidget extends BoxWidget {
+  /** Duck-typed marker so a Button can find its form without importing it. */
+  public readonly isForm = true;
+  public messageMode: FormMessageMode = "auto";
+  public onSubmit?: (values: Record<string, unknown>) => void;
+  public onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
+
+  constructor() {
+    super();
+    this.tagName = "form";
+    this.defaultStyle = { layout: "vertical" };
+  }
+
+  /** All validatable descendant fields, in document order. */
+  public collectFields(): ValidatableField[] {
+    const out: ValidatableField[] = [];
+    const walk = (w: Widget) => {
+      for (const child of w.children) {
+        if (child instanceof Widget) {
+          if (isField(child)) out.push(child);
+          walk(child);
+        }
+      }
+    };
+    walk(this);
+    return out;
+  }
+
+  /** Current values keyed by field id (falls back to DOM order index). */
+  public get values(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    this.collectFields().forEach((f, i) => {
+      out[f.id || String(i)] = f.getValidationValue();
+    });
+    return out;
+  }
+
+  /** Validates every field; returns true when all pass. */
+  public validate(): boolean {
+    const fields = this.collectFields();
+    let valid = true;
+    for (const f of fields) {
+      if (!f.validation.validate().valid) valid = false;
+    }
+    this.onValidate?.(valid, this.values);
+    return valid;
+  }
+
+  /** Validates, focuses the first invalid field, and fires onSubmit when valid. */
+  public submit(): void {
+    const fields = this.collectFields();
+    let firstInvalid: ValidatableField | null = null;
+    for (const f of fields) {
+      if (!f.validation.validate().valid && !firstInvalid) firstInvalid = f;
+    }
+    if (firstInvalid) {
+      App.instance?.activeScreen?.focusWidget(firstInvalid);
+      App.instance?.queueRender();
+      return;
+    }
+    this.onSubmit?.(this.values);
+  }
+
+  /** Clears validation state on every field (does not clear values). */
+  public reset(): void {
+    for (const f of this.collectFields()) {
+      f.validation.touched = false;
+      f.validation.result = { valid: true };
+    }
+    App.instance?.queueRender();
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    super.render(buffer);
+    if (this.messageMode !== "auto" && this.messageMode !== "shared") return;
+
+    // Shared status line: show the focused field's message on the form's bottom
+    // row so N fields cost at most one row, not one each.
+    const focused = this.collectFields().find((f) => f.focused && f.validation.message);
+    const msg = focused?.validation.message;
+    if (!msg) return;
+
+    const rect = this.getContentRect();
+    if (rect.height < 1) return;
+    const color = focused?.validation.resolveColor() || "red";
+    const bg = this.findResolvedBackground();
+    const y = rect.bottom;
+    let text = msg;
+    if (stringWidth(text) > rect.width) {
+      // Truncate to fit the available width rather than wrapping onto a new row.
+      while (text.length > 1 && stringWidth(`${text}…`) > rect.width) text = text.slice(0, -1);
+      text = `${text}…`;
+    }
+    buffer.drawSegment(rect.x, y, new Segment(text, new Style({ color, background: bg })), rect);
+  }
+}

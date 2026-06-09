@@ -4,6 +4,7 @@ import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export interface RadioOption {
   label: string;
@@ -18,6 +19,9 @@ export class RadioGroupWidget extends Widget {
 
   public hoveredIndex = 0;
 
+  /** Validation; the validated value is the selected option's value. */
+  public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
+
   constructor() {
     super("radio-group");
     this.focusable = true;
@@ -26,6 +30,14 @@ export class RadioGroupWidget extends Widget {
     this.onKey = (ev) => {
       this.handleRadioKey(ev);
     };
+  }
+
+  /** Selects a value, firing onChange + change-triggered validation once. */
+  private commit(selected: string): void {
+    if (this.value === selected) return;
+    this.value = selected;
+    this.onChange?.(selected);
+    this.validation.maybeValidate("change");
   }
 
   public getResolvedOptions(): RadioOption[] {
@@ -51,11 +63,7 @@ export class RadioGroupWidget extends Widget {
     }
 
     if (keyName === "space" || keyName === " " || keyName === "enter") {
-      const selected = resolved[this.hoveredIndex].value;
-      if (this.value !== selected) {
-        this.value = selected;
-        this.onChange?.(selected);
-      }
+      this.commit(resolved[this.hoveredIndex].value);
       ev.handled = true;
     }
   }
@@ -72,11 +80,7 @@ export class RadioGroupWidget extends Widget {
         const clickY = ev.y - contentRect.y;
         if (clickY >= 0 && clickY < resolved.length) {
           this.hoveredIndex = clickY;
-          const selected = resolved[clickY].value;
-          if (this.value !== selected) {
-            this.value = selected;
-            this.onChange?.(selected);
-          }
+          this.commit(resolved[clickY].value);
           App.instance?.queueRender();
         }
       } else {
@@ -90,10 +94,7 @@ export class RadioGroupWidget extends Widget {
           const textLen = stringWidth(text);
           if (ev.x >= currentX && ev.x < currentX + textLen) {
             this.hoveredIndex = i;
-            if (this.value !== option.value) {
-              this.value = option.value;
-              this.onChange?.(option.value);
-            }
+            this.commit(option.value);
             App.instance?.queueRender();
             break;
           }
@@ -144,8 +145,9 @@ export class RadioGroupWidget extends Widget {
     const contentRect = this.getContentRect();
     const resolved = this.getResolvedOptions();
 
-    const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
+    // Recolor the group to the validation severity when invalid (border-less control).
+    const fg = this.validation.resolveColor() || this.computedStyle.color || "default";
 
     const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan";
     const selectBg = App.instance?.cssResolver.resolveVariable(this, "$selectionBg") || "blue";

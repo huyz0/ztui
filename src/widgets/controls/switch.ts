@@ -4,11 +4,15 @@ import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class SwitchWidget extends Widget {
   public active = false;
   public label = "";
   public onChange?: (val: boolean) => void;
+
+  /** Validation; the validated value is the boolean `active` state. */
+  public readonly validation: FieldValidation = attachFieldValidation(this, () => this.active);
 
   constructor() {
     super("switch");
@@ -18,11 +22,16 @@ export class SwitchWidget extends Widget {
     this.onKey = (ev) => {
       const keyName = ev.name || ev.key;
       if (keyName === "space" || keyName === " " || keyName === "enter") {
-        this.active = !this.active;
-        this.onChange?.(this.active);
+        this.toggle();
         ev.handled = true;
       }
     };
+  }
+
+  private toggle(): void {
+    this.active = !this.active;
+    this.onChange?.(this.active);
+    this.validation.maybeValidate("change");
   }
 
   public override handleMouse(ev: any): void {
@@ -30,8 +39,7 @@ export class SwitchWidget extends Widget {
     if (ev.handled) return;
 
     if (ev.type === "press" && ev.button === "left") {
-      this.active = !this.active;
-      this.onChange?.(this.active);
+      this.toggle();
       App.instance?.queueRender();
     }
   }
@@ -67,6 +75,8 @@ export class SwitchWidget extends Widget {
     if (this.focused) {
       displayColor = App.instance?.cssResolver.resolveVariable(this, "$focus") || fg;
     }
+    const severityColor = this.validation.resolveColor();
+    if (severityColor) displayColor = severityColor;
 
     const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan";
     const _disabledColor = "gray";

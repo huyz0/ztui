@@ -44,6 +44,8 @@ const KNOWN_HANDLER_PROPS = [
   "onViewportChange",
   "onToggle",
   "onExpandedChange",
+  "onValidate",
+  "onSubmit",
 ];
 
 function applyProps(instance: DOMNode, props: any, oldProps?: any) {
@@ -111,6 +113,12 @@ function applyProps(instance: DOMNode, props: any, oldProps?: any) {
     }
     if (props.onExpandedChange !== undefined) {
       (instance as any).onExpandedChange = props.onExpandedChange;
+    }
+    if (props.onValidate !== undefined) {
+      (instance as any).onValidate = props.onValidate;
+    }
+    if (props.onSubmit !== undefined) {
+      (instance as any).onSubmit = props.onSubmit;
     }
 
     // Generic prop mapping for any properties defined on the widget instance
