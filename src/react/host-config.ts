@@ -41,6 +41,8 @@ const KNOWN_HANDLER_PROPS = [
   "onSelect",
   "onSortChange",
   "onViewportChange",
+  "onToggle",
+  "onExpandedChange",
 ];
 
 function applyProps(instance: DOMNode, props: any, oldProps?: any) {
@@ -99,6 +101,12 @@ function applyProps(instance: DOMNode, props: any, oldProps?: any) {
     }
     if (props.onViewportChange !== undefined) {
       (instance as any).onViewportChange = props.onViewportChange;
+    }
+    if (props.onToggle !== undefined) {
+      (instance as any).onToggle = props.onToggle;
+    }
+    if (props.onExpandedChange !== undefined) {
+      (instance as any).onExpandedChange = props.onExpandedChange;
     }
 
     // Generic prop mapping for any properties defined on the widget instance

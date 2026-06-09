@@ -110,6 +110,13 @@ The framework is organized around several high-level visual and structural abstr
 - **Framework neutrality**: `column.render` is typed `() => unknown` in the widget layer (the widget only checks its presence, never calls it); the React `<Table>` narrows it to `ReactNode`. No driver or React import leaks into the widget.
 - **Requirement Met**: *Viewport Constraint Resilience* and *Composable Primitives* — bounded per-frame work regardless of data size, with both pure-text and nested-widget cells.
 
+### 2.8b `TreeWidget` (Virtualized Navigation Tree) — `src/widgets/data/`
+- **Role**: A virtualized tree for workspace / file-explorer navigation.
+- **What it does**: Flattens only the *expanded* nodes into a linear row list (collapsed subtrees cost nothing) and self-renders only the rows in the viewport window — so it scales to large workspaces. Each node may carry an `icon`; rows show an expand/collapse arrow, depth indentation, icon, and label, with vertical + horizontal scroll, a scrollbar, and the same selection-background model as `TableWidget`.
+- **Forest-first**: Input is `data: TreeNode[]` (a forest), so a flat list of top-level items needs no synthetic root. A genuine single-root tree can pass `hideRoot` to promote the root's children to the top level.
+- **Interaction**: Arrows move selection; →/← expand/collapse (or step into child / out to parent); Enter/Space toggles; PageUp/Down/Home/End paginate; clicking the arrow toggles, clicking a row selects. Expansion is controlled (`onExpandedChange`) or internal; `onToggle`/`onSelect` report changes.
+- **Requirement Met**: *Viewport Constraint Resilience* and *Composable Primitives* — bounded per-frame work over arbitrarily large, deep trees.
+
 ### 2.9 `hostConfig` (The React Fiber Reconciler)
 - **Role**: Maps React visual representation commits to the custom DOM structure.
 - **What it does**: Integrates custom renderer callbacks mapping React fiber tree mutations (element instantiation, child insertions, text updates) into corresponding DOM tree operations.

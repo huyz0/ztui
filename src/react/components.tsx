@@ -22,6 +22,8 @@ export type { ToggleButtonProps } from "./components/controls/toggle-button.tsx"
 export { ToggleButton } from "./components/controls/toggle-button.tsx";
 export type { TableProps } from "./components/data/table.tsx";
 export { Table } from "./components/data/table.tsx";
+export type { TreeProps } from "./components/data/tree.tsx";
+export { Tree } from "./components/data/tree.tsx";
 export { Box } from "./components/layout/box.tsx";
 export { Dock } from "./components/layout/dock.tsx";
 export { Footer } from "./components/layout/footer.tsx";

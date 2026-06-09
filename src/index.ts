@@ -74,6 +74,8 @@ export {
   type TextAreaProps,
   ToggleButton,
   type ToggleButtonProps,
+  Tree,
+  type TreeProps,
   VBox,
   View,
 } from "./react/components.tsx";
@@ -104,6 +106,8 @@ export type {
   TableTextStyle,
 } from "./widgets/data/table.ts";
 export { TableCellWidget, TableWidget } from "./widgets/data/table.ts";
+export type { TreeNode } from "./widgets/data/tree.ts";
+export { TreeWidget } from "./widgets/data/tree.ts";
 export { TabContainerWidget } from "./widgets/layout/tabcontainer.ts";
 export { FileIconWidget } from "./widgets/media/file-icon.ts";
 export { IconWidget } from "./widgets/media/icon.ts";
