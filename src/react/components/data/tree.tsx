@@ -12,6 +12,10 @@ export interface TreeProps extends Omit<ComponentProps, "children"> {
   expanded?: string[];
   /** Selected node id, or null. */
   selectedId?: string | null;
+  /** Draw a dotted vertical guide line at each indentation level. */
+  showGuides?: boolean;
+  /** Color of the indentation guides. Subtle/muted by default. */
+  guideColor?: string;
   /** Selection changed (arrow navigation or single click). */
   onSelect?: (node: TreeNode) => void;
   /** Item activated — Enter, Space, or double-click. */

@@ -53,6 +53,7 @@ function TreeDemo() {
       <Tree
         style={{ padding: 1 }}
         data={workspace}
+        showGuides
         expanded={expanded}
         onExpandedChange={setExpanded}
         onSelect={(node) => setSelected(node.id)}

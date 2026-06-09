@@ -62,6 +62,18 @@ describe("Tree rendering (forest + icons)", () => {
     expect(txt).not.toContain("tree.ts"); // grandchild still collapsed
   });
 
+  test("showGuides draws a dotted vertical guide at each indent level", async () => {
+    const withGuides = await mountApp(
+      <Tree data={workspace} expanded={["src"]} showGuides style={{ height: "100%" }} />,
+    );
+    expect(withGuides.text()).toContain("┊"); // dotted guide glyph rendered
+
+    const noGuides = await mountApp(
+      <Tree data={workspace} expanded={["src"]} style={{ height: "100%" }} />,
+    );
+    expect(noGuides.text()).not.toContain("┊"); // off by default
+  });
+
   test("hideRoot promotes a single root's children to the top level", async () => {
     const t = await mountApp(<Tree data={workspace} hideRoot style={{ height: "100%" }} />);
     const txt = t.text();
