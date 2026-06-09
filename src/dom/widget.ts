@@ -243,6 +243,16 @@ export class Widget extends DOMNode {
   }
 
   public renderChildren(buffer: ScreenBuffer): void {
+    // Enforce `overflow: hidden`: clip children to the content box so an
+    // oversized or mispositioned child can't draw on top of sibling widgets.
+    // (Scrollable overrides this to always clip.) Matches CSS semantics, which
+    // also keeps the model portable to a web/DOM backend.
+    const clipOverflow =
+      this.computedStyle.overflowX === "hidden" || this.computedStyle.overflowY === "hidden";
+    if (clipOverflow) {
+      buffer.pushClip(this.getContentRect());
+    }
+
     const sorted = [...this.children].sort((a, b) => {
       const az = (a as any).computedStyle?.zIndex ?? 0;
       const bz = (b as any).computedStyle?.zIndex ?? 0;
@@ -266,6 +276,10 @@ export class Widget extends DOMNode {
           }
         }
       }
+    }
+
+    if (clipOverflow) {
+      buffer.popClip();
     }
   }
 
