@@ -51,6 +51,35 @@ describe("rendering system", () => {
     expect(diff.includes("Hello")).toBe(true);
   });
 
+  test("renderDiff repositions after a wide glyph instead of streaming across it", () => {
+    // When a width-2 glyph (emoji/CJK) is replaced and immediately followed by
+    // changed content, the trailing run must NOT be concatenated directly onto
+    // the glyph in the ANSI output. Terminals disagree with our width model for
+    // wide glyphs (e.g. emoji rendered as width 1 in many terminals/WSL); if the
+    // trailing content streams relative to the cursor across the glyph it lands
+    // in the wrong column and leaves stale fragments of the previous frame on
+    // screen. The diff must emit an absolute cursor reposition after the glyph.
+    const W = 16;
+    const prev = new ScreenBuffer(W, 1);
+
+    // Frame 1: a wide emoji immediately followed by a long label (no gap).
+    const f1 = new ScreenBuffer(W, 1);
+    f1.drawSegment(0, 0, new Segment("📁oldlonglabel"));
+    f1.renderDiff(prev, (c) => c.char, W, 1);
+    f1.copyTo(prev);
+
+    // Frame 2: the glyph changes (so it is re-emitted as a run) followed by
+    // shorter content that begins right after the glyph.
+    const f2 = new ScreenBuffer(W, 1);
+    f2.drawSegment(0, 0, new Segment("📄new"));
+    const diff2 = f2.renderDiff(prev, (c) => c.char, W, 1);
+
+    // The trailing content must be preceded by a cursor-position escape, never
+    // streamed directly after the glyph.
+    expect(diff2.includes("📄new")).toBe(false);
+    expect(/📄\x1b\[\d+;\d+H/.test(diff2)).toBe(true);
+  });
+
   test("ScreenBuffer size mismatch diffing and clipping", () => {
     const b1 = new ScreenBuffer(5, 2);
     const b2 = new ScreenBuffer(10, 2); // mismatching size!

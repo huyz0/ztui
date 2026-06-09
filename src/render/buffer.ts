@@ -209,15 +209,20 @@ export class ScreenBuffer {
             runStartX = null;
             runContent = "";
           }
-          if (changed) {
-            if (!newCell.wideContinuation) {
-              const content = formatChar ? formatChar(newCell, oldCell) : newCell.char;
-              const res = this.flushRun(x, y, content, newCell.style, cursor);
-              output += res.out;
-              // Reset cursor to null after a special cell as we don't track its precise terminal cursor movement
-              cursor = null;
-            }
+          if (changed && !newCell.wideContinuation) {
+            const content = formatChar ? formatChar(newCell, oldCell) : newCell.char;
+            const res = this.flushRun(x, y, content, newCell.style, cursor);
+            output += res.out;
           }
+          // After any special cell — a graphic, an icon, or the continuation
+          // half of a wide glyph — we can no longer trust relative cursor
+          // tracking. Terminals disagree with our width model for wide glyphs
+          // (e.g. emoji rendered as width 1), so the run we just flushed may
+          // have advanced the real cursor by a different amount than
+          // `stringWidth` assumed. Force the next run to emit an absolute
+          // cursor move; otherwise its content can stream from the wrong
+          // column and leave stale fragments of the previous frame on screen.
+          cursor = null;
           continue;
         }
 
