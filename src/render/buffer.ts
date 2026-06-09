@@ -2,7 +2,7 @@ import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import type { Segment } from "./segment.ts";
-import { charWidth, stringWidth } from "./segment.ts";
+import { charWidth, isControlChar, stringWidth } from "./segment.ts";
 import { Style } from "./style.ts";
 
 export interface GraphicMetadata {
@@ -87,7 +87,10 @@ export class ScreenBuffer {
       return;
     }
     const w = charWidth(char);
-    this.cells[y][x] = { char, style, wideContinuation: false };
+    // Guard against raw control characters reaching the terminal (cursor
+    // corruption). They have zero width, so the next glyph overwrites this cell.
+    const safeChar = isControlChar(char) ? " " : char;
+    this.cells[y][x] = { char: safeChar, style, wideContinuation: false };
 
     // If it's a wide character, mark the next cell as continuation
     if (w === 2 && x + 1 < this.width) {

@@ -21,6 +21,17 @@ export function stringWidth(str: string): number {
   return width;
 }
 
+/**
+ * C0/C1 control characters (including raw \n, \t, \r, ESC) must never be written
+ * into a screen cell: when the buffer is flushed they would be emitted verbatim
+ * to the terminal, moving the cursor and corrupting the whole layout.
+ */
+export function isControlChar(char: string): boolean {
+  const code = char.codePointAt(0);
+  if (code === undefined) return false;
+  return code < 32 || (code >= 127 && code < 160);
+}
+
 export class Segment {
   constructor(
     public readonly text: string,
