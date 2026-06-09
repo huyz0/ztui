@@ -3,8 +3,10 @@ import { Widget } from "../dom/widget.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
+import { TextNode } from "../react/host-config.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
+import { LabelWidget } from "../widgets/label.ts";
 
 /** A widget that fills its entire region with '#'. */
 class Filler extends Widget {
@@ -49,5 +51,21 @@ describe("overflow containment", () => {
     // Without clipping, the child paints beyond the parent's box.
     expect(buf.cells[0][5].char).toBe("#");
     expect(buf.cells[2][0].char).toBe("#");
+  });
+});
+
+describe("constrained-space measure", () => {
+  test("auto-sized content is clamped to the offered width", () => {
+    const label = new LabelWidget();
+    label.appendChild(new TextNode("x".repeat(100)));
+    label.measure(10, 5);
+    expect(label.measuredWidth).toBe(10);
+  });
+
+  test("content smaller than the offered space keeps its intrinsic size", () => {
+    const label = new LabelWidget();
+    label.appendChild(new TextNode("hi"));
+    label.measure(40, 5);
+    expect(label.measuredWidth).toBe(2);
   });
 });

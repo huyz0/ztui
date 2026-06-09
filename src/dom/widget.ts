@@ -375,7 +375,10 @@ export class Widget extends DOMNode {
           }
         }
       }
-      this.measuredWidth = contentW + b.width + p.width;
+      // Clamp auto/content-sized width to the space actually offered so a
+      // content-sized widget never claims more room than its parent has
+      // (scroll content is offered a large maxW, so this is a no-op there).
+      this.measuredWidth = Math.min(contentW + b.width + p.width, maxW);
     } else {
       this.measuredWidth = wVal as number;
     }
@@ -425,7 +428,8 @@ export class Widget extends DOMNode {
           }
         }
       }
-      this.measuredHeight = contentH + b.height + p.height;
+      // Clamp auto/content-sized height to the offered space (see width above).
+      this.measuredHeight = Math.min(contentH + b.height + p.height, maxH);
     } else {
       this.measuredHeight = hVal as number;
     }
