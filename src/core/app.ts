@@ -254,6 +254,16 @@ export class App extends DOMNode {
     if (!this.driver.capabilitiesResolved) {
       return;
     }
+    try {
+      this.layoutAndRenderUnsafe();
+    } catch (err) {
+      // Last-resort guard: a render exception must never crash the app or leave
+      // the terminal wedged. Log it and keep the previous frame on screen.
+      logger.error("render", "layoutAndRender failed; keeping previous frame", err);
+    }
+  }
+
+  private layoutAndRenderUnsafe(): void {
     const screen = this.activeScreen;
 
     this.resolveAllStyles(screen);

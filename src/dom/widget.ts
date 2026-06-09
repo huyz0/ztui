@@ -1,3 +1,4 @@
+import { logger } from "../core/logger.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
@@ -50,6 +51,9 @@ export class Widget extends DOMNode {
   public style: WidgetStyles = {};
   public defaultStyle: WidgetStyles = {};
   private _computedStyle: WidgetStyles | null = null;
+  // One-shot flags so a persistently-failing widget logs once, not every frame.
+  private _renderErrorLogged = false;
+  private _measureErrorLogged = false;
   public get computedStyle(): WidgetStyles {
     return this._computedStyle || this.style;
   }
@@ -249,7 +253,18 @@ export class Widget extends DOMNode {
         if (buffer.currentClip && !buffer.currentClip.intersection(child.region)) {
           continue;
         }
-        child.render(buffer);
+        // Isolate each child's render: a single broken widget must not blank the
+        // whole screen. Log the failure once (until it recovers) so it isn't
+        // silently swallowed.
+        try {
+          child.render(buffer);
+          child._renderErrorLogged = false;
+        } catch (err) {
+          if (!child._renderErrorLogged) {
+            logger.error("render", `widget render failed, skipping: ${child.describe()}`, err);
+            child._renderErrorLogged = true;
+          }
+        }
       }
     }
   }
@@ -258,10 +273,19 @@ export class Widget extends DOMNode {
   public onUnmount(): void {}
 
   public measure(maxW: number, maxH: number): void {
-    // 1. Recursively measure children first (bottom-up)
+    // 1. Recursively measure children first (bottom-up). Isolate each child so a
+    // broken measure() degrades that subtree instead of aborting layout.
     for (const child of this.children) {
       if (child instanceof Widget && child.visible) {
-        child.measure(maxW, maxH);
+        try {
+          child.measure(maxW, maxH);
+          child._measureErrorLogged = false;
+        } catch (err) {
+          if (!child._measureErrorLogged) {
+            logger.error("measure", `widget measure failed: ${child.describe()}`, err);
+            child._measureErrorLogged = true;
+          }
+        }
       }
     }
 
