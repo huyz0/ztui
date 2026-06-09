@@ -4,6 +4,7 @@ const NoEventPriority = 0;
 
 import { createContext } from "react";
 import { App } from "../core/app.ts";
+import { logger } from "../core/logger.ts";
 import { DOMNode } from "../dom/dom.ts";
 import { Widget } from "../dom/widget.ts";
 
@@ -123,6 +124,9 @@ export const hostConfig: any = {
     if (elementRegistry[tagName]) {
       instance = elementRegistry[tagName]();
     } else {
+      // Unknown tag → generic, non-rendering widget. Often a typo, so leave a
+      // breadcrumb rather than failing silently.
+      logger.debug("reconciler", `unknown element <${type}>; using generic Widget`);
       instance = new Widget(tagName);
     }
     applyProps(instance, props);

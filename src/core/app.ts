@@ -30,6 +30,7 @@ export class App extends DOMNode {
   private activeDragWidget: Widget | null = null;
   private inspectorServer: InspectorServer | null = null;
   private resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+  private frameCount = 0;
 
   constructor(driver?: Driver) {
     super("app");
@@ -308,6 +309,11 @@ export class App extends DOMNode {
     if (ansiDiff) {
       this.driver.writeFrame(ansiDiff);
       this.currentBuffer.copyTo(this.prevBuffer);
+      this.frameCount++;
+      logger.debug(
+        "render",
+        `frame #${this.frameCount} painted (${ansiDiff.length} bytes, ${size.width}x${size.height})`,
+      );
     }
   }
 

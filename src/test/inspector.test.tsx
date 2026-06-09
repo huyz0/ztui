@@ -54,6 +54,14 @@ describe("inspector endpoints", () => {
     expect(text.length).toBeGreaterThan(0);
   });
 
+  test("GET /tree returns an indented ASCII view", async () => {
+    const text = await (await fetch(`${BASE}/tree`)).text();
+    expect(text).toContain("button#ok");
+    expect(text).toContain('text("Click")');
+    // children are indented under their parent
+    expect(text).toMatch(/\n {2,}button#ok/);
+  });
+
   test("GET /dom includes text nodes, focusable, and visibility", async () => {
     const dump = await (await fetch(`${BASE}/dom`)).json();
     const json = JSON.stringify(dump);

@@ -103,6 +103,12 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
     return new Response(JSON.stringify(dumpAppState(app), null, 2), { headers: JSON_HEADERS });
   }
 
+  if (url.pathname === "/tree" && req.method === "GET") {
+    return new Response(dumpTreeText(app.activeScreen), {
+      headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
   if (url.pathname === "/log" && req.method === "GET") {
     const requested = Number.parseInt(url.searchParams.get("lines") || "200", 10);
     const maxLines = Number.isFinite(requested) && requested > 0 ? requested : 200;
@@ -172,7 +178,7 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
   }
 
   return new Response(
-    "ZTUI Inspector Running. Endpoints: GET /dom, GET /state, GET /log?lines=N, GET /render, POST /input",
+    "ZTUI Inspector Running. Endpoints: GET /dom, GET /tree, GET /state, GET /log?lines=N, GET /render, POST /input",
     {
       status: 200,
       headers: { "Access-Control-Allow-Origin": "*" },
@@ -202,6 +208,15 @@ function dumpAppState(app: App): any {
     capabilities: driver.capabilities,
     log: { file: logger.getFilePath(), level: logger.getLevel() },
   };
+}
+
+/** Scannable indented ASCII view of the widget tree, one node per line. */
+function dumpTreeText(node: any, depth = 0): string {
+  let out = `${"  ".repeat(depth)}${node.describe()}\n`;
+  for (const child of node.children || []) {
+    out += dumpTreeText(child, depth + 1);
+  }
+  return out;
 }
 
 function dumpDOMTree(node: any): any {
