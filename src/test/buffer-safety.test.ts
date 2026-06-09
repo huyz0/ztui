@@ -34,3 +34,19 @@ describe("buffer never stores raw control characters", () => {
     expect(cellChars(buf, 0).trimEnd()).toBe("hello");
   });
 });
+
+describe("wide characters never spill past a boundary", () => {
+  test("a wide glyph in the last column becomes a space (no overflow)", () => {
+    const buf = new ScreenBuffer(3, 1);
+    buf.setCell(2, 0, "世", Style.DEFAULT); // 2-cell wide, no room for column 3
+    expect(buf.cells[0][2].char).toBe(" ");
+    expect(buf.cells[0][2].wideContinuation).toBe(false);
+  });
+
+  test("a wide glyph with room places a continuation cell", () => {
+    const buf = new ScreenBuffer(4, 1);
+    buf.setCell(1, 0, "世", Style.DEFAULT);
+    expect(buf.cells[0][1].char).toBe("世");
+    expect(buf.cells[0][2].wideContinuation).toBe(true);
+  });
+});

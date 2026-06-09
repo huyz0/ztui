@@ -86,19 +86,27 @@ export class ScreenBuffer {
     if (this.currentClip && !this.currentClip.contains(x, y)) {
       return;
     }
-    const w = charWidth(char);
     // Guard against raw control characters reaching the terminal (cursor
     // corruption). They have zero width, so the next glyph overwrites this cell.
     const safeChar = isControlChar(char) ? " " : char;
-    this.cells[y][x] = { char: safeChar, style, wideContinuation: false };
+    const w = charWidth(safeChar);
 
-    // If it's a wide character, mark the next cell as continuation
-    if (w === 2 && x + 1 < this.width) {
-      // Respect clipping on continuation cell as well
-      if (!this.currentClip || this.currentClip.contains(x + 1, y)) {
-        this.cells[y][x + 1] = { char: "", style, wideContinuation: true };
+    if (w === 2) {
+      // A wide glyph occupies two columns. If the second column is off-buffer or
+      // outside the active clip, drawing the glyph would spill past the boundary
+      // onto a neighbouring widget — substitute a space instead.
+      const continuationFits =
+        x + 1 < this.width && (!this.currentClip || this.currentClip.contains(x + 1, y));
+      if (!continuationFits) {
+        this.cells[y][x] = { char: " ", style, wideContinuation: false };
+        return;
       }
+      this.cells[y][x] = { char: safeChar, style, wideContinuation: false };
+      this.cells[y][x + 1] = { char: "", style, wideContinuation: true };
+      return;
     }
+
+    this.cells[y][x] = { char: safeChar, style, wideContinuation: false };
   }
 
   public drawSegment(startX: number, startY: number, segment: Segment, clipRegion?: Region): void {
