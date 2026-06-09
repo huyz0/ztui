@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Table, type TableColumn } from "../../index.ts";
+import { Button, Label, Table, type TableColumn } from "../../index.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { fitCell, type TableWidget } from "./table.ts";
 
@@ -311,6 +311,70 @@ describe("Table navigation & layout edge cases", () => {
       screenStyle: { flexDirection: "column" },
     });
     expect(t.text()).toContain("█");
+  });
+});
+
+describe("Table rich (widget-bearing) cells (phase 5)", () => {
+  test("renders a widget cell's content via column.render", async () => {
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      { key: "act", header: "Action", width: 12, render: (r) => <Label>[{r.name}]</Label> },
+    ];
+    const t = await mountApp(<Table data={people} columns={cols} style={{ height: "100%" }} />);
+    await t.settle();
+    await t.settle(); // one extra frame: viewport callback -> React -> cell widgets
+    const txt = t.text();
+    expect(txt).toContain("Charlie"); // text column
+    expect(txt).toContain("[Charlie]"); // rich column content
+  });
+
+  test("only materializes cell widgets for the visible window", async () => {
+    const data = bigData(1000);
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      { key: "act", header: "Act", width: 14, render: (r) => <Label>act-{r.name}</Label> },
+    ];
+    const t = await mountApp(<Table data={data} columns={cols} style={{ height: 12 }} />, {
+      screenStyle: { flexDirection: "column" },
+    });
+    await t.settle();
+    await t.settle();
+    // Count mounted cell widgets — should be ~viewport rows, not 1000.
+    let cellCount = 0;
+    t.screen.walk((n: any) => {
+      if (n.constructor?.name === "TableCellWidget") cellCount++;
+    });
+    expect(cellCount).toBeGreaterThan(0);
+    expect(cellCount).toBeLessThan(40);
+    expect(t.text()).toContain("act-Row0");
+    expect(t.text()).not.toContain("act-Row500");
+  });
+
+  test("a button inside a cell is clickable through the table", async () => {
+    let clicked = "";
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      {
+        key: "act",
+        header: "Act",
+        width: 14,
+        render: (r) => <Button onClick={() => (clicked = r.name)}>Go</Button>,
+      },
+    ];
+    const t = await mountApp(<Table data={people} columns={cols} style={{ height: "100%" }} />);
+    await t.settle();
+    await t.settle();
+    // Locate the first row's button widget and click at its position.
+    let btn: any;
+    t.screen.walk((n: any) => {
+      if (!btn && n.tagName === "button") btn = n;
+    });
+    expect(btn).toBeDefined();
+    const r = btn.region;
+    // Dispatch through the real App mouse pipeline (hit-test -> onClick).
+    t.driver.emit("mouse", { type: "press", button: "left", x: r.x, y: r.y });
+    await t.settle();
+    expect(clicked).toBe("Charlie");
   });
 });
 

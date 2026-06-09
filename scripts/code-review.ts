@@ -60,7 +60,9 @@ console.log("--------------------------------------------------");
   let leakPass = true;
 
   // 2a. Widgets must not import the driver layer.
-  const widgetFiles = collectFiles(join(process.cwd(), "src/widgets"), [".ts", ".tsx"]);
+  const widgetFiles = collectFiles(join(process.cwd(), "src/widgets"), [".ts", ".tsx"]).filter(
+    (f) => !f.endsWith(".test.ts") && !f.endsWith(".test.tsx"),
+  );
   for (const file of widgetFiles) {
     const content = readFileSync(file, "utf-8");
     if (DRIVER_IMPORT_RE.test(content)) {

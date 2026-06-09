@@ -379,7 +379,14 @@ export class App extends DOMNode {
       layoutType = flexDirection === "row" ? "horizontal" : "vertical";
     }
 
-    if (parent.tagName === "tabcontainer") {
+    // Widgets that lay out their own children (e.g. a virtualized table that
+    // positions cell widgets into row/column slots) opt in via `layoutChildren`.
+    // Returning true means the default layout dispatch below is skipped; the
+    // recursion at the end still lays out each child's own subtree.
+    const customLayout = (parent as unknown as { layoutChildren?: () => boolean }).layoutChildren;
+    if (typeof customLayout === "function" && customLayout.call(parent)) {
+      // handled by the widget
+    } else if (parent.tagName === "tabcontainer") {
       const inner = parent.getContentRect();
       const tabBarHeight = 1;
       for (const child of parent.children) {
