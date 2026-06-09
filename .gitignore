@@ -3,3 +3,7 @@ node_modules/
 coverage/
 *.log
 .DS_Store
+
+# Claude Code local/transient files
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
