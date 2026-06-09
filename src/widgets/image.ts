@@ -3,6 +3,7 @@ import jpeg from "jpeg-js";
 import { GifReader } from "omggif";
 import { PNG } from "pngjs";
 import { App } from "../core/app.ts";
+import { logger } from "../core/logger.ts";
 import { Widget } from "../dom/widget.ts";
 import { encodePNG } from "../driver/bun/graphics.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
@@ -53,6 +54,7 @@ export class ImageWidget extends Widget {
           imageBuffer = new Uint8Array(fs.readFileSync(this.src));
         }
       } catch (err) {
+        logger.warn("image", `failed to read image source "${this.src}": ${this.describe()}`, err);
         this.renderError(
           buffer,
           `Error reading: ${err instanceof Error ? err.message : String(err)}`,
@@ -71,6 +73,7 @@ export class ImageWidget extends Widget {
     try {
       decoded = decodeImage(imageBuffer);
     } catch (err) {
+      logger.warn("image", `failed to decode image: ${this.describe()}`, err);
       this.renderError(
         buffer,
         `Decode error: ${err instanceof Error ? err.message : String(err)}`,
@@ -180,13 +183,17 @@ export class ImageWidget extends Widget {
     const client = this.getClientRect();
     let charsWritten = 0;
     for (let dy = 0; dy < client.height; dy++) {
+      const cy = client.y + dy;
+      if (cy < 0 || cy >= buffer.height) continue;
       for (let dx = 0; dx < client.width; dx++) {
-        const char = " ";
+        const cx = client.x + dx;
+        if (cx < 0 || cx >= buffer.width) continue;
         if (dy === 0 && charsWritten < msg.length) {
           const remainingWidth = client.width - dx;
           const chunk = msg.substring(charsWritten, charsWritten + remainingWidth);
           for (let i = 0; i < chunk.length; i++) {
-            buffer.cells[client.y + dy][client.x + dx + i] = {
+            if (cx + i >= buffer.width) break;
+            buffer.cells[cy][cx + i] = {
               char: chunk[i],
               style,
               wideContinuation: false,
@@ -196,8 +203,8 @@ export class ImageWidget extends Widget {
           dx += chunk.length - 1;
           continue;
         }
-        buffer.cells[client.y + dy][client.x + dx] = {
-          char,
+        buffer.cells[cy][cx] = {
+          char: " ",
           style,
           wideContinuation: false,
         };

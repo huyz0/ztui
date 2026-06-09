@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { Widget } from "../dom/widget.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
+import { decodeImage } from "../widgets/image.ts";
+import { parsePartialJson } from "../widgets/json-ui.ts";
 
 class BoomWidget extends Widget {
   override render(): void {
@@ -44,5 +46,28 @@ describe("render/measure isolation", () => {
 
     expect(() => parent.measure(20, 5)).not.toThrow();
     expect(ok.measured).toBe(true);
+  });
+});
+
+describe("bad external data handling", () => {
+  test("decodeImage throws a descriptive error (incl. magic bytes) on garbage", () => {
+    const garbage = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(() => decodeImage(garbage)).toThrow(/Unsupported or invalid image format/);
+    expect(() => decodeImage(garbage)).toThrow(/01 02 03 04/); // magic bytes surfaced
+  });
+
+  test("decodeImage reports an empty buffer rather than crashing opaquely", () => {
+    expect(() => decodeImage(new Uint8Array([]))).toThrow(/empty|0 bytes/);
+  });
+
+  test("parsePartialJson returns null on unrecoverable input instead of throwing", () => {
+    expect(parsePartialJson("not json at all {{{")).toBeNull();
+    expect(parsePartialJson("")).toBeNull();
+  });
+
+  test("parsePartialJson still parses valid and partial JSON", () => {
+    expect(parsePartialJson('{"a":1}')).toEqual({ a: 1 });
+    // partial/streamed object gets balanced
+    expect(parsePartialJson('{"a":1')).toEqual({ a: 1 });
   });
 });

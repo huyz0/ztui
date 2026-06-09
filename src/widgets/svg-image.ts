@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import { App } from "../core/app.ts";
+import { logger } from "../core/logger.ts";
 import { Widget } from "../dom/widget.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
@@ -46,6 +47,7 @@ export class SvgImageWidget extends Widget {
           svgContent = fs.readFileSync(this.src, "utf8");
         }
       } catch (err) {
+        logger.warn("svgimage", `failed to read SVG source "${this.src}": ${this.describe()}`, err);
         this.renderError(
           buffer,
           `Error reading SVG: ${err instanceof Error ? err.message : String(err)}`,
@@ -179,6 +181,7 @@ export class SvgImageWidget extends Widget {
         );
       }
     } catch (err: any) {
+      logger.warn("svgimage", `failed to rasterize SVG: ${this.describe()}`, err);
       this.renderError(buffer, `Render error: ${err.message}`, style);
     }
   }
@@ -187,27 +190,23 @@ export class SvgImageWidget extends Widget {
     const client = this.getClientRect();
     let charsWritten = 0;
     for (let dy = 0; dy < client.height; dy++) {
+      const cy = client.y + dy;
+      if (cy < 0 || cy >= buffer.height) continue;
       for (let dx = 0; dx < client.width; dx++) {
-        const char = " ";
+        const cx = client.x + dx;
+        if (cx < 0 || cx >= buffer.width) continue;
         if (dy === 0 && charsWritten < msg.length) {
           const remainingWidth = client.width - dx;
           const chunk = msg.substring(charsWritten, charsWritten + remainingWidth);
           for (let i = 0; i < chunk.length; i++) {
-            buffer.cells[client.y + dy][client.x + dx + i] = {
-              char: chunk[i],
-              style,
-              wideContinuation: false,
-            };
+            if (cx + i >= buffer.width) break;
+            buffer.cells[cy][cx + i] = { char: chunk[i], style, wideContinuation: false };
           }
           charsWritten += chunk.length;
           dx += chunk.length - 1;
           continue;
         }
-        buffer.cells[client.y + dy][client.x + dx] = {
-          char,
-          style,
-          wideContinuation: false,
-        };
+        buffer.cells[cy][cx] = { char: " ", style, wideContinuation: false };
       }
     }
   }
