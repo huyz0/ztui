@@ -5,14 +5,12 @@ const NoEventPriority = 0;
 import { createContext } from "react";
 import { App } from "../core/app.ts";
 import { logger } from "../core/logger.ts";
-import { DOMNode } from "../dom/dom.ts";
+import type { DOMNode } from "../dom/dom.ts";
+import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
 
-export class TextNode extends DOMNode {
-  constructor(public text: string) {
-    super("text");
-  }
-}
+// Re-exported for backward compatibility; TextNode now lives in the DOM layer.
+export { TextNode };
 
 const elementRegistry: Record<string, () => Widget> = {
   "ztui-view": () => new Widget("view"),

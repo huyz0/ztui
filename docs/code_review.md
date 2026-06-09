@@ -35,6 +35,13 @@ Before finalizing any task, check the active `git diff` against these constraint
 ### 2.3 Terminal State Recovery
 - **Rule**: Concrete driver implementations altering terminal states MUST register hooks for process events (`exit`, `SIGINT`, `SIGTERM`) to restore the original host shell parameters on unexpected crash.
 
+### 2.4 Driver-Concern Containment (No Backend Leakage)
+Terminal/web backend specifics MUST stay inside `src/driver/*`. They must not leak into the framework-neutral widget layer or the `App` orchestrator, so the same widgets render unchanged on a future web backend.
+- **Rule**: `src/widgets/**` MUST NOT import from `src/driver/**`, and MUST NOT contain raw control sequences (`\x1b…`, `…`). Widgets describe *what* to draw via the cell/`Segment` model; the driver decides *how* to emit it.
+- **Rule**: `src/core/**` (notably `app.ts`) MUST NOT emit raw escape sequences or branch on a specific `graphicsProtocol`/protocol value to build output. It interacts only through the abstract `Driver` API (`write`, `writeFrame`, `clearScreen`, `getImageSequence`, `getIconSequence`, `getGraphicClearSequence`, …). New protocol-specific output belongs behind a `Driver` method. Reading `capabilities` for diagnostics/logging is fine; constructing terminal bytes is not.
+- **Exception**: `App` may import the concrete `BunDriver` solely as its default constructor binding (documented in `architecture.md §1.9`). Any caller can still inject a different `Driver`.
+- **Enforcement**: `bun run review` statically scans `src/widgets` (driver imports + ANSI) and `src/core` (ANSI) and fails on any leak.
+
 ---
 
 ## 3. Checklist & Report Template

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
 import {
   App,
@@ -17,10 +18,9 @@ import {
   TextArea,
   VBox,
 } from "../index.ts";
-import { TextNode } from "../react/host-config.ts";
 import { reconciler } from "../react/reconciler.ts";
-import { JSONUIWidget } from "../widgets/json-ui.ts";
-import { MarkdownWidget } from "../widgets/markdown.ts";
+import { JSONUIWidget } from "../widgets/text/json-ui.ts";
+import { MarkdownWidget } from "../widgets/text/markdown.ts";
 import { VTEDriver } from "./vte-runner.ts";
 
 describe("Rich Components Integration Tests", () => {

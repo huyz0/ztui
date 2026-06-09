@@ -385,4 +385,9 @@ export class BunDriver extends Driver {
       this.write("\x1b_Ga=d\x1b\\\x1b_Ga=d,d=A\x1b\\");
     }
   }
+
+  public override getGraphicClearSequence(): string {
+    // Kitty: delete the image placement covering the cursor cell.
+    return this.capabilities.graphicsProtocol === "kitty" ? "\x1b_Ga=d,d=c\x1b\\" : "";
+  }
 }

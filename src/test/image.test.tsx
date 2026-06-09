@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { describe, expect, test } from "vitest";
 import { fullColorRgbaToSixel } from "../driver/bun/graphics.ts";
 import { App, Image, render, SvgImage } from "../index.ts";
-import { decodeImage, resizeImage } from "../widgets/image.ts";
+import { decodeImage, resizeImage } from "../widgets/media/image.ts";
 import { VTEDriver } from "./vte-runner.ts";
 
 const TINY_PNG_BASE64 =

@@ -302,9 +302,7 @@ export class App extends DOMNode {
       (cell, oldCell) => {
         let prefix = "";
         if (oldCell?.graphic && !cell.graphic) {
-          if (this.driver.capabilities.graphicsProtocol === "kitty") {
-            prefix = "\x1b_Ga=d,d=c\x1b\\";
-          }
+          prefix = this.driver.getGraphicClearSequence();
         }
 
         if (cell.graphic) {

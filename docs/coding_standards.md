@@ -9,7 +9,7 @@ This document describes the software design principles, coding patterns, linting
 ### 1.1 Modularity & Anti-God Object Pattern
 Do not create complex classes, files, or folders that manage multiple unrelated concerns. Modules must remain small, focused, and single-purpose.
 - If a class or file exceeds **200 lines**, actively evaluate if it can be split into smaller, focused modules.
-- If a folder contains more than **10 files**, organize them into logical child subdirectories (e.g., how the main widgets and React component wrappers are split into separate, single-concern files under `src/widgets/` and `src/react/components/`).
+- If a folder contains more than **10 files**, organize them into logical child subdirectories. Both the widgets and their React wrappers are grouped symmetrically under `layout/`, `controls/`, `media/`, and `text/` (e.g. `src/widgets/controls/button.ts` pairs with `src/react/components/controls/button.tsx`) so the widget↔component pairing stays obvious.
 
 ### 1.2 Unidirectional Dependency Flow
 Module dependencies must flow in one direction only. Circular references (whether direct or indirect via index exports) are strictly forbidden. High-level orchestrators must remain decoupled from specific component implementations.
@@ -28,15 +28,18 @@ Write code that is minimal, precise, and directly addresses the requirement. Do 
 ## 2. Specific Rules & Requirements
 
 ### 2.1 React Component Wrappers
-- **Rule**: Every wrapper component **MUST** reside in its own file under `src/react/components/` (e.g., `src/react/components/label.tsx`).
-- **Rule**: Implement wrappers as thin, pure function components.
+- **Rule**: Every wrapper component **MUST** reside in its own file under the matching category folder in `src/react/components/` (e.g., `src/react/components/text/label.tsx`).
+- **Rule**: Implement wrappers as thin, pure function components. Pure passthroughs to a host element **MUST** be built with the `hostComponent("ztui-…")` factory (`src/react/components/factory.tsx`) rather than a hand-written destructure-and-respread body; Box-derived layout presets use `presetBox(...)`. Only wrappers with real logic (default props, icon resolution) are written out by hand.
 - **Rule**: Prop interfaces must extend `ComponentProps` from `src/react/components/types.ts`.
 
 ### 2.2 Styles Resolution Defaults
 - **Rule**: Custom widgets must **never** mutate `this.style` inside their constructor. Specify defaults via `this.defaultStyle` so that stylesheet rules and inline JSX properties cascade correctly.
 - **Rule**: Custom widgets **MUST** invoke `super.render(buffer)` inside their `render()` method to correctly execute background fills and border rendering.
 
-### 2.3 Style Coercion Rules
+### 2.3 Driver-Concern Containment
+- **Rule**: Backend specifics (raw ANSI/escape sequences, `process.stdout`/`stdin`, protocol branching) live **only** in `src/driver/*`. Widgets (`src/widgets/**`) and the `App`/core orchestrator (`src/core/**`) must stay backend-neutral: widgets emit cells/`Segment`s; `App` talks to the abstract `Driver` API. When you need new terminal output, add a `Driver` method instead of inlining the escape. See `code_review.md §2.4` for the exact rules and the `bun run review` guard.
+
+### 2.4 Style Coercion Rules
 - **Rule**: The CSS resolver coerces specific string layout properties into rich objects:
   - **`margin` / `padding`**: Auto-coerced from space-separated numbers (e.g. `"1 2"` or `"4"`) into an instance of the `Spacing` class.
   - **Constraints (`minWidth`, `minHeight`, `maxWidth`, `maxHeight`)**: Parsed and coerced into raw integer bounds.
@@ -46,22 +49,18 @@ Write code that is minimal, precise, and directly addresses the requirement. Do 
 ## 3. Checklist & Examples
 
 ### React Component Wrapper Template
-```typescript
-import type React from "react";
-import type { ComponentProps } from "./types.ts";
+Pure passthroughs use the `hostComponent` factory — declare the typed props and bind the host tag in one line. The factory forwards every prop (including `children`); the reconciler's host-config maps any prop matching a widget field.
+```tsx
+import { hostComponent } from "../factory.tsx";
+import type { ComponentProps } from "../types.ts";
 
 export interface CustomProps extends ComponentProps {
   customAttribute?: string;
 }
 
-export function Custom({ id, className, style, customAttribute, children }: CustomProps) {
-  return (
-    <ztui-custom id={id} className={className} style={style} customAttribute={customAttribute}>
-      {children}
-    </ztui-custom>
-  );
-}
+export const Custom = hostComponent<CustomProps>("ztui-custom");
 ```
+Only write a hand-rolled function component when the wrapper has real logic (injecting default props, resolving an icon, etc.); even then keep it thin and delegate the host element to `hostComponent`/`presetBox`.
 
 ### Static Analysis & Formatting Checklist
 Ensure code passes Biome linting and formatting before committing:

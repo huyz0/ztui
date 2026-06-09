@@ -20,7 +20,7 @@ export { Region } from "./geometry/region.ts";
 export { Size } from "./geometry/size.ts";
 export { Spacing } from "./geometry/spacing.ts";
 // Heroicons — lazy loading
-export { registerHeroIcon, resolveHeroIcon } from "./react/components/heroic-icon.tsx";
+export { registerHeroIcon, resolveHeroIcon } from "./react/components/media/heroic-icon.tsx";
 export {
   Box,
   Button,
@@ -88,30 +88,30 @@ export { Segment } from "./render/segment.ts";
 export type { StyleProps } from "./render/style.ts";
 // Rendering & Styling
 export { Style } from "./render/style.ts";
-export { CheckboxWidget } from "./widgets/checkbox.ts";
-export { FileIconWidget } from "./widgets/file-icon.ts";
-export { IconWidget } from "./widgets/icon.ts";
-export { ImageWidget } from "./widgets/image.ts";
-export { JSONUIWidget } from "./widgets/json-ui.ts";
-export { MarkdownWidget } from "./widgets/markdown.ts";
-export { MermaidWidget } from "./widgets/mermaid.ts";
-export { RadioGroupWidget } from "./widgets/radio-group.ts";
-export { RichTextWidget } from "./widgets/rich-text.ts";
-export { SelectWidget } from "./widgets/select.ts";
+export { CheckboxWidget } from "./widgets/controls/checkbox.ts";
+export { RadioGroupWidget } from "./widgets/controls/radio-group.ts";
+export { SelectWidget } from "./widgets/controls/select.ts";
+export { SliderWidget } from "./widgets/controls/slider.ts";
+export { SwitchWidget } from "./widgets/controls/switch.ts";
+export { TextAreaWidget } from "./widgets/controls/textarea.ts";
+export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";
+export { TabContainerWidget } from "./widgets/layout/tabcontainer.ts";
+export { FileIconWidget } from "./widgets/media/file-icon.ts";
+export { IconWidget } from "./widgets/media/icon.ts";
+export { ImageWidget } from "./widgets/media/image.ts";
 // Seti File Icons — lazy loading
 export {
   loadSetiIcons,
   loadSetiTheme,
   registerSetiIcon,
   resolveFileIcon,
-} from "./widgets/seti/seti-loader.ts";
-export { SliderWidget } from "./widgets/slider.ts";
-export { SvgImageWidget } from "./widgets/svg-image.ts";
-export { SwitchWidget } from "./widgets/switch.ts";
-export { SyntaxWidget } from "./widgets/syntax.ts";
-export { TabContainerWidget } from "./widgets/tabcontainer.ts";
-export { TextAreaWidget } from "./widgets/textarea.ts";
-export { ToggleButtonWidget } from "./widgets/toggle-button.ts";
+} from "./widgets/media/seti/seti-loader.ts";
+export { SvgImageWidget } from "./widgets/media/svg-image.ts";
+export { JSONUIWidget } from "./widgets/text/json-ui.ts";
+export { MarkdownWidget } from "./widgets/text/markdown.ts";
+export { MermaidWidget } from "./widgets/text/mermaid.ts";
+export { RichTextWidget } from "./widgets/text/rich-text.ts";
+export { SyntaxWidget } from "./widgets/text/syntax.ts";
 
 // Run widget registrations
 import "./widgets/index.ts";

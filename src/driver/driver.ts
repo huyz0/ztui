@@ -79,6 +79,15 @@ export abstract class Driver extends EventEmitter {
   public clearScreen(): void {
     this.write("\x1b[H\x1b[2J\x1b[3J");
   }
+  /**
+   * Sequence emitted before redrawing a cell that previously held a graphic but
+   * no longer does, to erase the stale image. Returns "" for backends/protocols
+   * where no explicit clear is needed. Keeps graphics-protocol specifics out of
+   * the render/app layers — callers prepend this without knowing the protocol.
+   */
+  public getGraphicClearSequence(): string {
+    return "";
+  }
   public writeFrame(data: string): void {
     if (this.capabilities.synchronizedUpdates) {
       this.write(`\x1b[?2026h${data}\x1b[?2026l`);

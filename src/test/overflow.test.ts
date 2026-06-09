@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
+import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
-import { TextNode } from "../react/host-config.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
-import { LabelWidget } from "../widgets/label.ts";
+import { LabelWidget } from "../widgets/text/label.ts";
 
 /** A widget that fills its entire region with '#'. */
 class Filler extends Widget {

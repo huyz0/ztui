@@ -1,5 +1,21 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+
+function collectFiles(dir: string, exts: string[]): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true, recursive: true })) {
+    if (entry.isFile() && exts.some((e) => entry.name.endsWith(e))) {
+      out.push(join((entry as any).parentPath ?? (entry as any).path ?? dir, entry.name));
+    }
+  }
+  return out;
+}
+
+// Raw terminal control sequences (ESC in any escape form).
+const ANSI_RE = /\\x1b|\\u001b|\\033|\\e\[/;
+// Imports reaching into the concrete driver layer.
+const DRIVER_IMPORT_RE = /from\s+["'][./]*driver\//;
 
 console.log("==================================================");
 console.log("         ZTUI STATIC CODE REVIEW CHECKS           ");
@@ -35,7 +51,52 @@ if (existsSync(hostConfigPath)) {
 
 console.log("--------------------------------------------------");
 
-// 2. Test Coverage Enforcements
+// 2. Driver-Concern Containment (Layer Leakage Guard)
+//    Terminal/driver specifics (raw ANSI, concrete driver imports) must not
+//    leak into the framework-neutral widget layer or the App orchestrator.
+//    App may hold an abstract `Driver` and the documented `BunDriver` default,
+//    but must not emit raw escapes or branch on protocol specifics.
+{
+  let leakPass = true;
+
+  // 2a. Widgets must not import the driver layer.
+  const widgetFiles = collectFiles(join(process.cwd(), "src/widgets"), [".ts", ".tsx"]);
+  for (const file of widgetFiles) {
+    const content = readFileSync(file, "utf-8");
+    if (DRIVER_IMPORT_RE.test(content)) {
+      console.log(`❌ Layer Leak: FAIL (driver import in widget) → ${file}`);
+      leakPass = false;
+    }
+    if (ANSI_RE.test(content)) {
+      console.log(`❌ Layer Leak: FAIL (raw ANSI escape in widget) → ${file}`);
+      leakPass = false;
+    }
+  }
+
+  // 2b. App / core orchestrator must not emit raw terminal escapes — those
+  //     belong behind a Driver method (clearScreen, getGraphicClearSequence…).
+  const coreFiles = collectFiles(join(process.cwd(), "src/core"), [".ts", ".tsx"]).filter(
+    (f) => !f.endsWith(".test.ts") && !f.endsWith(".test.tsx"),
+  );
+  for (const file of coreFiles) {
+    const content = readFileSync(file, "utf-8");
+    if (ANSI_RE.test(content)) {
+      console.log(`❌ Layer Leak: FAIL (raw ANSI escape in core/app) → ${file}`);
+      leakPass = false;
+    }
+  }
+
+  if (leakPass) {
+    console.log("✅ Layer Containment: PASS (no driver concerns in widgets or app)");
+  } else {
+    console.log("   - Move terminal/protocol specifics into a Driver method (src/driver/*).");
+    overallPass = false;
+  }
+}
+
+console.log("--------------------------------------------------");
+
+// 3. Test Coverage Enforcements
 const coverageSummaryPath = join(process.cwd(), "coverage/coverage-summary.json");
 if (existsSync(coverageSummaryPath)) {
   try {

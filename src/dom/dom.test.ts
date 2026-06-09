@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { parseTCSS } from "../css/css-parser.ts";
 import { CSSResolver } from "../css/css-resolver.ts";
+import { TextNode } from "../dom/text-node.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
@@ -8,7 +9,6 @@ import { Spacing } from "../geometry/spacing.ts";
 import { BoxLayout } from "../layout/box-layout.ts";
 import { DockLayout } from "../layout/dock-layout.ts";
 import { GridLayout } from "../layout/grid-layout.ts";
-import { TextNode } from "../react/host-config.ts";
 import {
   BoxWidget,
   DockWidget,

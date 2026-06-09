@@ -3,9 +3,9 @@ import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import { MockDriver } from "../driver/mock/index.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
-import { ButtonWidget } from "../widgets/button.ts";
-import { decodeImage } from "../widgets/image.ts";
-import { parsePartialJson } from "../widgets/json-ui.ts";
+import { ButtonWidget } from "../widgets/controls/button.ts";
+import { decodeImage } from "../widgets/media/image.ts";
+import { parsePartialJson } from "../widgets/text/json-ui.ts";
 
 class BoomWidget extends Widget {
   override render(): void {

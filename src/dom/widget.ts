@@ -9,6 +9,7 @@ import type { ScreenBuffer } from "../render/buffer.ts";
 import { stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 import { DOMNode } from "./dom.ts";
+import { TextNode } from "./text-node.ts";
 
 export interface WidgetStyles {
   color?: string;
@@ -172,6 +173,23 @@ export class Widget extends DOMNode {
     return "default";
   }
 
+  /**
+   * Concatenates the text of all direct {@link TextNode} children.
+   *
+   * This is the canonical way widgets read their inline JSX text content.
+   * Subclasses may override to add behavior (e.g. trimming, or falling back to
+   * a `label` field), typically by post-processing `super.getTextContent()`.
+   */
+  public getTextContent(): string {
+    let text = "";
+    for (const child of this.children) {
+      if (child instanceof TextNode) {
+        text += child.text;
+      }
+    }
+    return text;
+  }
+
   public render(buffer: ScreenBuffer): void {
     if (!this.visible) return;
 
@@ -321,8 +339,8 @@ export class Widget extends DOMNode {
     let text = "";
     let hasText = false;
     for (const child of this.children) {
-      if (child.constructor.name === "TextNode") {
-        text += (child as any).text || "";
+      if (child instanceof TextNode) {
+        text += child.text || "";
         hasText = true;
       }
     }

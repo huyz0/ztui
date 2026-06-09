@@ -305,12 +305,12 @@ The framework enforces a **Strict Unidirectional Dependency Flow** between direc
 Ensure all workspace directories conform to this single-responsibility layout:
 - `src/core/`: Orchestration, event loop, and REST inspector.
 - `src/css/`: TCSS lexical parsing and specificity matching.
-- `src/dom/`: Node tree representation, viewport screen, and widget bases.
+- `src/dom/`: Node tree representation, viewport screen, widget bases, and `TextNode` (the literal-text DOM node — a DOM concept, so framework-neutral widgets read `TextNode.text` without importing the React layer; `host-config` re-exports it for compatibility).
 - `src/driver/`: ANSI device input decoders and screen buffers.
 - `src/geometry/`: Spatial primitives (Region, Size, Offset, Spacing).
 - `src/layout/`: Layout managers (BoxLayout, GridLayout, DockLayout).
-- `src/react/`: Reconciler and React component declarations.
-- `src/widgets/`: Concrete elements (Label, Button, Input, Box, etc.).
+- `src/react/`: Reconciler and React component declarations, grouped under `components/{layout,controls,media,text}/` plus a `factory.tsx` for thin host-element wrappers.
+- `src/widgets/`: Concrete elements grouped under `{layout,controls,media,text}/`, mirroring the React component folders one-to-one.
 
 ---
 

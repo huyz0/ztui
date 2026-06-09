@@ -467,6 +467,19 @@ describe("BunDriver Capability Probing", () => {
     expect(mockDriver.writtenData).toBe("");
   });
 
+  test("getGraphicClearSequence delegates protocol specifics to the driver", () => {
+    // Base/non-graphics drivers emit nothing (no escape leaks upward).
+    expect(new MockDriver(80, 24).getGraphicClearSequence()).toBe("");
+    expect(new WebDriver(80, 24).getGraphicClearSequence()).toBe("");
+
+    // BunDriver returns the Kitty delete-placement escape only when Kitty is active.
+    const driver = new BunDriver({ stdin, stdout });
+    (driver.capabilities as any).graphicsProtocol = "kitty";
+    expect(driver.getGraphicClearSequence()).toBe("\x1b_Ga=d,d=c\x1b\\");
+    (driver.capabilities as any).graphicsProtocol = "sixel";
+    expect(driver.getGraphicClearSequence()).toBe("");
+  });
+
   test("BunDriver getIconSequence under different protocols", () => {
     iconRegistry.registerIcon({
       name: "test-graphics-icon",
