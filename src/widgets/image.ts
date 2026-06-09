@@ -5,9 +5,9 @@ import { PNG } from "pngjs";
 import { App } from "../core/app.ts";
 import { logger } from "../core/logger.ts";
 import { Widget } from "../dom/widget.ts";
-import { encodePNG } from "../driver/bun/graphics.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
+import { encodePNG } from "../utils/png.ts";
 import { parseColorToRGB } from "./icon-registry.ts";
 import { renderAnsiFallback, resizeImage } from "./image-renderers.ts";
 

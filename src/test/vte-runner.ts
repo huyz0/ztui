@@ -1,12 +1,8 @@
 import { Terminal } from "@xterm/headless";
+import { rgbaToSixel } from "../driver/bun/graphics.ts";
 import { type Clipboard, Driver, type TerminalCapabilities } from "../driver/driver.ts";
 import { Size } from "../geometry/size.ts";
-import {
-  iconRegistry,
-  type RasterizedIcon,
-  rasterizeSVG,
-  rgbaToSixel,
-} from "../widgets/icon-registry.ts";
+import { iconRegistry, type RasterizedIcon, rasterizeSVG } from "../widgets/icon-registry.ts";
 
 export class VTEDriver extends Driver {
   public readonly capabilities: TerminalCapabilities;

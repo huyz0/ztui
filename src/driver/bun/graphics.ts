@@ -1,12 +1,13 @@
-import { PNG } from "pngjs";
+import { encodePNG } from "../../utils/png.ts";
 import {
   iconRegistry,
   parseColorToRGB,
   type RasterizedIcon,
   rasterizeSVG,
-  rgbaToSixel,
 } from "../../widgets/icon-registry.ts";
 import type { TerminalCapabilities } from "../driver.ts";
+
+export { encodePNG };
 
 export class TerminalGraphicsManager {
   private iconCache = new Map<
@@ -131,11 +132,80 @@ export class TerminalGraphicsManager {
   }
 }
 
-export function encodePNG(pixelBuffer: Uint8Array, width: number, height: number): string {
-  const png = new PNG({ width, height });
-  png.data = Buffer.from(pixelBuffer.buffer, pixelBuffer.byteOffset, pixelBuffer.byteLength);
-  const pngBuffer = PNG.sync.write(png);
-  return pngBuffer.toString("base64");
+/**
+ * Encode RGBA pixels to a 16-register Sixel string (foreground gradient over a
+ * background). Sixel is a terminal graphics protocol, so this encoder lives in
+ * the driver layer rather than in the widget layer.
+ */
+export function rgbaToSixel(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  color?: string,
+  bgColor?: string,
+): string {
+  const fgRgb = parseColorToRGB(color || "white");
+  const bgRgb = parseColorToRGB(bgColor || "#1e1e2e");
+
+  // Define 16 color registers: #0 (background) through #15 (foreground)
+  let colorDefinitions = "";
+  for (let i = 0; i <= 15; i++) {
+    const weight = i / 15;
+    const r = bgRgb.r * (1 - weight) + fgRgb.r * weight;
+    const g = bgRgb.g * (1 - weight) + fgRgb.g * weight;
+    const b = bgRgb.b * (1 - weight) + fgRgb.b * weight;
+
+    const rPct = Math.round((r / 255) * 100);
+    const gPct = Math.round((g / 255) * 100);
+    const bPct = Math.round((b / 255) * 100);
+
+    colorDefinitions += `#${i};2;${rPct};${gPct};${bPct}`;
+  }
+
+  let sixel = `\x1bPq"1;1;${width};${height}${colorDefinitions}`;
+
+  for (let y = 0; y < height; y += 6) {
+    const passes: string[] = [];
+
+    for (let c = 0; c <= 15; c++) {
+      let valStr = "";
+      let hasBits = false;
+
+      for (let x = 0; x < width; x++) {
+        let val = 0;
+        for (let bit = 0; bit < 6; bit++) {
+          const py = y + bit;
+          let pixelIdx = 0; // Default to background
+          if (py < height) {
+            const idx = (py * width + x) * 4;
+            const alpha = rgba[idx + 3];
+            pixelIdx = Math.round((alpha / 255) * 15);
+          } else {
+            pixelIdx = 0;
+          }
+
+          if (pixelIdx === c) {
+            val |= 1 << bit;
+          }
+        }
+
+        if (val > 0) {
+          hasBits = true;
+        }
+        valStr += String.fromCharCode(63 + val);
+      }
+
+      if (hasBits) {
+        passes.push(`#${c}${valStr}`);
+      }
+    }
+
+    sixel += passes.join("$");
+    sixel += "-";
+  }
+
+  sixel += "\x1b\\";
+  return sixel;
 }
 
 export function fullColorRgbaToSixel(
