@@ -138,10 +138,11 @@ export class App extends DOMNode {
       let handledBy: Widget | null = null;
       while (current) {
         if (current instanceof Widget) {
-          if (current.handleKey) {
-            current.handleKey(ev);
+          const w = current;
+          if (w.handleKey) {
+            this.safeInvoke(`handleKey on ${w.describe()}`, () => w.handleKey(ev));
             if (ev.handled) {
-              handledBy = current;
+              handledBy = w;
               break;
             }
           }
@@ -180,39 +181,45 @@ export class App extends DOMNode {
 
         if (oldHovered?.onMouseLeave) {
           log(`onMouseLeave -> ${oldHovered.describe()}`);
-          oldHovered.onMouseLeave(ev);
+          this.safeInvoke(`onMouseLeave on ${oldHovered.describe()}`, () =>
+            oldHovered.onMouseLeave?.(ev),
+          );
         }
         if (hit?.onMouseEnter) {
           log(`onMouseEnter -> ${hit.describe()}`);
-          hit.onMouseEnter(ev);
+          this.safeInvoke(`onMouseEnter on ${hit.describe()}`, () => hit.onMouseEnter?.(ev));
         }
         this.queueRender();
       }
 
       if (hit) {
-        if (hit.handleMouse) {
-          hit.handleMouse(ev);
+        const hitWidget = hit;
+        if (hitWidget.handleMouse) {
+          this.safeInvoke(`handleMouse on ${hitWidget.describe()}`, () =>
+            hitWidget.handleMouse(ev),
+          );
         }
 
         if (!ev.handled) {
           if (ev.type === "press" && ev.button === "left") {
-            if (hit.focusable) {
-              this.activeScreen.focusWidget(hit);
-              log(`Focused via click -> ${hit.describe()}`);
+            if (hitWidget.focusable) {
+              this.activeScreen.focusWidget(hitWidget);
+              log(`Focused via click -> ${hitWidget.describe()}`);
               this.queueRender();
             }
-            if (hit.onClick) {
-              log(`onClick -> ${hit.describe()}`);
-              hit.onClick(ev);
+            if (hitWidget.onClick) {
+              log(`onClick -> ${hitWidget.describe()}`);
+              this.safeInvoke(`onClick on ${hitWidget.describe()}`, () => hitWidget.onClick?.(ev));
               this.queueRender();
             }
           } else if (ev.type === "scroll_up" || ev.type === "scroll_down") {
-            let current: DOMNode | null = hit;
+            let current: DOMNode | null = hitWidget;
             while (current) {
               if (current instanceof Widget) {
-                if (current.handleScroll) {
-                  log(`Scroll forwarded to ${current.describe()}`);
-                  current.handleScroll(ev);
+                const w = current;
+                if (w.handleScroll) {
+                  log(`Scroll forwarded to ${w.describe()}`);
+                  this.safeInvoke(`handleScroll on ${w.describe()}`, () => w.handleScroll(ev));
                   if (ev.handled) {
                     this.queueRender();
                     break;
@@ -248,6 +255,15 @@ export class App extends DOMNode {
       this.renderQueued = false;
       this.layoutAndRender();
     });
+  }
+
+  /** Invoke user/widget event code without letting a throw kill the event loop. */
+  private safeInvoke(what: string, fn: () => void): void {
+    try {
+      fn();
+    } catch (err) {
+      logger.error("event", `handler threw during ${what}`, err);
+    }
   }
 
   private layoutAndRender(): void {

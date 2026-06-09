@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
+import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
+import { MockDriver } from "../driver/mock/index.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
+import { ButtonWidget } from "../widgets/button.ts";
 import { decodeImage } from "../widgets/image.ts";
 import { parsePartialJson } from "../widgets/json-ui.ts";
 
@@ -69,5 +72,27 @@ describe("bad external data handling", () => {
     expect(parsePartialJson('{"a":1}')).toEqual({ a: 1 });
     // partial/streamed object gets balanced
     expect(parsePartialJson('{"a":1')).toEqual({ a: 1 });
+  });
+});
+
+describe("event handler isolation", () => {
+  test("a throwing onClick handler does not crash the event loop", () => {
+    const driver = new MockDriver(40, 5);
+    const app = new App(driver);
+    const btn = new ButtonWidget();
+    let fired = false;
+    btn.onClick = () => {
+      fired = true;
+      throw new Error("handler boom");
+    };
+    app.activeScreen.appendChild(btn);
+    app.run();
+    app.activeScreen.focusWidget(btn);
+
+    // Enter triggers the button's onClick (which throws); the app must survive.
+    expect(() => driver.simulateKey("enter", "enter")).not.toThrow();
+    expect(fired).toBe(true);
+
+    app.stop();
   });
 });
