@@ -17,6 +17,13 @@ export type {
   ProgressBarProps,
 } from "./components/controls/progress-bar.tsx";
 export { CompactProgressBar, ProgressBar } from "./components/controls/progress-bar.tsx";
+export type {
+  QAMode,
+  QAOption,
+  QAResult,
+  QuestionAnswerProps,
+} from "./components/controls/question-answer.tsx";
+export { QuestionAnswer } from "./components/controls/question-answer.tsx";
 export type { RadioGroupProps } from "./components/controls/radio-group.tsx";
 export { RadioGroup } from "./components/controls/radio-group.tsx";
 export type { SelectProps } from "./components/controls/select.tsx";
