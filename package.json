@@ -25,6 +25,7 @@
     "demo:form": "bun run examples/form_validation_demo.tsx",
     "demo:waiting": "bun run examples/waiting_demo.tsx",
     "demo:status": "bun run examples/status_demo.tsx",
+    "demo:overlay": "bun run examples/overlay_demo.tsx",
     "demo:qa": "bun run examples/questionanswer_demo.tsx",
     "test": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",

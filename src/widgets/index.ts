@@ -1,3 +1,4 @@
+import { OverlayRootWidget } from "../dom/overlay.ts";
 import { registerElement } from "../react/host-config.ts";
 import { ButtonWidget } from "./controls/button.ts";
 import { CheckboxWidget } from "./controls/checkbox.ts";
@@ -91,6 +92,7 @@ export { RichTextWidget } from "./text/rich-text.ts";
 export { SyntaxWidget } from "./text/syntax.ts";
 
 registerElement("ztui-box", () => new BoxWidget());
+registerElement("ztui-overlay-root", () => new OverlayRootWidget());
 registerElement("ztui-scrollable-box", () => new ScrollableBoxWidget());
 registerElement("ztui-label", () => new LabelWidget());
 registerElement("ztui-button", () => new ButtonWidget());

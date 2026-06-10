@@ -1,13 +1,43 @@
+import type { KeyEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import type { DOMNode } from "./dom.ts";
+import type { OverlayRootWidget } from "./overlay.ts";
 import { Widget } from "./widget.ts";
+
+/**
+ * A floating layer stacked above the normal widget tree — a modal dialog or a
+ * non-modal sticky panel. Layers share the {@link Screen.overlays} paint list
+ * but add focus and key-routing semantics on top of it.
+ */
+export interface ScreenLayer {
+  /** The full-screen root the layer's content is portalled into. */
+  root: OverlayRootWidget;
+  /** Modal layers trap focus and block keys/mouse from reaching the layer below. */
+  modal: boolean;
+  /** Esc dismisses the layer (calls {@link onClose}) when it bubbles unhandled. */
+  closeOnEscape: boolean;
+  /** A click outside the panel dismisses the layer. */
+  closeOnOutsideClick: boolean;
+  /** Invoked when the layer requests to close (Esc / outside click). */
+  onClose?: () => void;
+  /**
+   * Sticky panels: sees key events before they bubble to the focused widget, so
+   * it can claim navigation keys (↑/↓/Enter) while ordinary text still flows to
+   * the focused control below. Set `ev.handled` to consume the key.
+   */
+  keyInterceptor?: (ev: KeyEvent) => void;
+  /** Focus to restore when a modal layer is removed (filled in by pushLayer). */
+  previousFocus?: Widget | null;
+}
 
 export class Screen extends Widget {
   private _focusedWidget: Widget | null = null;
   public overlays: Widget[] = [];
+  /** Active layers, bottom-to-top (last is topmost). */
+  public layers: ScreenLayer[] = [];
 
   constructor() {
     super("screen");
@@ -53,13 +83,56 @@ export class Screen extends Widget {
   }
 
   public getFocusableWidgets(): Widget[] {
+    // A modal layer traps focus: Tab cycles only within the topmost modal.
+    const modal = this.topModalLayer;
+    const root: Widget = modal ? modal.root : this;
     const list: Widget[] = [];
-    this.walk((node) => {
+    root.walk((node) => {
       if (node instanceof Widget && node.focusable && node.visible) {
         list.push(node);
       }
     });
     return list;
+  }
+
+  /** The topmost modal layer, or null when no modal is open. */
+  public get topModalLayer(): ScreenLayer | null {
+    for (let i = this.layers.length - 1; i >= 0; i--) {
+      if (this.layers[i].modal) return this.layers[i];
+    }
+    return null;
+  }
+
+  /**
+   * Stack a new layer (dialog or sticky panel). The layer's root is added to the
+   * overlay paint list; a modal layer additionally saves the current focus and
+   * moves focus to the first focusable inside the layer.
+   */
+  public pushLayer(layer: ScreenLayer): void {
+    layer.previousFocus = this._focusedWidget;
+    this.addOverlay(layer.root);
+    this.layers.push(layer);
+    if (layer.modal) {
+      const focusables: Widget[] = [];
+      layer.root.walk((node) => {
+        if (node instanceof Widget && node.focusable && node.visible) focusables.push(node);
+      });
+      this.focusWidget(focusables[0] ?? null);
+    }
+  }
+
+  /** Remove a previously-pushed layer, restoring focus for a closed modal. */
+  public removeLayer(root: OverlayRootWidget): void {
+    const idx = this.layers.findIndex((l) => l.root === root);
+    if (idx === -1) return;
+    const [layer] = this.layers.splice(idx, 1);
+    this.removeOverlay(root);
+    // Only restore focus once the last modal is gone, and only to a widget still
+    // attached to the tree (the previously-focused widget may have unmounted).
+    if (layer.modal && !this.topModalLayer) {
+      const prev = layer.previousFocus;
+      this.focusWidget(prev?.parent ? prev : null);
+    }
   }
 
   public focusWidget(widget: Widget | null): void {

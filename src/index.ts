@@ -5,7 +5,8 @@ export { type LogLevel, logger } from "./core/logger.ts";
 export type { Theme } from "./core/theme.ts";
 export { adjustLightness, deriveTheme, ThemeManager } from "./core/theme.ts";
 export { DOMNode } from "./dom/dom.ts";
-export { Screen } from "./dom/screen.ts";
+export { OverlayRootWidget } from "./dom/overlay.ts";
+export { Screen, type ScreenLayer } from "./dom/screen.ts";
 export { Scrollable } from "./dom/scrollable.ts";
 export type { WidgetStyles } from "./dom/widget.ts";
 export { Widget } from "./dom/widget.ts";
@@ -28,6 +29,8 @@ export {
   type CheckboxProps,
   CompactProgressBar,
   type CompactProgressBarProps,
+  Dialog,
+  type DialogProps,
   Dock,
   EmailInput,
   type EmailInputProps,
@@ -84,6 +87,8 @@ export {
   type StatusListItem,
   type StatusListProps,
   type StatusState,
+  StickyPanel,
+  type StickyPanelProps,
   SvgImage,
   type SvgImageProps,
   Switch,

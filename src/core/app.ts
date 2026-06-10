@@ -134,15 +134,48 @@ export class App extends DOMNode {
         this.stop();
         process.exit(0);
       }
+
+      const screen = this.activeScreen;
+
+      // Layer key interception: sticky panels see keys first (top-down) so they
+      // can claim navigation keys while leaving text for the focused control
+      // below. A modal blocks interception from reaching layers beneath it.
+      for (let i = screen.layers.length - 1; i >= 0; i--) {
+        const layer = screen.layers[i];
+        const interceptor = layer.keyInterceptor;
+        if (interceptor) {
+          this.safeInvoke(`keyInterceptor on layer ${i}`, () => interceptor(ev));
+          if (ev.handled) {
+            log(`Key "${ev.key}" intercepted by layer ${i}`);
+            this.queueRender();
+            return;
+          }
+        }
+        if (layer.modal) break;
+      }
+
+      // A modal claims Escape before its content sees it (a focused control
+      // would otherwise mark every key handled). Disable per-dialog with
+      // `closeOnEscape={false}` when the content needs Escape for itself.
+      if (ev.key === "escape" || ev.name === "escape") {
+        const modal = screen.topModalLayer;
+        if (modal?.closeOnEscape) {
+          log("Escape closing top modal layer");
+          this.safeInvoke("modal onClose (escape)", () => modal.onClose?.());
+          this.queueRender();
+          return;
+        }
+      }
+
       if (ev.key === "tab") {
-        this.activeScreen.focusNext(ev.shift);
-        log(`Focus moved to: ${this.activeScreen.focusedWidget?.describe() ?? "(none)"}`);
+        screen.focusNext(ev.shift);
+        log(`Focus moved to: ${screen.focusedWidget?.describe() ?? "(none)"}`);
         this.queueRender();
         return;
       }
 
       // Bubble key event up from the focused widget
-      let current: DOMNode | null = this.activeScreen.focusedWidget;
+      let current: DOMNode | null = screen.focusedWidget;
       let handledBy: Widget | null = null;
       while (current) {
         if (current instanceof Widget) {
@@ -160,9 +193,10 @@ export class App extends DOMNode {
       if (handledBy) {
         log(`Key "${ev.key}" handled by ${handledBy.describe()}`);
         this.queueRender();
-      } else {
-        log(`Key "${ev.key}" ignored (no widget in the focused chain handled it)`);
+        return;
       }
+
+      log(`Key "${ev.key}" ignored (no widget in the focused chain handled it)`);
     });
 
     this.driver.on("mouse", (ev) => {
@@ -198,6 +232,21 @@ export class App extends DOMNode {
           this.safeInvoke(`onMouseEnter on ${hit.describe()}`, () => hit.onMouseEnter?.(ev));
         }
         this.queueRender();
+      }
+
+      // Modal outside-click: a press that resolves to the bare backdrop (i.e.
+      // missed the panel) dismisses the layer if it opted in. The full-screen
+      // modal backdrop is hit-tested first, so the layer below never sees it.
+      if (ev.type === "press" && ev.button === "left") {
+        const modal = this.activeScreen.topModalLayer;
+        if (modal && hit === modal.root) {
+          if (modal.closeOnOutsideClick) {
+            log("Outside click closing top modal layer");
+            this.safeInvoke("modal onClose (outside click)", () => modal.onClose?.());
+          }
+          this.queueRender();
+          return;
+        }
       }
 
       if (hit) {
@@ -295,9 +344,12 @@ export class App extends DOMNode {
     screen.measure(screen.region.width, size.height);
     this.resolveAllLayouts(screen);
 
-    // Resolve styles and absolute layouts for screen overlays
+    // Resolve styles and absolute layouts for screen overlays. Overlays fill the
+    // screen and must be measured (so layer content can size/center itself)
+    // before their subtree is laid out.
     for (const overlay of screen.overlays) {
       this.resolveAllStyles(overlay);
+      overlay.measure(screen.region.width, screen.region.height);
       overlay.region = screen.region.clone();
       this.resolveAllLayouts(overlay);
     }
@@ -491,6 +543,12 @@ export class App extends DOMNode {
       for (const overlay of sortedOverlays) {
         const match = this.hitTest(overlay, x, y);
         if (match) {
+          // A sticky pass-through layer only captures clicks that land on its
+          // panel content; clicks that resolve to the bare backdrop fall through
+          // to the layer below (keeping e.g. a chatbox clickable).
+          if (match === overlay && (overlay as any).passThrough) {
+            continue;
+          }
           return match;
         }
       }

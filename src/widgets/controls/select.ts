@@ -155,6 +155,10 @@ export class SelectWidget extends Widget {
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
 
   private overlay: DropdownOverlayWidget | null = null;
+  // Remembered when the dropdown opens: at unmount time the widget is already
+  // detached from its parent, so getScreen() would return null and the overlay
+  // would leak. Holding the screen lets closeDropdown() always reach it.
+  private overlayScreen: Screen | null = null;
 
   constructor() {
     super("select");
@@ -248,6 +252,7 @@ export class SelectWidget extends Widget {
       dropdownHeight,
     );
     screen.addOverlay(this.overlay);
+    this.overlayScreen = screen;
     App.instance?.queueRender();
   }
 
@@ -255,11 +260,14 @@ export class SelectWidget extends Widget {
     if (!this.isOpen) return;
     this.isOpen = false;
 
-    const screen = this.getScreen();
+    // Prefer the screen the overlay was added to (the parent chain may already
+    // be detached if we're closing during unmount); fall back to a live lookup.
+    const screen = this.overlayScreen ?? this.getScreen();
     if (screen && this.overlay) {
       screen.removeOverlay(this.overlay);
     }
     this.overlay = null;
+    this.overlayScreen = null;
     App.instance?.queueRender();
   }
 

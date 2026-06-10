@@ -141,7 +141,15 @@ export const hostConfig: any = {
   },
 
   finalizeInitialChildren() {
-    return false;
+    // Return true so the reconciler schedules commitMount for every host
+    // instance, giving widgets an onMount lifecycle callback.
+    return true;
+  },
+
+  commitMount(instance: DOMNode) {
+    if (instance instanceof Widget) {
+      instance.onMount();
+    }
   },
 
   prepareUpdate(_instance: DOMNode, _type: string, _oldProps: any, _newProps: any) {
@@ -295,7 +303,18 @@ export const hostConfig: any = {
   waitForCommitToBeReady() {
     return null;
   },
-  detachDeletedInstance() {},
+  detachDeletedInstance(instance: DOMNode) {
+    // The reconciler calls this for every host instance in a deleted subtree, so
+    // each widget's onUnmount fires (cleaning up timers, overlays, etc.) without
+    // us recursing here.
+    if (instance instanceof Widget) {
+      try {
+        instance.onUnmount();
+      } catch (err) {
+        logger.error("reconciler", `onUnmount threw: ${instance.describe()}`, err);
+      }
+    }
+  },
   rendererPackageName: "ztui",
   rendererVersion: "0.1.0",
 };
