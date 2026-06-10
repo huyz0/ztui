@@ -150,6 +150,20 @@ declare global {
           showPercent?: boolean;
           indeterminate?: boolean;
         };
+        "ztui-spinner": ZTUIElementProps & {
+          mode?: "rotate" | "bounce" | "blink" | "hex" | "quadrant" | "arc";
+          interval?: number;
+          frames?: string[];
+        };
+        "ztui-waiting-grid": ZTUIElementProps & {
+          cells?: 4 | 9;
+          period?: number;
+          variant?: "ring" | "radar" | "shimmer";
+        };
+        "ztui-waiting-panel": ZTUIElementProps & {
+          variant?: "ripple" | "orbit" | "rain";
+          period?: number;
+        };
         "ztui-toggle-button": ZTUIElementProps & {
           active?: boolean;
           label?: string;

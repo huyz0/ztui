@@ -68,6 +68,9 @@ export {
   type SelectProps,
   Slider,
   type SliderProps,
+  Spinner,
+  type SpinnerMode,
+  type SpinnerProps,
   SvgImage,
   type SvgImageProps,
   Switch,
@@ -88,6 +91,13 @@ export {
   type ValidationSummaryProps,
   VBox,
   View,
+  WaitingGrid,
+  type WaitingGridCells,
+  type WaitingGridProps,
+  type WaitingGridVariant,
+  WaitingPanel,
+  type WaitingPanelProps,
+  type WaitingPanelVariant,
 } from "./react/components.tsx";
 // React Integration
 export { render } from "./react/reconciler.ts";
@@ -109,11 +119,20 @@ export { ProgressBarWidget } from "./widgets/controls/progress-bar.ts";
 export { RadioGroupWidget } from "./widgets/controls/radio-group.ts";
 export { SelectWidget } from "./widgets/controls/select.ts";
 export { SliderWidget } from "./widgets/controls/slider.ts";
+export {
+  type SpinnerMode as SpinnerWidgetMode,
+  SpinnerWidget,
+} from "./widgets/controls/spinner.ts";
 export { SwitchWidget } from "./widgets/controls/switch.ts";
 export { TextAreaWidget } from "./widgets/controls/textarea.ts";
 export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";
 export * from "./widgets/controls/validation.ts";
 export { ValidationSummaryWidget } from "./widgets/controls/validation-summary.ts";
+export {
+  type WaitingGridCells as WaitingGridWidgetCells,
+  WaitingGridWidget,
+} from "./widgets/controls/waiting-grid.ts";
+export { WaitingPanelWidget } from "./widgets/controls/waiting-panel.ts";
 export type {
   SortDirection,
   SortState,

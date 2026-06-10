@@ -23,6 +23,8 @@ export type { SelectProps } from "./components/controls/select.tsx";
 export { Select } from "./components/controls/select.tsx";
 export type { SliderProps } from "./components/controls/slider.tsx";
 export { Slider } from "./components/controls/slider.tsx";
+export type { SpinnerMode, SpinnerProps } from "./components/controls/spinner.tsx";
+export { Spinner } from "./components/controls/spinner.tsx";
 export type { SwitchProps } from "./components/controls/switch.tsx";
 export { Switch } from "./components/controls/switch.tsx";
 export type { TextAreaProps } from "./components/controls/textarea.tsx";
@@ -31,6 +33,17 @@ export type { ToggleButtonProps } from "./components/controls/toggle-button.tsx"
 export { ToggleButton } from "./components/controls/toggle-button.tsx";
 export type { ValidationSummaryProps } from "./components/controls/validation-summary.tsx";
 export { ValidationSummary } from "./components/controls/validation-summary.tsx";
+export type {
+  WaitingGridCells,
+  WaitingGridProps,
+  WaitingGridVariant,
+} from "./components/controls/waiting-grid.tsx";
+export { WaitingGrid } from "./components/controls/waiting-grid.tsx";
+export type {
+  WaitingPanelProps,
+  WaitingPanelVariant,
+} from "./components/controls/waiting-panel.tsx";
+export { WaitingPanel } from "./components/controls/waiting-panel.tsx";
 export type { TableProps } from "./components/data/table.tsx";
 export { Table } from "./components/data/table.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";

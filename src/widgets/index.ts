@@ -8,10 +8,13 @@ import { ProgressBarWidget } from "./controls/progress-bar.ts";
 import { RadioGroupWidget } from "./controls/radio-group.ts";
 import { SelectWidget } from "./controls/select.ts";
 import { SliderWidget } from "./controls/slider.ts";
+import { SpinnerWidget } from "./controls/spinner.ts";
 import { SwitchWidget } from "./controls/switch.ts";
 import { TextAreaWidget } from "./controls/textarea.ts";
 import { ToggleButtonWidget } from "./controls/toggle-button.ts";
 import { ValidationSummaryWidget } from "./controls/validation-summary.ts";
+import { WaitingGridWidget } from "./controls/waiting-grid.ts";
+import { WaitingPanelWidget } from "./controls/waiting-panel.ts";
 import { TableCellWidget, TableWidget } from "./data/table.ts";
 import { TreeWidget } from "./data/tree.ts";
 import { BoxWidget, ScrollableBoxWidget } from "./layout/box.ts";
@@ -42,11 +45,18 @@ export { ProgressBarWidget } from "./controls/progress-bar.ts";
 export { RadioGroupWidget } from "./controls/radio-group.ts";
 export { SelectWidget } from "./controls/select.ts";
 export { SliderWidget } from "./controls/slider.ts";
+export { type SpinnerMode, SpinnerWidget } from "./controls/spinner.ts";
 export { SwitchWidget } from "./controls/switch.ts";
 export { TextAreaWidget } from "./controls/textarea.ts";
 export { ToggleButtonWidget } from "./controls/toggle-button.ts";
 export * from "./controls/validation.ts";
 export { ValidationSummaryWidget } from "./controls/validation-summary.ts";
+export {
+  type WaitingGridCells,
+  type WaitingGridVariant,
+  WaitingGridWidget,
+} from "./controls/waiting-grid.ts";
+export { type WaitingPanelVariant, WaitingPanelWidget } from "./controls/waiting-panel.ts";
 export type { SortDirection, SortState, TableColumn, TableTextStyle } from "./data/table.ts";
 export { TableCellWidget, TableWidget } from "./data/table.ts";
 export type { TreeNode } from "./data/tree.ts";
@@ -101,6 +111,9 @@ registerElement("ztui-checkbox", () => new CheckboxWidget());
 registerElement("ztui-switch", () => new SwitchWidget());
 registerElement("ztui-slider", () => new SliderWidget());
 registerElement("ztui-progress-bar", () => new ProgressBarWidget());
+registerElement("ztui-spinner", () => new SpinnerWidget());
+registerElement("ztui-waiting-grid", () => new WaitingGridWidget());
+registerElement("ztui-waiting-panel", () => new WaitingPanelWidget());
 registerElement("ztui-toggle-button", () => new ToggleButtonWidget());
 registerElement("ztui-table", () => new TableWidget());
 registerElement("ztui-table-cell", () => new TableCellWidget());
