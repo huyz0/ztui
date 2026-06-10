@@ -89,6 +89,12 @@ export type { DialogProps } from "./components/overlay/dialog.tsx";
 export { Dialog } from "./components/overlay/dialog.tsx";
 export type { StickyPanelProps } from "./components/overlay/sticky-panel.tsx";
 export { StickyPanel } from "./components/overlay/sticky-panel.tsx";
+export type {
+  ToastGlyphSet,
+  ToastHostProps,
+  ToastPosition,
+} from "./components/overlay/toast-host.tsx";
+export { ToastHost, useToast } from "./components/overlay/toast-host.tsx";
 export type { JSONUIProps } from "./components/text/json-ui.tsx";
 export { JSONUI } from "./components/text/json-ui.tsx";
 export { Label } from "./components/text/label.tsx";

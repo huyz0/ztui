@@ -4,6 +4,13 @@ export { startInspector } from "./core/inspector.ts";
 export { type LogLevel, logger } from "./core/logger.ts";
 export type { Theme } from "./core/theme.ts";
 export { adjustLightness, deriveTheme, ThemeManager } from "./core/theme.ts";
+export {
+  type Toast,
+  type ToastLevel,
+  ToastManager,
+  type ToastOptions,
+  toast,
+} from "./core/toast.ts";
 export { DOMNode } from "./dom/dom.ts";
 export { type OverlayPlacement, OverlayRootWidget } from "./dom/overlay.ts";
 export { Screen, type ScreenLayer } from "./dom/screen.ts";
@@ -101,10 +108,15 @@ export {
   type TableProps,
   TextArea,
   type TextAreaProps,
+  type ToastGlyphSet,
+  ToastHost,
+  type ToastHostProps,
+  type ToastPosition,
   ToggleButton,
   type ToggleButtonProps,
   Tree,
   type TreeProps,
+  useToast,
   ValidationSummary,
   type ValidationSummaryProps,
   VBox,

@@ -10,11 +10,14 @@ import {
   Button,
   Dialog,
   Footer,
+  HBox,
   Header,
   Input,
   Label,
   render,
   StickyPanel,
+  ToastHost,
+  toast,
   VBox,
   type Widget,
 } from "../src/index.ts";
@@ -50,16 +53,36 @@ function ChatDemo() {
 
   return (
     <VBox style={{ width: "100%", height: "100%", background: "$background" }}>
-      <Header>ztui — Dialog & StickyPanel</Header>
+      {/* Mounted once; toasts raised anywhere via the `toast` façade appear here. */}
+      <ToastHost position="top-right" />
+
+      <Header>ztui — Dialog, StickyPanel & Toasts</Header>
 
       <VBox style={{ flexGrow: 1, padding: 1 }}>
         <Label style={{ dim: true }}>
-          Type "/" to open the command menu (focus stays in the input). Press the button to open a
-          modal dialog.
+          Type "/" to open the command menu (focus stays in the input). Buttons open a modal dialog
+          or raise stacked toast notifications.
         </Label>
-        <Button onClick={() => setDialogOpen(true)} style={{ margin: { top: 1 }, width: 20 }}>
-          Open dialog
-        </Button>
+        <HBox style={{ margin: { top: 1 } }}>
+          <Button onClick={() => setDialogOpen(true)} style={{ width: 16, margin: { right: 1 } }}>
+            Open dialog
+          </Button>
+          <Button onClick={() => toast.info("Heads up — just so you know.")} style={{ width: 10 }}>
+            Info
+          </Button>
+          <Button onClick={() => toast.success("Saved successfully!")} style={{ width: 12 }}>
+            Success
+          </Button>
+          <Button onClick={() => toast.warn("Connection is unstable.")} style={{ width: 10 }}>
+            Warn
+          </Button>
+          <Button
+            onClick={() => toast.error("Upload failed.", { title: "Error" })}
+            style={{ width: 10 }}
+          >
+            Error
+          </Button>
+        </HBox>
       </VBox>
 
       {/* The chat input keeps focus the whole time the slash menu is up. */}
@@ -71,7 +94,9 @@ function ChatDemo() {
         placeholder="Message the agent…  (try /he)"
         style={{ margin: 1 }}
       />
-      <Footer>Tab: focus · Esc: close dialog/menu · ↑/↓ + Enter: pick command</Footer>
+      <Footer>
+        Tab: focus · Esc: close dialog/menu · ↑/↓ + Enter: pick command · click a toast to dismiss
+      </Footer>
 
       {/* Anchored above the input — placement="above" and auto screen-clamping
           keep it from overlapping the textbox or running off any edge. */}
@@ -119,6 +144,7 @@ function ChatDemo() {
           onClick={() => {
             setText("");
             setDialogOpen(false);
+            toast.success("Conversation cleared.");
           }}
           style={{ width: 18 }}
         >

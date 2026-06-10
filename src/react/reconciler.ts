@@ -25,3 +25,12 @@ export function render(element: React.ReactNode, rootNode: DOMNode): any {
 
   return container;
 }
+
+/**
+ * Unmount a tree previously created with {@link render}, running effect cleanups
+ * and widget `onUnmount`s. Mainly for tests, so a mounted tree doesn't linger
+ * (and keep reacting to global stores) across cases.
+ */
+export function unmount(container: any): void {
+  reconciler.updateContainer(null, container, null, () => {});
+}

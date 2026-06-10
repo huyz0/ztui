@@ -4,18 +4,28 @@ import { App } from "../core/app.ts";
 import type { Screen } from "../dom/screen.ts";
 import type { Widget, WidgetStyles } from "../dom/widget.ts";
 import type { TerminalCapabilities } from "../driver/driver.ts";
-import { render } from "../react/reconciler.ts";
+import { render, unmount } from "../react/reconciler.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { renderBufferToText } from "../render/html-renderer.ts";
 import { VTEDriver } from "./vte-runner.ts";
 
 export { VTEDriver } from "./vte-runner.ts";
 
-// Apps mounted via `mountApp` are tracked here and stopped after each test so a
-// forgotten `app.stop()` can't leak process listeners or timers between cases.
+// Apps mounted via `mountApp` are tracked here and torn down after each test so
+// a forgotten `app.stop()` can't leak process listeners/timers between cases,
+// and so a mounted React tree can't linger and keep reacting to global stores.
 const activeApps = new Set<App>();
+const activeContainers = new Set<unknown>();
 
 afterEach(() => {
+  for (const container of activeContainers) {
+    try {
+      unmount(container);
+    } catch {
+      // best-effort teardown
+    }
+  }
+  activeContainers.clear();
   for (const app of activeApps) {
     try {
       app.stop();
@@ -83,6 +93,7 @@ export async function mountApp(ui: ReactNode, opts: MountOptions = {}): Promise<
   }
 
   const container = render(ui, app.activeScreen);
+  activeContainers.add(container);
   if (autoRun) {
     app.run();
   }
