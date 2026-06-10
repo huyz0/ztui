@@ -247,7 +247,7 @@ export class TextAreaWidget extends Widget {
   }
 
   /** True when a non-empty selection exists. */
-  private hasSelection(): boolean {
+  public hasSelection(): boolean {
     return (
       this.selectionAnchor !== null &&
       !(this.selectionAnchor.row === this.cursorRow && this.selectionAnchor.col === this.cursorCol)

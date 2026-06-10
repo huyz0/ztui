@@ -1,12 +1,15 @@
 import { App } from "../../core/app.ts";
 import { logger } from "../../core/logger.ts";
+import { runCols } from "../../core/selection.ts";
 import { Widget } from "../../dom/widget.ts";
+import type { MouseEvent } from "../../driver/driver.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Syntax } from "../../render/rich/syntax.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
 export class SyntaxWidget extends Widget {
   public language = "text";
@@ -14,6 +17,26 @@ export class SyntaxWidget extends Widget {
 
   constructor() {
     super("syntax");
+  }
+
+  /** Width of the rendered line-number gutter (`"<n> │ "`), or 0 when hidden. */
+  private gutterWidth(): number {
+    if (!this.lineNumbers) return 0;
+    const code = this.getTextContent();
+    const lineCount = code ? code.split(/\r?\n/).length : 1;
+    return Math.max(2, String(lineCount).length) + 3;
+  }
+
+  /** The raw source as selectable lines — excludes the line-number gutter. */
+  public selectableLines(): string[] {
+    const code = this.getTextContent();
+    return code ? code.split(/\r?\n/) : [];
+  }
+
+  public override handleMouse(ev: MouseEvent): void {
+    super.handleMouse(ev);
+    if (ev.handled) return;
+    handleReadonlySelectionMouse(this, ev);
   }
 
   public override measure(maxW: number, maxH: number): void {
@@ -77,13 +100,15 @@ export class SyntaxWidget extends Widget {
       link: this.computedStyle.link,
     });
 
+    const sourceLines = this.selectableLines();
+    const gutter = this.gutterWidth();
     let currentY = contentRect.y;
-    for (const line of lines) {
+    for (let li = 0; li < lines.length; li++) {
       if (currentY >= contentRect.bottom) {
         break; // clip vertically
       }
 
-      const segments = line.toSegments(baseStyle);
+      const segments = lines[li].toSegments(baseStyle);
       let currentX = contentRect.x;
 
       for (const segment of segments) {
@@ -100,6 +125,16 @@ export class SyntaxWidget extends Widget {
         );
         buffer.drawSegment(currentX, currentY, resolvedSegment, contentRect);
         currentX += stringWidth(segment.text);
+      }
+
+      // Register the code (gutter excluded) as selectable content for this line.
+      if (this.selectable && sourceLines[li]) {
+        const codeX = contentRect.x + gutter;
+        const maxCols = Math.max(0, contentRect.right - codeX);
+        const cols = runCols(sourceLines[li]).slice(0, maxCols);
+        if (cols.length > 0) {
+          App.instance?.selection.addRun({ widget: this, line: li, y: currentY, x: codeX, cols });
+        }
       }
 
       currentY++;

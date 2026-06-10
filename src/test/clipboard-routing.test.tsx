@@ -100,8 +100,16 @@ describe("App — clipboard key routing", () => {
 
       expect(await driver.clipboard.get()).toBe("lo");
       expect(exitSpy).not.toHaveBeenCalled();
-      // Selection cleared so a second Ctrl+C would quit; value untouched.
+      // The selection survives the copy (standard editor behavior), so another
+      // Ctrl+C copies again rather than quitting; value untouched throughout.
       expect(input.value).toBe("hello");
+      expect(input.hasSelection()).toBe(true);
+      driver.emit("key", { ...ctrlC });
+      expect(exitSpy).not.toHaveBeenCalled();
+
+      // Escape deselects; only then does Ctrl+C quit.
+      driver.emit("key", { key: "escape", name: "escape", ctrl: false, meta: false, shift: false });
+      expect(input.hasSelection()).toBe(false);
       driver.emit("key", { ...ctrlC });
       expect(exitSpy).toHaveBeenCalled();
     } finally {

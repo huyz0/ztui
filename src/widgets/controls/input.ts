@@ -199,7 +199,7 @@ export class InputWidget extends Widget implements ValidatableField {
   }
 
   /** True when a non-empty selection exists. */
-  private hasSelection(): boolean {
+  public hasSelection(): boolean {
     return this.selectionAnchor !== null && this.selectionAnchor !== this.cursorCol;
   }
 

@@ -68,6 +68,26 @@ export class Widget extends DOMNode {
   public focusable = false;
   public focused = false;
   public visible = true;
+  /**
+   * When true, a read-only text selection started on any descendant is anchored
+   * to *this* widget's region instead of the leaf, so a drag can span the
+   * composed children (e.g. selecting across the paragraphs/code blocks a
+   * Markdown widget renders into separate leaves). See `widgets/readonly-selection`.
+   */
+  public selectionContainer = false;
+  /**
+   * Whether this widget's selectable content participates in read-only text
+   * selection. Default true; set false on chrome leaves (e.g. Markdown list
+   * bullets / horizontal rules) so they register no content runs and are skipped.
+   */
+  public selectable = true;
+  /**
+   * Original source text for this subtree (e.g. the raw markdown of the block a
+   * Markdown widget rendered it from). When a read-only selection fully covers
+   * the subtree's content, copy emits this verbatim instead of the rendered
+   * text, so copied markdown round-trips its formatting.
+   */
+  public selectionRaw: string | null = null;
   public label?: string;
   private _theme?: string;
   public get theme(): string | undefined {

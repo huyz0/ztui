@@ -15,6 +15,7 @@ import { parseDimension } from "../layout/layout.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
 import { logger } from "./logger.ts";
+import { ReadonlySelectionManager } from "./selection.ts";
 import { ThemeManager } from "./theme.ts";
 
 /**
@@ -26,6 +27,7 @@ interface ClipboardWidget {
   copySelection?: () => string | null;
   cutSelection?: () => string | null;
   clearSelection?: () => void;
+  hasSelection?: () => boolean;
   selectAll?: () => void;
   insertText?: (text: string) => void;
 }
@@ -41,6 +43,13 @@ export class App extends DOMNode {
   private renderQueued = false;
   private hoveredWidget: Widget | null = null;
   private activeDragWidget: Widget | null = null;
+  /**
+   * Read-only text selection over display widgets (`Syntax`, `RichText`,
+   * `Markdown` blocks, `Table` body). Defined in logical content space so it
+   * crosses widget boundaries, skips chrome, and copies the true value; editable
+   * widgets manage their own selection separately.
+   */
+  public readonly selection = new ReadonlySelectionManager();
   private inspectorServer: InspectorServer | null = null;
   private resizeTimeout: ReturnType<typeof setTimeout> | null = null;
   private frameCount = 0;
@@ -144,15 +153,21 @@ export class App extends DOMNode {
     this.driver.on("key", (ev) => {
       log(`Key event received: key=${ev.key}, name=${ev.name}`);
       if (ev.key === "ctrl+c") {
-        // Selection-aware quit: if the focused text widget has an active
-        // selection, copy it (and clear it, so a second Ctrl+C quits) instead of
-        // exiting. This is the only copy path that works on terminals WITHOUT the
-        // Kitty keyboard protocol, where Ctrl+Shift+C is byte-identical to a bare
+        // Selection-aware quit: if a text selection is active, copy it instead
+        // of exiting — the selection stays visible (standard editor behavior);
+        // Escape or clicking elsewhere deselects, after which Ctrl+C quits.
+        // This is the only copy path that works on terminals WITHOUT the Kitty
+        // keyboard protocol, where Ctrl+Shift+C is byte-identical to a bare
         // Ctrl+C. Marking the event handled stops the driver's fallback exit.
         const focused = this.activeScreen.focusedWidget as ClipboardWidget | null;
         const copied = focused?.copySelection?.();
         if (copied != null) {
-          this.safeInvoke("clearSelection (after Ctrl+C copy)", () => focused?.clearSelection?.());
+          ev.handled = true;
+          this.queueRender();
+          return;
+        }
+        // Read-only (mouse) selection over a display widget copies too.
+        if (this.selection.active && this.copyActiveSelection() != null) {
           ev.handled = true;
           this.queueRender();
           return;
@@ -189,6 +204,23 @@ export class App extends DOMNode {
           }
         }
         if (layer.modal) break;
+      }
+
+      if (ev.key === "escape" || ev.name === "escape") {
+        // Escape first deselects (standard editor behavior — the selection
+        // survives Ctrl+C copies until explicitly dismissed), so quitting after
+        // a copy is Esc then Ctrl+C.
+        const focused = screen.focusedWidget as ClipboardWidget | null;
+        if (focused?.hasSelection?.()) {
+          this.safeInvoke("clearSelection (escape)", () => focused.clearSelection?.());
+          this.queueRender();
+          return;
+        }
+        if (this.selection.active) {
+          this.selection.active = null;
+          this.queueRender();
+          return;
+        }
       }
 
       // Escape closes the topmost layer that opted in (modal dialog or sticky
@@ -245,6 +277,12 @@ export class App extends DOMNode {
       }
       if (ev.type === "press") {
         this.activeDragWidget = hit;
+        // A new left-press drops any prior read-only selection; the hit widget's
+        // handleMouse re-establishes one if it is selectable.
+        if (ev.button === "left" && this.selection.active) {
+          this.selection.active = null;
+          this.queueRender();
+        }
       }
 
       log(
@@ -397,6 +435,18 @@ export class App extends DOMNode {
     });
   }
 
+  /**
+   * Copy the active read-only selection (the true content value across every
+   * widget it spans, in document order — see {@link ReadonlySelectionManager}).
+   * Writes the clipboard and returns the text, or null when the selection is
+   * empty.
+   */
+  public copyActiveSelection(): string | null {
+    const text = this.selection.copy();
+    if (text != null) this.driver.clipboard.set(text);
+    return text;
+  }
+
   /** Invoke user/widget event code without letting a throw kill the event loop. */
   private safeInvoke(what: string, fn: () => void): void {
     try {
@@ -438,7 +488,12 @@ export class App extends DOMNode {
     }
 
     this.currentBuffer.clear();
+    // Selectable widgets register their content runs during render; reset the
+    // registry first, then highlight the active selection as a post-pass over
+    // the composed frame (only real content cells are painted).
+    this.selection.beginFrame();
     screen.render(this.currentBuffer);
+    this.selection.paint(this.currentBuffer, (w, v) => this.cssResolver.resolveVariable(w, v));
 
     const ansiDiff = this.currentBuffer.renderDiff(
       this.prevBuffer,

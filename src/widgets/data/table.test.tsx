@@ -454,6 +454,45 @@ describe("Table rich (widget-bearing) cells (phase 5)", () => {
   });
 });
 
+describe("Table body text selection", () => {
+  test("dragging across a body row copies the rendered cell text", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    await t.settle();
+    const c = widget.getContentRect();
+    const rowY = c.y + 1; // first body row, below the header
+    // Drag across the Name column of the first row ("Charlie" padded to 10).
+    // Exclusive end: cols [0,7) covers the 7 letters of "Charlie".
+    widget.handleMouse({ type: "press", button: "left", x: c.x, y: rowY });
+    widget.handleMouse({ type: "drag", button: "left", x: c.x + 7, y: rowY });
+    widget.handleMouse({ type: "release", button: "left", x: c.x + 7, y: rowY });
+    expect(await t.driver.clipboard.get()).toBe("Charlie");
+  });
+
+  test("a plain row click still selects the row and copies nothing", async () => {
+    let selected = -1;
+    const t = await mountApp(
+      <Table
+        data={people}
+        columns={columns}
+        onSelect={(_row, idx) => {
+          selected = idx;
+        }}
+        style={{ height: "100%" }}
+      />,
+    );
+    const widget = findTable(t);
+    await t.settle();
+    t.driver.clipboard.set("untouched");
+    const c = widget.getContentRect();
+    widget.handleMouse({ type: "press", button: "left", x: c.x + 1, y: c.y + 1 });
+    widget.handleMouse({ type: "release", button: "left", x: c.x + 1, y: c.y + 1 });
+    expect(selected).toBe(0);
+    expect(widget.selectedIndex).toBe(0);
+    expect(await t.driver.clipboard.get()).toBe("untouched");
+  });
+});
+
 // --- helpers ---------------------------------------------------------------
 
 function findTable<Row>(t: Awaited<ReturnType<typeof mountApp>>): TableWidget<Row> {

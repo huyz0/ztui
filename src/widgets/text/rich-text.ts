@@ -1,13 +1,34 @@
+import { App } from "../../core/app.ts";
 import { logger } from "../../core/logger.ts";
+import { runCols } from "../../core/selection.ts";
 import { Widget } from "../../dom/widget.ts";
+import type { MouseEvent } from "../../driver/driver.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
 export class RichTextWidget extends Widget {
   constructor() {
     super("richtext");
+  }
+
+  /** The plain text value (markup stripped) as the single selectable line. */
+  public selectableLines(): string[] {
+    const raw = this.getTextContent();
+    if (!raw) return [];
+    try {
+      return [RichText.fromMarkup(raw).plain];
+    } catch {
+      return [raw];
+    }
+  }
+
+  public override handleMouse(ev: MouseEvent): void {
+    super.handleMouse(ev);
+    if (ev.handled) return;
+    handleReadonlySelectionMouse(this, ev);
   }
 
   public render(buffer: ScreenBuffer): void {
@@ -52,6 +73,15 @@ export class RichTextWidget extends Widget {
     for (const segment of segments) {
       buffer.drawSegment(currentX, contentRect.y, segment, contentRect);
       currentX += stringWidth(segment.text);
+    }
+
+    // Register the rendered line as selectable content (clipped to the box).
+    if (this.selectable && rich.plain.length > 0) {
+      const maxCols = Math.max(0, contentRect.right - x);
+      const cols = runCols(rich.plain).slice(0, maxCols);
+      if (cols.length > 0) {
+        App.instance?.selection.addRun({ widget: this, line: 0, y: contentRect.y, x, cols });
+      }
     }
   }
 }

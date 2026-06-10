@@ -73,7 +73,9 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
   return (
     <Dock style={{ background: "#1e1e2e" }}>
       <Header>🚀 ZTUI Rich Rendering Engine Demo</Header>
-      <Footer>Use buttons to switch tabs │ Press Exit to Quit</Footer>
+      <Footer>
+        Switch tabs with the buttons │ Drag to select text, release to copy │ Exit to Quit
+      </Footer>
 
       <HBox style={{ padding: 1 }}>
         {/* Navigation Sidebar */}

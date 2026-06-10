@@ -6,10 +6,12 @@ import type { DOMNode } from "../../dom/dom.ts";
 import { Scrollable } from "../../dom/scrollable.ts";
 import { TextNode } from "../../dom/text-node.ts";
 import { Widget } from "../../dom/widget.ts";
+import type { MouseEvent } from "../../driver/driver.ts";
 import { Spacing } from "../../geometry/spacing.ts";
 import { createWidgetByTagName } from "../../react/host-config.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { stringWidth } from "../../render/segment.ts";
+import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 import { parsePartialJson } from "./json-ui.ts";
 import { RichTextWidget } from "./rich-text.ts";
 import { SyntaxWidget } from "./syntax.ts";
@@ -116,6 +118,16 @@ export class MarkdownWidget extends Scrollable(Widget) {
   constructor() {
     super("markdown");
     this.defaultStyle = { layout: "vertical" };
+    // A drag started on any rendered block (RichText/Syntax leaf) selects across
+    // the whole document, not just that one block.
+    this.selectionContainer = true;
+  }
+
+  public override handleMouse(ev: MouseEvent): void {
+    super.handleMouse(ev);
+    if (ev.handled) return;
+    // Presses that land on padding/gaps (not a leaf) still start a selection.
+    handleReadonlySelectionMouse(this, ev);
   }
 
   public override appendChild(child: DOMNode): void {
@@ -257,6 +269,17 @@ export class MarkdownWidget extends Scrollable(Widget) {
   }
 
   private buildWidgetFromToken(token: Token): Widget | null {
+    const widget = this.buildBlockFromToken(token);
+    // Keep the block's original markdown so a selection that fully covers it
+    // copies the raw source (formatting markers intact), not the rendered text.
+    if (widget && typeof token.raw === "string") {
+      const raw = token.raw.replace(/\n+$/, "");
+      if (raw) widget.selectionRaw = raw;
+    }
+    return widget;
+  }
+
+  private buildBlockFromToken(token: Token): Widget | null {
     // 1. Heading
     if (token.type === "heading") {
       const headingColors = {
@@ -283,6 +306,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
 
       if (depth === 1 || depth === 2) {
         const rule = new RichTextWidget();
+        rule.selectable = false; // decorative heading underline — not content
         rule.style.color = "$dimmed";
         rule.style.dim = true;
         rule.appendChild(new TextNode("━".repeat(Math.max(10, stringWidth(content)))));
@@ -334,6 +358,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
       container.style.margin = new Spacing(0, 0, 1, 0);
 
       const bar = new RichTextWidget();
+      bar.selectable = false; // blockquote bar is chrome, not content
       bar.style.color = "$secondary";
       bar.style.dim = true;
       bar.appendChild(new TextNode("▌ "));
@@ -359,6 +384,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
       container.style.margin = new Spacing(1, 0, 1, 0);
 
       const rule = new RichTextWidget();
+      rule.selectable = false; // horizontal rule is chrome, not content
       rule.style.color = "$dimmed";
       rule.style.dim = true;
       rule.appendChild(new TextNode("─".repeat(40)));
@@ -440,9 +466,15 @@ export class MarkdownWidget extends Scrollable(Widget) {
 
     const container = new Widget("list_item");
     container.style.layout = "horizontal";
+    // A fully covered single item copies its raw markdown ("- item"), so a
+    // selection inside one list still round-trips the marker syntax.
+    if (typeof token.raw === "string" && token.raw.trim()) {
+      container.selectionRaw = token.raw.replace(/\n+$/, "");
+    }
 
     const bulletSymbol = isOrdered ? `${index + 1}. ` : "• ";
     const bullet = new RichTextWidget();
+    bullet.selectable = false; // list marker is chrome, not content
     bullet.style.color = "$primary";
     bullet.style.bold = true;
     bullet.appendChild(new TextNode(bulletSymbol));
