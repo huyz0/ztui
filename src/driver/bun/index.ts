@@ -1,7 +1,7 @@
 import { logger } from "../../core/logger.ts";
 import { Size } from "../../geometry/size.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
-import { type Clipboard, Driver, type TerminalCapabilities } from "../driver.ts";
+import { type Clipboard, Driver, type KeyEvent, type TerminalCapabilities } from "../driver.ts";
 import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
 import { parseInput } from "./input.ts";
@@ -9,21 +9,36 @@ import { parseInput } from "./input.ts";
 export class BunDriver extends Driver {
   private graphicsManager = new TerminalGraphicsManager();
   public override readonly capabilities!: TerminalCapabilities;
+  /**
+   * Mirror of the last value we wrote to the clipboard. Most terminals support
+   * OSC 52 *write* but refuse OSC 52 *read* queries (disabled by default for
+   * security), so a `get()` query frequently times out. Falling back to this
+   * local copy keeps in-app copy→paste (and the demo's "read clipboard") working
+   * even when the terminal won't answer a read.
+   */
+  private lastClipboard = "";
   public override readonly clipboard: Clipboard = {
     get: (): Promise<string> => {
       return new Promise<string>((resolve) => {
-        this.pendingClipboardResolvers.push(resolve);
+        // Wrap the resolver so a blocked terminal — which commonly answers an
+        // OSC 52 read with an *empty* payload rather than staying silent — falls
+        // back to our local mirror instead of returning "". A genuine non-empty
+        // external clipboard is still honoured.
+        const resolver = (osc: string) => resolve(osc || this.lastClipboard);
+        this.pendingClipboardResolvers.push(resolver);
         this.write("\x1b]52;c;?\x07");
         setTimeout(() => {
-          const idx = this.pendingClipboardResolvers.indexOf(resolve);
+          const idx = this.pendingClipboardResolvers.indexOf(resolver);
           if (idx !== -1) {
             this.pendingClipboardResolvers.splice(idx, 1);
-            resolve("");
+            // Terminal never answered — use our local mirror.
+            resolve(this.lastClipboard);
           }
         }, 500);
       });
     },
     set: (text: string): void => {
+      this.lastClipboard = text;
       this.write(`\x1b]52;c;${Buffer.from(text).toString("base64")}\x07`);
     },
   };
@@ -35,6 +50,8 @@ export class BunDriver extends Driver {
   private probeBuffer = "";
   private probeTimeout: any = null;
   private pendingClipboardResolvers: ((text: string) => void)[] = [];
+  /** Accumulates a bracketed-paste payload that spans multiple stdin chunks. */
+  private pasteBuffer: string | null = null;
 
   private resizeListener = () => {
     this.emit("resize", this.getSize());
@@ -69,8 +86,9 @@ export class BunDriver extends Driver {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    // Enable alternative buffer, clear screen, hide cursor
-    this.write("\x1b[?1049h\x1b[?25l");
+    // Enable alternative buffer, clear screen, hide cursor, and bracketed paste
+    // (so native terminal paste arrives wrapped in \x1b[200~ … \x1b[201~).
+    this.write("\x1b[?1049h\x1b[?25l\x1b[?2004h");
 
     if (this.stdin.setRawMode) {
       this.stdin.setRawMode(true);
@@ -116,8 +134,9 @@ export class BunDriver extends Driver {
       this.probeTimeout = null;
     }
 
-    // Disable mouse tracking (hover 1003 and standard 1000/1002/1006)
-    this.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l");
+    // Disable mouse tracking (hover 1003 and standard 1000/1002/1006) and
+    // bracketed paste.
+    this.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?2004l");
 
     // Disable kitty keyboard mode if activated
     if (this.capabilities.kittyKeyboard) {
@@ -153,6 +172,46 @@ export class BunDriver extends Driver {
     this.write(`\x1b]777;notify;${title};${body}\x07`);
   }
 
+  /**
+   * Remove bracketed-paste payloads from `data`, emitting each as a "paste"
+   * event, and return the remaining (non-paste) bytes. A paste may span several
+   * stdin chunks, so an unterminated payload is buffered in {@link pasteBuffer}
+   * and completed on a later call.
+   */
+  private extractBracketedPaste(data: string): string {
+    const START = "\x1b[200~";
+    const END = "\x1b[201~";
+
+    // Finish a paste that began in an earlier chunk.
+    if (this.pasteBuffer !== null) {
+      const endIdx = data.indexOf(END);
+      if (endIdx === -1) {
+        this.pasteBuffer += data;
+        return "";
+      }
+      this.emit("paste", this.pasteBuffer + data.slice(0, endIdx));
+      this.pasteBuffer = null;
+      data = data.slice(endIdx + END.length);
+    }
+
+    // Handle paste sequences starting within this chunk.
+    let startIdx = data.indexOf(START);
+    while (startIdx !== -1) {
+      const before = data.slice(0, startIdx);
+      const rest = data.slice(startIdx + START.length);
+      const endIdx = rest.indexOf(END);
+      if (endIdx === -1) {
+        // Body continues into a later chunk; keep the text before the marker.
+        this.pasteBuffer = rest;
+        return before;
+      }
+      this.emit("paste", rest.slice(0, endIdx));
+      data = before + rest.slice(endIdx + END.length);
+      startIdx = data.indexOf(START);
+    }
+    return data;
+  }
+
   private handleInputInternal = (chunk: string | Buffer): void => {
     let data = chunk.toString();
 
@@ -167,6 +226,10 @@ export class BunDriver extends Driver {
       }
       data = data.replace(clipboardMatch[0], "");
     }
+
+    // Strip bracketed-paste payloads (emitting them as "paste" events) before
+    // anything else sees the bytes, so pasted text never hits the key parser.
+    data = this.extractBracketedPaste(data);
 
     if (data.length === 0) return;
 
@@ -334,10 +397,20 @@ export class BunDriver extends Driver {
   }
 
   private processInput(data: string): void {
-    // Safety exit sequence: Ctrl+C
+    // Ctrl+C arrives as the raw byte 0x03 (raw mode disables ISIG). Emit it as a
+    // normal key first so the focused widget can claim it — e.g. copy an active
+    // selection (the only copy path that survives on terminals without the Kitty
+    // keyboard protocol, where Ctrl+Shift+C is byte-identical to Ctrl+C). If the
+    // event is left unhandled, fall back to the safety exit so "Ctrl+C quits"
+    // still holds when no app logic claims it.
     if (data === "\u0003") {
-      this.stop();
-      process.exit(0);
+      const ev: KeyEvent = { key: "ctrl+c", name: "c", ctrl: true, meta: false, shift: false };
+      this.emit("key", ev);
+      if (!ev.handled) {
+        this.stop();
+        process.exit(0);
+      }
+      return;
     }
 
     try {

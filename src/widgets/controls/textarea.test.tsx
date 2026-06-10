@@ -146,3 +146,112 @@ describe("ZTUI TextArea Widget Suite", () => {
     txt.onUnmount();
   });
 });
+
+describe("TextArea — selection & clipboard", () => {
+  test("shift+right builds a same-line selection", async () => {
+    const { findById } = await mountApp(<TextArea id="t" value="hello world" />, {
+      cols: 40,
+      rows: 6,
+    });
+    const t = findById("t");
+    t.handleKey({ name: "home" });
+    t.handleKey({ name: "right", shift: true });
+    t.handleKey({ name: "right", shift: true });
+    t.handleKey({ name: "right", shift: true });
+    t.handleKey({ name: "right", shift: true });
+    t.handleKey({ name: "right", shift: true });
+    expect(t.copySelection()).toBe("hello");
+  });
+
+  test("shift+down selects across lines and copy joins with newline", async () => {
+    const { findById } = await mountApp(<TextArea id="t" value={"abc\ndef\nghi"} />, {
+      cols: 40,
+      rows: 8,
+    });
+    const t = findById("t");
+    t.handleKey({ name: "home" }); // row 2 (end), col 0
+    t.cursorRow = 0;
+    t.cursorCol = 1;
+    t.handleKey({ name: "down", shift: true }); // -> row 1, col 1
+    expect(t.copySelection()).toBe("bc\nd");
+  });
+
+  test("backspace deletes a cross-line selection as one op", async () => {
+    let val = "abc\ndef\nghi";
+    const { findById } = await mountApp(
+      <TextArea
+        id="t"
+        value={val}
+        onChange={(v) => {
+          val = v;
+        }}
+      />,
+      { cols: 40, rows: 8 },
+    );
+    const t = findById("t");
+    t.cursorRow = 0;
+    t.cursorCol = 1;
+    t.handleKey({ name: "down", shift: true }); // select "bc\nd"
+    t.handleKey({ name: "backspace" });
+    expect(t.value).toBe("aef\nghi");
+  });
+
+  test("insertText replaces selection with multi-line text", async () => {
+    const { findById } = await mountApp(<TextArea id="t" value="abXYef" />, {
+      cols: 40,
+      rows: 6,
+    });
+    const t = findById("t");
+    t.cursorRow = 0;
+    t.cursorCol = 2;
+    t.handleKey({ name: "right", shift: true });
+    t.handleKey({ name: "right", shift: true }); // select "XY"
+    t.insertText("1\n2");
+    expect(t.value).toBe("ab1\n2ef");
+  });
+
+  test("selectAll + cutSelection empties and copies all", async () => {
+    const { findById, driver } = await mountApp(<TextArea id="t" value={"one\ntwo"} />, {
+      cols: 40,
+      rows: 6,
+    });
+    const t = findById("t");
+    t.selectAll();
+    expect(t.cutSelection()).toBe("one\ntwo");
+    expect(t.value).toBe("");
+    expect(await driver.clipboard.get()).toBe("one\ntwo");
+  });
+
+  test("mouse drag selects and copies to clipboard on release", async () => {
+    const { findById, driver, settle } = await mountApp(
+      <TextArea id="t" value="hello world" lineNumbers={false} style={{ width: 30, height: 4 }} />,
+      { cols: 40, rows: 6 },
+    );
+    const t = findById("t");
+    await settle();
+    const rect = t.getContentRect();
+    t.handleMouse({ type: "press", button: "left", x: rect.x, y: rect.y });
+    t.handleMouse({ type: "drag", button: "left", x: rect.x + 5, y: rect.y });
+    t.handleMouse({ type: "release", button: "left", x: rect.x + 5, y: rect.y });
+    expect(await driver.clipboard.get()).toBe("hello");
+  });
+
+  test("selected cells render with the theme selection background", async () => {
+    const { findById, screen, app, settle, cellAt } = await mountApp(
+      <TextArea id="t" value="hello" lineNumbers={false} style={{ width: 20, height: 3 }} />,
+      { cols: 24, rows: 5 },
+    );
+    const t = findById("t");
+    screen.focusWidget(t);
+    t.handleKey({ name: "home" });
+    t.handleKey({ name: "right", shift: true });
+    t.handleKey({ name: "right", shift: true });
+    app.queueRender();
+    await settle();
+    const rect = t.getContentRect();
+    // First selected glyph cell carries the (non-default) selection background.
+    const cell = cellAt(rect.x, rect.y);
+    expect(cell.style.background).toBeDefined();
+    expect(cell.style.background).not.toBe("default");
+  });
+});

@@ -119,6 +119,50 @@ export function parseInput(
         continue;
       }
 
+      // Modified arrows / navigation: \x1b[1;<mod>[A-D|H|F] and the VT-220
+      // \x1b[<n>;<mod>~ form. The modifier follows the xterm scheme
+      // (mod-1 bitmask: shift=1, alt=2, ctrl=4). This is how Shift+Arrow and
+      // Ctrl+Arrow arrive on terminals WITHOUT the Kitty keyboard protocol;
+      // without this they would be swallowed by the generic escape matcher.
+      const modSeq = remaining.match(/^\x1b\[(\d+);(\d+)([A-DHF~])/);
+      if (modSeq) {
+        const p1 = Number.parseInt(modSeq[1], 10);
+        const modVal = Number.parseInt(modSeq[2], 10) - 1;
+        const shift = (modVal & 1) !== 0;
+        const alt = (modVal & 2) !== 0;
+        const ctrl = (modVal & 4) !== 0;
+        const final = modSeq[3];
+        let modName = "";
+        if (final === "~") {
+          const tildeMap: Record<number, string> = {
+            1: "home",
+            7: "home",
+            4: "end",
+            8: "end",
+            5: "pageup",
+            6: "pagedown",
+            3: "delete",
+            2: "insert",
+          };
+          modName = tildeMap[p1] ?? "";
+        } else {
+          const arrowMap: Record<string, string> = {
+            A: "up",
+            B: "down",
+            C: "right",
+            D: "left",
+            H: "home",
+            F: "end",
+          };
+          modName = arrowMap[final] ?? "";
+        }
+        if (modName) {
+          onKey({ key: modName, name: modName, ctrl, meta: alt, shift });
+          i += modSeq[0].length;
+          continue;
+        }
+      }
+
       // Arrow keys: \x1b[A (Up), \x1b[B (Down), \x1b[C (Right), \x1b[D (Left)
       const seqMatch = remaining.match(/^\x1b\[([A-D])/);
       if (seqMatch) {

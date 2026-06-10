@@ -4,6 +4,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { normalizeRange } from "./text-selection.ts";
 import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
 
 export class InputWidget extends Widget implements ValidatableField {
@@ -14,6 +15,7 @@ export class InputWidget extends Widget implements ValidatableField {
   public set value(val: string) {
     const oldVal = this._value;
     this._value = val;
+    this.selectionAnchor = null;
     if (this.cursorCol === oldVal.length) {
       this.cursorCol = val.length;
     } else {
@@ -65,6 +67,9 @@ export class InputWidget extends Widget implements ValidatableField {
 
   private cursorCol = 0;
   private scrollX = 0;
+  /** Selection start (grapheme index); null when nothing is selected. The caret
+   * end of the selection is always {@link cursorCol}. */
+  private selectionAnchor: number | null = null;
 
   private _focused = false;
   private blinkInterval: any = null;
@@ -122,47 +127,70 @@ export class InputWidget extends Widget implements ValidatableField {
     const suffixWidth = this.suffixIcon ? Math.max(2, stringWidth(this.suffixIcon)) + 1 : 0;
     const textWidth = Math.max(1, contentRect.width - prefixWidth - suffixWidth);
 
-    const chars = [...this.value];
+    let chars = [...this.value];
     if (this.cursorCol > chars.length) {
       this.cursorCol = chars.length;
     }
 
     const keyName = ev.name || ev.key;
+    const shift = !!ev.shift;
+
+    // Extend the selection when a movement key is pressed with Shift; otherwise
+    // a bare movement collapses any existing selection.
+    const startSelection = () => {
+      if (this.selectionAnchor === null) this.selectionAnchor = this.cursorCol;
+    };
 
     if (keyName === "left") {
-      this.cursorCol = Math.max(0, this.cursorCol - 1);
+      if (shift) {
+        startSelection();
+        this.cursorCol = Math.max(0, this.cursorCol - 1);
+      } else if (this.hasSelection()) {
+        this.cursorCol = this.selectionRange()![0];
+        this.selectionAnchor = null;
+      } else {
+        this.cursorCol = Math.max(0, this.cursorCol - 1);
+      }
     } else if (keyName === "right") {
-      this.cursorCol = Math.min(chars.length, this.cursorCol + 1);
+      if (shift) {
+        startSelection();
+        this.cursorCol = Math.min(chars.length, this.cursorCol + 1);
+      } else if (this.hasSelection()) {
+        this.cursorCol = this.selectionRange()![1];
+        this.selectionAnchor = null;
+      } else {
+        this.cursorCol = Math.min(chars.length, this.cursorCol + 1);
+      }
     } else if (keyName === "home") {
+      if (shift) startSelection();
+      else this.selectionAnchor = null;
       this.cursorCol = 0;
     } else if (keyName === "end") {
+      if (shift) startSelection();
+      else this.selectionAnchor = null;
       this.cursorCol = chars.length;
     } else if (keyName === "backspace") {
-      if (this.cursorCol > 0) {
+      if (!this.deleteSelectionInto(chars) && this.cursorCol > 0) {
         chars.splice(this.cursorCol - 1, 1);
         this._value = chars.join("");
         this.cursorCol--;
       }
     } else if (keyName === "delete") {
-      if (this.cursorCol < chars.length) {
+      if (!this.deleteSelectionInto(chars) && this.cursorCol < chars.length) {
         chars.splice(this.cursorCol, 1);
         this._value = chars.join("");
       }
     } else if (keyName === "enter" || keyName === "tab") {
       // ignore control keys
-    } else if (ev.key && [...ev.key].length === 1) {
+    } else if (ev.key && [...ev.key].length === 1 && !ev.ctrl && !ev.meta) {
+      this.deleteSelectionInto(chars);
+      chars = [...this._value];
       chars.splice(this.cursorCol, 0, ev.key);
       this._value = chars.join("");
       this.cursorCol++;
     }
 
-    // Keep cursor in horizontal view
-    if (this.cursorCol < this.scrollX) {
-      this.scrollX = this.cursorCol;
-    } else if (this.cursorCol >= this.scrollX + textWidth) {
-      this.scrollX = this.cursorCol - textWidth + 1;
-    }
-    this.scrollX = Math.max(0, Math.min(chars.length - textWidth + 1, this.scrollX));
+    this.keepCursorInView(textWidth, [...this._value].length);
 
     if (this.value !== originalValue) {
       this.onChange?.(this.value);
@@ -170,24 +198,130 @@ export class InputWidget extends Widget implements ValidatableField {
     }
   }
 
+  /** True when a non-empty selection exists. */
+  private hasSelection(): boolean {
+    return this.selectionAnchor !== null && this.selectionAnchor !== this.cursorCol;
+  }
+
+  /** Ordered `[start, end)` selection range, or null when nothing is selected. */
+  private selectionRange(): [number, number] | null {
+    if (this.selectionAnchor === null || this.selectionAnchor === this.cursorCol) return null;
+    return normalizeRange(this.selectionAnchor, this.cursorCol);
+  }
+
+  /**
+   * If a selection is active, delete it from `chars` (which must reflect the
+   * current value), commit the result, collapse the caret to the range start,
+   * and return true. Otherwise return false and leave state untouched.
+   */
+  private deleteSelectionInto(chars: string[]): boolean {
+    const range = this.selectionRange();
+    if (!range) return false;
+    chars.splice(range[0], range[1] - range[0]);
+    this._value = chars.join("");
+    this.cursorCol = range[0];
+    this.selectionAnchor = null;
+    return true;
+  }
+
+  private keepCursorInView(textWidth: number, length: number): void {
+    if (this.cursorCol < this.scrollX) {
+      this.scrollX = this.cursorCol;
+    } else if (this.cursorCol >= this.scrollX + textWidth) {
+      this.scrollX = this.cursorCol - textWidth + 1;
+    }
+    this.scrollX = Math.max(0, Math.min(Math.max(0, length - textWidth + 1), this.scrollX));
+  }
+
+  /** Selected text, or null when nothing is selected. */
+  public copySelection(): string | null {
+    const range = this.selectionRange();
+    if (!range) return null;
+    const text = [...this._value].slice(range[0], range[1]).join("");
+    App.instance?.driver.clipboard.set(text);
+    return text;
+  }
+
+  /** Copy the selection, then delete it. No-op when nothing is selected. */
+  public cutSelection(): string | null {
+    const text = this.copySelection();
+    if (text === null) return null;
+    const chars = [...this._value];
+    this.deleteSelectionInto(chars);
+    this.onChange?.(this.value);
+    this.validation.maybeValidate("change");
+    App.instance?.queueRender();
+    return text;
+  }
+
+  /** Clear any active selection (caret stays put). */
+  public clearSelection(): void {
+    this.selectionAnchor = null;
+    App.instance?.queueRender();
+  }
+
+  /** Select the entire value. */
+  public selectAll(): void {
+    this.selectionAnchor = 0;
+    this.cursorCol = [...this._value].length;
+    App.instance?.queueRender();
+  }
+
+  /**
+   * Replace the selection (or insert at the caret) with `text`. Newlines are
+   * flattened to spaces since the single-line input cannot hold them. Used by
+   * both keyboard paste and bracketed (native terminal) paste.
+   */
+  public insertText(text: string): void {
+    const sanitized = text.replace(/[\r\n]+/g, " ");
+    const originalValue = this._value;
+    const chars = [...this._value];
+    this.deleteSelectionInto(chars);
+    const next = [...this._value];
+    next.splice(this.cursorCol, 0, ...[...sanitized]);
+    this._value = next.join("");
+    this.cursorCol += [...sanitized].length;
+    this.selectionAnchor = null;
+    if (this._value !== originalValue) {
+      this.onChange?.(this.value);
+      this.validation.maybeValidate("change");
+    }
+    App.instance?.queueRender();
+  }
+
+  /** Map a screen x to a caret index within the value. */
+  private colAtX(x: number): number {
+    const contentRect = this.getContentRect();
+    const prefixWidth = this.icon ? Math.max(2, stringWidth(this.icon)) + 1 : 0;
+    const absoluteCol = this.scrollX + (x - (contentRect.x + prefixWidth));
+    return Math.max(0, Math.min([...this.value].length, absoluteCol));
+  }
+
   public override handleMouse(ev: any): void {
     super.handleMouse(ev);
     if (ev.handled) return;
 
-    if (ev.type === "press" && ev.button === "left") {
-      const contentRect = this.getContentRect();
-      const prefixWidth = this.icon ? Math.max(2, stringWidth(this.icon)) + 1 : 0;
-
-      const clickCol = ev.x - (contentRect.x + prefixWidth);
-      const absoluteCol = this.scrollX + clickCol;
-
-      const chars = [...this.value];
-      this.cursorCol = Math.max(0, Math.min(chars.length, absoluteCol));
-
+    if (ev.button === "left" && (ev.type === "press" || ev.type === "drag")) {
+      const col = this.colAtX(ev.x);
+      if (ev.type === "press") {
+        // Begin a (possibly empty) selection anchored at the click point.
+        this.cursorCol = col;
+        this.selectionAnchor = col;
+      } else {
+        // Drag extends the caret end of the selection; the anchor stays put.
+        this.cursorCol = col;
+      }
       this.cursorVisible = true;
       this.startBlinking();
-
       App.instance?.queueRender();
+    } else if (ev.type === "release" && ev.button === "left") {
+      // A drag-release with a real selection copies it (works on every terminal,
+      // including those without the Kitty keyboard protocol for Ctrl+Shift+C).
+      if (this.hasSelection()) {
+        this.copySelection();
+      } else {
+        this.selectionAnchor = null;
+      }
     }
   }
 
@@ -326,6 +460,18 @@ export class InputWidget extends Widget implements ValidatableField {
       const displayChars = [...displayValue];
       for (const char of displayChars) {
         cells.push({ char, style });
+      }
+    }
+
+    // Highlight the selected range (value chars map 1:1 to display cells, even
+    // for password bullets). Drawn before the cursor so the caret stays visible.
+    const selRange = this.selectionRange();
+    if (selRange) {
+      const selBg = App.instance?.cssResolver.resolveVariable(this, "$selectionBg") || "#585b70";
+      const selFg = App.instance?.cssResolver.resolveVariable(this, "$selectionFg") || fg;
+      const selStyle = new Style({ color: selFg, background: selBg });
+      for (let i = selRange[0]; i < selRange[1] && i < cells.length; i++) {
+        cells[i].style = selStyle;
       }
     }
 

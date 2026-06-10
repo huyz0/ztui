@@ -39,10 +39,12 @@ export declare interface Driver {
   on(event: "resize", listener: (size: Size) => void): this;
   on(event: "key", listener: (ev: KeyEvent) => void): this;
   on(event: "mouse", listener: (ev: MouseEvent) => void): this;
+  on(event: "paste", listener: (text: string) => void): this;
   on(event: "capabilities_resolved", listener: () => void): this;
   emit(event: "resize", size: Size): boolean;
   emit(event: "key", ev: KeyEvent): boolean;
   emit(event: "mouse", ev: MouseEvent): boolean;
+  emit(event: "paste", text: string): boolean;
   emit(event: "capabilities_resolved"): boolean;
 }
 

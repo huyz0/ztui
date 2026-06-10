@@ -210,9 +210,20 @@ describe("BunDriver Capability Probing", () => {
       shift: false,
     });
 
-    // Generic escape sequence
+    // Modified arrow (Ctrl+Up) decodes to a named key carrying the modifier,
+    // rather than falling through to the generic escape matcher.
     stdin.emit("data", "\x1b[1;5A");
-    expect(emittedKeys[emittedKeys.length - 1].key).toBe("\x1b[1;5A");
+    expect(emittedKeys[emittedKeys.length - 1]).toEqual({
+      key: "up",
+      name: "up",
+      ctrl: true,
+      meta: false,
+      shift: false,
+    });
+
+    // A truly generic CSI sequence still surfaces verbatim.
+    stdin.emit("data", "\x1b[3J");
+    expect(emittedKeys[emittedKeys.length - 1].name).toBe("escape_sequence");
 
     // Single escape press
     stdin.emit("data", "\x1b");

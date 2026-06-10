@@ -122,3 +122,41 @@ describe("parseInput — navigation keys", () => {
     expect(firstKey("\x1b[3~")?.name).toBe("delete");
   });
 });
+
+describe("parseInput — modified arrows / navigation", () => {
+  test("Shift+Arrow carries the shift modifier", () => {
+    const up = firstKey("\x1b[1;2A");
+    expect(up?.name).toBe("up");
+    expect(up?.shift).toBe(true);
+    expect(up?.ctrl).toBe(false);
+    expect(firstKey("\x1b[1;2D")?.name).toBe("left");
+    expect(firstKey("\x1b[1;2D")?.shift).toBe(true);
+  });
+
+  test("Ctrl+Arrow carries the ctrl modifier", () => {
+    const right = firstKey("\x1b[1;5C");
+    expect(right?.name).toBe("right");
+    expect(right?.ctrl).toBe(true);
+    expect(right?.shift).toBe(false);
+  });
+
+  test("Ctrl+Shift+Arrow carries both modifiers", () => {
+    const down = firstKey("\x1b[1;6B");
+    expect(down?.name).toBe("down");
+    expect(down?.shift).toBe(true);
+    expect(down?.ctrl).toBe(true);
+  });
+
+  test("Shift+Home/End (xterm letter form) decode", () => {
+    expect(firstKey("\x1b[1;2H")?.name).toBe("home");
+    expect(firstKey("\x1b[1;2H")?.shift).toBe(true);
+    expect(firstKey("\x1b[1;2F")?.name).toBe("end");
+  });
+
+  test("Shift+PageUp / Shift+Delete (VT-220 tilde with modifier) decode", () => {
+    const pgup = firstKey("\x1b[5;2~");
+    expect(pgup?.name).toBe("pageup");
+    expect(pgup?.shift).toBe(true);
+    expect(firstKey("\x1b[3;2~")?.name).toBe("delete");
+  });
+});

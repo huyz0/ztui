@@ -5,6 +5,7 @@ import { Syntax } from "../../render/rich/syntax.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { deleteRange, extractSelection, insertAt, orderPair, type Pos } from "./text-selection.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class TextAreaWidget extends Widget {
@@ -21,6 +22,7 @@ export class TextAreaWidget extends Widget {
       this.cursorRow === oldLines.length - 1 &&
       this.cursorCol === [...oldLines[this.cursorRow]].length;
 
+    this.selectionAnchor = null;
     if (isAtEnd || this._value === "") {
       this.cursorRow = newLines.length - 1;
       this.cursorCol = [...newLines[this.cursorRow]].length;
@@ -41,6 +43,9 @@ export class TextAreaWidget extends Widget {
   private cursorCol = 0;
   private scrollX = 0;
   private scrollY = 0;
+  /** Selection start; null when nothing is selected. The caret end is always
+   * {@link cursorRow}/{@link cursorCol}. */
+  private selectionAnchor: Pos | null = null;
 
   private _focused = false;
   private blinkInterval: any = null;
@@ -84,7 +89,7 @@ export class TextAreaWidget extends Widget {
       this.startBlinking();
     }
 
-    const lines = this.value.split(/\r?\n/);
+    let lines = this.value.split(/\r?\n/);
     const originalValue = this.value;
 
     const contentRect = this.getContentRect();
@@ -93,39 +98,70 @@ export class TextAreaWidget extends Widget {
     const textViewportWidth = Math.max(0, contentRect.width - gutterWidth);
 
     const keyName = ev.name || ev.key;
+    const shift = !!ev.shift;
+    const startSel = () => {
+      if (this.selectionAnchor === null) {
+        this.selectionAnchor = { row: this.cursorRow, col: this.cursorCol };
+      }
+    };
 
     if (keyName === "up") {
+      if (shift) startSel();
+      else this.selectionAnchor = null;
       this.cursorRow = Math.max(0, this.cursorRow - 1);
       this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "down") {
+      if (shift) startSel();
+      else this.selectionAnchor = null;
       this.cursorRow = Math.min(lines.length - 1, this.cursorRow + 1);
       this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "left") {
-      if (this.cursorCol > 0) {
-        this.cursorCol--;
-      } else if (this.cursorRow > 0) {
-        this.cursorRow--;
-        this.cursorCol = [...lines[this.cursorRow]].length;
+      if (shift) {
+        startSel();
+        this.moveLeft(lines);
+      } else if (this.hasSelection()) {
+        const [start] = this.orderedSelection()!;
+        this.cursorRow = start.row;
+        this.cursorCol = start.col;
+        this.selectionAnchor = null;
+      } else {
+        this.moveLeft(lines);
       }
     } else if (keyName === "right") {
-      if (this.cursorCol < [...lines[this.cursorRow]].length) {
-        this.cursorCol++;
-      } else if (this.cursorRow < lines.length - 1) {
-        this.cursorRow++;
-        this.cursorCol = 0;
+      if (shift) {
+        startSel();
+        this.moveRight(lines);
+      } else if (this.hasSelection()) {
+        const [, end] = this.orderedSelection()!;
+        this.cursorRow = end.row;
+        this.cursorCol = end.col;
+        this.selectionAnchor = null;
+      } else {
+        this.moveRight(lines);
       }
     } else if (keyName === "home") {
+      if (shift) startSel();
+      else this.selectionAnchor = null;
       this.cursorCol = 0;
     } else if (keyName === "end") {
+      if (shift) startSel();
+      else this.selectionAnchor = null;
       this.cursorCol = [...lines[this.cursorRow]].length;
     } else if (keyName === "pageup") {
+      if (shift) startSel();
+      else this.selectionAnchor = null;
       this.cursorRow = Math.max(0, this.cursorRow - viewportHeight + 1);
       this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "pagedown") {
+      if (shift) startSel();
+      else this.selectionAnchor = null;
       this.cursorRow = Math.min(lines.length - 1, this.cursorRow + viewportHeight - 1);
       this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
     } else if (keyName === "backspace") {
-      if (this.cursorCol > 0) {
+      const after = this.spliceSelection(lines);
+      if (after) {
+        lines = after;
+      } else if (this.cursorCol > 0) {
         const chars = [...lines[this.cursorRow]];
         chars.splice(this.cursorCol - 1, 1);
         lines[this.cursorRow] = chars.join("");
@@ -140,16 +176,23 @@ export class TextAreaWidget extends Widget {
       }
       this._value = lines.join("\n");
     } else if (keyName === "delete") {
-      const chars = [...lines[this.cursorRow]];
-      if (this.cursorCol < chars.length) {
-        chars.splice(this.cursorCol, 1);
-        lines[this.cursorRow] = chars.join("");
-      } else if (this.cursorRow < lines.length - 1) {
-        lines[this.cursorRow] = lines[this.cursorRow] + lines[this.cursorRow + 1];
-        lines.splice(this.cursorRow + 1, 1);
+      const after = this.spliceSelection(lines);
+      if (after) {
+        lines = after;
+      } else {
+        const chars = [...lines[this.cursorRow]];
+        if (this.cursorCol < chars.length) {
+          chars.splice(this.cursorCol, 1);
+          lines[this.cursorRow] = chars.join("");
+        } else if (this.cursorRow < lines.length - 1) {
+          lines[this.cursorRow] = lines[this.cursorRow] + lines[this.cursorRow + 1];
+          lines.splice(this.cursorRow + 1, 1);
+        }
       }
       this._value = lines.join("\n");
     } else if (keyName === "enter") {
+      const after = this.spliceSelection(lines);
+      if (after) lines = after;
       const chars = [...lines[this.cursorRow]];
       const line1 = chars.slice(0, this.cursorCol).join("");
       const line2 = chars.slice(this.cursorCol).join("");
@@ -159,12 +202,16 @@ export class TextAreaWidget extends Widget {
       this.cursorCol = 0;
       this._value = lines.join("\n");
     } else if (keyName === "tab") {
+      const after = this.spliceSelection(lines);
+      if (after) lines = after;
       const chars = [...lines[this.cursorRow]];
       chars.splice(this.cursorCol, 0, " ", " ");
       lines[this.cursorRow] = chars.join("");
       this.cursorCol += 2;
       this._value = lines.join("\n");
-    } else if (ev.key && [...ev.key].length === 1) {
+    } else if (ev.key && [...ev.key].length === 1 && !ev.ctrl && !ev.meta) {
+      const after = this.spliceSelection(lines);
+      if (after) lines = after;
       const chars = [...lines[this.cursorRow]];
       chars.splice(this.cursorCol, 0, ev.key);
       lines[this.cursorRow] = chars.join("");
@@ -179,6 +226,115 @@ export class TextAreaWidget extends Widget {
       this.onChange?.(this._value);
       this.validation.maybeValidate("change");
     }
+  }
+
+  private moveLeft(lines: string[]): void {
+    if (this.cursorCol > 0) {
+      this.cursorCol--;
+    } else if (this.cursorRow > 0) {
+      this.cursorRow--;
+      this.cursorCol = [...lines[this.cursorRow]].length;
+    }
+  }
+
+  private moveRight(lines: string[]): void {
+    if (this.cursorCol < [...lines[this.cursorRow]].length) {
+      this.cursorCol++;
+    } else if (this.cursorRow < lines.length - 1) {
+      this.cursorRow++;
+      this.cursorCol = 0;
+    }
+  }
+
+  /** True when a non-empty selection exists. */
+  private hasSelection(): boolean {
+    return (
+      this.selectionAnchor !== null &&
+      !(this.selectionAnchor.row === this.cursorRow && this.selectionAnchor.col === this.cursorCol)
+    );
+  }
+
+  /** Ordered `[start, end]` selection positions, or null when none is active. */
+  private orderedSelection(): [Pos, Pos] | null {
+    if (!this.hasSelection()) return null;
+    return orderPair(this.selectionAnchor!, { row: this.cursorRow, col: this.cursorCol });
+  }
+
+  /**
+   * Delete the active selection from `lines`, returning the new lines array and
+   * collapsing the caret to the range start. Returns null when nothing is
+   * selected. Commits `this._value` so callers may reuse the returned array.
+   */
+  private spliceSelection(lines: string[]): string[] | null {
+    const ordered = this.orderedSelection();
+    if (!ordered) return null;
+    const [start, end] = ordered;
+    const next = deleteRange(lines, start, end);
+    this.cursorRow = start.row;
+    this.cursorCol = start.col;
+    this.selectionAnchor = null;
+    this._value = next.join("\n");
+    return next;
+  }
+
+  /** Selected text (multi-line joined with `\n`), or null when none is selected. */
+  public copySelection(): string | null {
+    const ordered = this.orderedSelection();
+    if (!ordered) return null;
+    const text = extractSelection(this.value.split(/\r?\n/), ordered[0], ordered[1]);
+    App.instance?.driver.clipboard.set(text);
+    return text;
+  }
+
+  /** Copy the selection, then delete it. No-op when nothing is selected. */
+  public cutSelection(): string | null {
+    const text = this.copySelection();
+    if (text === null) return null;
+    this.spliceSelection(this.value.split(/\r?\n/));
+    this.onChange?.(this._value);
+    this.validation.maybeValidate("change");
+    App.instance?.queueRender();
+    return text;
+  }
+
+  /** Clear any active selection (caret stays put). */
+  public clearSelection(): void {
+    this.selectionAnchor = null;
+    App.instance?.queueRender();
+  }
+
+  /** Select the entire contents. */
+  public selectAll(): void {
+    const lines = this.value.split(/\r?\n/);
+    this.selectionAnchor = { row: 0, col: 0 };
+    this.cursorRow = lines.length - 1;
+    this.cursorCol = [...lines[lines.length - 1]].length;
+    App.instance?.queueRender();
+  }
+
+  /**
+   * Replace the selection (or insert at the caret) with `text`, which may span
+   * multiple lines. Used by both keyboard paste and bracketed (native) paste.
+   */
+  public insertText(text: string): void {
+    const original = this._value;
+    let lines = this.value.split(/\r?\n/);
+    const after = this.spliceSelection(lines);
+    if (after) lines = after;
+    const { lines: nextLines, caret } = insertAt(
+      lines,
+      { row: this.cursorRow, col: this.cursorCol },
+      text,
+    );
+    this._value = nextLines.join("\n");
+    this.cursorRow = caret.row;
+    this.cursorCol = caret.col;
+    this.selectionAnchor = null;
+    if (this._value !== original) {
+      this.onChange?.(this._value);
+      this.validation.maybeValidate("change");
+    }
+    App.instance?.queueRender();
   }
 
   private keepCursorInView(lines: string[], viewportHeight: number, textViewportWidth: number) {
@@ -204,29 +360,45 @@ export class TextAreaWidget extends Widget {
     this.scrollX = Math.max(0, Math.min(maxScrollX, this.scrollX));
   }
 
+  /** Map a screen (x, y) to a caret position within the value. */
+  private posAtXY(x: number, y: number): Pos {
+    const contentRect = this.getContentRect();
+    const lines = this.value.split(/\r?\n/);
+    const gutterWidth = this.lineNumbers ? Math.max(2, String(lines.length).length) + 3 : 0;
+    const row = Math.max(0, Math.min(lines.length - 1, this.scrollY + (y - contentRect.y)));
+    const col = Math.max(
+      0,
+      Math.min([...lines[row]].length, this.scrollX + (x - contentRect.x - gutterWidth)),
+    );
+    return { row, col };
+  }
+
   public override handleMouse(ev: any): void {
     super.handleMouse(ev);
     if (ev.handled) return;
 
-    if (ev.type === "press" && ev.button === "left") {
-      const contentRect = this.getContentRect();
-      const lines = this.value.split(/\r?\n/);
-      const gutterWidth = this.lineNumbers ? Math.max(2, String(lines.length).length) + 3 : 0;
-
-      const clickRow = ev.y - contentRect.y;
-      const clickCol = ev.x - contentRect.x;
-
-      const absoluteRow = this.scrollY + clickRow;
-      const absoluteCol = this.scrollX + (clickCol - gutterWidth);
-
-      this.cursorRow = Math.max(0, Math.min(lines.length - 1, absoluteRow));
-      this.cursorCol = Math.max(0, Math.min([...lines[this.cursorRow]].length, absoluteCol));
-
-      // Reset blink timer so caret is solid on click
+    if (ev.button === "left" && (ev.type === "press" || ev.type === "drag")) {
+      const pos = this.posAtXY(ev.x, ev.y);
+      if (ev.type === "press") {
+        // Begin a (possibly empty) selection anchored at the click point.
+        this.cursorRow = pos.row;
+        this.cursorCol = pos.col;
+        this.selectionAnchor = { row: pos.row, col: pos.col };
+      } else {
+        // Drag extends the caret end; the anchor stays put.
+        this.cursorRow = pos.row;
+        this.cursorCol = pos.col;
+      }
       this.cursorVisible = true;
       this.startBlinking();
-
       App.instance?.queueRender();
+    } else if (ev.type === "release" && ev.button === "left") {
+      // Drag-release with a real selection copies it (works on every terminal).
+      if (this.hasSelection()) {
+        this.copySelection();
+      } else {
+        this.selectionAnchor = null;
+      }
     }
   }
 
@@ -319,6 +491,19 @@ export class TextAreaWidget extends Widget {
           for (const char of chars) {
             cells.push({ char, style: resolvedStyle });
           }
+        }
+      }
+
+      // 2b. Highlight the selected span on this line.
+      const sel = this.orderedSelection();
+      if (sel && lineIndex >= sel[0].row && lineIndex <= sel[1].row) {
+        const selBg = App.instance?.cssResolver.resolveVariable(this, "$selectionBg") || "#585b70";
+        const selFg = App.instance?.cssResolver.resolveVariable(this, "$selectionFg") || fg;
+        const selStyle = new Style({ color: selFg, background: selBg });
+        const from = lineIndex === sel[0].row ? sel[0].col : 0;
+        const to = lineIndex === sel[1].row ? sel[1].col : cells.length;
+        for (let i = from; i < to && i < cells.length; i++) {
+          cells[i].style = selStyle;
         }
       }
 

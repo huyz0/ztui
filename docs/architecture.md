@@ -217,6 +217,15 @@ sequenceDiagram
   - **Rule**: Global hotkeys (e.g. `Ctrl+C` for exit, custom developer hotkeys) MUST hook the capture phase prior to normal widget dispatch.
   - **Rule**: If a global hotkey event is handled, further propagation and normal widget event handler execution MUST be blocked.
 
+### 5.1a Text Selection & Clipboard
+Editable text widgets (`Input`, `TextArea`) support range selection and clipboard interchange. The range math lives in pure, backend-neutral helpers (`widgets/controls/text-selection.ts`); widgets hold only an `anchor` (the fixed end) with the live caret as the other end.
+- **Selection input**: `Shift` + `Arrow/Home/End/PageUp/PageDown` extends the selection; a bare movement collapses it. Mouse `press` anchors a selection, `drag` extends the caret end, and `release` copies a non-empty selection to the clipboard — the mouse path works on every terminal. Modified arrows are decoded from the xterm `\x1b[1;<mod>[A-D|H|F]` / `\x1b[<n>;<mod>~` forms so the modifier survives even **without** the Kitty keyboard protocol.
+- **Keybindings (terminal-conflict-free)**: the primary copy is **selection-aware `Ctrl+C`** — when the focused widget has a non-empty selection, `Ctrl+C` copies it and clears the selection (so a second `Ctrl+C` quits); with no selection it quits as usual. This is the only keyboard copy that works on terminals **without** the Kitty protocol, where `Ctrl+Shift+C` is byte-identical to `Ctrl+C`. Under Kitty, `Ctrl+Shift+C`/`Ctrl+Shift+X` additionally bind copy/cut (decoded as key `ctrl+C`/`ctrl+X`). Paste = `Ctrl+V` (reads the OSC 52 framework clipboard); select-all = `Ctrl+A`. We never bind a key the terminal reserves and never silently drop a copy.
+- **Ctrl+C ownership**: the BunDriver no longer hard-exits on the raw `0x03` byte. It emits `ctrl+c` as a normal key and only falls back to `process.exit` if nothing marks the event handled — so the App's selection-aware copy can claim it, while a wedged/headless path still quits.
+- **App routing**: the selection-aware `Ctrl+C` and `App.routeClipboardKey` dispatch to the focused widget through a duck-typed `ClipboardWidget` shape (`copySelection`/`cutSelection`/`clearSelection`/`selectAll`/`insertText`) — `core/` never imports a widget class. Copy/cut/select-all are synchronous; paste resolves the async clipboard read on a later tick.
+- **Bracketed paste**: the driver enables `\x1b[?2004h`, reassembles a paste payload that may span multiple stdin chunks, and emits it as a single `"paste"` event (routed to the focused widget's `insertText`) so native terminal paste never floods the key parser. Markers are stripped before any key decoding.
+- **Rendering**: selected cells are painted with the theme's `$selectionBg`/`$selectionFg`, layered under the caret. (Read-only selection for `Markdown`/`Syntax`/`Table` is a planned Phase 2 extension reusing the same helpers.)
+
 ### 5.2 Focus Management & Focus Ring Cycle
 - **Focus Chains & Tab Indexing**:
   - **Rule**: Focusable components (e.g., Button, Input) MUST extend the focus property with a sequential or explicit `tabIndex`.

@@ -4,7 +4,7 @@ import { DOMNode } from "../dom/dom.ts";
 import { Screen } from "../dom/screen.ts";
 import { Widget } from "../dom/widget.ts";
 import { BunDriver } from "../driver/bun/index.ts";
-import type { Driver } from "../driver/driver.ts";
+import type { Driver, KeyEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
@@ -16,6 +16,19 @@ import { ScreenBuffer } from "../render/buffer.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
 import { logger } from "./logger.ts";
 import { ThemeManager } from "./theme.ts";
+
+/**
+ * Optional clipboard/selection surface implemented by editable text widgets
+ * (`Input`, `TextArea`). The App routes copy/cut/paste/select-all to the focused
+ * widget through this duck-typed shape without importing widget classes.
+ */
+interface ClipboardWidget {
+  copySelection?: () => string | null;
+  cutSelection?: () => string | null;
+  clearSelection?: () => void;
+  selectAll?: () => void;
+  insertText?: (text: string) => void;
+}
 
 export class App extends DOMNode {
   public static instance: App | null = null;
@@ -131,8 +144,32 @@ export class App extends DOMNode {
     this.driver.on("key", (ev) => {
       log(`Key event received: key=${ev.key}, name=${ev.name}`);
       if (ev.key === "ctrl+c") {
+        // Selection-aware quit: if the focused text widget has an active
+        // selection, copy it (and clear it, so a second Ctrl+C quits) instead of
+        // exiting. This is the only copy path that works on terminals WITHOUT the
+        // Kitty keyboard protocol, where Ctrl+Shift+C is byte-identical to a bare
+        // Ctrl+C. Marking the event handled stops the driver's fallback exit.
+        const focused = this.activeScreen.focusedWidget as ClipboardWidget | null;
+        const copied = focused?.copySelection?.();
+        if (copied != null) {
+          this.safeInvoke("clearSelection (after Ctrl+C copy)", () => focused?.clearSelection?.());
+          ev.handled = true;
+          this.queueRender();
+          return;
+        }
+        ev.handled = true;
         this.stop();
         process.exit(0);
+      }
+
+      // Clipboard commands routed to the focused text widget. Copy/cut also bind
+      // Ctrl+Shift+C/X (key "ctrl+C"/"ctrl+X" — distinguishable from a bare Ctrl+C
+      // only under the Kitty keyboard protocol); paste/select-all use Ctrl+V /
+      // Ctrl+A, which reach the app on every terminal. Each is guarded by a
+      // capability check so non-text widgets are unaffected.
+      if (this.routeClipboardKey(ev)) {
+        this.queueRender();
+        return;
       }
 
       const screen = this.activeScreen;
@@ -292,6 +329,51 @@ export class App extends DOMNode {
         }
       }
     });
+
+    // Native terminal paste (bracketed paste) arrives as one event; route the
+    // whole payload to the focused text widget as a single insert.
+    this.driver.on("paste", (text) => {
+      const focused = this.activeScreen.focusedWidget as ClipboardWidget | null;
+      if (focused && typeof focused.insertText === "function") {
+        this.safeInvoke("paste (bracketed)", () => focused.insertText?.(text));
+        this.queueRender();
+      }
+    });
+  }
+
+  /**
+   * Route a clipboard shortcut to the focused widget if it is text-capable.
+   * Returns true when the key was consumed. Paste reads the framework clipboard
+   * (OSC 52) asynchronously, so it resolves on a later tick.
+   */
+  private routeClipboardKey(ev: KeyEvent): boolean {
+    const focused = this.activeScreen.focusedWidget as ClipboardWidget | null;
+    if (!focused) return false;
+
+    if (ev.ctrl && ev.shift && ev.name === "c" && typeof focused.copySelection === "function") {
+      this.safeInvoke("copySelection", () => focused.copySelection?.());
+      return true;
+    }
+    if (ev.ctrl && ev.shift && ev.name === "x" && typeof focused.cutSelection === "function") {
+      this.safeInvoke("cutSelection", () => focused.cutSelection?.());
+      return true;
+    }
+    if (ev.ctrl && !ev.shift && ev.name === "a" && typeof focused.selectAll === "function") {
+      this.safeInvoke("selectAll", () => focused.selectAll?.());
+      return true;
+    }
+    if (ev.ctrl && !ev.shift && ev.name === "v" && typeof focused.insertText === "function") {
+      this.safeInvoke("paste", () => {
+        Promise.resolve(this.driver.clipboard.get()).then((text) => {
+          if (text) {
+            this.safeInvoke("insertText (paste)", () => focused.insertText?.(text));
+            this.queueRender();
+          }
+        });
+      });
+      return true;
+    }
+    return false;
   }
 
   public stop(): void {

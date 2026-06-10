@@ -1,0 +1,99 @@
+import { useState } from "react";
+import {
+  App,
+  Button,
+  Dock,
+  Footer,
+  HBox,
+  Header,
+  Input,
+  Label,
+  render,
+  TextArea,
+  VBox,
+  View,
+} from "../src/index.ts";
+
+/**
+ * Demonstrates first-class text selection + clipboard:
+ *   - Shift + Arrows / Home / End / PageUp / PageDown → extend a selection
+ *   - Mouse drag → select; release copies the selection to the clipboard
+ *   - Ctrl+C copies the selection (and quits when there is no selection)
+ *   - Ctrl+V paste · Ctrl+A select all · Ctrl+Shift+C/X copy/cut (Kitty terminals)
+ *   - Native terminal paste (Cmd/Ctrl+Shift+V) flows in via bracketed paste
+ */
+function ClipboardDemo() {
+  const [name, setName] = useState("select-me-with-shift-arrows");
+  const [code, setCode] = useState(
+    "// Drag to select, then release to copy.\n" +
+      "// Or Shift+Arrow to select, Ctrl+Shift+C to copy.\n" +
+      "const greeting = 'paste me elsewhere with Ctrl+V';\n" +
+      "console.log(greeting);",
+  );
+  const [clip, setClip] = useState("(nothing read yet)");
+
+  const showClipboard = async () => {
+    const text = (await App.instance?.driver.clipboard.get()) ?? "";
+    setClip(text === "" ? "(clipboard empty)" : text);
+  };
+
+  const handleExit = () => {
+    App.instance?.stop();
+    process.exit(0);
+  };
+
+  return (
+    <Dock style={{ background: "#1e1e2e" }}>
+      <Header>📋 ZTUI Copy / Paste & Selection Demo</Header>
+
+      <Footer>
+        Shift+Arrows: select · Drag+release: copy · Ctrl+C: copy selection / quit · Ctrl+V: paste ·
+        Ctrl+A: all
+      </Footer>
+
+      <HBox style={{ padding: 1 }}>
+        <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
+          <Label style={{ color: "#cba6f7", bold: true }}>Single-line Input</Label>
+          <View style={{ height: 1 }} />
+          <Input
+            style={{ height: 3, background: "#313244", color: "#f5c2e7" }}
+            value={name}
+            onChange={setName}
+            placeholder="Type, then select with Shift+Arrows…"
+          />
+
+          <View style={{ height: 1 }} />
+          <Button
+            style={{ background: "#89b4fa", color: "black", margin: 1 }}
+            onClick={showClipboard}
+          >
+            Read framework clipboard
+          </Button>
+          <Label style={{ color: "#89b4fa" }}>Clipboard now holds:</Label>
+          <Label style={{ color: "#f9e2af" }}>{clip}</Label>
+
+          <View style={{ height: 1 }} />
+          <Button style={{ background: "#f38ba8", color: "black", margin: 1 }} onClick={handleExit}>
+            Exit (or Ctrl+C with no selection)
+          </Button>
+        </VBox>
+
+        <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
+          <Label style={{ color: "#cba6f7", bold: true }}>Multi-line TextArea</Label>
+          <View style={{ height: 1 }} />
+          <TextArea
+            style={{ height: 12, background: "#181825", color: "#cdd6f4" }}
+            value={code}
+            onChange={setCode}
+            language="typescript"
+            lineNumbers={true}
+          />
+        </VBox>
+      </HBox>
+    </Dock>
+  );
+}
+
+const app = new App();
+render(<ClipboardDemo />, app.activeScreen);
+app.run();
