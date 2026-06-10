@@ -154,14 +154,15 @@ export class App extends DOMNode {
         if (layer.modal) break;
       }
 
-      // A modal claims Escape before its content sees it (a focused control
-      // would otherwise mark every key handled). Disable per-dialog with
+      // Escape closes the topmost layer that opted in (modal dialog or sticky
+      // panel), before its content sees the key — a focused control would
+      // otherwise mark every key handled. Disable per-layer with
       // `closeOnEscape={false}` when the content needs Escape for itself.
       if (ev.key === "escape" || ev.name === "escape") {
-        const modal = screen.topModalLayer;
-        if (modal?.closeOnEscape) {
-          log("Escape closing top modal layer");
-          this.safeInvoke("modal onClose (escape)", () => modal.onClose?.());
+        const top = screen.layers[screen.layers.length - 1];
+        if (top?.closeOnEscape) {
+          log("Escape closing top layer");
+          this.safeInvoke("layer onClose (escape)", () => top.onClose?.());
           this.queueRender();
           return;
         }

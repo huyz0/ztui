@@ -23,6 +23,10 @@ export interface StickyPanelProps extends ComponentProps {
    * ```
    */
   onKeyIntercept?: (ev: KeyEvent) => void;
+  /** Esc dismisses the panel (calls {@link onClose}). Defaults to `true`. */
+  closeOnEscape?: boolean;
+  /** Called when the panel asks to close (Esc). Drive your `open` state here. */
+  onClose?: () => void;
   /**
    * Anchor the panel to a widget (e.g. the chat input): pass a ref obtained from
    * that widget. The panel sits flush above or below the anchor — see
@@ -81,6 +85,8 @@ const DEFAULT_PANEL: WidgetStyles = {
 export function StickyPanel({
   open = true,
   onKeyIntercept,
+  closeOnEscape = true,
+  onClose,
   anchorRef,
   placement = "auto",
   panelStyle,
@@ -94,8 +100,9 @@ export function StickyPanel({
     centered: false,
     dim: false,
     passThrough: true,
-    closeOnEscape: false,
+    closeOnEscape,
     closeOnOutsideClick: false,
+    onClose,
     keyInterceptor: onKeyIntercept,
     anchorRef,
     placement,

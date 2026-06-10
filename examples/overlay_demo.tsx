@@ -25,15 +25,23 @@ function ChatDemo() {
   const [text, setText] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
   const inputRef = useRef<Widget>(null);
 
-  // The slash menu is open whenever the input is a bare "/word" token.
+  // The slash menu is open whenever the input ends in a bare "/word" token and
+  // the user hasn't dismissed it with Esc.
   const slashQuery = /(^|\s)\/(\w*)$/.exec(text)?.[2];
-  const menuOpen = slashQuery !== undefined;
+  const menuOpen = slashQuery !== undefined && !dismissed;
   const matches = useMemo(
     () => (menuOpen ? COMMANDS.filter((c) => c.slice(1).startsWith(slashQuery ?? "")) : []),
     [menuOpen, slashQuery],
   );
+
+  // Typing re-opens the menu after an Esc dismissal.
+  const onChange = (v: string) => {
+    setDismissed(false);
+    setText(v);
+  };
 
   const insert = (cmd: string) => {
     setText((t) => `${t.replace(/\/(\w*)$/, cmd)} `);
@@ -59,11 +67,11 @@ function ChatDemo() {
         ref={inputRef}
         id="chat"
         value={text}
-        onChange={setText}
+        onChange={onChange}
         placeholder="Message the agent…  (try /he)"
         style={{ margin: 1 }}
       />
-      <Footer>Tab: focus · Esc: close dialog · ↑/↓ + Enter: pick command</Footer>
+      <Footer>Tab: focus · Esc: close dialog/menu · ↑/↓ + Enter: pick command</Footer>
 
       {/* Anchored above the input — placement="above" and auto screen-clamping
           keep it from overlapping the textbox or running off any edge. */}
@@ -72,6 +80,7 @@ function ChatDemo() {
         anchorRef={inputRef}
         placement="above"
         panelStyle={{ width: 36, background: "$panel" }}
+        onClose={() => setDismissed(true)}
         onKeyIntercept={(ev) => {
           if (ev.name === "down") {
             setHighlight((h) => Math.min(matches.length - 1, h + 1));

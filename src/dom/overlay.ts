@@ -3,7 +3,6 @@ import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { parseDimension } from "../layout/layout.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
-import { Style } from "../render/style.ts";
 import { Widget } from "./widget.ts";
 
 /** Where a sticky panel sits relative to its anchor. */
@@ -124,11 +123,17 @@ export class OverlayRootWidget extends Widget {
   public override render(buffer: ScreenBuffer): void {
     if (!this.visible) return;
     if (this.dim) {
-      const style = new Style({ color: "default", background: "default", dim: true });
+      // Shade the backdrop in place: the layer below is already painted, so we
+      // dim each existing cell (keeping its glyph and colors) rather than
+      // blanking it — the background stays readable around the panel. The panel
+      // itself paints afterwards in renderChildren and is left undimmed.
       const r = this.region;
       for (let y = r.y; y < r.bottom; y++) {
+        const row = buffer.cells[y];
+        if (!row) continue;
         for (let x = r.x; x < r.right; x++) {
-          buffer.setCell(x, y, " ", style);
+          const cell = row[x];
+          if (cell) cell.style = cell.style.merge({ dim: true });
         }
       }
     }

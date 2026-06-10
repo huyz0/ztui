@@ -92,6 +92,28 @@ describe("Dialog", () => {
 
     expect(t.screen.layers.length).toBe(0);
   });
+
+  test("dim shades the backdrop in place instead of blanking it", async () => {
+    function App() {
+      return (
+        <VBox>
+          <Label id="bg">BACKDROPTEXT</Label>
+          <Dialog open dim>
+            <Label>Hi</Label>
+          </Dialog>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<App />);
+    // The background text is still present (not erased by the dim layer)…
+    expect(t.text()).toContain("BACKDROPTEXT");
+    // …and the cell under the backdrop is dimmed.
+    const bg = t.findById("bg") as Widget;
+    const cell = t.cellAt(bg.region.x, bg.region.y);
+    expect(cell.char).toBe("B");
+    expect(cell.style.dim).toBe(true);
+  });
 });
 
 describe("StickyPanel", () => {
@@ -160,6 +182,29 @@ describe("StickyPanel", () => {
     t.driver.simulateKey("x");
     await t.settle();
     expect(typed).toContain("x");
+  });
+
+  test("Escape closes the panel via onClose without the input consuming it first", async () => {
+    function App() {
+      const [open, setOpen] = useState(true);
+      return (
+        <VBox>
+          <Input id="chat" />
+          <StickyPanel open={open} onClose={() => setOpen(false)}>
+            <Label>/help</Label>
+          </StickyPanel>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<App />);
+    // Focus the input (the control below) — Escape must still reach the panel.
+    t.screen.focusWidget(t.findById("chat") ?? null);
+    expect(t.screen.layers.length).toBe(1);
+
+    t.driver.simulateKey("escape");
+    await t.settle();
+    expect(t.screen.layers.length).toBe(0);
   });
 
   test("removing the panel pops its layer", async () => {
