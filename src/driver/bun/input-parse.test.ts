@@ -72,6 +72,29 @@ describe("parseInput — SGR mouse decoding", () => {
   });
 });
 
+describe("parseInput — character input", () => {
+  test("astral characters (emoji) decode as one key, not split surrogates", () => {
+    const keys: KeyEvent[] = [];
+    parseInput(
+      "😀",
+      (k) => keys.push(k),
+      () => {},
+    );
+    expect(keys).toHaveLength(1);
+    expect(keys[0].key).toBe("😀");
+  });
+
+  test("surrogate-pair glyph followed by ascii decodes both", () => {
+    const keys: KeyEvent[] = [];
+    parseInput(
+      "🎉a",
+      (k) => keys.push(k),
+      () => {},
+    );
+    expect(keys.map((k) => k.key)).toEqual(["🎉", "a"]);
+  });
+});
+
 describe("parseInput — navigation keys", () => {
   test("arrows still decode", () => {
     expect(firstKey("\x1b[A")?.name).toBe("up");

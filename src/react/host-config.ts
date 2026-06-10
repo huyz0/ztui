@@ -30,7 +30,9 @@ export function createWidgetByTagName(tagName: string): Widget | null {
   return ctor ? ctor() : null;
 }
 
-// Props that map to widget fields and must be reset when removed between renders.
+// Handler props that map 1:1 to Widget fields. Applied on every commit and
+// reset when removed between renders. Typed against Widget so a typo here (or
+// a handler removed from Widget) is a compile error.
 const KNOWN_HANDLER_PROPS = [
   "onClick",
   "onKey",
@@ -46,9 +48,9 @@ const KNOWN_HANDLER_PROPS = [
   "onExpandedChange",
   "onValidate",
   "onSubmit",
-];
+] as const satisfies readonly (keyof Widget)[];
 
-function applyProps(instance: DOMNode, props: any, oldProps?: any) {
+function applyProps(instance: DOMNode, props: Record<string, any>, oldProps?: Record<string, any>) {
   if (instance instanceof Widget) {
     // Clear props that existed in the previous render but are now absent, so a
     // removed onClick/className/style/id doesn't linger on the reused widget.
@@ -62,7 +64,7 @@ function applyProps(instance: DOMNode, props: any, oldProps?: any) {
       }
       for (const handler of KNOWN_HANDLER_PROPS) {
         if (oldProps[handler] !== undefined && props[handler] === undefined) {
-          (instance as any)[handler] = undefined;
+          instance[handler] = undefined;
         }
       }
       // NOTE: generic widget props (label, value, checked, ...) are intentionally
@@ -78,50 +80,17 @@ function applyProps(instance: DOMNode, props: any, oldProps?: any) {
     if (props.style !== undefined) {
       instance.style = props.style;
     }
-    if (props.onClick !== undefined) {
-      instance.onClick = props.onClick;
-    }
-    if (props.onKey !== undefined) {
-      instance.onKey = props.onKey;
-    }
-    if (props.onMouseEnter !== undefined) {
-      instance.onMouseEnter = props.onMouseEnter;
-    }
-    if (props.onMouseLeave !== undefined) {
-      instance.onMouseLeave = props.onMouseLeave;
-    }
-    if (props.onAction !== undefined) {
-      (instance as any).onAction = props.onAction;
-    }
-    if (props.onChange !== undefined) {
-      (instance as any).onChange = props.onChange;
-    }
-    if (props.onSelect !== undefined) {
-      (instance as any).onSelect = props.onSelect;
-    }
-    if (props.onActivate !== undefined) {
-      (instance as any).onActivate = props.onActivate;
-    }
-    if (props.onSortChange !== undefined) {
-      (instance as any).onSortChange = props.onSortChange;
-    }
-    if (props.onViewportChange !== undefined) {
-      (instance as any).onViewportChange = props.onViewportChange;
-    }
-    if (props.onToggle !== undefined) {
-      (instance as any).onToggle = props.onToggle;
-    }
-    if (props.onExpandedChange !== undefined) {
-      (instance as any).onExpandedChange = props.onExpandedChange;
-    }
-    if (props.onValidate !== undefined) {
-      (instance as any).onValidate = props.onValidate;
-    }
-    if (props.onSubmit !== undefined) {
-      (instance as any).onSubmit = props.onSubmit;
+    for (const handler of KNOWN_HANDLER_PROPS) {
+      if (props[handler] !== undefined) {
+        instance[handler] = props[handler];
+      }
     }
 
-    // Generic prop mapping for any properties defined on the widget instance
+    // Generic prop mapping for any properties defined on the widget instance.
+    // This mirror is dynamic by design (`key in instance` gates it to fields
+    // the concrete widget declares), so it needs an indexed view of the
+    // instance — the one place in the binding where static typing can't reach.
+    const writable: Record<string, any> = instance;
     for (const key of Object.keys(props)) {
       if (
         key === "children" ||
@@ -133,7 +102,7 @@ function applyProps(instance: DOMNode, props: any, oldProps?: any) {
         continue;
       }
       if (key in instance && props[key] !== undefined) {
-        (instance as any)[key] = props[key];
+        writable[key] = props[key];
       }
     }
   }

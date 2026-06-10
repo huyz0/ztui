@@ -9,7 +9,7 @@ import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 export class CheckboxWidget extends Widget {
   public checked = false;
   public label = "";
-  public onChange?: (val: boolean) => void;
+  public declare onChange?: (val: boolean) => void;
 
   /** Validation; the validated value is the boolean `checked` state. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.checked);

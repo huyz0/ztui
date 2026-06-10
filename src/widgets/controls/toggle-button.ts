@@ -9,7 +9,7 @@ import { Style } from "../../render/style.ts";
 export class ToggleButtonWidget extends Widget {
   public active = false;
   public label = "";
-  public onChange?: (active: boolean) => void;
+  public declare onChange?: (active: boolean) => void;
 
   constructor() {
     super("toggle-button");

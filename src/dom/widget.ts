@@ -83,6 +83,24 @@ export class Widget extends DOMNode {
   public onMouseEnter?: (ev: any) => void;
   public onMouseLeave?: (ev: any) => void;
 
+  // Reconciler-managed handlers, typed as the universal function supertype so
+  // the React binding can assign them without casts; subclasses redeclare them
+  // with their precise signatures (contravariance makes any concrete signature
+  // assignable to `(...args: never[]) => void`). `declare` keeps these purely
+  // type-level: no instance field is emitted, so subclass fields and accessors
+  // (e.g. InputWidget's `set onValidate`) are not shadowed at runtime. The base
+  // class never invokes these — only subclasses that narrow the type do.
+  public declare onAction?: (...args: never[]) => void;
+  public declare onChange?: (...args: never[]) => void;
+  public declare onSelect?: (...args: never[]) => void;
+  public declare onActivate?: (...args: never[]) => void;
+  public declare onSortChange?: (...args: never[]) => void;
+  public declare onViewportChange?: (...args: never[]) => void;
+  public declare onToggle?: (...args: never[]) => void;
+  public declare onExpandedChange?: (...args: never[]) => void;
+  public declare onValidate?: (...args: never[]) => void;
+  public declare onSubmit?: (...args: never[]) => void;
+
   public handleScroll(ev: MouseEvent): void {
     if (this.onScroll) {
       this.onScroll(ev);

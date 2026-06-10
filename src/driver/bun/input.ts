@@ -240,12 +240,23 @@ export function parseInput(
     }
     // Standard character input
     else {
+      // Astral characters (emoji, CJK extensions, …) arrive as a UTF-16
+      // surrogate pair. Emit them as a single key event rather than two broken
+      // halves by consuming the trailing low surrogate.
+      let glyph = char;
+      if (code >= 0xd800 && code <= 0xdbff && i + 1 < data.length) {
+        const next = data.charCodeAt(i + 1);
+        if (next >= 0xdc00 && next <= 0xdfff) {
+          glyph = char + data[i + 1];
+          i++;
+        }
+      }
       onKey({
-        key: char,
-        name: char,
+        key: glyph,
+        name: glyph,
         ctrl: false,
         meta: false,
-        shift: char === char.toUpperCase() && char !== char.toLowerCase(),
+        shift: glyph === glyph.toUpperCase() && glyph !== glyph.toLowerCase(),
       });
     }
 

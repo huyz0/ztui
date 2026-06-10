@@ -9,7 +9,7 @@ import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 export class SwitchWidget extends Widget {
   public active = false;
   public label = "";
-  public onChange?: (val: boolean) => void;
+  public declare onChange?: (val: boolean) => void;
 
   /** Validation; the validated value is the boolean `active` state. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.active);

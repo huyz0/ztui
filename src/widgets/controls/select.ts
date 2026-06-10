@@ -145,7 +145,7 @@ export class SelectWidget extends Widget {
   public options: (string | SelectOption)[] = [];
   public value: string | string[] = "";
   public multiple = false;
-  public onChange?: (val: any) => void;
+  public declare onChange?: (val: any) => void;
   public placeholder = "Select...";
 
   public isOpen = false;

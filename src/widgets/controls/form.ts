@@ -30,8 +30,8 @@ export class FormWidget extends BoxWidget {
   /** Duck-typed marker so a Button can find its form without importing it. */
   public readonly isForm = true;
   public messageMode: FormMessageMode = "auto";
-  public onSubmit?: (values: Record<string, unknown>) => void;
-  public onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
+  public declare onSubmit?: (values: Record<string, unknown>) => void;
+  public declare onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
 
   constructor() {
     super();

@@ -87,7 +87,7 @@ export function parsePartialJson(jsonStr: string): any {
 }
 
 export class JSONUIWidget extends Widget {
-  public onAction?: (actionName: string, eventData: any) => void;
+  public declare onAction?: (actionName: string, eventData: any) => void;
 
   private textNode: TextNode | null = null;
   private lastRawJson = "";

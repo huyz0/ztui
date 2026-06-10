@@ -15,7 +15,7 @@ export class RadioGroupWidget extends Widget {
   public options: (string | RadioOption)[] = [];
   public value = "";
   public orientation: "horizontal" | "vertical" = "vertical";
-  public onChange?: (val: string) => void;
+  public declare onChange?: (val: string) => void;
 
   public hoveredIndex = 0;
 

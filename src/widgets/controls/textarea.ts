@@ -29,7 +29,7 @@ export class TextAreaWidget extends Widget {
       this.cursorCol = Math.min(this.cursorCol, [...newLines[this.cursorRow]].length);
     }
   }
-  public onChange?: (val: string) => void;
+  public declare onChange?: (val: string) => void;
   public placeholder = "";
   public lineNumbers = true;
   public language = "text";
@@ -164,7 +164,7 @@ export class TextAreaWidget extends Widget {
       lines[this.cursorRow] = chars.join("");
       this.cursorCol += 2;
       this._value = lines.join("\n");
-    } else if (ev.key && ev.key.length === 1) {
+    } else if (ev.key && [...ev.key].length === 1) {
       const chars = [...lines[this.cursorRow]];
       chars.splice(this.cursorCol, 0, ev.key);
       lines[this.cursorRow] = chars.join("");

@@ -107,7 +107,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
       }
     }
   }
-  public onAction?: (actionName: string, eventData: any) => void;
+  public declare onAction?: (actionName: string, eventData: any) => void;
 
   private textNode: TextNode | null = null;
   private lastRawMarkdown = "";

@@ -16,7 +16,7 @@ export interface TabMetric {
 export class TabContainerWidget extends Widget {
   public activeIndex = 0;
   public hoveredIndex = 0;
-  public onChange?: (index: number) => void;
+  public declare onChange?: (index: number) => void;
   private tabMetrics: TabMetric[] = [];
 
   constructor() {

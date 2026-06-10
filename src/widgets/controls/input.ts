@@ -4,7 +4,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
-import { FieldValidation, type ValidatableField } from "./validation.ts";
+import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
 
 export class InputWidget extends Widget implements ValidatableField {
   private _value = "";
@@ -21,7 +21,7 @@ export class InputWidget extends Widget implements ValidatableField {
     }
   }
 
-  public onChange?: (val: string) => void;
+  public declare onChange?: (val: string) => void;
   public placeholder = "";
 
   // Input Type, Icons, & Validation
@@ -56,9 +56,12 @@ export class InputWidget extends Widget implements ValidatableField {
   public set validateOn(v: typeof this.validation.validateOn) {
     this.validation.validateOn = v;
   }
-  public set onValidate(fn: typeof this.validation.onValidate) {
-    this.validation.onValidate = fn;
-  }
+  /**
+   * Forwards to {@link FieldValidation.onValidate}. Installed as an instance
+   * accessor in the constructor (mirroring `attachFieldValidation`) because a
+   * class accessor cannot override the base `Widget` handler declaration.
+   */
+  public declare onValidate?: (result: ValidationResult) => void;
 
   private cursorCol = 0;
   private scrollX = 0;
@@ -71,6 +74,14 @@ export class InputWidget extends Widget implements ValidatableField {
     super("input");
     this.focusable = true;
     this.defaultStyle = { height: 3 };
+
+    Object.defineProperty(this, "onValidate", {
+      get: () => this.validation.onValidate,
+      set: (fn: typeof this.validation.onValidate) => {
+        this.validation.onValidate = fn;
+      },
+      enumerable: true,
+    });
 
     this.onKey = (ev) => {
       this.handleInputKey(ev);
@@ -139,7 +150,7 @@ export class InputWidget extends Widget implements ValidatableField {
       }
     } else if (keyName === "enter" || keyName === "tab") {
       // ignore control keys
-    } else if (ev.key && ev.key.length === 1) {
+    } else if (ev.key && [...ev.key].length === 1) {
       chars.splice(this.cursorCol, 0, ev.key);
       this._value = chars.join("");
       this.cursorCol++;
