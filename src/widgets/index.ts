@@ -9,6 +9,7 @@ import { RadioGroupWidget } from "./controls/radio-group.ts";
 import { SelectWidget } from "./controls/select.ts";
 import { SliderWidget } from "./controls/slider.ts";
 import { SpinnerWidget } from "./controls/spinner.ts";
+import { StatusBadgeWidget, StatusDotWidget, StatusListWidget } from "./controls/status.ts";
 import { SwitchWidget } from "./controls/switch.ts";
 import { TextAreaWidget } from "./controls/textarea.ts";
 import { ToggleButtonWidget } from "./controls/toggle-button.ts";
@@ -46,6 +47,15 @@ export { RadioGroupWidget } from "./controls/radio-group.ts";
 export { SelectWidget } from "./controls/select.ts";
 export { SliderWidget } from "./controls/slider.ts";
 export { type SpinnerMode, SpinnerWidget } from "./controls/spinner.ts";
+export {
+  type GlyphSet,
+  StatusBadgeWidget,
+  StatusDotWidget,
+  type StatusListItem,
+  StatusListWidget,
+  type StatusState,
+  statusGlyph,
+} from "./controls/status.ts";
 export { SwitchWidget } from "./controls/switch.ts";
 export { TextAreaWidget } from "./controls/textarea.ts";
 export { ToggleButtonWidget } from "./controls/toggle-button.ts";
@@ -112,6 +122,9 @@ registerElement("ztui-switch", () => new SwitchWidget());
 registerElement("ztui-slider", () => new SliderWidget());
 registerElement("ztui-progress-bar", () => new ProgressBarWidget());
 registerElement("ztui-spinner", () => new SpinnerWidget());
+registerElement("ztui-status-dot", () => new StatusDotWidget());
+registerElement("ztui-status-badge", () => new StatusBadgeWidget());
+registerElement("ztui-status-list", () => new StatusListWidget());
 registerElement("ztui-waiting-grid", () => new WaitingGridWidget());
 registerElement("ztui-waiting-panel", () => new WaitingPanelWidget());
 registerElement("ztui-toggle-button", () => new ToggleButtonWidget());

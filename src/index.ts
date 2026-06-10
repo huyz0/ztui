@@ -71,6 +71,14 @@ export {
   Spinner,
   type SpinnerMode,
   type SpinnerProps,
+  StatusBadge,
+  type StatusBadgeProps,
+  StatusDot,
+  type StatusDotProps,
+  StatusList,
+  type StatusListItem,
+  type StatusListProps,
+  type StatusState,
   SvgImage,
   type SvgImageProps,
   Switch,
@@ -123,6 +131,15 @@ export {
   type SpinnerMode as SpinnerWidgetMode,
   SpinnerWidget,
 } from "./widgets/controls/spinner.ts";
+export {
+  type GlyphSet,
+  StatusBadgeWidget,
+  StatusDotWidget,
+  type StatusListItem as StatusListWidgetItem,
+  StatusListWidget,
+  type StatusState as StatusStateValue,
+  statusGlyph,
+} from "./widgets/controls/status.ts";
 export { SwitchWidget } from "./widgets/controls/switch.ts";
 export { TextAreaWidget } from "./widgets/controls/textarea.ts";
 export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";

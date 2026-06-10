@@ -25,6 +25,15 @@ export type { SliderProps } from "./components/controls/slider.tsx";
 export { Slider } from "./components/controls/slider.tsx";
 export type { SpinnerMode, SpinnerProps } from "./components/controls/spinner.tsx";
 export { Spinner } from "./components/controls/spinner.tsx";
+export type {
+  GlyphSet,
+  StatusBadgeProps,
+  StatusDotProps,
+  StatusListItem,
+  StatusListProps,
+  StatusState,
+} from "./components/controls/status.tsx";
+export { StatusBadge, StatusDot, StatusList } from "./components/controls/status.tsx";
 export type { SwitchProps } from "./components/controls/switch.tsx";
 export { Switch } from "./components/controls/switch.tsx";
 export type { TextAreaProps } from "./components/controls/textarea.tsx";
