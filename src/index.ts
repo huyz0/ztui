@@ -1,5 +1,17 @@
 // Core & DOM
 export { App } from "./core/app.ts";
+export {
+  eventToKey,
+  formatKeyLabel,
+  type Hotkey,
+  type HotkeyGroup,
+  type HotkeyOptions,
+  HotkeyRegistry,
+  hotkeys,
+  isPriorityKey,
+  matchesFilter,
+  normalizeKey,
+} from "./core/hotkeys.ts";
 export { startInspector } from "./core/inspector.ts";
 export { type LogLevel, logger } from "./core/logger.ts";
 export type { Theme } from "./core/theme.ts";
@@ -54,6 +66,8 @@ export {
   HeroIcon,
   type HeroIconProps,
   type HeroIconVariant,
+  HotkeyPalette,
+  type HotkeyPaletteProps,
   Icon,
   type IconProps,
   Image,
@@ -116,6 +130,7 @@ export {
   type ToggleButtonProps,
   Tree,
   type TreeProps,
+  useHotkey,
   useToast,
   ValidationSummary,
   type ValidationSummaryProps,

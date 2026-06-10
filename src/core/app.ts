@@ -13,6 +13,7 @@ import { DockLayout } from "../layout/dock-layout.ts";
 import { GridLayout } from "../layout/grid-layout.ts";
 import { parseDimension } from "../layout/layout.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
+import { HotkeyRegistry } from "./hotkeys.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
 import { logger } from "./logger.ts";
 import { ReadonlySelectionManager } from "./selection.ts";
@@ -50,6 +51,12 @@ export class App extends DOMNode {
    * widgets manage their own selection separately.
    */
   public readonly selection = new ReadonlySelectionManager();
+  /**
+   * Global hotkey registry: named, grouped, context-scoped shortcuts. Priority
+   * (modified) keys dispatch before the focused widget; bare keys after the
+   * focus chain declined them — see the key handler in {@link run}.
+   */
+  public readonly hotkeys = HotkeyRegistry.getInstance();
   private inspectorServer: InspectorServer | null = null;
   private resizeTimeout: ReturnType<typeof setTimeout> | null = null;
   private frameCount = 0;
@@ -206,6 +213,15 @@ export class App extends DOMNode {
         if (layer.modal) break;
       }
 
+      // Global hotkeys, priority phase: modified keys (Ctrl/Alt/F-keys) can't be
+      // ordinary typing, so they dispatch before the focused widget. Layer
+      // interceptors above keep precedence (a dialog's nav keys win), but a
+      // modal does NOT block hotkeys — the palette toggle must work everywhere.
+      if (this.hotkeys.dispatch(ev, "priority")) {
+        this.queueRender();
+        return;
+      }
+
       if (ev.key === "escape" || ev.name === "escape") {
         // Escape first deselects (standard editor behavior — the selection
         // survives Ctrl+C copies until explicitly dismissed), so quitting after
@@ -262,6 +278,14 @@ export class App extends DOMNode {
       }
       if (handledBy) {
         log(`Key "${ev.key}" handled by ${handledBy.describe()}`);
+        this.queueRender();
+        return;
+      }
+
+      // Global hotkeys, fallback phase: bare keys ("?", "g", enter…) only fire
+      // once the focus chain declined the event, so hotkeys never eat typing.
+      if (this.hotkeys.dispatch(ev, "fallback")) {
+        log(`Key "${ev.key}" handled by global hotkey`);
         this.queueRender();
         return;
       }

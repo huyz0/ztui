@@ -87,6 +87,8 @@ export type { SvgImageProps } from "./components/media/svg-image.tsx";
 export { SvgImage } from "./components/media/svg-image.tsx";
 export type { DialogProps } from "./components/overlay/dialog.tsx";
 export { Dialog } from "./components/overlay/dialog.tsx";
+export type { HotkeyPaletteProps } from "./components/overlay/hotkey-palette.tsx";
+export { HotkeyPalette, useHotkey } from "./components/overlay/hotkey-palette.tsx";
 export type { StickyPanelProps } from "./components/overlay/sticky-panel.tsx";
 export { StickyPanel } from "./components/overlay/sticky-panel.tsx";
 export type {

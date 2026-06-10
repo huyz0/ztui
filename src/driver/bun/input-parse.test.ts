@@ -160,3 +160,24 @@ describe("parseInput — modified arrows / navigation", () => {
     expect(firstKey("\x1b[3;2~")?.name).toBe("delete");
   });
 });
+
+describe("Ctrl+Space", () => {
+  test("legacy NUL byte decodes as ctrl+space", () => {
+    const ev = firstKey("\x00");
+    expect(ev?.key).toBe("ctrl+space");
+    expect(ev?.name).toBe("space");
+    expect(ev?.ctrl).toBe(true);
+  });
+
+  test("Kitty CSI u space with ctrl decodes as ctrl+space", () => {
+    const ev = firstKey("\x1b[32;5u");
+    expect(ev?.name).toBe("space");
+    expect(ev?.ctrl).toBe(true);
+  });
+
+  test("a plain space stays a literal character", () => {
+    const ev = firstKey(" ");
+    expect(ev?.key).toBe(" ");
+    expect(ev?.ctrl).toBe(false);
+  });
+});

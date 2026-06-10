@@ -43,7 +43,11 @@ export function parseInput(
             57385: "end",
           };
 
-          if (keyMap[keycode] !== undefined) {
+          // Space is only named "space" when modified (Ctrl+Space etc.); a plain
+          // space stays the literal character so text input keeps working.
+          if (keycode === 32 && (ctrl || meta)) {
+            keyName = "space";
+          } else if (keyMap[keycode] !== undefined) {
             keyName = keyMap[keycode];
           } else if (keycode >= 32 && keycode <= 126) {
             keyName = String.fromCharCode(keycode);
@@ -253,8 +257,12 @@ export function parseInput(
     const char = data[i];
     const code = char.charCodeAt(0);
 
+    // Ctrl+Space arrives as NUL on terminals without the Kitty protocol.
+    if (code === 0) {
+      onKey({ key: "ctrl+space", name: "space", ctrl: true, meta: false, shift: false });
+    }
     // Backspace
-    if (code === 127 || code === 8) {
+    else if (code === 127 || code === 8) {
       onKey({
         key: "backspace",
         name: "backspace",
