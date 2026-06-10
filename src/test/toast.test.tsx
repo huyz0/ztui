@@ -58,19 +58,40 @@ describe("ToastHost", () => {
     expect(t.screen.layers.length).toBe(0);
   });
 
-  test("clicking a toast dismisses it", async () => {
+  test("clicking the ✕ dismisses the toast", async () => {
     const t = await mountApp(<ToastHost position="top-right" />);
     toast.error("Failed");
     await t.settle();
     expect(t.screen.layers.length).toBe(1);
 
-    // Click inside the toast box (its region lives in the overlay subtree).
-    const box = t.screen.layers[0].root.children[0].children[0] as Widget;
-    const r = box.region;
-    t.driver.simulateMouse(r.x + 1, r.y + 1, "press", "left");
+    // root → corner VBox → toast Box → HBox → [icon, content, close]
+    const hbox = t.screen.layers[0].root.children[0].children[0].children[0] as Widget;
+    const close = hbox.children[hbox.children.length - 1] as Widget;
+    const r = close.region;
+    t.driver.simulateMouse(r.x, r.y, "press", "left");
     await t.settle();
 
     expect(t.screen.layers.length).toBe(0);
+  });
+
+  test("the 'clear all' link clears every toast", async () => {
+    const t = await mountApp(<ToastHost position="top-right" />);
+    toast.info("one", { duration: 0 });
+    toast.warn("two", { duration: 0 });
+    await t.settle();
+    expect(t.text()).toContain("clear all");
+
+    // Footer row is the last child of the corner VBox (top position); the
+    // "clear all" link is the last child within it.
+    const stack = t.screen.layers[0].root.children[0] as Widget;
+    const footer = stack.children[stack.children.length - 1] as Widget;
+    const link = footer.children[footer.children.length - 1] as Widget;
+    const r = link.region;
+    t.driver.simulateMouse(r.right - 1, r.y, "press", "left");
+    await t.settle();
+
+    expect(t.screen.layers.length).toBe(0);
+    expect(ToastManager.getInstance().getToasts()).toHaveLength(0);
   });
 
   test("auto-dismisses a timed toast", async () => {

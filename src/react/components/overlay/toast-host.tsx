@@ -30,6 +30,9 @@ const GLYPHS: Record<ToastGlyphSet, Record<ToastLevel, string>> = {
   emoji: { info: "ℹ️", success: "✅", warn: "⚠️", error: "❌", generic: "🔔" },
 };
 
+/** Close affordance glyph per set. */
+const CLOSE: Record<ToastGlyphSet, string> = { unicode: "✕", ascii: "x", emoji: "✕" };
+
 /** Theme token per level, used for the border and title color. */
 const LEVEL_COLOR: Record<ToastLevel, string> = {
   info: "$primary",
@@ -66,14 +69,14 @@ function ToastItem({
     return () => clearTimeout(handle);
   }, [t.id, t.duration]);
 
+  // Neutral panel background (no border) keeps the stack calm; the level color
+  // lives only in the icon. The icon sits in a fixed 2-cell column so a wide
+  // glyph can't crowd the text, and an ✕ on the top-right dismisses this toast.
   const color = LEVEL_COLOR[t.level];
   return (
     <Box
-      onClick={() => toast.dismiss(t.id)}
       style={{
         width,
-        border: "rounded",
-        borderColor: color,
         background: "$panel",
         color: "$foreground",
         padding: { left: 1, right: 1 },
@@ -81,11 +84,17 @@ function ToastItem({
       }}
     >
       <HBox>
-        <Label style={{ color, bold: true }}>{`${GLYPHS[glyphSet][t.level]} `}</Label>
-        <VBox style={{ flexGrow: 1 }}>
-          {t.title ? <Label style={{ color, bold: true }}>{t.title}</Label> : null}
+        <Label style={{ bold: true, width: 2, color }}>{GLYPHS[glyphSet][t.level]}</Label>
+        <VBox style={{ flexGrow: 1, margin: { left: 1 } }}>
+          {t.title ? <Label style={{ bold: true }}>{t.title}</Label> : null}
           <Label>{t.message}</Label>
         </VBox>
+        <Label
+          onClick={() => toast.dismiss(t.id)}
+          style={{ color: "$placeholder", margin: { left: 1 } }}
+        >
+          {CLOSE[glyphSet]}
+        </Label>
       </HBox>
     </Box>
   );
@@ -135,22 +144,29 @@ export function ToastHost({
   // Newest nearest the anchored edge: prepend for top corners, append for bottom.
   const recent = toasts.slice(toasts.length - max);
   const ordered = isTop(position) ? [...recent].reverse() : recent;
-  const more =
-    overflow > 0 ? (
-      <Label key="more" style={{ dim: true, padding: { left: 1 } }}>
-        {`+${overflow} more`}
-      </Label>
+
+  // One footer row: "+N more" on the left, a "clear all" link on the right.
+  // Shown once there's more than one toast (the only time clearing all helps).
+  const footer =
+    toasts.length > 1 ? (
+      <HBox key="footer" style={{ width }}>
+        {overflow > 0 ? <Label style={{ dim: true }}>{`+${overflow} more`}</Label> : null}
+        <VBox style={{ flexGrow: 1 }} />
+        <Label onClick={() => toast.clear()} style={{ underline: true, color: "$placeholder" }}>
+          {`${CLOSE[glyphSet]} clear all`}
+        </Label>
+      </HBox>
     ) : null;
 
   return createElement(
     "ztui-overlay-root",
     { ref: rootRef },
     <VBox style={cornerStyle(position)}>
-      {isTop(position) ? null : more}
+      {isTop(position) ? null : footer}
       {ordered.map((t) => (
         <ToastItem key={t.id} toast={t} width={width} glyphSet={glyphSet} />
       ))}
-      {isTop(position) ? more : null}
+      {isTop(position) ? footer : null}
     </VBox>,
   );
 }
