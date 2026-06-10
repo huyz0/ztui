@@ -1,5 +1,5 @@
 import type React from "react";
-import type { WidgetStyles } from "../../dom/widget.ts";
+import type { Widget, WidgetStyles } from "../../dom/widget.ts";
 import type {
   ValidateTrigger,
   ValidationResult,
@@ -19,6 +19,12 @@ export interface FieldValidationProps {
 export interface ComponentProps {
   id?: string;
   className?: string;
+  /**
+   * Captures the underlying widget instance (React 19 ref-as-prop). Defaults to
+   * the base `Widget`; narrow it with a cast when you need a subclass field,
+   * e.g. `ref={inputRef as React.Ref<InputWidget>}`.
+   */
+  ref?: React.Ref<Widget>;
   style?: WidgetStyles;
   theme?: string;
   label?: string;

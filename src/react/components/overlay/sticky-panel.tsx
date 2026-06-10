@@ -1,5 +1,6 @@
-import { createElement } from "react";
-import type { WidgetStyles } from "../../../dom/widget.ts";
+import { createElement, type RefObject } from "react";
+import type { OverlayPlacement } from "../../../dom/overlay.ts";
+import type { Widget, WidgetStyles } from "../../../dom/widget.ts";
 import type { KeyEvent } from "../../../driver/driver.ts";
 import { Box } from "../layout/box.tsx";
 import type { ComponentProps } from "../types.ts";
@@ -22,12 +23,30 @@ export interface StickyPanelProps extends ComponentProps {
    * ```
    */
   onKeyIntercept?: (ev: KeyEvent) => void;
-  /** Style overrides for the panel box (position it via `left`/`top`/…). */
+  /**
+   * Anchor the panel to a widget (e.g. the chat input): pass a ref obtained from
+   * that widget. The panel sits flush above or below the anchor — see
+   * {@link placement} — and tracks it as the layout changes. When omitted, the
+   * panel is positioned at the screen offsets in {@link panelStyle}.
+   *
+   * ```tsx
+   * const inputRef = useRef<InputWidget>(null);
+   * <Input ref={inputRef} />
+   * <StickyPanel anchorRef={inputRef} placement="above">…</StickyPanel>
+   * ```
+   */
+  anchorRef?: RefObject<Widget | null>;
+  /** Side of the anchor to prefer (default `auto`: above only if below won't fit). */
+  placement?: OverlayPlacement;
+  /**
+   * Style overrides for the panel box. Set `width` here; when not anchored, also
+   * `left`/`top`/`right`/`bottom` to position it. The panel is always clamped to
+   * stay fully on-screen.
+   */
   panelStyle?: WidgetStyles;
 }
 
 const DEFAULT_PANEL: WidgetStyles = {
-  position: "absolute",
   border: "rounded",
   background: "$panel",
   color: "$foreground",
@@ -44,12 +63,15 @@ const DEFAULT_PANEL: WidgetStyles = {
  * keys move the highlight, and Enter confirms — all while the input stays
  * focused. Clicks outside the panel pass through to whatever is underneath.
  *
- * Anchor it with `panelStyle` (it is absolutely positioned over the screen):
+ * Attach it to the control it relates to with `anchorRef` (recommended), or
+ * place it manually via `panelStyle`:
  *
  * ```tsx
  * <StickyPanel
  *   open={menuOpen}
- *   panelStyle={{ left: 4, bottom: 3, width: 30 }}
+ *   anchorRef={inputRef}
+ *   placement="above"
+ *   panelStyle={{ width: 30 }}
  *   onKeyIntercept={handleMenuKey}
  * >
  *   {commands.map((c) => <Label key={c}>{c}</Label>)}
@@ -59,6 +81,8 @@ const DEFAULT_PANEL: WidgetStyles = {
 export function StickyPanel({
   open = true,
   onKeyIntercept,
+  anchorRef,
+  placement = "auto",
   panelStyle,
   style,
   children,
@@ -73,6 +97,8 @@ export function StickyPanel({
     closeOnEscape: false,
     closeOnOutsideClick: false,
     keyInterceptor: onKeyIntercept,
+    anchorRef,
+    placement,
   });
 
   if (!open) return null;

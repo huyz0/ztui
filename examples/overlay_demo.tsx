@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 // Demonstrates the two overlay flavours:
 //   • Dialog      — a modal that traps focus and closes on Esc / backdrop click.
 //   • StickyPanel — a non-modal slash-command popup that floats above the chat
@@ -16,6 +16,7 @@ import {
   render,
   StickyPanel,
   VBox,
+  type Widget,
 } from "../src/index.ts";
 
 const COMMANDS = ["/help", "/clear", "/model", "/retry", "/exit", "/theme", "/copy"];
@@ -24,6 +25,7 @@ function ChatDemo() {
   const [text, setText] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  const inputRef = useRef<Widget>(null);
 
   // The slash menu is open whenever the input is a bare "/word" token.
   const slashQuery = /(^|\s)\/(\w*)$/.exec(text)?.[2];
@@ -34,7 +36,7 @@ function ChatDemo() {
   );
 
   const insert = (cmd: string) => {
-    setText((t) => t.replace(/\/(\w*)$/, cmd) + " ");
+    setText((t) => `${t.replace(/\/(\w*)$/, cmd)} `);
     setHighlight(0);
   };
 
@@ -54,6 +56,7 @@ function ChatDemo() {
 
       {/* The chat input keeps focus the whole time the slash menu is up. */}
       <Input
+        ref={inputRef}
         id="chat"
         value={text}
         onChange={setText}
@@ -62,9 +65,13 @@ function ChatDemo() {
       />
       <Footer>Tab: focus · Esc: close dialog · ↑/↓ + Enter: pick command</Footer>
 
+      {/* Anchored above the input — placement="above" and auto screen-clamping
+          keep it from overlapping the textbox or running off any edge. */}
       <StickyPanel
         open={menuOpen && matches.length > 0}
-        panelStyle={{ left: 2, bottom: 3, width: 36, background: "$panel" }}
+        anchorRef={inputRef}
+        placement="above"
+        panelStyle={{ width: 36, background: "$panel" }}
         onKeyIntercept={(ev) => {
           if (ev.name === "down") {
             setHighlight((h) => Math.min(matches.length - 1, h + 1));

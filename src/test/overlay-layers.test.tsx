@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { describe, expect, test } from "vitest";
+import type { Widget } from "../dom/widget.ts";
 import { Button, Dialog, Input, Label, StickyPanel, VBox } from "../react/components.tsx";
 // Side-effect import: registers the host elements (ztui-button, ztui-overlay-root, …).
 import "../widgets/index.ts";
@@ -182,5 +183,85 @@ describe("StickyPanel", () => {
     t.findById("toggle")?.onClick?.({});
     await t.settle();
     expect(t.screen.layers.length).toBe(0);
+  });
+});
+
+describe("StickyPanel positioning", () => {
+  const panelRegion = (t: Awaited<ReturnType<typeof mountApp>>) =>
+    (t.screen.layers[0].root.children[0] as Widget).region;
+
+  test("anchors flush above its target without overlapping it", async () => {
+    function App() {
+      const ref = useRef<Widget>(null);
+      return (
+        <VBox style={{ layout: "vertical" }}>
+          <VBox style={{ flexGrow: 1 }} />
+          <Input ref={ref} id="chat" style={{ height: 3 }} />
+          <StickyPanel anchorRef={ref} placement="above" panelStyle={{ width: 20 }}>
+            <Label>/help</Label>
+            <Label>/clear</Label>
+          </StickyPanel>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<App />, { cols: 80, rows: 24 });
+    const input = t.findById("chat") as Widget;
+    const panel = panelRegion(t);
+
+    // The panel sits entirely above the input.
+    expect(panel.bottom).toBeLessThanOrEqual(input.region.y);
+    // …and fully within the screen.
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.y).toBeGreaterThanOrEqual(0);
+    expect(panel.right).toBeLessThanOrEqual(80);
+  });
+
+  test("aligns to the anchor's visible box, not its margin edge", async () => {
+    function App() {
+      const ref = useRef<Widget>(null);
+      return (
+        <VBox>
+          <VBox style={{ flexGrow: 1 }} />
+          <Input ref={ref} id="chat" style={{ height: 3, margin: 2 }} />
+          <StickyPanel anchorRef={ref} placement="above" panelStyle={{ width: 20 }}>
+            <Label>/help</Label>
+          </StickyPanel>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<App />, { cols: 80, rows: 24 });
+    const input = t.findById("chat") as Widget;
+    const client = input.getClientRect();
+    const panel = panelRegion(t);
+
+    // Flush with the input's visible box: same left edge, no gap row above it.
+    expect(panel.x).toBe(client.x);
+    expect(panel.bottom).toBe(client.y);
+  });
+
+  test("clamps to the screen instead of being clipped by an edge", async () => {
+    function App() {
+      const ref = useRef<Widget>(null);
+      return (
+        <VBox>
+          {/* Anchor pinned to the very top: 'above' has no room, so the panel
+              must flip/clamp to stay on-screen. */}
+          <Input ref={ref} id="chat" style={{ height: 3 }} />
+          <VBox style={{ flexGrow: 1 }} />
+          <StickyPanel anchorRef={ref} placement="above" panelStyle={{ width: 20 }}>
+            <Label>/help</Label>
+            <Label>/clear</Label>
+          </StickyPanel>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<App />, { cols: 80, rows: 24 });
+    const panel = panelRegion(t);
+    expect(panel.y).toBeGreaterThanOrEqual(0);
+    expect(panel.bottom).toBeLessThanOrEqual(24);
+    expect(panel.right).toBeLessThanOrEqual(80);
   });
 });

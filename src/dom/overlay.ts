@@ -1,9 +1,15 @@
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
+import { parseDimension } from "../layout/layout.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
 import { Widget } from "./widget.ts";
+
+/** Where a sticky panel sits relative to its anchor. */
+export type OverlayPlacement = "above" | "below" | "auto";
+
+const toOffset = (val: number | { fr: number }): number => (typeof val === "number" ? val : 0);
 
 /**
  * The full-screen root that every layer (dialog / sticky panel) is portalled
@@ -14,6 +20,11 @@ import { Widget } from "./widget.ts";
  * below stays visible); only its children draw. A `dim` modal optionally blanks
  * the backdrop, and `passThrough` (sticky panels) lets clicks that miss the
  * panel fall through to the layer below.
+ *
+ * It also owns its single panel child's position (via the app's custom-layout
+ * hook): a modal panel is centered, a sticky panel is placed next to its
+ * {@link anchor} (flipping above/below to fit) or at the screen offsets given by
+ * its style — and in every case the result is clamped to stay fully on-screen.
  */
 export class OverlayRootWidget extends Widget {
   /** Blocks key/mouse fallthrough and traps focus to this layer. */
@@ -27,6 +38,15 @@ export class OverlayRootWidget extends Widget {
    * app's hit-test continues to the layer below (keeping the chatbox clickable).
    */
   public passThrough = false;
+  /**
+   * Sticky panels: the widget the panel attaches to (e.g. the chat input). The
+   * panel is laid edge-to-edge with this widget — directly above or below it —
+   * instead of at fixed screen offsets. Its live `region` is read each layout,
+   * so the panel tracks the anchor as the layout changes.
+   */
+  public anchor: Widget | null = null;
+  /** Preferred side of the {@link anchor} (default `auto`: pick whichever fits). */
+  public placement: OverlayPlacement = "auto";
 
   constructor() {
     super("overlay-root");
@@ -41,23 +61,63 @@ export class OverlayRootWidget extends Widget {
   }
 
   /**
-   * Custom-layout hook (invoked by the app). When centered, position the single
-   * panel child in the middle of the screen using its measured size. Otherwise
-   * return false so the panel is positioned by ordinary absolute layout (a
-   * sticky panel anchors itself via `position: absolute` + `left`/`top`/…).
+   * Custom-layout hook (invoked by the app) that positions the single panel
+   * child. Returns true to take over layout for this node (its subtree is still
+   * laid out afterwards).
    */
   public layoutChildren(): boolean {
-    if (!this.centered) return false;
-    const rect = this.getContentRect();
-    for (const child of this.children) {
-      if (child instanceof Widget && child.visible) {
-        const w = Math.min(child.measuredWidth, rect.width);
-        const h = Math.min(child.measuredHeight, rect.height);
-        const x = rect.x + Math.max(0, Math.floor((rect.width - w) / 2));
-        const y = rect.y + Math.max(0, Math.floor((rect.height - h) / 2));
-        child.region = new Region(new Offset(x, y), new Size(w, h));
+    const child = this.children.find((c): c is Widget => c instanceof Widget && c.visible);
+    if (!child) return true;
+
+    const screen = this.getContentRect();
+    const w = Math.min(child.measuredWidth, screen.width);
+    const h = Math.min(child.measuredHeight, screen.height);
+
+    let x: number;
+    let y: number;
+
+    if (this.centered) {
+      x = screen.x + Math.floor((screen.width - w) / 2);
+      y = screen.y + Math.floor((screen.height - h) / 2);
+    } else if (this.anchor && this.anchor.region.width > 0) {
+      // Sticky panel anchored to a widget: sit flush above or below it. Use the
+      // anchor's client rect (margin excluded) so the panel aligns with the
+      // widget's visible box, not its margin edge — otherwise the anchor's
+      // margin shows up as a gap above/below and a horizontal offset.
+      const a = this.anchor.getClientRect();
+      x = a.x;
+      const spaceAbove = a.y - screen.y;
+      const spaceBelow = screen.bottom - a.bottom;
+      const placeAbove =
+        this.placement === "above"
+          ? true
+          : this.placement === "below"
+            ? false
+            : // auto: prefer below, flip above only when below can't fit but above can
+              spaceBelow < h && spaceAbove > spaceBelow;
+      y = placeAbove ? a.y - h : a.bottom;
+    } else {
+      // Sticky panel at fixed screen offsets from its style (left/top/right/bottom).
+      const s = child.computedStyle;
+      if (s.right !== undefined) {
+        x = screen.right - w - toOffset(parseDimension(s.right, screen.width, 0));
+      } else {
+        const left = s.left !== undefined ? toOffset(parseDimension(s.left, screen.width, 0)) : 0;
+        x = screen.x + left;
+      }
+      if (s.bottom !== undefined) {
+        y = screen.bottom - h - toOffset(parseDimension(s.bottom, screen.height, 0));
+      } else {
+        const top = s.top !== undefined ? toOffset(parseDimension(s.top, screen.height, 0)) : 0;
+        y = screen.y + top;
       }
     }
+
+    // Clamp so the panel is never clipped by a screen edge.
+    x = Math.max(screen.x, Math.min(x, screen.right - w));
+    y = Math.max(screen.y, Math.min(y, screen.bottom - h));
+
+    child.region = new Region(new Offset(x, y), new Size(w, h));
     return true;
   }
 

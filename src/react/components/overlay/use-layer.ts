@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef } from "react";
+import { type RefObject, useLayoutEffect, useRef } from "react";
 import { App } from "../../../core/app.ts";
-import type { OverlayRootWidget } from "../../../dom/overlay.ts";
+import type { OverlayPlacement, OverlayRootWidget } from "../../../dom/overlay.ts";
 import type { ScreenLayer } from "../../../dom/screen.ts";
+import type { Widget } from "../../../dom/widget.ts";
 
 export interface UseLayerOptions {
   open: boolean;
@@ -13,6 +14,14 @@ export interface UseLayerOptions {
   closeOnOutsideClick: boolean;
   onClose?: () => void;
   keyInterceptor?: (ev: import("../../../driver/driver.ts").KeyEvent) => void;
+  /**
+   * Sticky panels: ref to the widget to attach to (its live region drives
+   * placement). A ref — not the widget itself — because the host element's ref
+   * isn't populated until commit, after the render that calls this hook.
+   */
+  anchorRef?: RefObject<Widget | null>;
+  /** Sticky panels: preferred side of the anchor. */
+  placement?: OverlayPlacement;
 }
 
 /**
@@ -45,6 +54,8 @@ export function useLayer(opts: UseLayerOptions) {
     root.centered = centered;
     root.dim = dim;
     root.passThrough = passThrough;
+    // anchor/placement are synced by the dedicated effect below (kept out of this
+    // effect's deps so a changing anchor never re-stacks the layer).
 
     // Lift the element out of the normal tree and into the overlay layer.
     // Callbacks are read through refs so updating them never re-stacks the layer.
@@ -65,6 +76,17 @@ export function useLayer(opts: UseLayerOptions) {
       App.instance?.queueRender();
     };
   }, [open, modal, centered, dim, passThrough, closeOnEscape, closeOnOutsideClick]);
+
+  // Keep the anchor/placement live without re-stacking the layer. Runs after
+  // commit, so the anchor ref is populated; reads it each commit so the panel
+  // tracks a changing anchor target.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (root) {
+      root.anchor = opts.anchorRef?.current ?? null;
+      root.placement = opts.placement ?? "auto";
+    }
+  });
 
   return rootRef;
 }
