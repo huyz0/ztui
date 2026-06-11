@@ -341,6 +341,10 @@ export class Widget extends DOMNode {
     });
     for (const child of sorted) {
       if (child instanceof Widget) {
+        // Skip hidden children here rather than relying on each child's render to
+        // bail: leaf widgets (Label, RichText, …) call super.render() but then
+        // draw their own content unconditionally, so gating must happen here.
+        if (!child.visible) continue;
         if (buffer.currentClip && !buffer.currentClip.intersection(child.region)) {
           continue;
         }

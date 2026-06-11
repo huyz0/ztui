@@ -62,6 +62,8 @@ export {
   Button,
   Checkbox,
   type CheckboxProps,
+  Collapsible,
+  type CollapsibleProps,
   CompactProgressBar,
   type CompactProgressBarProps,
   Dialog,
@@ -228,6 +230,10 @@ export type {
 export { TableCellWidget, TableWidget } from "./widgets/data/table.ts";
 export type { TreeNode } from "./widgets/data/tree.ts";
 export { TreeWidget } from "./widgets/data/tree.ts";
+export {
+  type CollapsibleGlyphSet,
+  CollapsibleWidget,
+} from "./widgets/layout/collapsible.ts";
 export { TabContainerWidget } from "./widgets/layout/tabcontainer.ts";
 export { FileIconWidget } from "./widgets/media/file-icon.ts";
 export { IconWidget } from "./widgets/media/icon.ts";

@@ -71,6 +71,12 @@ declare global {
         "ztui-hbox": ZTUIElementProps;
         "ztui-grid": ZTUIElementProps;
         "ztui-dock": ZTUIElementProps;
+        "ztui-collapsible": ZTUIElementProps & {
+          title: string;
+          open?: boolean;
+          onToggle?: (open: boolean) => void;
+          glyphSet?: "unicode" | "ascii";
+        };
         "ztui-box": ZTUIElementProps;
         "ztui-scrollable-box": ZTUIElementProps;
         "ztui-icon": ZTUIElementProps & {

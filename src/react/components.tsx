@@ -69,6 +69,8 @@ export { Table } from "./components/data/table.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";
 export { Tree } from "./components/data/tree.tsx";
 export { Box } from "./components/layout/box.tsx";
+export type { CollapsibleProps } from "./components/layout/collapsible.tsx";
+export { Collapsible } from "./components/layout/collapsible.tsx";
 export { Dock } from "./components/layout/dock.tsx";
 export { Footer } from "./components/layout/footer.tsx";
 export { Grid } from "./components/layout/grid.tsx";
