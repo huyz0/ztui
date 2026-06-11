@@ -1,0 +1,188 @@
+import {
+  HTML_CELL_HEIGHT,
+  HTML_FONT_FAMILY,
+  HTML_FONT_SIZE,
+  HTML_LINE_HEIGHT,
+  HTML_PADDING,
+} from "../../render/html-renderer.ts";
+import type { KeyEvent, MouseEvent as ZtuiMouseEvent } from "../driver.ts";
+import type { WebDriver } from "./index.ts";
+
+/**
+ * Browser DOM binding for {@link WebDriver}: paints each presented frame as
+ * HTML into a host element and forwards its keyboard/mouse events back through
+ * the driver. The translators below are pure so they can be unit-tested
+ * outside a browser; only {@link attachToDOM} touches the DOM.
+ */
+
+const DOM_KEY_NAMES: Record<string, string> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  Enter: "enter",
+  Escape: "escape",
+  Backspace: "backspace",
+  Delete: "delete",
+  Insert: "insert",
+  Tab: "tab",
+  Home: "home",
+  End: "end",
+  PageUp: "pageup",
+  PageDown: "pagedown",
+};
+
+/**
+ * Map a DOM `KeyboardEvent`-shaped object to a ztui {@link KeyEvent}, matching
+ * the terminal parser's naming (e.g. "pagedown", "enter"; a plain space stays
+ * the literal character so text input keeps working). Returns null for keys
+ * with no terminal equivalent (F-keys, bare modifier presses, etc.).
+ */
+export function translateKeyboardEvent(ev: {
+  key: string;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
+}): KeyEvent | null {
+  const ctrl = !!ev.ctrlKey;
+  const meta = !!ev.metaKey || !!ev.altKey;
+  const shift = !!ev.shiftKey;
+  const named = DOM_KEY_NAMES[ev.key];
+  if (named) return { key: named, name: named, ctrl, meta, shift };
+  if (ev.key === " ") {
+    const name = ctrl || meta ? "space" : " ";
+    return { key: ctrl ? "ctrl+space" : " ", name, ctrl, meta, shift };
+  }
+  // Printable character (single code point; surrogate pairs are length 2).
+  if ([...ev.key].length === 1) {
+    const char = ev.key;
+    const key = ctrl ? `ctrl+${char.toLowerCase()}` : char;
+    return { key, name: ctrl ? char.toLowerCase() : char, ctrl, meta, shift };
+  }
+  return null;
+}
+
+export interface CellMetrics {
+  cellWidth: number;
+  cellHeight: number;
+  /** Host padding in pixels, subtracted before the cell division. */
+  offsetX?: number;
+  offsetY?: number;
+}
+
+/**
+ * Map a DOM mouse event (pixel coordinates relative to the host element) to a
+ * ztui {@link MouseEvent} in cell units.
+ */
+export function translateMouseEvent(
+  ev: { offsetX: number; offsetY: number; button?: number },
+  type: ZtuiMouseEvent["type"],
+  metrics: CellMetrics,
+): ZtuiMouseEvent {
+  const x = Math.floor((ev.offsetX - (metrics.offsetX ?? 0)) / metrics.cellWidth);
+  const y = Math.floor((ev.offsetY - (metrics.offsetY ?? 0)) / metrics.cellHeight);
+  const button =
+    type === "move" || type === "scroll_up" || type === "scroll_down"
+      ? "none"
+      : ev.button === 2
+        ? "right"
+        : ev.button === 1
+          ? "middle"
+          : "left";
+  return { x: Math.max(0, x), y: Math.max(0, y), type, button };
+}
+
+/**
+ * Measure one cell's pixel size by laying out a probe glyph with the exact font
+ * styling {@link renderBufferToHTML} emits, so pixel→cell mapping and grid
+ * sizing stay in lock-step with the rendered output. Browser-only.
+ */
+export function measureCell(): CellMetrics {
+  const probe = document.createElement("span");
+  probe.style.cssText = `font-family: ${HTML_FONT_FAMILY}; font-size: ${HTML_FONT_SIZE}px; line-height: ${HTML_LINE_HEIGHT}; position: absolute; visibility: hidden; white-space: pre;`;
+  probe.textContent = "M".repeat(10); // average out sub-pixel advance over many glyphs
+  document.body.appendChild(probe);
+  const rect = probe.getBoundingClientRect();
+  probe.remove();
+  return {
+    cellWidth: rect.width / 10 || 8,
+    cellHeight: rect.height || HTML_CELL_HEIGHT,
+    offsetX: HTML_PADDING,
+    offsetY: HTML_PADDING,
+  };
+}
+
+export interface AttachOptions {
+  /** Fixed cell pixel size; measured from a probe glyph when omitted. */
+  metrics?: CellMetrics;
+}
+
+/**
+ * Wire a {@link WebDriver} to a DOM element: frames render as HTML inside it,
+ * and its keyboard/mouse/paste events drive the app. Returns a detach
+ * function. Browser-only — requires `document`.
+ */
+export function attachToDOM(
+  driver: WebDriver,
+  host: HTMLElement,
+  opts: AttachOptions = {},
+): () => void {
+  host.tabIndex = host.tabIndex >= 0 ? host.tabIndex : 0; // make focusable for key events
+
+  let metrics = opts.metrics ?? null;
+  const measure = (): CellMetrics => {
+    if (metrics) return metrics;
+    metrics = measureCell();
+    return metrics;
+  };
+
+  driver.onFrame = () => {
+    host.innerHTML = driver.toHTML();
+  };
+
+  const onKeyDown = (ev: KeyboardEvent) => {
+    const key = translateKeyboardEvent(ev);
+    if (!key) return;
+    ev.preventDefault();
+    driver.dispatchKey(key);
+  };
+  const mouse = (type: ZtuiMouseEvent["type"]) => (ev: MouseEvent) => {
+    driver.dispatchMouse(translateMouseEvent(ev, type, measure()));
+  };
+  const onMouseDown = mouse("press");
+  const onMouseUp = mouse("release");
+  const onMouseMove = (ev: MouseEvent) => {
+    mouse(ev.buttons ? "drag" : "move")(ev);
+  };
+  const onWheel = (ev: WheelEvent) => {
+    driver.dispatchMouse(
+      translateMouseEvent(ev, ev.deltaY < 0 ? "scroll_up" : "scroll_down", measure()),
+    );
+    ev.preventDefault();
+  };
+  const onPaste = (ev: ClipboardEvent) => {
+    const text = ev.clipboardData?.getData("text");
+    if (text) {
+      driver.dispatchPaste(text);
+      ev.preventDefault();
+    }
+  };
+
+  host.addEventListener("keydown", onKeyDown);
+  host.addEventListener("mousedown", onMouseDown);
+  host.addEventListener("mouseup", onMouseUp);
+  host.addEventListener("mousemove", onMouseMove);
+  host.addEventListener("wheel", onWheel, { passive: false });
+  host.addEventListener("paste", onPaste);
+
+  return () => {
+    driver.onFrame = undefined;
+    host.removeEventListener("keydown", onKeyDown);
+    host.removeEventListener("mousedown", onMouseDown);
+    host.removeEventListener("mouseup", onMouseUp);
+    host.removeEventListener("mousemove", onMouseMove);
+    host.removeEventListener("wheel", onWheel);
+    host.removeEventListener("paste", onPaste);
+  };
+}

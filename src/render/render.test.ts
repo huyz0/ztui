@@ -270,4 +270,47 @@ describe("rendering system", () => {
     const html2 = renderBufferToHTML(buffer2);
     expect(html2.includes("text-decoration: underline line-through")).toBe(true);
   });
+
+  test("HTML renders block rows in stacked background+text layers, sized by line height", () => {
+    const buffer = new ScreenBuffer(10, 3);
+    buffer.drawSegment(0, 0, new Segment("abc"));
+    buffer.drawSegment(0, 1, new Segment("def"));
+    const html = renderBufferToHTML(buffer);
+    // Two layers (bg behind, text in front) each emit one block per row. Rows
+    // carry no explicit height — the line box sizes them — and there are no
+    // newline-separated lines.
+    const rowBlocks = html.match(/<div style="white-space: pre;">/g);
+    expect(rowBlocks?.length).toBe(3 * 2); // rows carry no explicit height
+    expect(html).toContain("position: absolute"); // background layer
+    expect(html).toContain("position: relative"); // foreground text layer
+    expect(html).not.toContain("\n");
+  });
+
+  test("HTML draws cell backgrounds behind text so descenders aren't clipped", () => {
+    const buffer = new ScreenBuffer(6, 1);
+    buffer.drawSegment(0, 0, new Segment("hi", new Style({ background: "blue" })));
+    const html = renderBufferToHTML(buffer);
+    // The fill lives in the absolutely-positioned layer as a spacer span...
+    const bgLayer = html.slice(
+      html.indexOf("position: absolute"),
+      html.lastIndexOf("position: relative"),
+    );
+    expect(bgLayer).toContain("background-color: #bd93f9");
+    // ...while the text run itself carries no background (so it sits above fills).
+    expect(html).toContain("<span>hi</span>");
+  });
+
+  test("HTML renders cells as plain glyphs (no per-cell inline-block)", () => {
+    const buffer = new ScreenBuffer(6, 1);
+    buffer.setCell(0, 0, "█", new Style({ color: "white" }));
+    buffer.setCell(1, 0, "╭", new Style({ color: "blue" }));
+    const html = renderBufferToHTML(buffer);
+    // Box/block glyphs are written as literal text, not inline-block fill/scale spans.
+    expect(html).toContain("line-height: 1.2"); // the grid's line box
+    expect(html).not.toContain("inline-block");
+    expect(html).not.toContain("scaleY");
+    const fg = html.slice(html.lastIndexOf("position: relative"));
+    expect(fg).toContain("█");
+    expect(fg).toContain("╭");
+  });
 });

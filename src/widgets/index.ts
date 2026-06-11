@@ -17,6 +17,7 @@ import { ToggleButtonWidget } from "./controls/toggle-button.ts";
 import { ValidationSummaryWidget } from "./controls/validation-summary.ts";
 import { WaitingGridWidget } from "./controls/waiting-grid.ts";
 import { WaitingPanelWidget } from "./controls/waiting-panel.ts";
+import { ListViewWidget } from "./data/list-view.ts";
 import { TableCellWidget, TableWidget } from "./data/table.ts";
 import { TreeWidget } from "./data/tree.ts";
 import { BoxWidget, ScrollableBoxWidget } from "./layout/box.ts";
@@ -68,6 +69,8 @@ export {
   WaitingGridWidget,
 } from "./controls/waiting-grid.ts";
 export { type WaitingPanelVariant, WaitingPanelWidget } from "./controls/waiting-panel.ts";
+export type { ListItem } from "./data/list-view.ts";
+export { ListViewWidget } from "./data/list-view.ts";
 export type { SortDirection, SortState, TableColumn, TableTextStyle } from "./data/table.ts";
 export { TableCellWidget, TableWidget } from "./data/table.ts";
 export type { TreeNode } from "./data/tree.ts";
@@ -117,6 +120,7 @@ registerElement("ztui-markdown", () => new MarkdownWidget());
 registerElement("ztui-jsonui", () => new JSONUIWidget());
 registerElement("ztui-mermaid", () => new MermaidWidget());
 registerElement("mermaid", () => new MermaidWidget());
+registerElement("ztui-listview", () => new ListViewWidget());
 registerElement("ztui-select", () => new SelectWidget());
 registerElement("ztui-radio-group", () => new RadioGroupWidget());
 registerElement("ztui-checkbox", () => new CheckboxWidget());

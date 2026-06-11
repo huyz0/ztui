@@ -219,7 +219,9 @@ export class TabContainerWidget extends Widget {
           color: primaryColor,
           background: isSelected ? bg : resolvedInactiveBg,
           bold: true,
-          underline: true,
+          // Underline is a hover hint for the *focusable* (inactive) tabs only;
+          // the active tab reads as selected via its lighter background + bold.
+          underline: !isSelected,
         });
       } else if (isSelected) {
         tabStyle = new Style({

@@ -422,9 +422,10 @@ describe("BunDriver Capability Probing", () => {
   });
 
   test("WebDriver basic implementation coverage", async () => {
-    const webDriver = new WebDriver(100, 30);
-    expect(webDriver.getSize().width).toBe(100);
-    expect(webDriver.getSize().height).toBe(30);
+    // Browser windows have no TTY floor, so WebDriver holds a 150x42 minimum.
+    const webDriver = new WebDriver(200, 60);
+    expect(webDriver.getSize().width).toBe(200);
+    expect(webDriver.getSize().height).toBe(60);
 
     let capsResolved = false;
     webDriver.on("capabilities_resolved", () => {

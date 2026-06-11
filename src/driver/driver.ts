@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { Size } from "../geometry/size.ts";
+import type { ScreenBuffer } from "../render/buffer.ts";
 import { iconRegistry } from "../render/icon-registry.ts";
 
 export interface KeyEvent {
@@ -90,6 +91,13 @@ export abstract class Driver extends EventEmitter {
   public getGraphicClearSequence(): string {
     return "";
   }
+  /**
+   * Hand the composed cell grid to the backend after each changed frame. The
+   * portable alternative to consuming the ANSI diff: non-terminal backends
+   * (web DOM/canvas) override this and may ignore `write`/`writeFrame`
+   * entirely. The buffer is the live frame — consume it synchronously or copy.
+   */
+  public presentBuffer(_buffer: ScreenBuffer): void {}
   public writeFrame(data: string): void {
     if (this.capabilities.synchronizedUpdates) {
       this.write(`\x1b[?2026h${data}\x1b[?2026l`);

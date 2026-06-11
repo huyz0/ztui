@@ -1,0 +1,57 @@
+import { useState } from "react";
+import type { Widget } from "../src/dom/widget.ts";
+import { App, Dock, Footer, Header, type ListItem, ListView, render } from "../src/index.ts";
+
+// A mixed list with icons, dimmed detail text, disabled rows, and thousands of
+// generated entries to show virtualization + scrolling.
+const items: ListItem[] = [
+  { id: "inbox", label: "Inbox", icon: "📥", detail: "12 unread" },
+  { id: "drafts", label: "Drafts", icon: "📝", detail: "3" },
+  { id: "sent", label: "Sent", icon: "📤" },
+  { id: "archive", label: "Archive (read-only)", icon: "🗄️", disabled: true },
+  { id: "trash", label: "Trash", icon: "🗑️" },
+  ...Array.from({ length: 5000 }, (_, i) => ({
+    id: `msg/${i}`,
+    label: `Message ${String(i).padStart(4, "0")}`,
+    icon: "✉️",
+    detail: `thread-${i % 37}`,
+  })),
+];
+
+function ListViewDemo() {
+  const [selected, setSelected] = useState<string>("");
+  const [opened, setOpened] = useState<string>("");
+
+  return (
+    <Dock style={{ background: "#11111b" }}>
+      <Header>📋 ZTUI ListView — flat selection list (virtualized, 5000+ rows)</Header>
+      <Footer>
+        ↑/↓ move · PgUp/PgDn jump · Enter/dbl-click open · Ctrl+C quit ·{" "}
+        {selected ? `sel: ${selected}` : "—"}
+        {opened ? ` · opened: ${opened}` : ""}
+      </Footer>
+
+      <ListView
+        style={{ padding: 1 }}
+        items={items}
+        onSelect={(item) => setSelected(item.id)}
+        onActivate={(item) => setOpened(item.id)}
+      />
+    </Dock>
+  );
+}
+
+const app = new App();
+render(<ListViewDemo />, app.activeScreen);
+app.run();
+
+// Auto-focus the list so the keyboard drives it without a Tab first.
+const focusList = () => {
+  let list: Widget | null = null;
+  app.activeScreen.walk((node) => {
+    if ((node as Widget).tagName === "listview") list = node as Widget;
+  });
+  if (list) app.activeScreen.focusWidget(list);
+  else setTimeout(focusList, 10);
+};
+focusList();

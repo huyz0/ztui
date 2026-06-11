@@ -197,7 +197,30 @@ bun run demo:protocols
 
 # Run the interactive Heroicons collection explorer
 bun run demo:heroicons
+
+# Run the virtualized flat list (5000+ rows)
+bun run demo:list
+
+# Run the app in a browser via the WebDriver backend (http://localhost:3010)
+# A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
+# file icons, and rich markdown — all the same widgets the terminal renders.
+bun run demo:web
+
+# Headless-debug the web backend: screenshot + pixel-accurate grid report
+bun run web:debug                       # screenshots examples/web_demo_ui
+bun run web:debug --module ./my-ui.tsx  # any module default-exporting a UI
 ```
+
+The web backend renders the same widget tree to a browser instead of a terminal.
+The `WebDriver` hands each composed cell grid to a **hardware-accelerated
+`<canvas>`** (`renderBufferToCanvas`): backgrounds and block elements are drawn as
+rectangles and **box-drawing as vector strokes**, so borders and rounded corners
+are pixel-perfect and there's no line-box/line-height to fight. The bundled
+**Cascadia Mono** webfont (MIT) supplies the glyphs and the **Seti** icon font the
+file-type glyphs. (`renderBufferToHTML` remains for the REST inspector and tests.)
+`web:debug` drives the page in headless Chromium via Playwright (the
+`WebInspector` harness), so any coding agent can *see* and verify the web UI —
+screenshots plus a canvas/cell-metrics report — with no human at a browser.
 
 ---
 
@@ -211,4 +234,4 @@ bun run demo:heroicons
   ```bash
   bun run test
   ```
-  *Current overall code coverage stands above **95% Statement coverage**.*
+  *Current overall coverage is around **90% statement / 92% line coverage** (see `bun run test` output for the live number).*

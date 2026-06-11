@@ -29,6 +29,9 @@
     "demo:overlay": "bun run examples/overlay_demo.tsx",
     "demo:qa": "bun run examples/questionanswer_demo.tsx",
     "demo:hotkeys": "bun run examples/hotkeys_demo.tsx",
+    "demo:list": "bun run examples/listview_demo.tsx",
+    "demo:web": "bun run examples/web_demo.tsx",
+    "web:debug": "bun run scripts/web-debug.ts",
     "test": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "lint": "biome check .",
@@ -62,6 +65,7 @@
     "@types/react-reconciler": "0.33.0",
     "@vitest/coverage-v8": "4.1.7",
     "@xterm/headless": "^6.0.0",
+    "playwright": "^1.60.0",
     "vitest": "4.1.7"
   }
 }

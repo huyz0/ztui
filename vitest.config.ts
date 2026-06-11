@@ -19,6 +19,12 @@ export default defineConfig({
         "src/utils/sharp-render-sync.ts",
         "src/widgets/text/mermaid.ts",
         "src/react/components/text/mermaid.tsx",
+        // Browser-/bundler-only web code, verified via Playwright (bun run web:debug)
+        // rather than the unit runner.
+        "src/driver/web/web-inspector.ts",
+        "src/driver/web/canvas-bundle.ts",
+        "src/driver/web/canvas-client.ts",
+        "src/driver/web/dom.ts",
       ],
       thresholds: {
         lines: 90,

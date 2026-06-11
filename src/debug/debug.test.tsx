@@ -14,6 +14,7 @@ import {
   MockDriver,
   render,
   renderBufferToHTML,
+  renderBufferToText,
   VBox,
   View,
 } from "../index.ts";
@@ -205,9 +206,10 @@ describe("first-class isolated debugging", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 15));
 
-    // Verify input is not focused initially (no caret '█' in render)
-    const htmlBefore = renderBufferToHTML((app as any).currentBuffer);
-    expect(htmlBefore.includes("█")).toBe(false);
+    // Verify input is not focused initially (no caret '█' in render). The text
+    // render preserves the literal glyph (the HTML backend draws █ as a CSS fill).
+    const textBefore = renderBufferToText((app as any).currentBuffer);
+    expect(textBefore.includes("█")).toBe(false);
 
     // Click on the input box
     const inp = app.activeScreen.children[0].children[0] as any;
@@ -219,9 +221,9 @@ describe("first-class isolated debugging", () => {
     await new Promise((resolve) => setTimeout(resolve, 15));
 
     // Now it should be focused and show the caret
-    const htmlAfter = renderBufferToHTML((app as any).currentBuffer);
-    expect(htmlAfter.includes("test")).toBe(true);
-    expect(htmlAfter.includes("█")).toBe(true);
+    const textAfter = renderBufferToText((app as any).currentBuffer);
+    expect(textAfter.includes("test")).toBe(true);
+    expect(textAfter.includes("█")).toBe(true);
 
     app.stop();
   });

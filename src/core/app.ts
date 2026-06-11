@@ -554,6 +554,7 @@ export class App extends DOMNode {
     );
     if (ansiDiff) {
       this.driver.writeFrame(ansiDiff);
+      this.driver.presentBuffer(this.currentBuffer);
       this.currentBuffer.copyTo(this.prevBuffer);
       this.frameCount++;
       logger.debug(

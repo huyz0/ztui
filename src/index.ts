@@ -33,6 +33,22 @@ export { BunDriver } from "./driver/bun/index.ts";
 // Drivers
 export { Driver } from "./driver/driver.ts";
 export { MockDriver } from "./driver/mock/index.ts";
+export {
+  type CanvasCell,
+  type CanvasMetrics,
+  type CanvasRenderOptions,
+  measureCellFromBlock,
+  renderBufferToCanvas,
+  serializeForCanvas,
+} from "./driver/web/canvas-renderer.ts";
+export {
+  type AttachOptions,
+  attachToDOM,
+  type CellMetrics,
+  measureCell,
+  translateKeyboardEvent,
+  translateMouseEvent,
+} from "./driver/web/dom.ts";
 export { WebDriver } from "./driver/web/index.ts";
 // Geometry
 export { Offset } from "./geometry/offset.ts";
@@ -76,6 +92,8 @@ export {
   JSONUI,
   type JSONUIProps,
   Label,
+  ListView,
+  type ListViewProps,
   Markdown,
   type MarkdownProps,
   Mermaid,
@@ -147,7 +165,16 @@ export {
 // React Integration
 export { render } from "./react/reconciler.ts";
 export { ScreenBuffer } from "./render/buffer.ts";
-export { renderBufferToHTML } from "./render/html-renderer.ts";
+export {
+  BUNDLED_FONT_FAMILY,
+  HTML_CELL_HEIGHT,
+  HTML_FONT_FAMILY,
+  HTML_FONT_SIZE,
+  HTML_LINE_HEIGHT,
+  HTML_PADDING,
+  renderBufferToHTML,
+  renderBufferToText,
+} from "./render/html-renderer.ts";
 // Icon Registry
 export { IconRegistry, iconRegistry } from "./render/icon-registry.ts";
 export { Markdown as MarkdownEngine } from "./render/rich/markdown.ts";
@@ -187,6 +214,8 @@ export {
   WaitingGridWidget,
 } from "./widgets/controls/waiting-grid.ts";
 export { WaitingPanelWidget } from "./widgets/controls/waiting-panel.ts";
+export type { ListItem } from "./widgets/data/list-view.ts";
+export { ListViewWidget } from "./widgets/data/list-view.ts";
 export type {
   SortDirection,
   SortState,
