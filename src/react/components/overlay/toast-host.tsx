@@ -10,7 +10,7 @@ import { useLayer } from "./use-layer.ts";
 /** Screen corner the toast stack is pinned to. */
 export type ToastPosition = "top-right" | "top-left" | "bottom-right" | "bottom-left";
 
-/** Glyph style for the per-level icon, matching the status widgets' sets. */
+/** Glyph style for the close/clear affordances, matching the status widgets' sets. */
 export type ToastGlyphSet = "unicode" | "ascii" | "emoji";
 
 export interface ToastHostProps {
@@ -20,15 +20,9 @@ export interface ToastHostProps {
   max?: number;
   /** Width of each toast box (columns). Defaults to 36. */
   width?: number;
-  /** Icon glyph set. Defaults to `unicode`. */
+  /** Glyph set for the close/clear affordances. Defaults to `unicode`. */
   glyphSet?: ToastGlyphSet;
 }
-
-const GLYPHS: Record<ToastGlyphSet, Record<ToastLevel, string>> = {
-  unicode: { info: "ℹ", success: "✔", warn: "⚠", error: "✖", generic: "•" },
-  ascii: { info: "i", success: "+", warn: "!", error: "x", generic: "*" },
-  emoji: { info: "ℹ️", success: "✅", warn: "⚠️", error: "❌", generic: "🔔" },
-};
 
 /** Close affordance glyph per set. */
 const CLOSE: Record<ToastGlyphSet, string> = { unicode: "✕", ascii: "x", emoji: "✕" };
@@ -69,33 +63,37 @@ function ToastItem({
     return () => clearTimeout(handle);
   }, [t.id, t.duration]);
 
-  // Neutral panel background (no border) keeps the stack calm; the level color
-  // lives only in the icon. The icon sits in a fixed 2-cell column so a wide
-  // glyph can't crowd the text, and an ✕ on the top-right dismisses this toast.
+  // The level shows only as a thick colored bar flush to the left edge. Rather
+  // than a percentage-height bar (which the layout engine sizes against the whole
+  // screen), we colour the *outer* box with the level colour and lay a neutral
+  // $panel content box over everything except column 0 — so the left column shows
+  // through as a full-height bar that tracks the content height for free. The
+  // padding lives on the content box; an ✕ on the top-right dismisses this toast.
   const color = LEVEL_COLOR[t.level];
   return (
-    <Box
-      style={{
-        width,
-        background: "$panel",
-        color: "$foreground",
-        padding: { left: 1, right: 1 },
-        margin: { bottom: 1 },
-      }}
-    >
-      <HBox>
-        <Label style={{ bold: true, width: 2, color }}>{GLYPHS[glyphSet][t.level]}</Label>
-        <VBox style={{ flexGrow: 1, margin: { left: 1 } }}>
-          {t.title ? <Label style={{ bold: true }}>{t.title}</Label> : null}
-          <Label>{t.message}</Label>
-        </VBox>
-        <Label
-          onClick={() => toast.dismiss(t.id)}
-          style={{ color: "$placeholder", margin: { left: 1 } }}
-        >
-          {CLOSE[glyphSet]}
-        </Label>
-      </HBox>
+    <Box style={{ width, background: color }}>
+      <Box
+        style={{
+          width: width - 1,
+          background: "$panel",
+          color: "$foreground",
+          margin: { left: 1 },
+          padding: { left: 1, right: 1, top: 1, bottom: 1 },
+        }}
+      >
+        <HBox>
+          <VBox style={{ flexGrow: 1 }}>
+            {t.title ? <Label style={{ bold: true }}>{t.title}</Label> : null}
+            <Label>{t.message}</Label>
+          </VBox>
+          <Label
+            onClick={() => toast.dismiss(t.id)}
+            style={{ color: "$placeholder", margin: { left: 1 } }}
+          >
+            {CLOSE[glyphSet]}
+          </Label>
+        </HBox>
+      </Box>
     </Box>
   );
 }
