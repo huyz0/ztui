@@ -30,6 +30,7 @@
     "demo:qa": "bun run examples/questionanswer_demo.tsx",
     "demo:hotkeys": "bun run examples/hotkeys_demo.tsx",
     "demo:list": "bun run examples/listview_demo.tsx",
+    "demo:richlog": "bun run examples/richlog_demo.tsx",
     "demo:web": "bun run examples/web_demo.tsx",
     "web:debug": "bun run scripts/web-debug.ts",
     "test": "vitest run --coverage",

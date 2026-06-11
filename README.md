@@ -201,6 +201,9 @@ bun run demo:heroicons
 # Run the virtualized flat list (5000+ rows)
 bun run demo:list
 
+# Watch a simulated streaming agent transcript in the auto-tailing RichLog
+bun run demo:richlog
+
 # Run the app in a browser via the WebDriver backend (http://localhost:3010)
 # A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
 # file icons, and rich markdown — all the same widgets the terminal renders.
