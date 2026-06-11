@@ -33,6 +33,7 @@
     "demo:richlog": "bun run examples/richlog_demo.tsx",
     "demo:mdstream": "bun run examples/markdown_stream_demo.tsx",
     "demo:collapsible": "bun run examples/collapsible_demo.tsx",
+    "demo:diff": "bun run examples/diff_demo.tsx",
     "demo:web": "bun run examples/web_demo.tsx",
     "web:debug": "bun run scripts/web-debug.ts",
     "test": "vitest run --coverage",

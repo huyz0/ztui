@@ -60,6 +60,8 @@ export type {
   WaitingPanelVariant,
 } from "./components/controls/waiting-panel.tsx";
 export { WaitingPanel } from "./components/controls/waiting-panel.tsx";
+export type { DiffProps } from "./components/data/diff.tsx";
+export { Diff } from "./components/data/diff.tsx";
 export type { ListViewProps } from "./components/data/list-view.tsx";
 export { ListView } from "./components/data/list-view.tsx";
 export type { RichLogProps } from "./components/data/rich-log.tsx";

@@ -1,0 +1,96 @@
+import { describe, expect, test } from "vitest";
+import { Diff, VBox } from "../react/components.tsx";
+import type { DiffWidget } from "../widgets/data/diff.ts";
+import "../widgets/index.ts";
+import { mountApp } from "./harness.tsx";
+
+const OPTS = {
+  cols: 60,
+  rows: 16,
+  capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+};
+
+const OLD = "line one\nline two\nline three\nline four";
+const NEW = "line one\nline 2\nline three\nline four";
+
+describe("Diff", () => {
+  test("shows +/- for a changed line and keeps the unchanged context", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("-line two"); // removed
+    expect(text).toContain("+line 2"); // added
+    expect(text).toContain("line one"); // unchanged context kept
+    expect(text).toContain("line four");
+  });
+
+  test("collapses long unchanged runs into a ⋯ hunk marker", async () => {
+    const big = Array.from({ length: 30 }, (_, i) => `row ${i}`).join("\n");
+    const changed = big.replace("row 0", "row ZERO");
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" oldText={big} newText={changed} context={2} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("⋯");
+    expect(text).toContain("unchanged");
+    expect(text).toContain("-row 0");
+    expect(text).toContain("+row ZERO");
+    // The far-away rows are folded away, not drawn.
+    expect(text).not.toContain("row 20");
+  });
+
+  test("split view renders both panes with a divider", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} view="split" context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("│"); // pane divider
+    expect(text).toContain("line one");
+  });
+
+  test("an identical old/new produces only context rows, no +/-", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" oldText={OLD} newText={OLD} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const lines = w.selectableLines();
+    expect(lines.some((l) => l.includes("line one"))).toBe(true);
+    expect(lines.some((l) => /^\s*\d+\s+\d+\s\+/.test(l))).toBe(false);
+  });
+
+  test("scrolls when the diff overflows the viewport", async () => {
+    const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
+    const changed = `${big}\nappended tail`;
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" style={{ height: 8 }} oldText={big} newText={changed} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    expect(t.text()).toContain("row 0");
+
+    w.handleKey({ name: "end", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("+appended tail");
+    expect(t.text()).not.toContain("row 0");
+  });
+});

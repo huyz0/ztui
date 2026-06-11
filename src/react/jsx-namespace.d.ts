@@ -102,6 +102,14 @@ declare global {
           language?: string;
           lineNumbers?: boolean;
         };
+        "ztui-diff": ZTUIElementProps & {
+          oldText: string;
+          newText: string;
+          language?: string;
+          view?: "unified" | "split";
+          lineNumbers?: boolean;
+          context?: number;
+        };
         "ztui-markdown": ZTUIElementProps & {
           onAction?: (actionName: string, eventData: any) => void;
         };

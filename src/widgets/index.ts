@@ -17,6 +17,7 @@ import { ToggleButtonWidget } from "./controls/toggle-button.ts";
 import { ValidationSummaryWidget } from "./controls/validation-summary.ts";
 import { WaitingGridWidget } from "./controls/waiting-grid.ts";
 import { WaitingPanelWidget } from "./controls/waiting-panel.ts";
+import { DiffWidget } from "./data/diff.ts";
 import { ListViewWidget } from "./data/list-view.ts";
 import { RichLogWidget } from "./data/rich-log.ts";
 import { TableCellWidget, TableWidget } from "./data/table.ts";
@@ -71,6 +72,7 @@ export {
   WaitingGridWidget,
 } from "./controls/waiting-grid.ts";
 export { type WaitingPanelVariant, WaitingPanelWidget } from "./controls/waiting-panel.ts";
+export { type DiffView, DiffWidget } from "./data/diff.ts";
 export type { ListItem } from "./data/list-view.ts";
 export { ListViewWidget } from "./data/list-view.ts";
 export { RichLogWidget } from "./data/rich-log.ts";
@@ -127,6 +129,7 @@ registerElement("ztui-mermaid", () => new MermaidWidget());
 registerElement("mermaid", () => new MermaidWidget());
 registerElement("ztui-listview", () => new ListViewWidget());
 registerElement("ztui-richlog", () => new RichLogWidget());
+registerElement("ztui-diff", () => new DiffWidget());
 registerElement("ztui-select", () => new SelectWidget());
 registerElement("ztui-radio-group", () => new RadioGroupWidget());
 registerElement("ztui-checkbox", () => new CheckboxWidget());
