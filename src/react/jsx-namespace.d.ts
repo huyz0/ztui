@@ -108,6 +108,12 @@ declare global {
           max?: number;
           showValue?: boolean;
         };
+        "ztui-selection-list": ZTUIElementProps & {
+          items: import("../widgets/data/list-view.ts").ListItem[];
+          value?: string[];
+          onChange?: (selectedIds: string[]) => void;
+          glyphSet?: "unicode" | "ascii";
+        };
         "ztui-diff": ZTUIElementProps & {
           oldText: string;
           newText: string;

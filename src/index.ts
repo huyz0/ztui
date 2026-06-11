@@ -118,6 +118,8 @@ export {
   RichText,
   ScrollableBox,
   Select,
+  SelectionList,
+  type SelectionListProps,
   type SelectProps,
   Slider,
   type SliderProps,
@@ -231,6 +233,7 @@ export { type DiffView, DiffWidget } from "./widgets/data/diff.ts";
 export type { ListItem } from "./widgets/data/list-view.ts";
 export { ListViewWidget } from "./widgets/data/list-view.ts";
 export { RichLogWidget } from "./widgets/data/rich-log.ts";
+export { type SelectionGlyphSet, SelectionListWidget } from "./widgets/data/selection-list.ts";
 export { SparklineWidget } from "./widgets/data/sparkline.ts";
 export type {
   SortDirection,

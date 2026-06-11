@@ -66,6 +66,8 @@ export type { ListViewProps } from "./components/data/list-view.tsx";
 export { ListView } from "./components/data/list-view.tsx";
 export type { RichLogProps } from "./components/data/rich-log.tsx";
 export { RichLog } from "./components/data/rich-log.tsx";
+export type { SelectionListProps } from "./components/data/selection-list.tsx";
+export { SelectionList } from "./components/data/selection-list.tsx";
 export type { SparklineProps } from "./components/data/sparkline.tsx";
 export { Sparkline } from "./components/data/sparkline.tsx";
 export type { TableProps } from "./components/data/table.tsx";

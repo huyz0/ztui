@@ -36,6 +36,7 @@
     "demo:diff": "bun run examples/diff_demo.tsx",
     "demo:sparkline": "bun run examples/sparkline_demo.tsx",
     "demo:worker": "bun run examples/worker_demo.tsx",
+    "demo:selectionlist": "bun run examples/selection_list_demo.tsx",
     "demo:web": "bun run examples/web_demo.tsx",
     "web:debug": "bun run scripts/web-debug.ts",
     "test": "vitest run --coverage",

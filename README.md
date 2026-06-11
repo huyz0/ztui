@@ -219,6 +219,9 @@ bun run demo:sparkline
 # Cancellable async task primitive (useWorker) — run, supersede, cancel
 bun run demo:worker
 
+# Multi-select checkbox list — "pick which changes to apply"
+bun run demo:selectionlist
+
 # Run the app in a browser via the WebDriver backend (http://localhost:3010)
 # A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
 # file icons, and rich markdown — all the same widgets the terminal renders.
