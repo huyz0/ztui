@@ -102,6 +102,12 @@ declare global {
           language?: string;
           lineNumbers?: boolean;
         };
+        "ztui-sparkline": ZTUIElementProps & {
+          data: number[];
+          min?: number;
+          max?: number;
+          showValue?: boolean;
+        };
         "ztui-diff": ZTUIElementProps & {
           oldText: string;
           newText: string;

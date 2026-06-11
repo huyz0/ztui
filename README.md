@@ -213,6 +213,9 @@ bun run demo:collapsible
 # Syntax-highlighted file diff — the view an agent shows when proposing an edit
 bun run demo:diff
 
+# Live one-row micro-charts for an agent HUD (tokens/sec, latency, cost)
+bun run demo:sparkline
+
 # Run the app in a browser via the WebDriver backend (http://localhost:3010)
 # A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
 # file icons, and rich markdown — all the same widgets the terminal renders.

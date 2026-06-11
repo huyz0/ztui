@@ -121,6 +121,8 @@ export {
   type SelectProps,
   Slider,
   type SliderProps,
+  Sparkline,
+  type SparklineProps,
   Spinner,
   type SpinnerMode,
   type SpinnerProps,
@@ -224,6 +226,7 @@ export { type DiffView, DiffWidget } from "./widgets/data/diff.ts";
 export type { ListItem } from "./widgets/data/list-view.ts";
 export { ListViewWidget } from "./widgets/data/list-view.ts";
 export { RichLogWidget } from "./widgets/data/rich-log.ts";
+export { SparklineWidget } from "./widgets/data/sparkline.ts";
 export type {
   SortDirection,
   SortState,
