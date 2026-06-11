@@ -207,6 +207,9 @@ bun run demo:richlog
 # Watch a markdown document render token-by-token (incremental tail re-lex)
 bun run demo:mdstream
 
+# Foldable reasoning / tool-call sections (Collapsible)
+bun run demo:collapsible
+
 # Run the app in a browser via the WebDriver backend (http://localhost:3010)
 # A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
 # file icons, and rich markdown — all the same widgets the terminal renders.
