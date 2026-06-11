@@ -114,6 +114,12 @@ declare global {
           onChange?: (selectedIds: string[]) => void;
           glyphSet?: "unicode" | "ascii";
         };
+        "ztui-terminal-view": ZTUIElementProps & {
+          content?: string;
+          wrap?: boolean;
+          autoScroll?: boolean;
+          maxLines?: number;
+        };
         "ztui-traceback": ZTUIElementProps & {
           error?: Error;
           name?: string;

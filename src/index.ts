@@ -148,6 +148,8 @@ export {
   type TabContainerProps,
   Table,
   type TableProps,
+  TerminalView,
+  type TerminalViewProps,
   TextArea,
   type TextAreaProps,
   type ToastGlyphSet,
@@ -244,6 +246,7 @@ export type {
   TableTextStyle,
 } from "./widgets/data/table.ts";
 export { TableCellWidget, TableWidget } from "./widgets/data/table.ts";
+export { TerminalViewWidget } from "./widgets/data/terminal-view.ts";
 export { TracebackWidget } from "./widgets/data/traceback.ts";
 export type { TreeNode } from "./widgets/data/tree.ts";
 export { TreeWidget } from "./widgets/data/tree.ts";

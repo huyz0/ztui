@@ -225,6 +225,9 @@ bun run demo:selectionlist
 # Rich exception / stack-trace panel with source context
 bun run demo:traceback
 
+# Sandboxed nested terminal view — streams ANSI command output safely
+bun run demo:terminal
+
 # Run the app in a browser via the WebDriver backend (http://localhost:3010)
 # A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
 # file icons, and rich markdown — all the same widgets the terminal renders.
