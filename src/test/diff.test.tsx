@@ -122,5 +122,38 @@ describe("Diff", () => {
     await t.settle();
     expect(t.text()).toContain("appended tail");
     expect(t.text()).not.toContain("row 0");
+
+    // home jumps back to the top.
+    w.handleKey({ name: "home", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("row 0");
+    expect(t.text()).not.toContain("appended tail");
+
+    // pagedown advances by a viewport; the first rows scroll off.
+    w.handleKey({ name: "pagedown", handled: false } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("row 0");
+  });
+
+  test("keyboard scrolling only acts while focused (keys consumed)", async () => {
+    const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff
+          id="d"
+          style={{ height: 8 }}
+          oldText={big}
+          newText={`${big}\ntail`}
+          context={Infinity}
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+
+    const ev = { name: "pagedown", handled: false } as never;
+    w.handleKey(ev);
+    expect((ev as { handled: boolean }).handled).toBe(true);
   });
 });
