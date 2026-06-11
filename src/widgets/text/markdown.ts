@@ -115,6 +115,23 @@ export class MarkdownWidget extends Scrollable(Widget) {
   private lastRawMarkdown = "";
   private lastBlocks: { token: Token; widget: Widget | null }[] = [];
 
+  // Incremental-streaming cache. When the raw markdown only grows (the common
+  // streaming case), we avoid re-lexing the whole document: a stable prefix is
+  // lexed once into `committedTokens`, and each update only re-lexes the tail
+  // after `committedRaw`. Only block types that a blank line can't reopen or
+  // that can't reach backward — heading/paragraph/hr — are ever committed, so
+  // appended text can never invalidate the committed prefix.
+  private committedRaw = "";
+  private committedTokens: Token[] = [];
+  private static readonly COMMITTABLE = new Set(["heading", "paragraph", "hr"]);
+  /** Test hook: force a full re-lex each update (disables the streaming cache). */
+  public disableStreamingCache = false;
+
+  /** Length of the committed (cached, never-re-lexed) prefix. For tests. */
+  public get committedLength(): number {
+    return this.committedRaw.length;
+  }
+
   constructor() {
     super("markdown");
     this.defaultStyle = { layout: "vertical" };
@@ -161,6 +178,44 @@ export class MarkdownWidget extends Scrollable(Widget) {
     return this.textNode ? this.textNode.text : "";
   }
 
+  /**
+   * Extend the committed prefix by the leading {@link COMMITTABLE} blocks of the
+   * freshly-lexed tail that are already closed by a blank line. Those blocks can
+   * never change as more text streams in, so on the next update we skip re-lexing
+   * them. `tailAll` is the tail token stream *including* `space` tokens so blank
+   * lines can be measured; `tailRaw` is the matching raw source slice.
+   */
+  private advanceCommit(tailRaw: string, tailAll: Token[]): void {
+    // A block is "closed" once any later block exists — marked only emits a
+    // separate block token across a real boundary, and the blank line may live
+    // in the previous token's own `raw`. So commit the contiguous run of leading
+    // COMMITTABLE blocks except the last one (which is still being streamed),
+    // absorbing the inter-block `space` tokens into the committed prefix.
+    let lastBlockIdx = -1;
+    for (let i = 0; i < tailAll.length; i++) if (tailAll[i].type !== "space") lastBlockIdx = i;
+
+    let rawOffset = 0;
+    let commitOffset = 0;
+    const newlyCommitted: Token[] = [];
+    for (let i = 0; i < tailAll.length; i++) {
+      const t = tailAll[i];
+      rawOffset += t.raw.length;
+      if (t.type === "space") continue;
+      if (i === lastBlockIdx || !MarkdownWidget.COMMITTABLE.has(t.type)) break;
+      // Committable and not the last block: fold it plus any trailing blank lines.
+      let j = i + 1;
+      while (j < tailAll.length && tailAll[j].type === "space")
+        rawOffset += tailAll[j++].raw.length;
+      newlyCommitted.push(t);
+      commitOffset = rawOffset;
+      i = j - 1;
+    }
+    if (commitOffset > 0) {
+      this.committedRaw += tailRaw.slice(0, commitOffset);
+      this.committedTokens = this.committedTokens.concat(newlyCommitted);
+    }
+  }
+
   public override measure(maxW: number, maxH: number): void {
     const rawMarkdown = this.getRawMarkdown();
 
@@ -176,10 +231,31 @@ export class MarkdownWidget extends Scrollable(Widget) {
           super.removeChild(child);
         }
         this.lastBlocks = [];
+        this.committedRaw = "";
+        this.committedTokens = [];
       } else {
         try {
-          const tokens = marked.lexer(processedMarkdown);
-          const blockTokens = tokens.filter((t) => t.type !== "space");
+          // Re-lex only the streaming tail when the document grew from a cached
+          // committed prefix; otherwise (first parse, edit, or replacement) lex
+          // the whole thing and reset the cache.
+          let blockTokens: Token[];
+          let tailRaw: string;
+          let tailAll: Token[];
+          if (
+            this.committedRaw &&
+            !this.disableStreamingCache &&
+            rawMarkdown.startsWith(this.committedRaw)
+          ) {
+            tailRaw = rawMarkdown.slice(this.committedRaw.length);
+            tailAll = marked.lexer(remend(tailRaw));
+            blockTokens = this.committedTokens.concat(tailAll.filter((t) => t.type !== "space"));
+          } else {
+            this.committedRaw = "";
+            this.committedTokens = [];
+            tailRaw = rawMarkdown;
+            tailAll = marked.lexer(processedMarkdown);
+            blockTokens = tailAll.filter((t) => t.type !== "space");
+          }
 
           const nextBlocks: { token: Token; widget: Widget | null }[] = [];
 
@@ -229,6 +305,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
           }
           this.children = activeWidgets;
           this.lastBlocks = nextBlocks;
+          if (!this.disableStreamingCache) this.advanceCommit(tailRaw, tailAll);
         } catch (err) {
           // Malformed markdown must not blank the widget or crash layout:
           // show the raw text and log so the bad input is visible.
@@ -246,6 +323,8 @@ export class MarkdownWidget extends Scrollable(Widget) {
           fallback.parent = this;
           this.children = [fallback];
           this.lastBlocks = [];
+          this.committedRaw = "";
+          this.committedTokens = [];
         }
       }
     }
