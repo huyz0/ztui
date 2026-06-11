@@ -156,8 +156,10 @@ export {
   type ToggleButtonProps,
   Tree,
   type TreeProps,
+  type UseWorkerResult,
   useHotkey,
   useToast,
+  useWorker,
   ValidationSummary,
   type ValidationSummaryProps,
   VBox,
@@ -169,6 +171,9 @@ export {
   WaitingPanel,
   type WaitingPanelProps,
   type WaitingPanelVariant,
+  type WorkerState,
+  type WorkerStatus,
+  type WorkerTask,
 } from "./react/components.tsx";
 // React Integration
 export { render } from "./react/reconciler.ts";
