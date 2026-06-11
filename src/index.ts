@@ -109,6 +109,8 @@ export {
   type QuestionAnswerProps,
   RadioGroup,
   type RadioGroupProps,
+  RichLog,
+  type RichLogProps,
   RichText,
   ScrollableBox,
   Select,
@@ -216,6 +218,7 @@ export {
 export { WaitingPanelWidget } from "./widgets/controls/waiting-panel.ts";
 export type { ListItem } from "./widgets/data/list-view.ts";
 export { ListViewWidget } from "./widgets/data/list-view.ts";
+export { RichLogWidget } from "./widgets/data/rich-log.ts";
 export type {
   SortDirection,
   SortState,

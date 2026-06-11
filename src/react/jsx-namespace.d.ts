@@ -86,6 +86,12 @@ declare global {
           ansi?: boolean;
         };
         "ztui-richtext": ZTUIElementProps;
+        "ztui-richlog": ZTUIElementProps & {
+          lines: string[];
+          maxLines?: number;
+          wrap?: boolean;
+          autoScroll?: boolean;
+        };
         "ztui-syntax": ZTUIElementProps & {
           language?: string;
           lineNumbers?: boolean;

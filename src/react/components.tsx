@@ -62,6 +62,8 @@ export type {
 export { WaitingPanel } from "./components/controls/waiting-panel.tsx";
 export type { ListViewProps } from "./components/data/list-view.tsx";
 export { ListView } from "./components/data/list-view.tsx";
+export type { RichLogProps } from "./components/data/rich-log.tsx";
+export { RichLog } from "./components/data/rich-log.tsx";
 export type { TableProps } from "./components/data/table.tsx";
 export { Table } from "./components/data/table.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";
