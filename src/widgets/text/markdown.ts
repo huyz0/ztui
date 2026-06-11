@@ -337,8 +337,11 @@ export class MarkdownWidget extends Scrollable(Widget) {
   }
 
   private resolveStylesForGenerated(widget: Widget): void {
-    if (App.instance) {
-      widget.computedStyle = App.instance.cssResolver.resolveStyles(widget, false);
+    // Resolve against *this widget's* app (not the global singleton), so a
+    // second live app can't blank our generated blocks' styles.
+    const app = this.app ?? App.instance;
+    if (app) {
+      widget.computedStyle = app.cssResolver.resolveStyles(widget, false);
     }
     for (const child of widget.children) {
       if (child instanceof Widget) {

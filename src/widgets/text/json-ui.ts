@@ -159,8 +159,10 @@ export class JSONUIWidget extends Widget {
   }
 
   private resolveStylesForGenerated(widget: Widget): void {
-    if (App.instance) {
-      widget.computedStyle = App.instance.cssResolver.resolveStyles(widget, false);
+    // Resolve against this widget's own app, not the global singleton.
+    const app = this.app ?? App.instance;
+    if (app) {
+      widget.computedStyle = app.cssResolver.resolveStyles(widget, false);
     }
     for (const child of widget.children) {
       if (child instanceof Widget) {

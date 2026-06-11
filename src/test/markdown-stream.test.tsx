@@ -83,6 +83,19 @@ describe("Markdown streaming (incremental lex)", () => {
     }
   });
 
+  test("renders correctly even while a second app is alive (own-app style resolution)", async () => {
+    // Mount app A with a heading, then mount app B (which makes B the global
+    // App.instance), then re-render A. A must resolve styles against itself, not
+    // B, so its heading still renders. Guards the Widget.app backref.
+    const a = await mountApp(<Markdown>{"# "}</Markdown>, OPTS);
+    await a.settle();
+    const b = await mountApp(<Markdown>{"# other"}</Markdown>, OPTS);
+    await b.settle();
+    reconciler.updateContainer(<Markdown>{"# Title"}</Markdown>, a.container, null, () => {});
+    await a.settle();
+    expect(a.text().split("\n")[0]).toContain("Title");
+  });
+
   test("the streaming cache engages on documents with closed leading blocks", async () => {
     // docs 0-2 start with a paragraph/heading (committable); doc 3 leads with a
     // blockquote (never committable), so its prefix can't commit.

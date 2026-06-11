@@ -1,3 +1,5 @@
+// Type-only: erased at runtime, so no import cycle with app.ts.
+import type { App } from "../core/app.ts";
 import { logger } from "../core/logger.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
@@ -60,6 +62,24 @@ export class Widget extends DOMNode {
   }
   public set computedStyle(val: WidgetStyles) {
     this._computedStyle = val;
+  }
+
+  /**
+   * The {@link App} that owns this widget, found by walking the parent chain to
+   * the tree root (the `App` node sets `screen.parent = this`). Returns `null`
+   * when the widget is detached (e.g. mid-construction, before it's mounted).
+   *
+   * Prefer this over the `App.instance` singleton for anything that must act on
+   * *this* widget's app — style resolution, render scheduling — so multiple live
+   * apps (tests, the web backend) don't resolve each other's trees.
+   */
+  public get app(): App | null {
+    let node: DOMNode | null = this;
+    while (node) {
+      if (node.tagName === "app") return node as unknown as App;
+      node = node.parent;
+    }
+    return null;
   }
   public region: Region = Region.EMPTY;
   public measuredWidth = 0;

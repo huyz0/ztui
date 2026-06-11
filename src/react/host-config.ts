@@ -176,8 +176,12 @@ export const hostConfig: any = {
     return null;
   },
 
-  resetAfterCommit() {
-    App.instance?.queueRender();
+  resetAfterCommit(containerInfo: DOMNode) {
+    // Queue the render on the app that owns *this* container's tree, not the
+    // global singleton — otherwise a commit to one app schedules a frame on
+    // whichever app was constructed last (breaks multiple concurrent apps).
+    const app = containerInfo instanceof Widget ? containerInfo.app : null;
+    (app ?? App.instance)?.queueRender();
   },
 
   appendChild(parent: DOMNode, child: DOMNode) {
