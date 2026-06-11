@@ -268,6 +268,20 @@ export class CSSResolver {
     if (name === "diff-header") {
       return this.lookupVariable(widget, "primary") || "cyan";
     }
+    // Subtle row tints: mostly the widget background with a little of the
+    // success/error color blended in, so syntax-highlighted text stays legible.
+    if (name === "diff-added-bg" || name === "diff-removed-bg") {
+      const base =
+        name === "diff-added-bg"
+          ? this.lookupVariable(widget, "success") || "#4caf50"
+          : this.lookupVariable(widget, "error") || "#f44336";
+      const bg = this.getWidgetColorWithFallback(
+        widget,
+        "background",
+        activeTheme?.colors?.background || "#121212",
+      );
+      return blendColors(base, bg, isLight ? 0.16 : 0.24);
+    }
 
     return undefined;
   }

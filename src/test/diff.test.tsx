@@ -14,7 +14,7 @@ const OLD = "line one\nline two\nline three\nline four";
 const NEW = "line one\nline 2\nline three\nline four";
 
 describe("Diff", () => {
-  test("shows +/- for a changed line and keeps the unchanged context", async () => {
+  test("shows the changed lines and keeps the unchanged context", async () => {
     const t = await mountApp(
       <VBox style={{ width: 50 }}>
         <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} />
@@ -23,8 +23,8 @@ describe("Diff", () => {
     );
     await t.settle();
     const text = t.text();
-    expect(text).toContain("-line two"); // removed
-    expect(text).toContain("+line 2"); // added
+    expect(text).toContain("line two"); // removed
+    expect(text).toContain("line 2"); // added
     expect(text).toContain("line one"); // unchanged context kept
     expect(text).toContain("line four");
   });
@@ -42,8 +42,8 @@ describe("Diff", () => {
     const text = t.text();
     expect(text).toContain("⋯");
     expect(text).toContain("unchanged");
-    expect(text).toContain("-row 0");
-    expect(text).toContain("+row ZERO");
+    expect(text).toContain("row 0"); // removed
+    expect(text).toContain("row ZERO"); // added
     // The far-away rows are folded away, not drawn.
     expect(text).not.toContain("row 20");
   });
@@ -61,7 +61,7 @@ describe("Diff", () => {
     expect(text).toContain("line one");
   });
 
-  test("an identical old/new produces only context rows, no +/-", async () => {
+  test("an identical old/new produces one context row per line", async () => {
     const t = await mountApp(
       <VBox style={{ width: 50 }}>
         <Diff id="d" oldText={OLD} newText={OLD} context={Infinity} />
@@ -71,8 +71,10 @@ describe("Diff", () => {
     await t.settle();
     const w = t.findById<DiffWidget>("d") as DiffWidget;
     const lines = w.selectableLines();
+    expect(lines).toHaveLength(4); // four lines, all unchanged context
     expect(lines.some((l) => l.includes("line one"))).toBe(true);
-    expect(lines.some((l) => /^\s*\d+\s+\d+\s\+/.test(l))).toBe(false);
+    // Every row carries both old and new line numbers in the gutter.
+    expect(lines.every((l) => /^\s*\d+\s+\d+\s/.test(l))).toBe(true);
   });
 
   test("scrolls when the diff overflows the viewport", async () => {
@@ -90,7 +92,7 @@ describe("Diff", () => {
 
     w.handleKey({ name: "end", handled: false } as never);
     await t.settle();
-    expect(t.text()).toContain("+appended tail");
+    expect(t.text()).toContain("appended tail");
     expect(t.text()).not.toContain("row 0");
   });
 });
