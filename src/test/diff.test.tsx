@@ -77,6 +77,34 @@ describe("Diff", () => {
     expect(lines.every((l) => /^\s*\d+\s+\d+\s/.test(l))).toBe(true);
   });
 
+  test("renders a clickable view toggle that switches unified/split", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.text()).toContain("Unified");
+    expect(t.text()).toContain("Split");
+    // Starts unified: no pane divider in the body.
+    expect(t.text()).not.toContain("│");
+
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    // Click the "Split" tab on the header row (row 0 of the content rect).
+    const c = w.getContentRect();
+    // "diff " (5) + " Unified " (9) + " " (1) = 15 → " Split " starts at x+15.
+    w.handleMouse({
+      type: "press",
+      button: "left",
+      x: c.x + 16,
+      y: c.y,
+      handled: false,
+    } as never);
+    await t.settle();
+    expect(t.text()).toContain("│"); // split view now shows the divider
+  });
+
   test("scrolls when the diff overflows the viewport", async () => {
     const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
     const changed = `${big}\nappended tail`;

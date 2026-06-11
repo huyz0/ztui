@@ -26,26 +26,26 @@ export function farewell(name: string): void {
 }`;
 
 function DiffDemo() {
-  const [split, setSplit] = useState(false);
   const [full, setFull] = useState(false);
 
-  hotkeys.register({ key: "v", name: "Unified / split", handler: () => setSplit((s) => !s) });
   hotkeys.register({ key: "c", name: "Context", handler: () => setFull((f) => !f) });
 
   return (
     <Dock style={{ background: "#11111b" }}>
       <Header>🪢 ZTUI Diff — a proposed edit to greet.ts</Header>
-      <Footer>v unified/split · c collapse/full context · ↑↓ scroll · Ctrl+C quit</Footer>
+      <Footer>
+        click Unified/Split to switch view · c collapse/full context · ↑↓ scroll · Ctrl+C quit
+      </Footer>
 
       <VBox style={{ padding: 1 }}>
         <Label style={{ dim: true, margin: { bottom: 1 } }}>
-          {split ? "split view" : "unified view"} · {full ? "full file" : "3 lines of context"}
+          {full ? "full file" : "3 lines of context"} — click the tabs above the diff to switch view
         </Label>
         <Diff
           language="ts"
           oldText={OLD}
           newText={NEW}
-          view={split ? "split" : "unified"}
+          defaultView="unified"
           context={full ? Number.POSITIVE_INFINITY : 3}
           style={{ border: "round", borderColor: "$primary", padding: { left: 1, right: 1 } }}
         />

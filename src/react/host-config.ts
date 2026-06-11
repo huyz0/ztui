@@ -44,6 +44,7 @@ const KNOWN_HANDLER_PROPS = [
   "onActivate",
   "onSortChange",
   "onViewportChange",
+  "onViewChange",
   "onToggle",
   "onExpandedChange",
   "onValidate",

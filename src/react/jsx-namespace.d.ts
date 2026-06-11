@@ -107,6 +107,8 @@ declare global {
           newText: string;
           language?: string;
           view?: "unified" | "split";
+          onViewChange?: (view: "unified" | "split") => void;
+          showToggle?: boolean;
           lineNumbers?: boolean;
           context?: number;
         };
