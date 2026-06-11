@@ -86,4 +86,56 @@ describe("RichLog", () => {
     await t.settle();
     expect(t.text()).toContain("line 10");
   });
+
+  test("clicking the scrollbar track jumps the view and stops tailing", async () => {
+    const lines = Array.from({ length: 60 }, (_, i) => `line ${i}`);
+    const t = await mountApp(<RichLog id="log" lines={lines} />); // fills 80x24
+    await t.settle();
+    expect(t.text()).toContain("line 59"); // tailing
+
+    const w = t.findById<RichLogWidget>("log") as RichLogWidget;
+    // Press at the top of the scrollbar column (x = right-1, y = top).
+    w.handleMouse({ type: "press", button: "left", x: 79, y: 0, handled: false } as any);
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("line 0");
+    expect(text).not.toContain("line 59");
+  });
+
+  test("dragging the scrollbar scrolls, and release ends the drag", async () => {
+    const lines = Array.from({ length: 60 }, (_, i) => `line ${i}`);
+    const t = await mountApp(<RichLog id="log" lines={lines} />);
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log") as RichLogWidget;
+
+    w.handleMouse({ type: "press", button: "left", x: 79, y: 0, handled: false } as any);
+    await t.settle();
+    expect(t.text()).toContain("line 0");
+
+    // Drag to the bottom of the track → back to the tail.
+    w.handleMouse({ type: "drag", x: 79, y: 23, handled: false } as any);
+    await t.settle();
+    expect(t.text()).toContain("line 59");
+
+    // Release ends the drag; a later stray drag must not move the view.
+    w.handleMouse({ type: "release", x: 79, y: 23, handled: false } as any);
+    w.handleMouse({ type: "drag", x: 79, y: 0, handled: false } as any);
+    await t.settle();
+    expect(t.text()).toContain("line 59");
+  });
+
+  test("selectableLines rebuilds lazily after lines change before a render", async () => {
+    const t = await mountApp(
+      <VBox>
+        <RichLog id="log" lines={["aaaa bbbb cccc"]} wrap style={{ width: 11 }} />
+      </VBox>,
+    );
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log") as RichLogWidget;
+
+    // Reassign lines, then read selectableLines *before* settling a new frame:
+    // it must rebuild against the cached width rather than return stale rows.
+    w.lines = ["xxxx yyyy zzzz"];
+    expect(w.selectableLines()).toEqual(["xxxx yyyy", "zzzz"]);
+  });
 });
