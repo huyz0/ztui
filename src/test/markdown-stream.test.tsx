@@ -26,8 +26,8 @@ type MountResult = Awaited<ReturnType<typeof mountApp>>;
 // global App.instance singleton being shared across concurrent mounts.
 async function streamFrames(doc: string, disableCache: boolean) {
   const t = await mountApp(<Markdown>{""}</Markdown>, OPTS);
-  md(t).disableStreamingCache = disableCache;
   await t.settle();
+  md(t).disableStreamingCache = disableCache;
   const frames: string[] = [];
   for (let n = 1; n <= doc.length; n++) {
     reconciler.updateContainer(<Markdown>{doc.slice(0, n)}</Markdown>, t.container, null, () => {});
@@ -51,6 +51,37 @@ describe("Markdown streaming (incremental lex)", () => {
       expect(off.committedLength).toBe(0); // cache disabled never commits
     });
   }
+
+  // Stronger than cache-on vs cache-off: prove the *reused* widget tree (built
+  // up by streaming) renders identically to a fresh parse of the same text.
+  // Capture every incremental frame while only one app is alive, THEN do the
+  // fresh mounts — the global `App.instance` singleton means a second live app
+  // would resolve the first's styles, so the two phases must not overlap.
+  test("single-app incremental render matches a fresh parse at sampled prefixes", async () => {
+    const doc = DOCS[0];
+    // One app streams the whole doc in place (cheap); capture frames at a few
+    // prefixes that straddle block boundaries. Fresh mounts (one app at a time)
+    // are limited to those samples so the shared reconciler isn't stressed.
+    const samples = [3, 10, 20, 40, 55, doc.length].filter((n) => n <= doc.length);
+    const t = await mountApp(<Markdown>{""}</Markdown>, OPTS);
+    await t.settle();
+    const incremental = new Map<number, string>();
+    for (let n = 1; n <= doc.length; n++) {
+      reconciler.updateContainer(
+        <Markdown>{doc.slice(0, n)}</Markdown>,
+        t.container,
+        null,
+        () => {},
+      );
+      await t.settle();
+      if (samples.includes(n)) incremental.set(n, t.text());
+    }
+    for (const n of samples) {
+      const fresh = await mountApp(<Markdown>{doc.slice(0, n)}</Markdown>, OPTS);
+      await fresh.settle();
+      expect(fresh.text(), `prefix len ${n}`).toBe(incremental.get(n));
+    }
+  });
 
   test("the streaming cache engages on documents with closed leading blocks", async () => {
     // docs 0-2 start with a paragraph/heading (committable); doc 3 leads with a
