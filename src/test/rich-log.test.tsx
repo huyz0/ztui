@@ -124,6 +124,23 @@ describe("RichLog", () => {
     expect(t.text()).toContain("line 59");
   });
 
+  test("overflow reserves a scrollbar gutter so text is not clipped under it", async () => {
+    // Each line fills the full 80-col width; with overflow, the body must wrap to
+    // 79 cols (reserving the gutter) so no glyph lands under the scrollbar at col 79.
+    const wide = "w".repeat(80);
+    const lines = Array.from({ length: 40 }, () => wide);
+    const t = await mountApp(<RichLog id="log" lines={lines} />);
+    await t.settle();
+
+    const w = t.findById<RichLogWidget>("log") as RichLogWidget;
+    // Wrapped at the gutter width (79), so each entry spans two rows: 79 + 1.
+    expect(w.selectableLines().slice(0, 2)).toEqual(["w".repeat(79), "w"]);
+
+    // The scrollbar column (79) must hold a scrollbar glyph, not wrapped text.
+    const row0 = t.text().split("\n")[0];
+    expect(row0[79]).toMatch(/[█░]/);
+  });
+
   test("selectableLines rebuilds lazily after lines change before a render", async () => {
     const t = await mountApp(
       <VBox>
