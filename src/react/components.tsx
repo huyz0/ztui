@@ -72,6 +72,8 @@ export type { SparklineProps } from "./components/data/sparkline.tsx";
 export { Sparkline } from "./components/data/sparkline.tsx";
 export type { TableProps } from "./components/data/table.tsx";
 export { Table } from "./components/data/table.tsx";
+export type { TracebackProps } from "./components/data/traceback.tsx";
+export { Traceback } from "./components/data/traceback.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";
 export { Tree } from "./components/data/tree.tsx";
 export { Box } from "./components/layout/box.tsx";

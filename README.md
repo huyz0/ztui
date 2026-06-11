@@ -222,6 +222,9 @@ bun run demo:worker
 # Multi-select checkbox list — "pick which changes to apply"
 bun run demo:selectionlist
 
+# Rich exception / stack-trace panel with source context
+bun run demo:traceback
+
 # Run the app in a browser via the WebDriver backend (http://localhost:3010)
 # A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
 # file icons, and rich markdown — all the same widgets the terminal renders.

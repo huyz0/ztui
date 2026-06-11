@@ -156,6 +156,8 @@ export {
   type ToastPosition,
   ToggleButton,
   type ToggleButtonProps,
+  Traceback,
+  type TracebackProps,
   Tree,
   type TreeProps,
   type UseWorkerResult,
@@ -242,6 +244,7 @@ export type {
   TableTextStyle,
 } from "./widgets/data/table.ts";
 export { TableCellWidget, TableWidget } from "./widgets/data/table.ts";
+export { TracebackWidget } from "./widgets/data/traceback.ts";
 export type { TreeNode } from "./widgets/data/tree.ts";
 export { TreeWidget } from "./widgets/data/tree.ts";
 export {

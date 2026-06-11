@@ -114,6 +114,14 @@ declare global {
           onChange?: (selectedIds: string[]) => void;
           glyphSet?: "unicode" | "ascii";
         };
+        "ztui-traceback": ZTUIElementProps & {
+          error?: Error;
+          name?: string;
+          message?: string;
+          stack?: string;
+          showSource?: boolean;
+          contextLines?: number;
+        };
         "ztui-diff": ZTUIElementProps & {
           oldText: string;
           newText: string;
