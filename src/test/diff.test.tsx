@@ -91,13 +91,13 @@ describe("Diff", () => {
     expect(t.text()).not.toContain("│");
 
     const w = t.findById<DiffWidget>("d") as DiffWidget;
-    // Click the "Split" tab on the header row (row 0 of the content rect).
+    // The toggle is right-aligned; " Split " is the last tab, ending at the
+    // right edge of the content rect (width 7), so click just inside it.
     const c = w.getContentRect();
-    // "diff " (5) + " Unified " (9) + " " (1) = 15 → " Split " starts at x+15.
     w.handleMouse({
       type: "press",
       button: "left",
-      x: c.x + 16,
+      x: c.right - 3,
       y: c.y,
       handled: false,
     } as never);
