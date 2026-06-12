@@ -1,9 +1,17 @@
 import { renderSvgSync } from "../utils/sharp-sync.ts";
+import type { GlyfContour } from "./glyf-encode.ts";
 
 export interface IconDefinition {
   name: string;
   svg: string; // Raw SVG string
   textFallback: string; // Unicode emoji or string fallback
+  /**
+   * Vector outline for the terminal Glyph Protocol (`fmt=glyf`), in font units
+   * (Y-up, baseline at y=0). Present only for icons sourced from a TrueType
+   * font (Seti); SVG-only icons (heroicons) omit it and fall back to the
+   * graphics protocol / text fallback. See {@link encodeSimpleGlyf}.
+   */
+  glyf?: { contours: GlyfContour[]; unitsPerEm: number };
 }
 
 export interface RasterizedIcon {

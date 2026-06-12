@@ -1,5 +1,6 @@
 import { logger } from "../../core/logger.ts";
 import { Size } from "../../geometry/size.ts";
+import { encodeSimpleGlyf } from "../../render/glyf-encode.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { type Clipboard, Driver, type KeyEvent, type TerminalCapabilities } from "../driver.ts";
 import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
@@ -383,12 +384,18 @@ export class BunDriver extends Driver {
 
     if (this.capabilities.glyphProtocol) {
       for (const icon of iconRegistry.getAll()) {
+        if (!icon.glyf) continue; // SVG-only icons can't be registered as glyf
         const codepoint = iconRegistry.getCodepoint(icon.name);
-        if (codepoint) {
-          const hex = codepoint.toString(16);
-          const base64Svg = Buffer.from(icon.svg).toString("base64");
-          this.write(`\x1b_25a1;d;cp=${hex};fmt=svg;width=2;${base64Svg}\x1b\\`);
-        }
+        if (!codepoint) continue;
+        const payload = encodeSimpleGlyf(icon.glyf.contours);
+        if (!payload) continue;
+        const hex = codepoint.toString(16);
+        const base64 = payload.toString("base64");
+        // Glyph Protocol register: verb `r`, glyf payload, fire-and-forget
+        // (reply=0) for bulk startup registration. Icons are double-width.
+        this.write(
+          `\x1b_25a1;r;cp=${hex};fmt=glyf;reply=0;upm=${icon.glyf.unitsPerEm};width=2;${base64}\x1b\\`,
+        );
       }
     }
 

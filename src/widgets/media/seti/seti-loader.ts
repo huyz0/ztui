@@ -1,7 +1,16 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { logger } from "../../../core/logger.ts";
+import type { GlyfContour } from "../../../render/glyf-encode.ts";
 import { iconRegistry } from "../../../render/icon-registry.ts";
+
+/** Shape of an opentype.js TrueType outline point (`glyph.points` entries). */
+interface SetiGlyphPoint {
+  x: number;
+  y: number;
+  onCurve: boolean;
+  lastPointOfContour: boolean;
+}
 
 export interface SetiTheme {
   iconDefinitions: Record<string, { fontCharacter: string; fontColor: string }>;
@@ -166,8 +175,27 @@ export function registerSetiIcon(key: string, customResourcesDir?: string): void
       svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"></svg>`;
     }
 
+    // Capture the raw TrueType outline (Y-up, font units) for the Glyph
+    // Protocol. opentype.js `glyph.points` is exactly the `glyf` contour data,
+    // so no SVG conversion is needed. Guard for CFF fonts (no `.points`).
+    let glyf: { contours: GlyfContour[]; unitsPerEm: number } | undefined;
+    const points = (glyph as { points?: SetiGlyphPoint[] }).points;
+    if (points && points.length > 0) {
+      const contours: GlyfContour[] = [];
+      let cur: GlyfContour = [];
+      for (const p of points) {
+        cur.push({ x: p.x, y: p.y, onCurve: p.onCurve });
+        if (p.lastPointOfContour) {
+          contours.push(cur);
+          cur = [];
+        }
+      }
+      if (cur.length > 0) contours.push(cur);
+      glyf = { contours, unitsPerEm: setiFont.unitsPerEm };
+    }
+
     registeredKeys.add(key);
-    iconRegistry.registerIcon({ name: `seti:${key}`, svg, textFallback: char });
+    iconRegistry.registerIcon({ name: `seti:${key}`, svg, textFallback: char, glyf });
   } catch (err) {
     // Glyph extraction failed for this specific key — fall back to a blank cell.
     logger.debug("seti", `glyph extraction failed for "${key}"`, err);
