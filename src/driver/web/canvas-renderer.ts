@@ -31,6 +31,8 @@ export interface CanvasCell {
   strike?: boolean;
   /** Continuation cell of a wide glyph to its left — skipped when drawing. */
   cont?: boolean;
+  /** Seti file-icon glyph — centered vertically rather than sitting on the baseline. */
+  icon?: boolean;
 }
 
 export interface CanvasMetrics {
@@ -91,7 +93,9 @@ export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
     for (let x = 0; x < buffer.width; x++) {
       const cell = buffer.cells[y][x];
       if (cell.wideContinuation) {
-        row.push({ c: "", cont: true });
+        // Inherit the lead cell's background so a wide glyph's two halves fill
+        // with one color instead of leaving the right half on the page default.
+        row.push({ c: "", cont: true, bg: row[row.length - 1]?.bg });
         continue;
       }
       const s = cell.style;
@@ -105,6 +109,7 @@ export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
       if (s.italic) out.italic = true;
       if (s.underline) out.underline = true;
       if (s.strikethrough) out.strike = true;
+      if (cell.icon) out.icon = true;
       row.push(out);
     }
     rows.push(row);
@@ -345,7 +350,18 @@ export function renderBufferToCanvas(
       const span = wide ? 2 : 1;
       ctx.font = `${cell.italic ? "italic " : ""}${cell.bold ? "bold " : ""}${opts.fontSize}px ${opts.fontFamily}`;
       ctx.fillStyle = color;
-      ctx.fillText(cell.c, x0 + (span * cw) / 2, cy + baseline);
+      if (cell.icon) {
+        // Seti glyphs are pictographs that sit high in an oversized em, so the
+        // baseline (and even the em's middle) floats them to the cell's top.
+        // Measure the real ink box and center *that* in the cell instead.
+        const m = ctx.measureText(cell.c);
+        const inkAscent = m.actualBoundingBoxAscent || 0;
+        const inkDescent = m.actualBoundingBoxDescent || 0;
+        const yBaseline = cy + ch / 2 + (inkAscent - inkDescent) / 2;
+        ctx.fillText(cell.c, x0 + (span * cw) / 2, yBaseline);
+      } else {
+        ctx.fillText(cell.c, x0 + (span * cw) / 2, cy + baseline);
+      }
       if (cell.underline || cell.strike) {
         ctx.strokeStyle = color;
         ctx.lineWidth = t;
