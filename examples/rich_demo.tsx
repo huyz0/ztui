@@ -6,6 +6,7 @@ import {
   Footer,
   HBox,
   Header,
+  Label,
   Markdown,
   RichText,
   render,
@@ -148,6 +149,10 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
                 [link=https://github.com/huyz0/ztui]Hyperlink:[/]
                 [link=https://github.com/huyz0/ztui]ztui Repository[/]
               </RichText>
+              <Label markup>
+                [dim]Plain Label, [/][bold]markup[/][dim] prop:[/] [green]no[/] [undercurl
+                underline=red]RichText[/] [green]needed[/]
+              </Label>
             </VBox>
           )}
 
