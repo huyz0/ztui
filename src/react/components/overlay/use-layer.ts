@@ -9,6 +9,8 @@ export interface UseLayerOptions {
   modal: boolean;
   centered: boolean;
   dim: boolean;
+  /** Scrim opacity multiplier (0..1) for a `dim` modal; defaults to 1. */
+  dimAlpha?: number;
   passThrough: boolean;
   closeOnEscape: boolean;
   closeOnOutsideClick: boolean;
@@ -85,6 +87,7 @@ export function useLayer(opts: UseLayerOptions) {
     if (root) {
       root.anchor = opts.anchorRef?.current ?? null;
       root.placement = opts.placement ?? "auto";
+      root.dimAlpha = opts.dimAlpha ?? 1;
     }
   });
 

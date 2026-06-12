@@ -99,7 +99,7 @@ describe("Dialog", () => {
       return (
         <VBox>
           <Label id="bg">BACKDROPTEXT</Label>
-          <Dialog open dim>
+          <Dialog open dim dimFade={false}>
             <Label>Hi</Label>
           </Dialog>
         </VBox>
@@ -118,6 +118,33 @@ describe("Dialog", () => {
     expect(rgb).toBeDefined();
     // Scrim is 50% black, so the foreground lands roughly mid-grey, not full white.
     expect(Math.max(rgb!.r, rgb!.g, rgb!.b)).toBeLessThan(200);
+  });
+
+  test("dim scrim fades in on open, then reaches full strength", async () => {
+    function App() {
+      return (
+        <VBox>
+          <Label id="bg">BACKDROPTEXT</Label>
+          <Dialog open dim>
+            <Label>Hi</Label>
+          </Dialog>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<App />);
+    const bg = t.findById("bg") as Widget;
+    const bright = (): number => {
+      const rgb = parseColor(t.cellAt(bg.region.x, bg.region.y).style.color ?? "")?.rgb;
+      return rgb ? Math.max(rgb.r, rgb.g, rgb.b) : 255;
+    };
+    // Early in the 180ms fade the backdrop is only lightly shaded…
+    const early = bright();
+    // …and once the tween settles it darkens to the full ~50% scrim.
+    await t.settle(260);
+    const settled = bright();
+    expect(settled).toBeLessThan(early);
+    expect(settled).toBeLessThan(200);
   });
 });
 

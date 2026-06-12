@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import { HBox, ProgressBar } from "../../index.ts";
 import { mountApp } from "../../test/harness.tsx";
+import type { ProgressBarWidget } from "./progress-bar.ts";
 
 // Default theme primary is #00ffff (cyan); the bar fills with that and dims
 // toward black for the empty track.
@@ -71,5 +73,49 @@ describe("ZTUI ProgressBar Widget Suite", () => {
       },
     );
     expect(text()).toContain("42%");
+  });
+
+  test("animate tweens the fill toward a new value instead of snapping", async () => {
+    let setV: ((n: number) => void) | undefined;
+    function Probe() {
+      const [v, setVal] = useState(0);
+      setV = setVal;
+      return (
+        <HBox>
+          <ProgressBar id="pb" value={v} animate style={{ width: 10 }} />
+        </HBox>
+      );
+    }
+
+    const { findById, settle } = await mountApp(<Probe />, { cols: 20, rows: 3 });
+    expect(findById<ProgressBarWidget>("pb")?.value).toBe(0);
+
+    setV?.(100);
+    // Mid-flight: the widget value has moved off 0 but not yet reached the target.
+    await settle(40);
+    const mid = findById<ProgressBarWidget>("pb")?.value ?? -1;
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(100);
+
+    // Well past the 300ms default: it lands exactly on the target.
+    await settle(360);
+    expect(findById<ProgressBarWidget>("pb")?.value).toBe(100);
+  });
+
+  test("without animate, a value change is applied immediately", async () => {
+    let setV: ((n: number) => void) | undefined;
+    function Probe() {
+      const [v, setVal] = useState(0);
+      setV = setVal;
+      return (
+        <HBox>
+          <ProgressBar id="pb" value={v} style={{ width: 10 }} />
+        </HBox>
+      );
+    }
+    const { findById, settle } = await mountApp(<Probe />, { cols: 20, rows: 3 });
+    setV?.(80);
+    await settle(10);
+    expect(findById<ProgressBarWidget>("pb")?.value).toBe(80);
   });
 });

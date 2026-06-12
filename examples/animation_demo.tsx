@@ -9,11 +9,14 @@ import { useState } from "react";
 import {
   App,
   Box,
+  Button,
+  Dialog,
   type Easing,
   Footer,
   HBox,
   Header,
   Label,
+  ProgressBar,
   render,
   useAnimatedColor,
   useAnimatedValue,
@@ -39,6 +42,8 @@ function AnimationDemo() {
   const [easingIdx, setEasingIdx] = useState(2);
   const [target, setTarget] = useState(0.3);
   const [colorIdx, setColorIdx] = useState(0);
+  const [pct100, setPct100] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const easing = EASINGS[easingIdx];
 
   // A number that smoothly tweens toward `target` (0..1) with the chosen curve.
@@ -52,6 +57,7 @@ function AnimationDemo() {
     handler: () => {
       setTarget(Math.random());
       setColorIdx((i) => (i + 1) % COLORS.length);
+      setPct100(Math.round(Math.random() * 100));
     },
   });
   useHotkey({
@@ -59,6 +65,7 @@ function AnimationDemo() {
     name: "Cycle easing",
     handler: () => setEasingIdx((i) => (i + 1) % EASINGS.length),
   });
+  useHotkey({ key: "d", name: "Toggle dialog", handler: () => setDialogOpen((v) => !v) });
   useHotkey({ key: "q", name: "Quit", handler: () => process.exit(0) });
 
   const width = Math.max(0, Math.round(fill * BAR_MAX));
@@ -92,9 +99,31 @@ function AnimationDemo() {
             colour fades, not snaps
           </Label>
         </Box>
+
+        <Box style={{ height: 1 }} />
+
+        {/* ProgressBar with `animate`: the fill sweeps to each new target. */}
+        <HBox>
+          <Label style={{ width: 10, color: "$comment" }}>progress:</Label>
+          <ProgressBar value={pct100} animate showPercent style={{ width: BAR_MAX }} />
+        </HBox>
       </VBox>
 
-      <Footer>space animate · e cycle easing · q quit</Footer>
+      <Footer>space animate · e cycle easing · d dialog (scrim fades) · q quit</Footer>
+
+      {/* Dialog with a dim scrim that fades in on open (default dimFade). */}
+      <Dialog open={dialogOpen} dim onClose={() => setDialogOpen(false)}>
+        <VBox style={{ padding: 1, width: 40 }}>
+          <Label style={{ bold: true, color: "$foreground" }}>Fading scrim</Label>
+          <Label style={{ color: "$comment" }}>
+            The backdrop dim eases in via useAnimatedValue rather than snapping.
+          </Label>
+          <Box style={{ height: 1 }} />
+          <Button onClick={() => setDialogOpen(false)} style={{ width: 12 }}>
+            Close
+          </Button>
+        </VBox>
+      </Dialog>
     </VBox>
   );
 }

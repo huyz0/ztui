@@ -32,6 +32,7 @@
     "demo:status": "bun run examples/status_demo.tsx",
     "demo:overlay": "bun run examples/overlay_demo.tsx",
     "demo:blend": "bun run examples/blend_demo.tsx",
+    "demo:animation": "bun run examples/animation_demo.tsx",
     "demo:qa": "bun run examples/questionanswer_demo.tsx",
     "demo:hotkeys": "bun run examples/hotkeys_demo.tsx",
     "demo:list": "bun run examples/listview_demo.tsx",

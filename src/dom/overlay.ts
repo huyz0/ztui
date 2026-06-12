@@ -67,6 +67,12 @@ export class OverlayRootWidget extends Widget {
   /** Blank the backdrop behind a modal panel so the layer below reads as inert. */
   public dim = false;
   /**
+   * Scrim opacity multiplier in [0,1], applied on top of the base scrim alpha.
+   * Lets a `dim` modal fade its backdrop in (1 = full scrim). Default 1 so a
+   * dim overlay with no animation looks exactly as before.
+   */
+  public dimAlpha = 1;
+  /**
    * Sticky panels: clicks that miss the panel are not captured here, so the
    * app's hit-test continues to the layer below (keeping the chatbox clickable).
    */
@@ -156,13 +162,15 @@ export class OverlayRootWidget extends Widget {
 
   public override render(buffer: ScreenBuffer): void {
     if (!this.visible) return;
-    if (this.dim) {
+    if (this.dim && this.dimAlpha > 0) {
       // Shade the backdrop in place: the layer below is already painted, so we
       // alpha-composite a translucent black scrim over each existing cell,
       // darkening glyph and background toward concrete colours (a proper dim,
       // not the terminal-dependent SGR-dim attribute). The panel itself paints
-      // afterwards in renderChildren and is left undimmed.
-      buffer.blendRegion(this.region, SCRIM_COLOR, SCRIM_ALPHA, themeBlendBase());
+      // afterwards in renderChildren and is left undimmed. `dimAlpha` scales the
+      // wash so a modal can fade its backdrop in.
+      const a = SCRIM_ALPHA * Math.min(1, this.dimAlpha);
+      buffer.blendRegion(this.region, SCRIM_COLOR, a, themeBlendBase());
     }
     // A soft drop shadow under each floating panel lifts it off the layer below.
     // Drawn before the panels paint, so they cover all but the protruding edge.
