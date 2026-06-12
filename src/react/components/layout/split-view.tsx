@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useRef, useState } from "react";
 import type { Widget } from "../../../dom/widget.ts";
+import { Label } from "../text/label.tsx";
 import { Box } from "./box.tsx";
 import { Splitter } from "./splitter.tsx";
 
@@ -27,8 +28,19 @@ export type SplitNode = SplitLeaf | SplitBranch;
 export interface SplitViewProps {
   /** Initial tree (uncontrolled). Resizing mutates internal state. */
   root: SplitNode;
-  /** Fired with a fresh tree whenever a splitter resizes a pane. */
+  /** Fired with a fresh tree whenever the layout changes (resize/split/close). */
   onChange?: (root: SplitNode) => void;
+  /**
+   * Show a 1-row toolbar on each pane with split (`↔`/`↕`) and close (`✕`)
+   * buttons. Split buttons appear only when {@link SplitViewProps.newPane} is
+   * given; close appears whenever more than one pane remains.
+   */
+  controls?: boolean;
+  /**
+   * Builds the content for a freshly split-off pane, given the id of the pane
+   * that was split. Required for the split buttons to do anything.
+   */
+  newPane?: (sourceId: string) => ReactNode;
 }
 
 const MIN_CELLS = 3;
@@ -40,11 +52,33 @@ const MIN_CELLS = 3;
  * Splits nest arbitrarily, so a child can itself be a split in the other
  * direction. Sizes live in state, so resizes are pure tree mutations.
  */
-export function SplitView({ root, onChange }: SplitViewProps): ReactElement {
+export function SplitView({ root, onChange, controls, newPane }: SplitViewProps): ReactElement {
   const [tree, setTree] = useState<SplitNode>(root);
   // Container widgets keyed by node path, so a splitter can read the live pixel
   // size of its parent to convert a cell delta into a weight delta.
   const containers = useRef(new Map<string, Widget>());
+  // Monotonic counter for unique ids of split-off panes.
+  const newPaneSeq = useRef(0);
+
+  const commit = (next: SplitNode) => {
+    setTree(next);
+    onChange?.(next);
+  };
+
+  const doSplit = (id: string, direction: SplitDirection) => {
+    if (!newPane) return;
+    const leaf: SplitLeaf = {
+      type: "leaf",
+      id: `${id}-${++newPaneSeq.current}`,
+      content: newPane(id),
+    };
+    commit(splitLeaf(tree, id, direction, leaf));
+  };
+
+  const doClose = (id: string) => {
+    if (countLeaves(tree) <= 1) return; // never close the last pane
+    commit(closeLeaf(tree, id));
+  };
 
   const resizeAt = (path: number[], index: number, delta: number) => {
     const key = path.join(".");
@@ -77,9 +111,35 @@ export function SplitView({ root, onChange }: SplitViewProps): ReactElement {
     });
   };
 
+  const canClose = countLeaves(tree) > 1;
   const renderNode = (node: SplitNode, path: number[]): ReactNode => {
     if (node.type === "leaf") {
-      return <Box style={{ width: "100%", height: "100%" }}>{node.content}</Box>;
+      if (!controls) return <Box style={{ width: "100%", height: "100%" }}>{node.content}</Box>;
+      // A 1-row toolbar (right-aligned controls) above the pane content. Each
+      // glyph is its own clickable Label since clicks resolve to the hit widget.
+      return (
+        <Box style={{ width: "100%", height: "100%", layout: "vertical" }}>
+          <Box style={{ width: "100%", height: 1, layout: "horizontal", background: "$panel" }}>
+            <Box style={{ width: "1fr", height: 1 }} />
+            {newPane && (
+              <Label onClick={() => doSplit(node.id, "row")} style={{ width: 2 }}>
+                ↔
+              </Label>
+            )}
+            {newPane && (
+              <Label onClick={() => doSplit(node.id, "column")} style={{ width: 2 }}>
+                ↕
+              </Label>
+            )}
+            {canClose && (
+              <Label onClick={() => doClose(node.id)} style={{ width: 2, color: "$error" }}>
+                ✕
+              </Label>
+            )}
+          </Box>
+          <Box style={{ width: "100%", height: "1fr" }}>{node.content}</Box>
+        </Box>
+      );
     }
 
     const sizes = node.sizes ?? node.children.map(() => 1);
@@ -154,5 +214,52 @@ function structuredCloneTree(node: SplitNode): SplitNode {
     ...node,
     sizes: node.sizes ? [...node.sizes] : undefined,
     children: node.children.map(structuredCloneTree),
+  };
+}
+
+/** Total number of leaf panes in a tree. */
+export function countLeaves(node: SplitNode): number {
+  return node.type === "leaf" ? 1 : node.children.reduce((n, c) => n + countLeaves(c), 0);
+}
+
+/**
+ * Returns a new tree where the leaf `id` is replaced by a split of
+ * `[originalLeaf, newLeaf]` along `direction` (equal sizes). Unchanged if the
+ * id isn't found.
+ */
+export function splitLeaf(
+  root: SplitNode,
+  id: string,
+  direction: SplitDirection,
+  newLeaf: SplitLeaf,
+): SplitNode {
+  if (root.type === "leaf") {
+    if (root.id !== id) return root;
+    return { type: "split", direction, sizes: [1, 1], children: [root, newLeaf] };
+  }
+  return {
+    ...root,
+    children: root.children.map((c) => splitLeaf(c, id, direction, newLeaf)),
+  };
+}
+
+/**
+ * Returns a new tree with the leaf `id` removed. The containing split drops the
+ * pane (and its size weight); a split left with a single child collapses into
+ * that child. Returns the tree unchanged if removing `id` would empty it.
+ */
+export function closeLeaf(root: SplitNode, id: string): SplitNode {
+  if (root.type === "leaf") return root; // can't remove the root leaf here
+  const idx = root.children.findIndex((c) => c.type === "leaf" && c.id === id);
+  if (idx >= 0) {
+    const children = root.children.filter((_, i) => i !== idx);
+    const sizes = root.sizes?.filter((_, i) => i !== idx);
+    if (children.length === 1) return children[0]; // collapse single-child split
+    return { ...root, children, sizes };
+  }
+  // Not a direct child: recurse, collapsing any split that became single-child.
+  return {
+    ...root,
+    children: root.children.map((c) => closeLeaf(c, id)),
   };
 }

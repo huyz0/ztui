@@ -40,9 +40,9 @@ const tree: SplitNode = {
 function SplitViewDemo() {
   return (
     <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
-      <Header>🪟 ZTUI SplitView — drag any divider to resize · Ctrl+C quit</Header>
+      <Header>🪟 ZTUI SplitView — drag dividers · ↔/↕ split a pane · ✕ close · Ctrl+C quit</Header>
       <Box style={{ width: "100%", height: "100%", padding: 1 }}>
-        <SplitView root={tree} />
+        <SplitView root={tree} controls newPane={(id) => pane("untitled", `split from ${id}`)} />
       </Box>
     </VBox>
   );

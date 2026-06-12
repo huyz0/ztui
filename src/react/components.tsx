@@ -94,7 +94,12 @@ export type {
   SplitNode,
   SplitViewProps,
 } from "./components/layout/split-view.tsx";
-export { SplitView } from "./components/layout/split-view.tsx";
+export {
+  closeLeaf,
+  countLeaves,
+  SplitView,
+  splitLeaf,
+} from "./components/layout/split-view.tsx";
 export type { SplitterProps } from "./components/layout/splitter.tsx";
 export { Splitter } from "./components/layout/splitter.tsx";
 export type { TabContainerProps } from "./components/layout/tabcontainer.tsx";

@@ -1,6 +1,16 @@
 import { describe, expect, test } from "vitest";
-import { Label, type SplitNode, SplitView } from "../../../index.ts";
+import {
+  closeLeaf,
+  countLeaves,
+  Label,
+  type SplitLeaf,
+  type SplitNode,
+  SplitView,
+  splitLeaf,
+} from "../../../index.ts";
 import { mountApp } from "../../../test/harness.tsx";
+
+const leaf = (id: string): SplitLeaf => ({ type: "leaf", id, content: id });
 
 // A row split with a nested column on the right:
 //   ┌──────┬──────┐
@@ -77,5 +87,84 @@ describe("SplitView", () => {
     expect(latest?.type).toBe("split");
     const sizes = (latest as any).sizes as number[];
     expect(sizes[0]).toBeGreaterThan(sizes[1]);
+  });
+});
+
+describe("SplitView tree helpers", () => {
+  test("splitLeaf wraps a leaf in a 2-child split", () => {
+    const t = splitLeaf(leaf("a"), "a", "row", leaf("b"));
+    expect(t).toEqual({
+      type: "split",
+      direction: "row",
+      sizes: [1, 1],
+      children: [leaf("a"), leaf("b")],
+    });
+    expect(countLeaves(t)).toBe(2);
+  });
+
+  test("splitLeaf is a no-op for an unknown id", () => {
+    const root = splitLeaf(leaf("a"), "zzz", "row", leaf("b"));
+    expect(root).toEqual(leaf("a"));
+  });
+
+  test("closeLeaf drops a pane and its size weight", () => {
+    const root: SplitNode = {
+      type: "split",
+      direction: "row",
+      sizes: [2, 1, 1],
+      children: [leaf("a"), leaf("b"), leaf("c")],
+    };
+    const t = closeLeaf(root, "b") as Extract<SplitNode, { type: "split" }>;
+    expect(t.children).toEqual([leaf("a"), leaf("c")]);
+    expect(t.sizes).toEqual([2, 1]);
+  });
+
+  test("closeLeaf collapses a split left with one child", () => {
+    const root: SplitNode = {
+      type: "split",
+      direction: "row",
+      children: [
+        leaf("a"),
+        { type: "split", direction: "column", children: [leaf("b"), leaf("c")] },
+      ],
+    };
+    // Remove c → inner column has only b → collapses to leaf b.
+    const t = closeLeaf(root, "c") as Extract<SplitNode, { type: "split" }>;
+    expect(t.children).toEqual([leaf("a"), leaf("b")]);
+  });
+});
+
+describe("SplitView interactive controls", () => {
+  const interactiveTree: SplitNode = {
+    type: "split",
+    direction: "row",
+    children: [leaf("left"), leaf("right")],
+  };
+
+  test("clicking ✕ closes a pane", async () => {
+    let latest: SplitNode | undefined;
+    const t = await mountApp(
+      <SplitView
+        root={interactiveTree}
+        controls
+        newPane={() => "new"}
+        onChange={(r) => (latest = r)}
+      />,
+      { cols: 80, rows: 24 },
+    );
+    expect(countLeaves(interactiveTree)).toBe(2);
+    // The left pane's ✕ sits at the right edge of the left half's toolbar
+    // (row 0). Click it.
+    let closeBtn: any;
+    t.screen.walk((n: any) => {
+      // The first label whose text is the close glyph.
+      if (!closeBtn && n.tagName === "label" && n.getTextContent?.() === "✕") closeBtn = n;
+    });
+    expect(closeBtn).toBeTruthy();
+    const { x, y } = closeBtn.region;
+    t.driver.simulateMouse(x, y, "press", "left");
+    t.driver.simulateMouse(x, y, "release", "left");
+    await t.settle();
+    expect(latest && countLeaves(latest)).toBe(1);
   });
 });
