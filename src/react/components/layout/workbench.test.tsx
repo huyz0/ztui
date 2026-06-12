@@ -108,6 +108,31 @@ describe("Workbench", () => {
     expect(t.text()).toContain("TERMBODY");
   });
 
+  test("dragging a left-rail icon to the right zone re-docks the panel", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    expect(t.text()).toContain("FILES"); // Explorer (left, active)
+    expect(t.text()).not.toContain("SEARCHBODY"); // Search not active yet
+    // Press the Explorer icon (col 0, row 0), drag to the right edge, release.
+    t.driver.simulateMouse(0, 0, "press", "left");
+    t.driver.simulateMouse(79, 0, "drag", "left");
+    t.driver.simulateMouse(79, 0, "release", "left");
+    await t.settle();
+    // Explorer now lives on the right (its body still shows)...
+    expect(t.text()).toContain("FILES");
+    // ...and the left region repaired its active panel to the sibling (Search).
+    expect(t.text()).toContain("SEARCHBODY");
+  });
+
+  test("a tap (no movement) toggles instead of moving", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    expect(t.text()).toContain("FILES");
+    // press+release at the same cell → moved=false → toggle (collapse).
+    t.driver.simulateMouse(0, 0, "press", "left");
+    t.driver.simulateMouse(0, 0, "release", "left");
+    await t.settle();
+    expect(t.text()).not.toContain("FILES");
+  });
+
   test("restores from initialLayout and reports changes via onLayoutChange", async () => {
     const snapshots: WorkbenchLayout[] = [];
     const restore: WorkbenchLayout = {

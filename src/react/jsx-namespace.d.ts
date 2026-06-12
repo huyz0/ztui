@@ -19,6 +19,9 @@ declare global {
         children?: React.ReactNode;
         onMouseEnter?: (ev: any) => void;
         onMouseLeave?: (ev: any) => void;
+        onDragStart?: (x: number, y: number) => void;
+        onDragMove?: (x: number, y: number) => void;
+        onDragEnd?: (x: number, y: number, moved: boolean) => void;
       }
 
       interface IntrinsicElements {

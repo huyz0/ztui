@@ -122,6 +122,16 @@ export class Widget extends DOMNode {
   public onScroll?: (ev: MouseEvent) => void;
   public onMouseEnter?: (ev: any) => void;
   public onMouseLeave?: (ev: any) => void;
+  // Pointer-drag lifecycle, emitted by the base handleMouse so any widget can be
+  // a drag source (e.g. a panel rail icon dragged to re-dock). `onDragEnd`'s
+  // `moved` flag distinguishes a drag from a plain tap (no pointer movement).
+  public onDragStart?: (x: number, y: number) => void;
+  public onDragMove?: (x: number, y: number) => void;
+  public onDragEnd?: (x: number, y: number, moved: boolean) => void;
+  private _dragActive = false;
+  private _dragMoved = false;
+  private _dragStartX = 0;
+  private _dragStartY = 0;
 
   // Reconciler-managed handlers, typed as the universal function supertype so
   // the React binding can assign them without casts; subclasses redeclare them
@@ -156,7 +166,29 @@ export class Widget extends DOMNode {
     }
   }
 
-  public handleMouse(_ev: MouseEvent): void {}
+  public handleMouse(ev: MouseEvent): void {
+    // Drag-source lifecycle. Only engages when a drag handler is attached, so
+    // ordinary widgets are unaffected. Subclasses that override handleMouse get
+    // this for free as long as they call super.handleMouse(ev).
+    if (!this.onDragStart && !this.onDragMove && !this.onDragEnd) return;
+
+    if (ev.type === "press" && ev.button === "left") {
+      this._dragActive = true;
+      this._dragMoved = false;
+      this._dragStartX = ev.x;
+      this._dragStartY = ev.y;
+      this.onDragStart?.(ev.x, ev.y);
+      ev.handled = true;
+    } else if (ev.type === "drag" && this._dragActive) {
+      if (ev.x !== this._dragStartX || ev.y !== this._dragStartY) this._dragMoved = true;
+      this.onDragMove?.(ev.x, ev.y);
+      ev.handled = true;
+    } else if (ev.type === "release" && this._dragActive) {
+      this._dragActive = false;
+      this.onDragEnd?.(ev.x, ev.y, this._dragMoved);
+      ev.handled = true;
+    }
+  }
 
   constructor(tagName = "widget") {
     super(tagName);

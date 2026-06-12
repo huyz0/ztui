@@ -35,4 +35,8 @@ export interface ComponentProps {
   onScroll?: (ev: any) => void;
   onMouseEnter?: (ev: any) => void;
   onMouseLeave?: (ev: any) => void;
+  /** Pointer-drag lifecycle; `moved` is false for a tap with no movement. */
+  onDragStart?: (x: number, y: number) => void;
+  onDragMove?: (x: number, y: number) => void;
+  onDragEnd?: (x: number, y: number, moved: boolean) => void;
 }

@@ -82,7 +82,7 @@ function WorkbenchDemo() {
   return (
     <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
       <Header>
-        🧱 ZTUI Workbench — click rails/tabs · drag splitters · Ctrl+B/Ctrl+Alt+B/Ctrl+J toggle ·
+        🧱 ZTUI Workbench — click toggles · drag icon/tab to re-dock · drag splitters · Ctrl+B/J ·
         Ctrl+C quit
       </Header>
       <Workbench
