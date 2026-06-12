@@ -2,10 +2,12 @@ import { describe, expect, test } from "vitest";
 import {
   closeLeaf,
   countLeaves,
+  hydrateSplit,
   Label,
   type SplitLeaf,
   type SplitNode,
   SplitView,
+  serializeSplit,
   splitLeaf,
 } from "../../../index.ts";
 import { mountApp } from "../../../test/harness.tsx";
@@ -131,6 +133,43 @@ describe("SplitView tree helpers", () => {
     // Remove c → inner column has only b → collapses to leaf b.
     const t = closeLeaf(root, "c") as Extract<SplitNode, { type: "split" }>;
     expect(t.children).toEqual([leaf("a"), leaf("b")]);
+  });
+
+  test("serializeSplit strips content; hydrateSplit restores it (round-trip)", () => {
+    const tree: SplitNode = {
+      type: "split",
+      direction: "row",
+      sizes: [2, 1],
+      children: [
+        leaf("a"),
+        { type: "split", direction: "column", children: [leaf("b"), leaf("c")] },
+      ],
+    };
+    const serialized = serializeSplit(tree);
+    // JSON-safe: no ReactNode content anywhere.
+    expect(JSON.stringify(serialized)).toBe(
+      JSON.stringify({
+        type: "split",
+        direction: "row",
+        sizes: [2, 1],
+        children: [
+          { type: "leaf", id: "a" },
+          {
+            type: "split",
+            direction: "column",
+            children: [
+              { type: "leaf", id: "b" },
+              { type: "leaf", id: "c" },
+            ],
+          },
+        ],
+      }),
+    );
+    // Re-hydrate from a JSON round-trip, sourcing content by id.
+    const restored = hydrateSplit(JSON.parse(JSON.stringify(serialized)), (id) => `body:${id}`);
+    expect(serializeSplit(restored)).toEqual(serialized); // structure preserved
+    const a = (restored as any).children[0] as SplitLeaf;
+    expect(a.content).toBe("body:a"); // content rebuilt from the factory
   });
 });
 

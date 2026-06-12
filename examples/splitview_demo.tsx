@@ -1,4 +1,19 @@
-import { App, Box, Header, Label, render, type SplitNode, SplitView, VBox } from "../src/index.ts";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  App,
+  Box,
+  Header,
+  hydrateSplit,
+  Label,
+  render,
+  type SerializedSplitNode,
+  type SplitNode,
+  SplitView,
+  serializeSplit,
+  VBox,
+} from "../src/index.ts";
 
 // VSCode editor-grid model: a recursively splittable, drag-resizable pane grid.
 // The root splits left/right; the right side splits top/bottom; the bottom-right
@@ -11,7 +26,10 @@ function pane(title: string, body: string, color?: string) {
   );
 }
 
-const tree: SplitNode = {
+// Content for a pane id — used to rehydrate a persisted (content-less) tree.
+const contentFor = (id: string) => pane(id, `pane "${id}"`);
+
+const defaultTree: SplitNode = {
   type: "split",
   direction: "row",
   sizes: [2, 3],
@@ -37,12 +55,29 @@ const tree: SplitNode = {
   ],
 };
 
+// Persist the split structure (content-less) to a temp file and restore it,
+// so the grid layout survives across runs.
+const TREE_FILE = join(tmpdir(), "ztui-splitview-demo.json");
+const saved: SerializedSplitNode | undefined = existsSync(TREE_FILE)
+  ? JSON.parse(readFileSync(TREE_FILE, "utf-8"))
+  : undefined;
+const initialTree = saved ? hydrateSplit(saved, contentFor) : defaultTree;
+const saveTree = (root: SplitNode) =>
+  writeFileSync(TREE_FILE, JSON.stringify(serializeSplit(root), null, 2));
+
 function SplitViewDemo() {
   return (
     <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
-      <Header>🪟 ZTUI SplitView — drag dividers · ↔/↕ split a pane · ✕ close · Ctrl+C quit</Header>
+      <Header>
+        🪟 ZTUI SplitView — drag dividers · ↔/↕ split · ✕ close · layout persists · Ctrl+C quit
+      </Header>
       <Box style={{ width: "100%", height: "100%", padding: 1 }}>
-        <SplitView root={tree} controls newPane={(id) => pane("untitled", `split from ${id}`)} />
+        <SplitView
+          root={initialTree}
+          controls
+          newPane={(id) => pane("untitled", `split from ${id}`)}
+          onChange={saveTree}
+        />
       </Box>
     </VBox>
   );

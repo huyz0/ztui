@@ -155,9 +155,12 @@ describe("Workbench", () => {
   test("restores from initialLayout and reports changes via onLayoutChange", async () => {
     const snapshots: WorkbenchLayout[] = [];
     const restore: WorkbenchLayout = {
-      left: { open: false, size: 26, active: "search" },
-      right: { open: true, size: 20, active: "outline" },
-      bottom: { open: false, size: 8, active: "terminal" },
+      regions: {
+        left: { open: false, size: 26, active: "search" },
+        right: { open: true, size: 20, active: "outline" },
+        bottom: { open: false, size: 8, active: "terminal" },
+      },
+      overrides: {},
     };
     const t = await mountApp(
       <VBox style={{ width: "100%", height: "100%" }}>
@@ -182,7 +185,39 @@ describe("Workbench", () => {
     t.driver.simulateMouse(0, 0, "press", "left"); // open left on Explorer
     t.driver.simulateMouse(0, 0, "release", "left");
     await t.settle();
-    expect(snapshots.at(-1)?.left.open).toBe(true);
-    expect(snapshots.at(-1)?.left.active).toBe("explorer");
+    expect(snapshots.at(-1)?.regions.left.open).toBe(true);
+    expect(snapshots.at(-1)?.regions.left.active).toBe("explorer");
+  });
+
+  test("persists drag-move overrides in the layout snapshot", async () => {
+    const snapshots: WorkbenchLayout[] = [];
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <Workbench panels={panels} initialOpen={["left"]} onLayoutChange={(l) => snapshots.push(l)}>
+          <Label>EDITOR</Label>
+        </Workbench>
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    // Drag Explorer (left rail, row 0) to the right zone.
+    t.driver.simulateMouse(0, 0, "press", "left");
+    t.driver.simulateMouse(79, 0, "drag", "left");
+    t.driver.simulateMouse(79, 0, "release", "left");
+    await t.settle();
+    expect(snapshots.at(-1)?.overrides.explorer).toBe("right");
+
+    // Feeding that snapshot back as initialLayout restores the re-dock.
+    const saved = snapshots.at(-1)!;
+    const t2 = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <Workbench panels={panels} initialLayout={saved}>
+          <Label>EDITOR</Label>
+        </Workbench>
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    // Explorer is docked right now (open + active there).
+    expect(t2.text()).toContain("FILES");
+    expect(t2.text()).toContain("Explorer");
   });
 });

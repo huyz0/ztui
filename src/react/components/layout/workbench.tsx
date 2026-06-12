@@ -49,8 +49,15 @@ export interface RegionState {
   active: string | null;
 }
 
-/** A full, serializable workbench layout snapshot keyed by anchor. */
-export type WorkbenchLayout = Record<WorkbenchAnchor, RegionState>;
+/**
+ * A full, serializable workbench snapshot: per-region state plus the
+ * drag-move re-dock overrides (panel id -> anchor), so a re-docked layout
+ * round-trips through {@link WorkbenchProps.onLayoutChange} / `initialLayout`.
+ */
+export interface WorkbenchLayout {
+  regions: Record<WorkbenchAnchor, RegionState>;
+  overrides: Record<string, WorkbenchAnchor>;
+}
 
 const RAIL_WIDTH = 2;
 const MIN_SIDE = 12;
@@ -77,9 +84,11 @@ export function Workbench({
   ...rest
 }: WorkbenchProps): ReactElement {
   // Runtime re-dock overrides (panel id -> anchor) from drag-to-move. A panel's
-  // declared `anchor` is its default; an override wins. Not persisted in the
-  // layout snapshot (which is keyed by anchor), so moves reset on reload.
-  const [overrides, setOverrides] = useState<Record<string, WorkbenchAnchor>>({});
+  // declared `anchor` is its default; an override wins. Restored from and
+  // persisted into the layout snapshot, so moves survive a reload.
+  const [overrides, setOverrides] = useState<Record<string, WorkbenchAnchor>>(
+    () => initialLayout?.overrides ?? {},
+  );
   const anchorOf = (p: WorkbenchPanel) => overrides[p.id] ?? p.anchor;
   const byAnchor = (a: WorkbenchAnchor) => panels.filter((p) => anchorOf(p) === a);
 
@@ -89,7 +98,7 @@ export function Workbench({
   const rootRef = useRef<Widget | null>(null);
 
   const init = (a: WorkbenchAnchor, defSize: number): RegionState => {
-    if (initialLayout?.[a]) return initialLayout[a];
+    if (initialLayout?.regions?.[a]) return initialLayout.regions[a];
     const list = byAnchor(a);
     return {
       open: initialOpen.includes(a) && list.length > 0,
@@ -109,8 +118,8 @@ export function Workbench({
   const onChangeRef = useRef(onLayoutChange);
   onChangeRef.current = onLayoutChange;
   useEffect(() => {
-    onChangeRef.current?.(regions);
-  }, [regions]);
+    onChangeRef.current?.({ regions, overrides });
+  }, [regions, overrides]);
 
   // Select a panel: open the region on it, switch to it, or collapse when it's
   // the already-active panel of an open region.

@@ -25,6 +25,23 @@ export interface SplitBranch {
 
 export type SplitNode = SplitLeaf | SplitBranch;
 
+/** A leaf with its ReactNode content stripped — JSON-serializable. */
+export interface SerializedLeaf {
+  type: "leaf";
+  id: string;
+}
+
+/** A split branch with serializable children — JSON-serializable. */
+export interface SerializedBranch {
+  type: "split";
+  direction: SplitDirection;
+  children: SerializedSplitNode[];
+  sizes?: number[];
+}
+
+/** A SplitView tree without content: only structure, ids, and sizes. */
+export type SerializedSplitNode = SerializedLeaf | SerializedBranch;
+
 export interface SplitViewProps {
   /** Initial tree (uncontrolled). Resizing mutates internal state. */
   root: SplitNode;
@@ -214,6 +231,37 @@ function structuredCloneTree(node: SplitNode): SplitNode {
     ...node,
     sizes: node.sizes ? [...node.sizes] : undefined,
     children: node.children.map(structuredCloneTree),
+  };
+}
+
+/**
+ * Strip a tree down to its serializable structure (ids/direction/sizes), dropping
+ * the ReactNode content. Persist the result; rebuild with {@link hydrateSplit}.
+ */
+export function serializeSplit(node: SplitNode): SerializedSplitNode {
+  if (node.type === "leaf") return { type: "leaf", id: node.id };
+  return {
+    type: "split",
+    direction: node.direction,
+    sizes: node.sizes ? [...node.sizes] : undefined,
+    children: node.children.map(serializeSplit),
+  };
+}
+
+/**
+ * Rebuild a live tree from a serialized one, sourcing each leaf's content from
+ * `contentFor(id)`. The inverse of {@link serializeSplit}.
+ */
+export function hydrateSplit(
+  node: SerializedSplitNode,
+  contentFor: (id: string) => ReactNode,
+): SplitNode {
+  if (node.type === "leaf") return { type: "leaf", id: node.id, content: contentFor(node.id) };
+  return {
+    type: "split",
+    direction: node.direction,
+    sizes: node.sizes ? [...node.sizes] : undefined,
+    children: node.children.map((c) => hydrateSplit(c, contentFor)),
   };
 }
 

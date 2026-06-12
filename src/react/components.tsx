@@ -88,6 +88,9 @@ export { HBox } from "./components/layout/hbox.tsx";
 export { Header } from "./components/layout/header.tsx";
 export { ScrollableBox } from "./components/layout/scrollable-box.tsx";
 export type {
+  SerializedBranch,
+  SerializedLeaf,
+  SerializedSplitNode,
   SplitBranch,
   SplitDirection,
   SplitLeaf,
@@ -97,7 +100,9 @@ export type {
 export {
   closeLeaf,
   countLeaves,
+  hydrateSplit,
   SplitView,
+  serializeSplit,
   splitLeaf,
 } from "./components/layout/split-view.tsx";
 export type { SplitterProps } from "./components/layout/splitter.tsx";
