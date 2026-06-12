@@ -80,6 +80,10 @@ declare global {
         "ztui-box": ZTUIElementProps & {
           title?: string;
         };
+        "ztui-splitter": ZTUIElementProps & {
+          orientation?: "vertical" | "horizontal";
+          onResize?: (delta: number) => void;
+        };
         "ztui-scrollable-box": ZTUIElementProps & {
           title?: string;
         };

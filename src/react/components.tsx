@@ -87,10 +87,18 @@ export { Grid } from "./components/layout/grid.tsx";
 export { HBox } from "./components/layout/hbox.tsx";
 export { Header } from "./components/layout/header.tsx";
 export { ScrollableBox } from "./components/layout/scrollable-box.tsx";
+export type { SplitterProps } from "./components/layout/splitter.tsx";
+export { Splitter } from "./components/layout/splitter.tsx";
 export type { TabContainerProps } from "./components/layout/tabcontainer.tsx";
 export { TabContainer } from "./components/layout/tabcontainer.tsx";
 export { VBox } from "./components/layout/vbox.tsx";
 export { View } from "./components/layout/view.tsx";
+export type {
+  WorkbenchAnchor,
+  WorkbenchPanel,
+  WorkbenchProps,
+} from "./components/layout/workbench.tsx";
+export { Workbench } from "./components/layout/workbench.tsx";
 export type { FileIconProps } from "./components/media/file-icon.tsx";
 export { FileIcon } from "./components/media/file-icon.tsx";
 export type { HeroIconProps, HeroIconVariant } from "./components/media/heroic-icon.tsx";
