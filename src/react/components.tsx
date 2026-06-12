@@ -147,7 +147,7 @@ export type {
 export { ToastHost, useToast } from "./components/overlay/toast-host.tsx";
 export type { JSONUIProps } from "./components/text/json-ui.tsx";
 export { JSONUI } from "./components/text/json-ui.tsx";
-export { Label } from "./components/text/label.tsx";
+export { Label, type LabelProps } from "./components/text/label.tsx";
 export type { MarkdownProps } from "./components/text/markdown.tsx";
 export { Markdown } from "./components/text/markdown.tsx";
 export type { MermaidProps } from "./components/text/mermaid.tsx";

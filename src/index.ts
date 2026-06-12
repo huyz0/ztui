@@ -110,6 +110,7 @@ export {
   JSONUI,
   type JSONUIProps,
   Label,
+  type LabelProps,
   ListView,
   type ListViewProps,
   Markdown,
