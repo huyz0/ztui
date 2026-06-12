@@ -157,6 +157,11 @@ export type { SyntaxProps } from "./components/text/syntax.tsx";
 export { Syntax } from "./components/text/syntax.tsx";
 export type { ComponentProps } from "./components/types.ts";
 export {
+  type AnimationOptions,
+  useAnimatedColor,
+  useAnimatedValue,
+} from "./use-animation.ts";
+export {
   type UseWorkerResult,
   useWorker,
   type WorkerState,

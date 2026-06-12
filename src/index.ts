@@ -1,6 +1,13 @@
 // Core & DOM
 export { App } from "./core/app.ts";
 export {
+  EASINGS,
+  type Easing,
+  type EasingFn,
+  interpolate,
+  resolveEasing,
+} from "./core/easing.ts";
+export {
   eventToKey,
   formatKeyLabel,
   type Hotkey,
@@ -58,6 +65,7 @@ export { Spacing } from "./geometry/spacing.ts";
 // Heroicons — lazy loading
 export { registerHeroIcon, resolveHeroIcon } from "./react/components/media/heroic-icon.tsx";
 export {
+  type AnimationOptions,
   Box,
   Button,
   Checkbox,
@@ -185,6 +193,8 @@ export {
   Tree,
   type TreeProps,
   type UseWorkerResult,
+  useAnimatedColor,
+  useAnimatedValue,
   useHotkey,
   useToast,
   useWorker,

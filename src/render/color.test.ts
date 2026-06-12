@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mix, parseColor, parseRgb } from "./color.ts";
+import { lerpColor, mix, parseColor, parseRgb } from "./color.ts";
 
 describe("parseColor", () => {
   it("parses rgba() with its alpha", () => {
@@ -49,5 +49,24 @@ describe("mix", () => {
       g: 10,
       b: 10,
     });
+  });
+});
+
+describe("lerpColor", () => {
+  it("interpolates between two colours as an rgb() string", () => {
+    expect(lerpColor("#000000", "#ffffff", 0)).toBe("rgb(0, 0, 0)");
+    expect(lerpColor("#000000", "#ffffff", 1)).toBe("rgb(255, 255, 255)");
+    expect(lerpColor("#000000", "#ffffff", 0.5)).toBe("rgb(128, 128, 128)");
+  });
+
+  it("clamps t and accepts names", () => {
+    expect(lerpColor("black", "white", -1)).toBe("rgb(0, 0, 0)");
+    expect(lerpColor("black", "white", 2)).toBe("rgb(229, 229, 229)");
+  });
+
+  it("holds the parseable end when the other is default/transparent", () => {
+    expect(lerpColor("default", "#ff0000", 0.5)).toBe("rgb(255, 0, 0)");
+    expect(lerpColor("#00ff00", "transparent", 0.5)).toBe("rgb(0, 255, 0)");
+    expect(lerpColor("default", "transparent", 0.5)).toBe("transparent");
   });
 });

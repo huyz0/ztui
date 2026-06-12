@@ -41,6 +41,20 @@ export function mix(a: RGB, b: RGB, t: number): RGB {
 
 export const rgbStr = (c: RGB): string => `rgb(${c.r}, ${c.g}, ${c.b})`;
 
+/**
+ * Interpolate between two CSS colours, returning an `rgb(...)` string at
+ * fraction `t` (0 → `from`, 1 → `to`). Unparseable endpoints fall back to the
+ * other end, so a tween from/to `default` degrades to a hold rather than a throw.
+ */
+export function lerpColor(from: string, to: string, t: number): string {
+  const a = parseColor(from)?.rgb;
+  const b = parseColor(to)?.rgb;
+  if (!a && !b) return to;
+  if (!a) return rgbStr(b as RGB);
+  if (!b) return rgbStr(a);
+  return rgbStr(mix(a, b, t < 0 ? 0 : t > 1 ? 1 : t));
+}
+
 /** The 16 basic ANSI colour names, as concrete RGB (xterm palette subset). */
 const NAMED_RGB: Record<string, RGB> = {
   black: { r: 0, g: 0, b: 0 },
