@@ -110,6 +110,9 @@ describe("ZTUI TextArea Widget Suite", () => {
     const txt = findById("txt2");
     expect(txt).toBeDefined();
     if (!txt) return;
+    // Exercise the classic square-wave blink here (visibility toggles); the
+    // eased smooth caret is covered separately in caret.test.ts.
+    txt.smoothCaret = false;
     screen.focusWidget(txt);
 
     // Set large text to trigger scrolling

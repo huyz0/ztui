@@ -4,6 +4,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./caret.ts";
 import { normalizeRange } from "./text-selection.ts";
 import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
 
@@ -74,6 +75,11 @@ export class InputWidget extends Widget implements ValidatableField {
   private _focused = false;
   private blinkInterval: any = null;
   private cursorVisible = true;
+  /** Eased fade-blink (default) instead of a hard on/off toggle. Set false for
+   * the classic square-wave blink. */
+  public smoothCaret = true;
+  /** Timestamp the caret last reset to solid, driving the smooth-blink phase. */
+  private caretSolidAt = 0;
 
   constructor() {
     super("input");
@@ -100,11 +106,20 @@ export class InputWidget extends Widget implements ValidatableField {
 
   private startBlinking() {
     this.cursorVisible = true;
+    this.caretSolidAt = Date.now();
     if (this.blinkInterval) clearInterval(this.blinkInterval);
-    this.blinkInterval = setInterval(() => {
-      this.cursorVisible = !this.cursorVisible;
-      App.instance?.queueRender();
-    }, 530);
+    if (this.smoothCaret) {
+      // Smooth blink: repaint at the animation cadence; the caret's opacity is
+      // derived from the elapsed phase in render(), not a boolean toggle.
+      this.blinkInterval = setInterval(() => {
+        App.instance?.queueRender();
+      }, SMOOTH_CARET_TICK);
+    } else {
+      this.blinkInterval = setInterval(() => {
+        this.cursorVisible = !this.cursorVisible;
+        App.instance?.queueRender();
+      }, 530);
+    }
   }
 
   private stopBlinking() {
@@ -476,12 +491,18 @@ export class InputWidget extends Widget implements ValidatableField {
     }
 
     // Add cursor styling
-    if (this.focused && this.cursorVisible) {
+    if (this.focused && (this.cursorVisible || this.smoothCaret)) {
       const focusColor = App.instance?.cssResolver.resolveVariable(this, "$focus") || fg;
+      // Smooth caret: opacity eases through the blink phase. Hard caret: fully
+      // lit while visible (the interval toggles `cursorVisible`).
+      const intensity = this.smoothCaret ? smoothCaretIntensity(Date.now() - this.caretSolidAt) : 1;
       if (this.cursorCol === cells.length) {
-        cells.push({ char: "█", style: new Style({ color: focusColor, background: bg }) });
+        const c = blendCaretColors(intensity, focusColor, bg, fg, true);
+        cells.push({ char: "█", style: new Style(c) });
       } else if (this.cursorCol < cells.length) {
-        cells[this.cursorCol].style = new Style({ color: bg, background: focusColor });
+        const cellFg = cells[this.cursorCol].style.color || fg;
+        const c = blendCaretColors(intensity, focusColor, bg, cellFg, false);
+        cells[this.cursorCol].style = new Style(c);
       }
     }
 

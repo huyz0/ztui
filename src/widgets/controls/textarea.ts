@@ -5,6 +5,7 @@ import { Syntax } from "../../render/rich/syntax.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./caret.ts";
 import { deleteRange, extractSelection, insertAt, orderPair, type Pos } from "./text-selection.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
@@ -50,6 +51,11 @@ export class TextAreaWidget extends Widget {
   private _focused = false;
   private blinkInterval: any = null;
   private cursorVisible = true;
+  /** Eased fade-blink (default) instead of a hard on/off toggle. Set false for
+   * the classic square-wave blink. */
+  public smoothCaret = true;
+  /** Timestamp the caret last reset to solid, driving the smooth-blink phase. */
+  private caretSolidAt = 0;
 
   constructor() {
     super("textarea");
@@ -68,11 +74,20 @@ export class TextAreaWidget extends Widget {
 
   private startBlinking() {
     this.cursorVisible = true;
+    this.caretSolidAt = Date.now();
     if (this.blinkInterval) clearInterval(this.blinkInterval);
-    this.blinkInterval = setInterval(() => {
-      this.cursorVisible = !this.cursorVisible;
-      App.instance?.queueRender();
-    }, 530);
+    if (this.smoothCaret) {
+      // Smooth blink: repaint at the animation cadence; opacity is derived from
+      // the elapsed phase in render(), not a boolean toggle.
+      this.blinkInterval = setInterval(() => {
+        App.instance?.queueRender();
+      }, SMOOTH_CARET_TICK);
+    } else {
+      this.blinkInterval = setInterval(() => {
+        this.cursorVisible = !this.cursorVisible;
+        App.instance?.queueRender();
+      }, 530);
+    }
   }
 
   private stopBlinking() {
@@ -507,13 +522,23 @@ export class TextAreaWidget extends Widget {
         }
       }
 
-      // 3. Render Cursor cell (reverse video)
-      if (this.focused && this.cursorVisible && lineIndex === this.cursorRow) {
+      // 3. Render Cursor cell (eased fade-blink, or reverse video when off)
+      if (
+        this.focused &&
+        (this.cursorVisible || this.smoothCaret) &&
+        lineIndex === this.cursorRow
+      ) {
         const focusColor = App.instance?.cssResolver.resolveVariable(this, "$focus") || fg;
+        const intensity = this.smoothCaret
+          ? smoothCaretIntensity(Date.now() - this.caretSolidAt)
+          : 1;
         if (this.cursorCol === cells.length) {
-          cells.push({ char: "█", style: new Style({ color: focusColor, background: bg }) });
+          const c = blendCaretColors(intensity, focusColor, bg, fg, true);
+          cells.push({ char: "█", style: new Style(c) });
         } else if (this.cursorCol < cells.length) {
-          cells[this.cursorCol].style = new Style({ color: bg, background: focusColor });
+          const cellFg = cells[this.cursorCol].style.color || fg;
+          const c = blendCaretColors(intensity, focusColor, bg, cellFg, false);
+          cells[this.cursorCol].style = new Style(c);
         }
       }
 

@@ -3,6 +3,7 @@
 export type RGB = { r: number; g: number; b: number };
 
 export const BLACK: RGB = { r: 0, g: 0, b: 0 };
+export const WHITE: RGB = { r: 255, g: 255, b: 255 };
 
 /** Parse `#rgb`, `#rrggbb`, or `rgb(r,g,b)` to channels; null if unrecognised. */
 export function parseRgb(color: string): RGB | null {
