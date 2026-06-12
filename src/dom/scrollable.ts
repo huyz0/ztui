@@ -1,9 +1,18 @@
+import { themeBlendBase } from "../core/theme.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
+import { parseColor } from "../render/color.ts";
 import { Style } from "../render/style.ts";
 import { Widget } from "./widget.ts";
+
+// Scroll-edge fade: how strongly the edge rows blend toward the background to
+// signal hidden content. The row at the very edge fades hardest, the next one
+// less, giving a short gradient that reads as "more above/below".
+const FADE_EDGE = 0.55;
+const FADE_NEXT = 0.25;
 
 export type Constructor<T = object> = new (...args: any[]) => T;
 
@@ -76,7 +85,48 @@ export function Scrollable<TBase extends Constructor<Widget>>(Base: TBase) {
 
     override render(buffer: ScreenBuffer): void {
       super.render(buffer);
+      // Fade the content's edge rows *before* the scrollbar so the bar stays
+      // crisp on top of the gradient.
+      this.drawScrollFades(buffer);
       this.drawScrollbars(buffer);
+    }
+
+    /**
+     * Fade the top and/or bottom content row toward the background when there's
+     * scrolled-away content in that direction — a soft gradient cue (alongside
+     * the scrollbar) that more rows exist above/below the viewport. Pure visual
+     * affordance: only the already-painted edge cells are tinted.
+     */
+    private drawScrollFades(buffer: ScreenBuffer): void {
+      if (!this.scrollableY) return;
+      const content = this.getContentRect();
+      if (content.height < 2 || content.width <= 0) return;
+
+      const maxScrollY = Math.max(0, this.getContentSize().height - content.height);
+      if (maxScrollY <= 0) return; // content fits — nothing hidden
+
+      const hiddenAbove = this.scrollOffset.y > 0;
+      const hiddenBelow = this.scrollOffset.y < maxScrollY;
+      if (!hiddenAbove && !hiddenBelow) return;
+
+      const base = themeBlendBase();
+      const fade = parseColor(this.findResolvedBackground())?.rgb ?? base.bg;
+      const blendRow = (y: number, a: number) =>
+        buffer.blendRegion(
+          new Region(new Offset(content.x, y), new Size(content.width, 1)),
+          fade,
+          a,
+          base,
+        );
+
+      if (hiddenAbove) {
+        blendRow(content.y, FADE_EDGE);
+        if (content.height > 3) blendRow(content.y + 1, FADE_NEXT);
+      }
+      if (hiddenBelow) {
+        blendRow(content.bottom - 1, FADE_EDGE);
+        if (content.height > 3) blendRow(content.bottom - 2, FADE_NEXT);
+      }
     }
 
     override renderChildren(buffer: ScreenBuffer): void {

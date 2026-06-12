@@ -5,6 +5,7 @@ import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
+import { Style } from "../render/style.ts";
 import { Scrollable } from "./scrollable.ts";
 import { Widget } from "./widget.ts";
 
@@ -191,6 +192,40 @@ describe("Scrollable Mixin", () => {
     // Cells at y=3, 4 should be clipped because scrollBox content height is 3!
     expect(buffer.cells[3][0].char).toBe(" ");
     expect(buffer.cells[4][0].char).toBe(" ");
+  });
+
+  test("scroll-edge fade tints the top/bottom rows only when content is hidden there", () => {
+    const make = () => {
+      const box = new ScrollableBox();
+      box.computedStyle.overflowY = "scroll";
+      box.region = new Region(Offset.ORIGIN, new Size(5, 5)); // content rect y=0..5
+      const child = new Widget("label");
+      child.region = new Region(Offset.ORIGIN, new Size(5, 20)); // 20 tall → 15 scrollable
+      // Paint every child cell solid white so the fade is detectable as a colour shift.
+      child.render = (buf: ScreenBuffer) => {
+        for (let y = 0; y < 20; y++)
+          for (let x = 0; x < 5; x++) buf.setCell(x, y, "X", new Style({ color: "#ffffff" }));
+      };
+      box.appendChild(child);
+      return box;
+    };
+    const white = (cell: { style: Style }) => cell.style.color === "#ffffff";
+
+    // Scrolled to the middle: content hidden both above and below → both edges fade.
+    const mid = make();
+    mid.scrollOffset = new Offset(0, 5);
+    let buf = new ScreenBuffer(6, 6);
+    mid.render(buf);
+    expect(white(buf.cells[0][0])).toBe(false); // top row faded
+    expect(white(buf.cells[2][0])).toBe(true); // middle row untouched
+    expect(white(buf.cells[4][0])).toBe(false); // bottom row faded
+
+    // At the very top: nothing hidden above, so the top row stays crisp; bottom fades.
+    const top = make();
+    buf = new ScreenBuffer(6, 6);
+    top.render(buf);
+    expect(white(buf.cells[0][0])).toBe(true); // top crisp
+    expect(white(buf.cells[4][0])).toBe(false); // bottom still has hidden content
   });
 
   test("App event bubbling integration", async () => {

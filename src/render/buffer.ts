@@ -136,7 +136,7 @@ export class ScreenBuffer {
       if (!row) continue;
       for (let x = x0; x < x1; x++) {
         const cell = row[x];
-        if (!cell) continue;
+        if (!cell || typeof cell.style?.merge !== "function") continue;
         if (this.currentClip && !this.currentClip.contains(x, y)) continue;
         const bg = cell.style.background
           ? (parseColor(cell.style.background)?.rgb ?? base.bg)
