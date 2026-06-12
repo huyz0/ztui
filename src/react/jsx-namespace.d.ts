@@ -77,8 +77,12 @@ declare global {
           onToggle?: (open: boolean) => void;
           glyphSet?: "unicode" | "ascii";
         };
-        "ztui-box": ZTUIElementProps;
-        "ztui-scrollable-box": ZTUIElementProps;
+        "ztui-box": ZTUIElementProps & {
+          title?: string;
+        };
+        "ztui-scrollable-box": ZTUIElementProps & {
+          title?: string;
+        };
         "ztui-icon": ZTUIElementProps & {
           name: string;
         };
