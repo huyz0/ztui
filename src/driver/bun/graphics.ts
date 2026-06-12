@@ -19,6 +19,8 @@ export class TerminalGraphicsManager {
       sixelCache?: Map<string, string>;
     }
   >();
+  // Cached background-fill clear sequences, keyed by cell size + bg colour.
+  private clearCache = new Map<string, string>();
 
   private getOrRasterize(
     name: string,
@@ -44,6 +46,36 @@ export class TerminalGraphicsManager {
       sixelCache: new Map(),
     });
     return raster;
+  }
+
+  /**
+   * Sequence that erases a previously-drawn icon/graphic at the cursor cell.
+   * Text/spaces don't clear an image from a terminal's graphics layer, so on
+   * sixel we paint an opaque background rectangle over the 2×1 cell footprint
+   * (reusing the tested encoder with a transparent buffer → register 0 = bg);
+   * on kitty we delete the placement. Returns "" when no clear is needed.
+   */
+  public getIconClearSequence(capabilities: TerminalCapabilities, bgColor?: string): string {
+    if (capabilities.graphicsProtocol === "kitty") {
+      return "\x1b_Ga=d,d=c\x1b\\";
+    }
+    if (capabilities.graphicsProtocol === "sixel") {
+      const isWT = !!process.env.WT_SESSION || !!process.env.WT_PROFILE_ID;
+      const cellWidth = capabilities.cellSize?.width || (isWT ? 11 : 10);
+      const cellHeight = capabilities.cellSize?.height || (isWT ? 22 : 20);
+      const w = cellWidth * 2;
+      const h = cellHeight;
+      const bg = bgColor && bgColor !== "default" ? bgColor : "#1e1e2e";
+      const key = `clear_${w}x${h}_${bg}`;
+      let seq = this.clearCache.get(key);
+      if (!seq) {
+        const sixel = rgbaToSixel(new Uint8Array(w * h * 4), w, h, "white", bg);
+        seq = `\x1b[s${sixel}\x1b[u`;
+        this.clearCache.set(key, seq);
+      }
+      return seq;
+    }
+    return "";
   }
 
   public getIconSequence(

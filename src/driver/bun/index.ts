@@ -393,6 +393,13 @@ export class BunDriver extends Driver {
     }
 
     this.capabilitiesResolved = true;
+    logger.info(
+      "graphics",
+      `capabilities: protocol=${this.capabilities.graphicsProtocol} ` +
+        `cellSize=${this.capabilities.cellSize?.width}x${this.capabilities.cellSize?.height} ` +
+        `glyph=${this.capabilities.glyphProtocol} ` +
+        `term=${process.env.TERM_PROGRAM ?? process.env.TERM ?? "?"}`,
+    );
     this.emit("capabilities_resolved");
   }
 
@@ -459,8 +466,9 @@ export class BunDriver extends Driver {
     }
   }
 
-  public override getGraphicClearSequence(): string {
-    // Kitty: delete the image placement covering the cursor cell.
-    return this.capabilities.graphicsProtocol === "kitty" ? "\x1b_Ga=d,d=c\x1b\\" : "";
+  public override getGraphicClearSequence(bgColor?: string): string {
+    // Erase a stale icon/graphic at the cursor cell (kitty: delete placement;
+    // sixel: paint an opaque bg rectangle, since text doesn't clear images).
+    return this.graphicsManager.getIconClearSequence(this.capabilities, bgColor);
   }
 }

@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useRef, useState } from "react";
 import type { Widget } from "../../../dom/widget.ts";
 import { Label } from "../text/label.tsx";
 import { Box } from "./box.tsx";
+import { Panel } from "./panel.tsx";
 import { Splitter } from "./splitter.tsx";
 
 export type SplitDirection = "row" | "column";
@@ -11,6 +12,8 @@ export interface SplitLeaf {
   type: "leaf";
   /** Stable id (useful for controlled trees / persistence). */
   id: string;
+  /** Optional header title; shown in the pane's flat header bar. */
+  title?: string;
   content: ReactNode;
 }
 
@@ -29,6 +32,7 @@ export type SplitNode = SplitLeaf | SplitBranch;
 export interface SerializedLeaf {
   type: "leaf";
   id: string;
+  title?: string;
 }
 
 /** A split branch with serializable children — JSON-serializable. */
@@ -131,31 +135,36 @@ export function SplitView({ root, onChange, controls, newPane }: SplitViewProps)
   const canClose = countLeaves(tree) > 1;
   const renderNode = (node: SplitNode, path: number[]): ReactNode => {
     if (node.type === "leaf") {
-      if (!controls) return <Box style={{ width: "100%", height: "100%" }}>{node.content}</Box>;
-      // A 1-row toolbar (right-aligned controls) above the pane content. Each
-      // glyph is its own clickable Label since clicks resolve to the hit widget.
+      // Without controls or a title, render the content bare (no chrome).
+      if (!controls && node.title === undefined) {
+        return <Box style={{ width: "100%", height: "100%" }}>{node.content}</Box>;
+      }
+      // Otherwise use a flat Panel: the split/close glyphs ride in the header's
+      // top-right corner. Each is its own clickable Label (clicks hit the leaf
+      // widget, no bubbling).
+      const actions = controls ? (
+        <>
+          {newPane && (
+            <Label onClick={() => doSplit(node.id, "row")} style={{ width: 2, dim: true }}>
+              ↔
+            </Label>
+          )}
+          {newPane && (
+            <Label onClick={() => doSplit(node.id, "column")} style={{ width: 2, dim: true }}>
+              ↕
+            </Label>
+          )}
+          {canClose && (
+            <Label onClick={() => doClose(node.id)} style={{ width: 2, color: "$error" }}>
+              ✕
+            </Label>
+          )}
+        </>
+      ) : undefined;
       return (
-        <Box style={{ width: "100%", height: "100%", layout: "vertical" }}>
-          <Box style={{ width: "100%", height: 1, layout: "horizontal", background: "$panel" }}>
-            <Box style={{ width: "1fr", height: 1 }} />
-            {newPane && (
-              <Label onClick={() => doSplit(node.id, "row")} style={{ width: 2 }}>
-                ↔
-              </Label>
-            )}
-            {newPane && (
-              <Label onClick={() => doSplit(node.id, "column")} style={{ width: 2 }}>
-                ↕
-              </Label>
-            )}
-            {canClose && (
-              <Label onClick={() => doClose(node.id)} style={{ width: 2, color: "$error" }}>
-                ✕
-              </Label>
-            )}
-          </Box>
-          <Box style={{ width: "100%", height: "1fr" }}>{node.content}</Box>
-        </Box>
+        <Panel title={node.title} actions={actions}>
+          {node.content}
+        </Panel>
       );
     }
 
@@ -239,7 +248,7 @@ function structuredCloneTree(node: SplitNode): SplitNode {
  * the ReactNode content. Persist the result; rebuild with {@link hydrateSplit}.
  */
 export function serializeSplit(node: SplitNode): SerializedSplitNode {
-  if (node.type === "leaf") return { type: "leaf", id: node.id };
+  if (node.type === "leaf") return { type: "leaf", id: node.id, title: node.title };
   return {
     type: "split",
     direction: node.direction,
@@ -256,7 +265,8 @@ export function hydrateSplit(
   node: SerializedSplitNode,
   contentFor: (id: string) => ReactNode,
 ): SplitNode {
-  if (node.type === "leaf") return { type: "leaf", id: node.id, content: contentFor(node.id) };
+  if (node.type === "leaf")
+    return { type: "leaf", id: node.id, title: node.title, content: contentFor(node.id) };
   return {
     type: "split",
     direction: node.direction,

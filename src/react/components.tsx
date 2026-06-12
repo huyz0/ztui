@@ -81,11 +81,15 @@ export { Tree } from "./components/data/tree.tsx";
 export { Box } from "./components/layout/box.tsx";
 export type { CollapsibleProps } from "./components/layout/collapsible.tsx";
 export { Collapsible } from "./components/layout/collapsible.tsx";
+export type { DividerProps } from "./components/layout/divider.tsx";
+export { Divider } from "./components/layout/divider.tsx";
 export { Dock } from "./components/layout/dock.tsx";
 export { Footer } from "./components/layout/footer.tsx";
 export { Grid } from "./components/layout/grid.tsx";
 export { HBox } from "./components/layout/hbox.tsx";
 export { Header } from "./components/layout/header.tsx";
+export type { PanelProps } from "./components/layout/panel.tsx";
+export { Panel } from "./components/layout/panel.tsx";
 export { ScrollableBox } from "./components/layout/scrollable-box.tsx";
 export type {
   SerializedBranch,
@@ -118,7 +122,7 @@ export type {
   WorkbenchPanel,
   WorkbenchProps,
 } from "./components/layout/workbench.tsx";
-export { Workbench } from "./components/layout/workbench.tsx";
+export { DEFAULT_TOGGLE_KEYS, Workbench } from "./components/layout/workbench.tsx";
 export type { FileIconProps } from "./components/media/file-icon.tsx";
 export { FileIcon } from "./components/media/file-icon.tsx";
 export type { HeroIconProps, HeroIconVariant } from "./components/media/heroic-icon.tsx";

@@ -87,6 +87,9 @@ declare global {
           orientation?: "vertical" | "horizontal";
           onResize?: (delta: number) => void;
         };
+        "ztui-divider": ZTUIElementProps & {
+          orientation?: "vertical" | "horizontal";
+        };
         "ztui-scrollable-box": ZTUIElementProps & {
           title?: string;
         };

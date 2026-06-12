@@ -83,12 +83,13 @@ export abstract class Driver extends EventEmitter {
     this.write("\x1b[H\x1b[2J\x1b[3J");
   }
   /**
-   * Sequence emitted before redrawing a cell that previously held a graphic but
-   * no longer does, to erase the stale image. Returns "" for backends/protocols
-   * where no explicit clear is needed. Keeps graphics-protocol specifics out of
-   * the render/app layers — callers prepend this without knowing the protocol.
+   * Sequence emitted before redrawing a cell whose graphic/icon changed or was
+   * removed, to erase the stale image. `bgColor` is the cell's new background,
+   * used by protocols (e.g. sixel) that clear by painting an opaque rectangle.
+   * Returns "" for backends/protocols where no explicit clear is needed. Keeps
+   * graphics-protocol specifics out of the render/app layers.
    */
-  public getGraphicClearSequence(): string {
+  public getGraphicClearSequence(_bgColor?: string): string {
     return "";
   }
   /**

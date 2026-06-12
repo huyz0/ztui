@@ -46,6 +46,31 @@ function ui() {
   );
 }
 
+type Mounted = Awaited<ReturnType<typeof mountApp>>;
+
+// Center of a rail icon, found by id so tests don't depend on rail geometry.
+function railCenter(t: Mounted, panelId: string) {
+  const w = t.findById(`rail-${panelId}`);
+  if (!w) throw new Error(`rail icon for ${panelId} not found`);
+  const r = w.region;
+  return { x: r.x + Math.floor(r.width / 2), y: r.y + Math.floor(r.height / 2) };
+}
+
+async function tapRail(t: Mounted, panelId: string) {
+  const { x, y } = railCenter(t, panelId);
+  t.driver.simulateMouse(x, y, "press", "left");
+  t.driver.simulateMouse(x, y, "release", "left");
+  await t.settle();
+}
+
+async function dragRailTo(t: Mounted, panelId: string, toX: number, toY: number) {
+  const { x, y } = railCenter(t, panelId);
+  t.driver.simulateMouse(x, y, "press", "left");
+  t.driver.simulateMouse(toX, toY, "drag", "left");
+  t.driver.simulateMouse(toX, toY, "release", "left");
+  await t.settle();
+}
+
 describe("Workbench", () => {
   test("opens the initialOpen region and shows the center content", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
@@ -60,10 +85,7 @@ describe("Workbench", () => {
   test("clicking a right-rail icon opens that panel", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).not.toContain("OUTLINEBODY");
-    // Right rail is the rightmost 2 columns; its single icon sits on the first row.
-    t.driver.simulateMouse(79, 0, "press", "left");
-    t.driver.simulateMouse(79, 0, "release", "left");
-    await t.settle();
+    await tapRail(t, "outline");
     expect(t.text()).toContain("OUTLINEBODY");
     expect(t.text()).toContain("Outline");
   });
@@ -71,20 +93,14 @@ describe("Workbench", () => {
   test("clicking the active left-rail icon collapses the region", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).toContain("FILES");
-    // Explorer is the first (active) left icon at column 0, row 0.
-    t.driver.simulateMouse(0, 0, "press", "left");
-    t.driver.simulateMouse(0, 0, "release", "left");
-    await t.settle();
+    await tapRail(t, "explorer"); // active panel's icon → collapse
     expect(t.text()).not.toContain("FILES");
   });
 
   test("switching left tabs swaps the active panel without closing", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).toContain("FILES");
-    // Second left icon (Search) is at column 0, row 1.
-    t.driver.simulateMouse(0, 1, "press", "left");
-    t.driver.simulateMouse(0, 1, "release", "left");
-    await t.settle();
+    await tapRail(t, "search"); // second left icon → switch active
     expect(t.text()).toContain("SEARCHBODY");
     expect(t.text()).not.toContain("FILES");
   });
@@ -100,23 +116,35 @@ describe("Workbench", () => {
     expect(t.text()).toContain("FILES"); // reopened
   });
 
-  test("Ctrl+J toggles the bottom region", async () => {
+  test("the bottom toggle key opens the bottom region", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).not.toContain("TERMBODY"); // bottom starts closed
-    t.driver.simulateKey("j", "j", true); // ctrl+j
+    // Default bottom key is ctrl+space (terminals deliver ctrl+j as Enter).
+    t.driver.simulateKey("space", "space", true);
     await t.settle();
     expect(t.text()).toContain("TERMBODY");
+  });
+
+  test("toggleKeys overrides the default bindings", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <Workbench panels={panels} initialOpen={["left"]} toggleKeys={{ left: "ctrl+n" }}>
+          <Label>EDITOR</Label>
+        </Workbench>
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    expect(t.text()).toContain("FILES");
+    t.driver.simulateKey("n", "n", true); // ctrl+n closes the left region
+    await t.settle();
+    expect(t.text()).not.toContain("FILES");
   });
 
   test("dragging a left-rail icon to the right zone re-docks the panel", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).toContain("FILES"); // Explorer (left, active)
     expect(t.text()).not.toContain("SEARCHBODY"); // Search not active yet
-    // Press the Explorer icon (col 0, row 0), drag to the right edge, release.
-    t.driver.simulateMouse(0, 0, "press", "left");
-    t.driver.simulateMouse(79, 0, "drag", "left");
-    t.driver.simulateMouse(79, 0, "release", "left");
-    await t.settle();
+    await dragRailTo(t, "explorer", 79, 0); // drag to the right zone
     // Explorer now lives on the right (its body still shows)...
     expect(t.text()).toContain("FILES");
     // ...and the left region repaired its active panel to the sibling (Search).
@@ -146,9 +174,7 @@ describe("Workbench", () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).toContain("FILES");
     // press+release at the same cell → moved=false → toggle (collapse).
-    t.driver.simulateMouse(0, 0, "press", "left");
-    t.driver.simulateMouse(0, 0, "release", "left");
-    await t.settle();
+    await tapRail(t, "explorer");
     expect(t.text()).not.toContain("FILES");
   });
 
@@ -182,9 +208,7 @@ describe("Workbench", () => {
 
     // A click produces a new snapshot reflecting the mutation.
     snapshots.length = 0;
-    t.driver.simulateMouse(0, 0, "press", "left"); // open left on Explorer
-    t.driver.simulateMouse(0, 0, "release", "left");
-    await t.settle();
+    await tapRail(t, "explorer"); // open left on Explorer
     expect(snapshots.at(-1)?.regions.left.open).toBe(true);
     expect(snapshots.at(-1)?.regions.left.active).toBe("explorer");
   });
@@ -199,11 +223,8 @@ describe("Workbench", () => {
       </VBox>,
       { cols: 80, rows: 24 },
     );
-    // Drag Explorer (left rail, row 0) to the right zone.
-    t.driver.simulateMouse(0, 0, "press", "left");
-    t.driver.simulateMouse(79, 0, "drag", "left");
-    t.driver.simulateMouse(79, 0, "release", "left");
-    await t.settle();
+    // Drag Explorer from the left rail to the right zone.
+    await dragRailTo(t, "explorer", 79, 0);
     expect(snapshots.at(-1)?.overrides.explorer).toBe("right");
 
     // Feeding that snapshot back as initialLayout restores the re-dock.

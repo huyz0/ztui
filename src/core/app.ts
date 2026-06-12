@@ -523,8 +523,12 @@ export class App extends DOMNode {
       this.prevBuffer,
       (cell, oldCell) => {
         let prefix = "";
-        if (oldCell?.graphic && !cell.graphic) {
-          prefix = this.driver.getGraphicClearSequence();
+        // Erase a stale image when the cell previously held an icon/graphic that
+        // is now different or gone. Text/spaces don't clear a terminal's graphics
+        // layer (esp. sixel), so without this an old icon lingers after a swap.
+        const oldHadImage = !!(oldCell && (oldCell.icon || oldCell.graphic));
+        if (oldHadImage && (oldCell.icon !== cell.icon || oldCell.graphic !== cell.graphic)) {
+          prefix = this.driver.getGraphicClearSequence(cell.style.background);
         }
 
         if (cell.graphic) {

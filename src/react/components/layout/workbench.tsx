@@ -6,6 +6,7 @@ import { Label } from "../text/label.tsx";
 import type { ComponentProps } from "../types.ts";
 import { Box } from "./box.tsx";
 import { Dock } from "./dock.tsx";
+import { Panel } from "./panel.tsx";
 import { Splitter } from "./splitter.tsx";
 import { VBox } from "./vbox.tsx";
 
@@ -18,7 +19,7 @@ export interface WorkbenchPanel {
   anchor: WorkbenchAnchor;
   /** Shown in the panel's border title and the bottom tab bar. */
   title: string;
-  /** Heroicon name for the activity rail (left/right panels). */
+  /** Heroicon name shown in the rail and panel header (e.g. "folder"). */
   icon?: string;
   /** Panel body. */
   content: ReactNode;
@@ -40,7 +41,22 @@ export interface WorkbenchProps extends ComponentProps {
   initialLayout?: WorkbenchLayout;
   /** Fired with a fresh snapshot whenever the layout changes (for persistence). */
   onLayoutChange?: (layout: WorkbenchLayout) => void;
+  /**
+   * Keys that toggle each region. Defaults to {@link DEFAULT_TOGGLE_KEYS}.
+   * Note: `ctrl+j`/`ctrl+i`/`ctrl+m` can't be used — terminals deliver them as
+   * Enter/Tab — and `alt`/`ctrl+alt` combos only reach apps under the Kitty
+   * keyboard protocol. The default bottom key is `ctrl+\`` (a.k.a. ctrl+space),
+   * which works on legacy terminals too.
+   */
+  toggleKeys?: Partial<Record<WorkbenchAnchor, string>>;
 }
+
+/** Region toggle keys chosen to work on legacy terminals, not just Kitty. */
+export const DEFAULT_TOGGLE_KEYS: Record<WorkbenchAnchor, string> = {
+  left: "ctrl+b",
+  right: "ctrl+alt+b",
+  bottom: "ctrl+space",
+};
 
 /** Per-region UI state for one anchor. JSON-serializable. */
 export interface RegionState {
@@ -81,8 +97,10 @@ export function Workbench({
   initialSizes,
   initialLayout,
   onLayoutChange,
+  toggleKeys,
   ...rest
 }: WorkbenchProps): ReactElement {
+  const keys = { ...DEFAULT_TOGGLE_KEYS, ...toggleKeys };
   // Runtime re-dock overrides (panel id -> anchor) from drag-to-move. A panel's
   // declared `anchor` is its default; an override wins. Restored from and
   // persisted into the layout snapshot, so moves survive a reload.
@@ -206,21 +224,21 @@ export function Workbench({
 
   // Keyboard parity with the rail/footer clicks (VSCode muscle memory).
   useHotkey({
-    key: "ctrl+b",
+    key: keys.left,
     name: "Toggle left panel",
     group: "View",
     enabled: () => byAnchor("left").length > 0,
     handler: () => toggle("left"),
   });
   useHotkey({
-    key: "ctrl+alt+b",
+    key: keys.right,
     name: "Toggle right panel",
     group: "View",
     enabled: () => byAnchor("right").length > 0,
     handler: () => toggle("right"),
   });
   useHotkey({
-    key: "ctrl+j",
+    key: keys.bottom,
     name: "Toggle bottom panel",
     group: "View",
     enabled: () => byAnchor("bottom").length > 0,
@@ -306,7 +324,6 @@ export function Workbench({
         region={regions.bottom}
         dragProps={dragProps}
         dropTarget={drag?.over ?? null}
-        onToggle={() => toggle("bottom")}
       />,
     );
     if (regions.bottom.open && panelOf(regions.bottom.active)) {
@@ -367,21 +384,33 @@ function ActivityRail({
   dragProps: DragPropsFactory;
   dropTarget: WorkbenchAnchor | null;
 }): ReactElement {
-  // Tint the whole rail while it's the active drop target for a drag-to-move.
-  const railBg = dropTarget === anchor ? "$primary" : "$panel";
+  // The rail is tinted `$surface` — a shade darker than the panels' `$panel` —
+  // so it reads as a separate region by colour alone (no divider line needed).
+  // While it's the active drop target for a drag-to-move it flips to `$primary`.
+  const railBg = dropTarget === anchor ? "$primary" : "$surface";
+
   return (
     <VBox style={{ dock: anchor, width: RAIL_WIDTH, height: "100%", background: railBg }}>
       {panels.map((p) => {
         const active = region.open && region.active === p.id;
-        // Drag handlers go on the icon itself: clicks/drags resolve to the
-        // deepest hit widget with no bubbling. A tap toggles; a drag re-docks.
+        // A 2-cell rasterized heroicon, centered in the rail (no horizontal pad).
+        // The `solid` variant fills the cell (the `mini` variant is scaled to
+        // ~83%, leaving a visible gap). A 1-row top margin spaces it from the
+        // icon above. Drag handlers go on the icon (clicks resolve to the hit
+        // widget): a tap toggles, a drag re-docks. `id` lets tests target it.
         return (
           <HeroIcon
             key={p.id}
+            id={`rail-${p.id}`}
             name={p.icon ?? "square-3-stack-3d"}
-            variant="mini"
+            variant="solid"
             {...dragProps(anchor, p.id)}
-            style={{ width: RAIL_WIDTH, height: 1, background: active ? "$selectionBg" : railBg }}
+            style={{
+              width: RAIL_WIDTH,
+              height: 1,
+              margin: { top: 1 },
+              background: active ? "$selectionBg" : railBg,
+            }}
           />
         );
       })}
@@ -402,10 +431,17 @@ function PanelRegion({
     anchor === "bottom"
       ? { dock: "bottom" as const, width: "100%", height: size }
       : { dock: anchor, width: size, height: "100%" };
+  // Flat panel: a colored header (icon + title) instead of a border, so chrome
+  // is one row and nothing can overflow a box edge. The body is padded + clips.
+  const icon = panel.icon ? <HeroIcon name={panel.icon} variant="solid" /> : undefined;
   return (
-    <Box title={panel.title} style={{ ...dockStyle, border: "rounded", padding: 1 }}>
-      {panel.content}
-    </Box>
+    <Panel icon={icon} title={panel.title} style={{ ...dockStyle, background: "$panel" }}>
+      <Box
+        style={{ width: "100%", height: "100%", padding: { left: 1, top: 1 }, overflowY: "hidden" }}
+      >
+        {panel.content}
+      </Box>
+    </Panel>
   );
 }
 
@@ -414,15 +450,15 @@ function BottomTabBar({
   region,
   dragProps,
   dropTarget,
-  onToggle,
 }: {
   panels: WorkbenchPanel[];
   region: RegionState;
   dragProps: DragPropsFactory;
   dropTarget: WorkbenchAnchor | null;
-  onToggle: () => void;
 }): ReactElement {
   // Handlers live on the Labels (the hit targets) since clicks don't bubble.
+  // No chevron toggle: clicking a tab name opens it, and clicking the active
+  // tab collapses the region (see `select`), so the names are the toggle.
   const barBg = dropTarget === "bottom" ? "$primary" : "$panel";
   return (
     <Box
@@ -434,9 +470,6 @@ function BottomTabBar({
         layout: "horizontal",
       }}
     >
-      <Label onClick={onToggle} style={{ width: 2, height: 1 }}>
-        {region.open ? "⌄ " : "⌃ "}
-      </Label>
       {panels.map((p) => {
         const active = region.open && region.active === p.id;
         return (

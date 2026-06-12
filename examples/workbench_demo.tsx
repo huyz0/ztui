@@ -82,15 +82,15 @@ function WorkbenchDemo() {
   return (
     <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
       <Header>
-        🧱 ZTUI Workbench — click toggles · drag icon/tab to re-dock · drag splitters · Ctrl+B/J ·
-        Ctrl+C quit
+        🧱 ZTUI Workbench — drag to re-dock · drag splitters · Ctrl+B / Ctrl+Space toggle · Ctrl+C
+        quit
       </Header>
       <Workbench
         panels={panels}
         initialOpen={["left"]}
         initialLayout={savedLayout}
         onLayoutChange={saveLayout}
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "1fr" }}
       >
         <Box style={{ padding: 1 }}>
           <Label>Editor area (center).</Label>

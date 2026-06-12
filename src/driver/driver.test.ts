@@ -484,11 +484,18 @@ describe("BunDriver Capability Probing", () => {
     expect(new MockDriver(80, 24).getGraphicClearSequence()).toBe("");
     expect(new WebDriver(80, 24).getGraphicClearSequence()).toBe("");
 
-    // BunDriver returns the Kitty delete-placement escape only when Kitty is active.
+    // BunDriver returns the Kitty delete-placement escape when Kitty is active.
     const driver = new BunDriver({ stdin, stdout });
     (driver.capabilities as any).graphicsProtocol = "kitty";
     expect(driver.getGraphicClearSequence()).toBe("\x1b_Ga=d,d=c\x1b\\");
+    // Sixel can't be cleared by text, so it paints an opaque bg rectangle
+    // (a sixel sequence) over the cell footprint.
     (driver.capabilities as any).graphicsProtocol = "sixel";
+    const sixelClear = driver.getGraphicClearSequence("#1e1e2e");
+    expect(sixelClear.startsWith("\x1b[s\x1bP")).toBe(true); // save cursor + sixel
+    expect(sixelClear.endsWith("\x1b[u")).toBe(true); // restore cursor
+    // No graphics protocol → nothing to clear.
+    (driver.capabilities as any).graphicsProtocol = "none";
     expect(driver.getGraphicClearSequence()).toBe("");
   });
 
