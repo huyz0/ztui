@@ -1,6 +1,7 @@
 // Type-only: erased at runtime, so no import cycle with app.ts.
 import type { App } from "../core/app.ts";
 import { logger } from "../core/logger.ts";
+import { themeBlendBase } from "../core/theme.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
@@ -8,6 +9,7 @@ import { Size } from "../geometry/size.ts";
 import { Spacing } from "../geometry/spacing.ts";
 import { parseDimension } from "../layout/layout.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
+import { mix, parseColor, rgbStr } from "../render/color.ts";
 import { stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 import { DOMNode } from "./dom.ts";
@@ -290,9 +292,23 @@ export class Widget extends DOMNode {
     // Draw background
     const bg = this.findResolvedBackground();
     const fg = this.computedStyle.color || "default";
+
+    // A translucent background (`rgba(...)` / `#rrggbbaa`) composites over what's
+    // already painted behind this widget instead of replacing it — enabling
+    // translucent panels and shadows. The opaque approximation (the colour
+    // blended over the theme surface) drives the border so it matches the fill.
+    const parsedBg = parseColor(bg);
+    const translucent = parsedBg !== null && parsedBg.alpha < 1;
+    let bgForStyle = bg;
+    if (translucent && parsedBg) {
+      const base = themeBlendBase();
+      buffer.blendRegion(client, parsedBg.rgb, parsedBg.alpha, base);
+      bgForStyle = rgbStr(mix(base.bg, parsedBg.rgb, parsedBg.alpha));
+    }
+
     const style = new Style({
       color: fg,
-      background: bg,
+      background: bgForStyle,
       bold: this.computedStyle.bold,
       italic: this.computedStyle.italic,
       underline: this.computedStyle.underline,
@@ -302,9 +318,11 @@ export class Widget extends DOMNode {
       link: this.computedStyle.link,
     });
 
-    for (let y = client.y; y < client.bottom; y++) {
-      for (let x = client.x; x < client.right; x++) {
-        buffer.setCell(x, y, " ", style);
+    if (!translucent) {
+      for (let y = client.y; y < client.bottom; y++) {
+        for (let x = client.x; x < client.right; x++) {
+          buffer.setCell(x, y, " ", style);
+        }
       }
     }
 

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { describe, expect, test } from "vitest";
 import type { Widget } from "../dom/widget.ts";
 import { Button, Dialog, Input, Label, StickyPanel, VBox } from "../react/components.tsx";
+import { parseColor } from "../render/color.ts";
 // Side-effect import: registers the host elements (ztui-button, ztui-overlay-root, …).
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
@@ -108,11 +109,15 @@ describe("Dialog", () => {
     const t = await mountApp(<App />);
     // The background text is still present (not erased by the dim layer)…
     expect(t.text()).toContain("BACKDROPTEXT");
-    // …and the cell under the backdrop is dimmed.
+    // …and the cell under the backdrop is darkened by the alpha scrim: its glyph
+    // is kept but its colours are blended toward black to concrete rgb values.
     const bg = t.findById("bg") as Widget;
     const cell = t.cellAt(bg.region.x, bg.region.y);
     expect(cell.char).toBe("B");
-    expect(cell.style.dim).toBe(true);
+    const rgb = parseColor(cell.style.color ?? "")?.rgb;
+    expect(rgb).toBeDefined();
+    // Scrim is 50% black, so the foreground lands roughly mid-grey, not full white.
+    expect(Math.max(rgb!.r, rgb!.g, rgb!.b)).toBeLessThan(200);
   });
 });
 

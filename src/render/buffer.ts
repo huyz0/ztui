@@ -1,9 +1,16 @@
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
+import { mix, parseColor, type RGB, rgbStr } from "./color.ts";
 import type { Segment } from "./segment.ts";
 import { charWidth, isControlChar, splitGraphemes, stringWidth } from "./segment.ts";
 import { Style } from "./style.ts";
+
+/** Concrete RGB to substitute when a cell's colour is `default`/unset. */
+export interface BlendBase {
+  bg: RGB;
+  fg: RGB;
+}
 
 export interface GraphicMetadata {
   type: "image";
@@ -107,6 +114,40 @@ export class ScreenBuffer {
     }
 
     this.cells[y][x] = { char: safeChar, style, wideContinuation: false };
+  }
+
+  /**
+   * Alpha-composite a translucent colour over every cell in `region`, in place.
+   * Each cell's existing background and foreground are blended `alpha` of the
+   * way toward `src`, so the glyphs underneath stay visible but tinted — the
+   * basis for modal scrims, drop shadows, and translucent panels. Cells whose
+   * colour is `default`/unset blend against `base` (typically the theme bg/fg),
+   * since the real terminal default is unknowable. Glyphs are untouched.
+   */
+  public blendRegion(region: Region, src: RGB, alpha: number, base: BlendBase): void {
+    if (alpha <= 0) return;
+    const a = Math.min(1, alpha);
+    const y0 = Math.max(0, region.y);
+    const y1 = Math.min(this.height, region.bottom);
+    const x0 = Math.max(0, region.x);
+    const x1 = Math.min(this.width, region.right);
+    for (let y = y0; y < y1; y++) {
+      const row = this.cells[y];
+      if (!row) continue;
+      for (let x = x0; x < x1; x++) {
+        const cell = row[x];
+        if (!cell) continue;
+        if (this.currentClip && !this.currentClip.contains(x, y)) continue;
+        const bg = cell.style.background
+          ? (parseColor(cell.style.background)?.rgb ?? base.bg)
+          : base.bg;
+        const fg = cell.style.color ? (parseColor(cell.style.color)?.rgb ?? base.fg) : base.fg;
+        cell.style = cell.style.merge({
+          background: rgbStr(mix(bg, src, a)),
+          color: rgbStr(mix(fg, src, a)),
+        });
+      }
+    }
   }
 
   public drawSegment(startX: number, startY: number, segment: Segment, clipRegion?: Region): void {

@@ -1,9 +1,15 @@
+import { themeBlendBase } from "../core/theme.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { parseDimension } from "../layout/layout.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
+import type { RGB } from "../render/color.ts";
 import { Widget } from "./widget.ts";
+
+/** Modal scrim: a translucent black wash over the backdrop behind a dim modal. */
+const SCRIM_COLOR: RGB = { r: 0, g: 0, b: 0 };
+const SCRIM_ALPHA = 0.5;
 
 /** Where a sticky panel sits relative to its anchor. */
 export type OverlayPlacement = "above" | "below" | "auto";
@@ -124,18 +130,11 @@ export class OverlayRootWidget extends Widget {
     if (!this.visible) return;
     if (this.dim) {
       // Shade the backdrop in place: the layer below is already painted, so we
-      // dim each existing cell (keeping its glyph and colors) rather than
-      // blanking it — the background stays readable around the panel. The panel
-      // itself paints afterwards in renderChildren and is left undimmed.
-      const r = this.region;
-      for (let y = r.y; y < r.bottom; y++) {
-        const row = buffer.cells[y];
-        if (!row) continue;
-        for (let x = r.x; x < r.right; x++) {
-          const cell = row[x];
-          if (cell) cell.style = cell.style.merge({ dim: true });
-        }
-      }
+      // alpha-composite a translucent black scrim over each existing cell,
+      // darkening glyph and background toward concrete colours (a proper dim,
+      // not the terminal-dependent SGR-dim attribute). The panel itself paints
+      // afterwards in renderChildren and is left undimmed.
+      buffer.blendRegion(this.region, SCRIM_COLOR, SCRIM_ALPHA, themeBlendBase());
     }
     // Transparent everywhere else: only the children paint, so the layer below
     // stays visible around the panel.

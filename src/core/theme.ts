@@ -1,4 +1,8 @@
+import { parseColor, type RGB } from "../render/color.ts";
 import { logger } from "./logger.ts";
+
+const BLEND_BLACK: RGB = { r: 0, g: 0, b: 0 };
+const BLEND_WHITE: RGB = { r: 255, g: 255, b: 255 };
 
 export interface Theme {
   name: string;
@@ -56,6 +60,19 @@ export function isColorLight(hexColor: string): boolean {
 export function isThemeLight(theme: Theme): boolean {
   const bg = theme.colors.background || "#121212";
   return isColorLight(bg);
+}
+
+/**
+ * Concrete RGB to assume for cells whose colour is `default`/unset when
+ * alpha-compositing (see {@link ScreenBuffer.blendRegion}). Uses the active
+ * theme's background/foreground so a scrim darkens against the real surface.
+ */
+export function themeBlendBase(): { bg: RGB; fg: RGB } {
+  const theme = ThemeManager.getInstance().getActiveTheme();
+  return {
+    bg: parseColor(theme.colors.background)?.rgb ?? BLEND_BLACK,
+    fg: parseColor(theme.colors.foreground)?.rgb ?? BLEND_WHITE,
+  };
 }
 
 export function adjustLightness(hexColor: string, percent: number): string {
