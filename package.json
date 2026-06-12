@@ -23,6 +23,7 @@
     "demo:fileicon": "bun run examples/fileicon_demo.tsx",
     "demo:boxtitle": "bun run examples/box_title_demo.tsx",
     "demo:workbench": "bun run examples/workbench_demo.tsx",
+    "demo:splitview": "bun run examples/splitview_demo.tsx",
     "demo:table": "bun run examples/table_demo.tsx",
     "demo:tree": "bun run examples/tree_demo.tsx",
     "demo:form": "bun run examples/form_validation_demo.tsx",

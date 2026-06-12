@@ -123,6 +123,25 @@ describe("Workbench", () => {
     expect(t.text()).toContain("SEARCHBODY");
   });
 
+  test("dragging the left splitter resizes the panel", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    // Rail (2) + panel (26) puts the vertical splitter at x=28.
+    let sp: any;
+    t.screen.walk((n: any) => {
+      if (!sp && n.tagName === "splitter" && n.orientation === "vertical") sp = n;
+    });
+    const startX = sp.region.x;
+    t.driver.simulateMouse(startX, 10, "press", "left");
+    t.driver.simulateMouse(startX + 6, 10, "drag", "left");
+    t.driver.simulateMouse(startX + 6, 10, "release", "left");
+    await t.settle();
+    let sp2: any;
+    t.screen.walk((n: any) => {
+      if (!sp2 && n.tagName === "splitter" && n.orientation === "vertical") sp2 = n;
+    });
+    expect(sp2.region.x).toBe(startX + 6); // panel widened by the drag
+  });
+
   test("a tap (no movement) toggles instead of moving", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).toContain("FILES");

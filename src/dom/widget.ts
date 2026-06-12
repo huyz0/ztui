@@ -151,6 +151,7 @@ export class Widget extends DOMNode {
   public declare onExpandedChange?: (...args: never[]) => void;
   public declare onValidate?: (...args: never[]) => void;
   public declare onSubmit?: (...args: never[]) => void;
+  public declare onResize?: (...args: never[]) => void;
 
   public handleScroll(ev: MouseEvent): void {
     if (this.onScroll) {

@@ -87,6 +87,14 @@ export { Grid } from "./components/layout/grid.tsx";
 export { HBox } from "./components/layout/hbox.tsx";
 export { Header } from "./components/layout/header.tsx";
 export { ScrollableBox } from "./components/layout/scrollable-box.tsx";
+export type {
+  SplitBranch,
+  SplitDirection,
+  SplitLeaf,
+  SplitNode,
+  SplitViewProps,
+} from "./components/layout/split-view.tsx";
+export { SplitView } from "./components/layout/split-view.tsx";
 export type { SplitterProps } from "./components/layout/splitter.tsx";
 export { Splitter } from "./components/layout/splitter.tsx";
 export type { TabContainerProps } from "./components/layout/tabcontainer.tsx";

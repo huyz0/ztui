@@ -52,6 +52,7 @@ const KNOWN_HANDLER_PROPS = [
   "onExpandedChange",
   "onValidate",
   "onSubmit",
+  "onResize",
 ] as const satisfies readonly (keyof Widget)[];
 
 function applyProps(instance: DOMNode, props: Record<string, any>, oldProps?: Record<string, any>) {
