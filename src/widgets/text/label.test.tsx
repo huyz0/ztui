@@ -2,6 +2,45 @@ import { describe, expect, test } from "vitest";
 import { HBox, Label } from "../../index.ts";
 import { mountApp } from "../../test/harness.tsx";
 
+/** Drive a press→drag→release over a widget's rendered cells (one row). */
+function dragSelect(widget: any, fromX: number, toX: number, y: number): void {
+  widget.handleMouse({ type: "press", button: "left", x: fromX, y });
+  widget.handleMouse({ type: "drag", button: "left", x: toX, y });
+  widget.handleMouse({ type: "release", button: "left", x: toX, y });
+}
+
+describe("Label selection", () => {
+  test("drag selects rendered text and copies it", async () => {
+    const { findById, driver, settle } = await mountApp(
+      <HBox>
+        <Label id="lb">hello world</Label>
+      </HBox>,
+      { cols: 40, rows: 3 },
+    );
+    const lb = findById("lb");
+    await settle();
+    const r = lb.getContentRect();
+    dragSelect(lb, r.x, r.x + 5, r.y); // cols [0,5) = "hello"
+    expect(await driver.clipboard.get()).toBe("hello");
+  });
+
+  test("with markup, copies the plain value not the markup", async () => {
+    const { findById, driver, settle } = await mountApp(
+      <HBox>
+        <Label id="lb" markup>
+          [bold]Hi[/] there
+        </Label>
+      </HBox>,
+      { cols: 40, rows: 3 },
+    );
+    const lb = findById("lb");
+    await settle();
+    const r = lb.getContentRect();
+    dragSelect(lb, r.x, r.x + 2, r.y); // "Hi"
+    expect(await driver.clipboard.get()).toBe("Hi");
+  });
+});
+
 describe("Label markup", () => {
   test("renders literal bracket text verbatim when markup is off", async () => {
     const { text } = await mountApp(
