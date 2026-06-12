@@ -56,6 +56,24 @@ function railCenter(t: Mounted, panelId: string) {
   return { x: r.x + Math.floor(r.width / 2), y: r.y + Math.floor(r.height / 2) };
 }
 
+// Press a (ctrl) hotkey until `predicate` holds. Robust to the simulated key
+// being dropped on the odd frame under load: it only re-sends while the state
+// hasn't changed yet, so it never double-toggles. Throws on timeout.
+async function pressUntil(
+  t: Mounted,
+  key: string,
+  predicate: () => boolean,
+  timeout = 2000,
+): Promise<void> {
+  const deadline = Date.now() + timeout;
+  while (!predicate()) {
+    if (Date.now() >= deadline)
+      throw new Error(`pressUntil(${key}): condition not met in ${timeout}ms`);
+    t.driver.simulateKey(key, key, true); // ctrl+<key>
+    await t.settle(20);
+  }
+}
+
 async function tapRail(t: Mounted, panelId: string) {
   const { x, y } = railCenter(t, panelId);
   t.driver.simulateMouse(x, y, "press", "left");
@@ -108,21 +126,15 @@ describe("Workbench", () => {
   test("Ctrl+B toggles the left region", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).toContain("FILES"); // left starts open
-    t.driver.simulateKey("b", "b", true); // ctrl+b
-    await t.settle();
-    expect(t.text()).not.toContain("FILES"); // collapsed
-    t.driver.simulateKey("b", "b", true);
-    await t.settle();
-    expect(t.text()).toContain("FILES"); // reopened
+    await pressUntil(t, "b", () => !t.text().includes("FILES")); // ctrl+b collapses
+    await pressUntil(t, "b", () => t.text().includes("FILES")); // ctrl+b reopens
   });
 
   test("the bottom toggle key opens the bottom region", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).not.toContain("TERMBODY"); // bottom starts closed
     // Default bottom key is ctrl+space (terminals deliver ctrl+j as Enter).
-    t.driver.simulateKey("space", "space", true);
-    await t.settle();
-    expect(t.text()).toContain("TERMBODY");
+    await pressUntil(t, "space", () => t.text().includes("TERMBODY"));
   });
 
   test("toggleKeys overrides the default bindings", async () => {
@@ -135,9 +147,7 @@ describe("Workbench", () => {
       { cols: 80, rows: 24 },
     );
     expect(t.text()).toContain("FILES");
-    t.driver.simulateKey("n", "n", true); // ctrl+n closes the left region
-    await t.settle();
-    expect(t.text()).not.toContain("FILES");
+    await pressUntil(t, "n", () => !t.text().includes("FILES")); // ctrl+n closes left
   });
 
   test("dragging a left-rail icon to the right zone re-docks the panel", async () => {

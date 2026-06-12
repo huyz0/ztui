@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { afterEach } from "vitest";
 import { App } from "../core/app.ts";
+import { HotkeyRegistry } from "../core/hotkeys.ts";
 import type { Screen } from "../dom/screen.ts";
 import type { Widget, WidgetStyles } from "../dom/widget.ts";
 import type { TerminalCapabilities } from "../driver/driver.ts";
@@ -34,6 +35,10 @@ afterEach(() => {
     }
   }
   activeApps.clear();
+  // Drop the global hotkey registry singleton so handlers from this test's
+  // (now unmounted) components can't linger and shadow the next test's — React
+  // effect cleanups don't always flush synchronously on teardown.
+  HotkeyRegistry.reset();
 });
 
 /** Awaits the microtask + macrotask queue so React commits and a render frame settle. */
