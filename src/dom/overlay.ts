@@ -11,6 +11,34 @@ import { Widget } from "./widget.ts";
 const SCRIM_COLOR: RGB = { r: 0, g: 0, b: 0 };
 const SCRIM_ALPHA = 0.5;
 
+/** Drop shadow cast under a floating panel, as a translucent black tint. */
+const SHADOW_COLOR: RGB = { r: 0, g: 0, b: 0 };
+const SHADOW_INNER = 0.4; // band adjacent to the panel edge
+const SHADOW_OUTER = 0.18; // softer falloff beyond it
+
+/**
+ * Cast a soft drop shadow under `region` by tinting the cells the layer below
+ * already painted, offset down-right of the panel. The panel paints opaquely on
+ * top afterwards, so only the protruding L-shaped edge shows. A darker inner
+ * band plus a lighter outer band gives a graduated falloff rather than a hard
+ * block. The right edge is three columns to the bottom's one row because
+ * terminal cells are ~2× taller than wide, keeping the shadow visually even.
+ */
+function drawShadow(buffer: ScreenBuffer, region: Region): void {
+  if (region.width <= 0 || region.height <= 0) return;
+  const base = themeBlendBase();
+  const blend = (x: number, y: number, w: number, h: number, a: number) =>
+    buffer.blendRegion(new Region(new Offset(x, y), new Size(w, h)), SHADOW_COLOR, a, base);
+  // Right edge: one dark column hugging the panel, two lighter columns beyond.
+  blend(region.right, region.y + 1, 1, region.height, SHADOW_INNER);
+  blend(region.right + 1, region.y + 1, 2, region.height, SHADOW_OUTER);
+  // Bottom edge: a single dark row, inset to clear the rounded corner.
+  blend(region.x + 2, region.bottom, region.width, 1, SHADOW_INNER);
+  // Bottom-right corner ties the two edges together with the same falloff.
+  blend(region.right, region.bottom, 1, 1, SHADOW_INNER);
+  blend(region.right + 1, region.bottom, 2, 1, SHADOW_OUTER);
+}
+
 /** Where a sticky panel sits relative to its anchor. */
 export type OverlayPlacement = "above" | "below" | "auto";
 
@@ -135,6 +163,11 @@ export class OverlayRootWidget extends Widget {
       // not the terminal-dependent SGR-dim attribute). The panel itself paints
       // afterwards in renderChildren and is left undimmed.
       buffer.blendRegion(this.region, SCRIM_COLOR, SCRIM_ALPHA, themeBlendBase());
+    }
+    // A soft drop shadow under each floating panel lifts it off the layer below.
+    // Drawn before the panels paint, so they cover all but the protruding edge.
+    for (const child of this.children) {
+      if (child instanceof Widget && child.visible) drawShadow(buffer, child.region);
     }
     // Transparent everywhere else: only the children paint, so the layer below
     // stays visible around the panel.
