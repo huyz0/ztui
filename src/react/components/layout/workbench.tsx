@@ -1,5 +1,6 @@
-import { type ReactElement, type ReactNode, useState } from "react";
+import { type ReactElement, type ReactNode, useEffect, useRef, useState } from "react";
 import { HeroIcon } from "../media/heroic-icon.tsx";
+import { useHotkey } from "../overlay/hotkey-palette.tsx";
 import { Label } from "../text/label.tsx";
 import type { ComponentProps } from "../types.ts";
 import { Box } from "./box.tsx";
@@ -30,13 +31,25 @@ export interface WorkbenchProps extends ComponentProps {
   initialOpen?: WorkbenchAnchor[];
   /** Starting sizes per region (cells). Defaults: side 26, bottom 8. */
   initialSizes?: Partial<Record<WorkbenchAnchor, number>>;
+  /**
+   * Serializable layout snapshot to restore on mount (open/size/active per
+   * region). Takes precedence over `initialOpen`/`initialSizes`. Pair with
+   * {@link WorkbenchProps.onLayoutChange} to persist and reload layout.
+   */
+  initialLayout?: WorkbenchLayout;
+  /** Fired with a fresh snapshot whenever the layout changes (for persistence). */
+  onLayoutChange?: (layout: WorkbenchLayout) => void;
 }
 
-interface RegionState {
+/** Per-region UI state for one anchor. JSON-serializable. */
+export interface RegionState {
   open: boolean;
   size: number;
   active: string | null;
 }
+
+/** A full, serializable workbench layout snapshot keyed by anchor. */
+export type WorkbenchLayout = Record<WorkbenchAnchor, RegionState>;
 
 const RAIL_WIDTH = 2;
 const MIN_SIDE = 12;
@@ -58,11 +71,14 @@ export function Workbench({
   children,
   initialOpen = [],
   initialSizes,
+  initialLayout,
+  onLayoutChange,
   ...rest
 }: WorkbenchProps): ReactElement {
   const byAnchor = (a: WorkbenchAnchor) => panels.filter((p) => p.anchor === a);
 
   const init = (a: WorkbenchAnchor, defSize: number): RegionState => {
+    if (initialLayout?.[a]) return initialLayout[a];
     const list = byAnchor(a);
     return {
       open: initialOpen.includes(a) && list.length > 0,
@@ -71,11 +87,19 @@ export function Workbench({
     };
   };
 
-  const [regions, setRegions] = useState<Record<WorkbenchAnchor, RegionState>>(() => ({
+  const [regions, setRegions] = useState<WorkbenchLayout>(() => ({
     left: init("left", 26),
     right: init("right", 26),
     bottom: init("bottom", 8),
   }));
+
+  // Surface every layout change for persistence. Kept in a ref so the effect
+  // doesn't re-fire when only the callback identity changes.
+  const onChangeRef = useRef(onLayoutChange);
+  onChangeRef.current = onLayoutChange;
+  useEffect(() => {
+    onChangeRef.current?.(regions);
+  }, [regions]);
 
   // Select a panel: open the region on it, switch to it, or collapse when it's
   // the already-active panel of an open region.
@@ -106,6 +130,29 @@ export function Workbench({
       return { ...prev, [anchor]: { ...r, size: Math.max(min, r.size + signed) } };
     });
   };
+
+  // Keyboard parity with the rail/footer clicks (VSCode muscle memory).
+  useHotkey({
+    key: "ctrl+b",
+    name: "Toggle left panel",
+    group: "View",
+    enabled: () => byAnchor("left").length > 0,
+    handler: () => toggle("left"),
+  });
+  useHotkey({
+    key: "ctrl+alt+b",
+    name: "Toggle right panel",
+    group: "View",
+    enabled: () => byAnchor("right").length > 0,
+    handler: () => toggle("right"),
+  });
+  useHotkey({
+    key: "ctrl+j",
+    name: "Toggle bottom panel",
+    group: "View",
+    enabled: () => byAnchor("bottom").length > 0,
+    handler: () => toggle("bottom"),
+  });
 
   const left = byAnchor("left");
   const right = byAnchor("right");

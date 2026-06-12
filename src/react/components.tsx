@@ -94,7 +94,9 @@ export { TabContainer } from "./components/layout/tabcontainer.tsx";
 export { VBox } from "./components/layout/vbox.tsx";
 export { View } from "./components/layout/view.tsx";
 export type {
+  RegionState,
   WorkbenchAnchor,
+  WorkbenchLayout,
   WorkbenchPanel,
   WorkbenchProps,
 } from "./components/layout/workbench.tsx";

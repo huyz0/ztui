@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   App,
   Box,
@@ -6,8 +9,17 @@ import {
   render,
   VBox,
   Workbench,
+  type WorkbenchLayout,
   type WorkbenchPanel,
 } from "../src/index.ts";
+
+// Persist the layout to a temp file so re-launching restores the last state.
+const LAYOUT_FILE = join(tmpdir(), "ztui-workbench-demo.json");
+const savedLayout: WorkbenchLayout | undefined = existsSync(LAYOUT_FILE)
+  ? JSON.parse(readFileSync(LAYOUT_FILE, "utf-8"))
+  : undefined;
+const saveLayout = (layout: WorkbenchLayout) =>
+  writeFileSync(LAYOUT_FILE, JSON.stringify(layout, null, 2));
 
 // IDE-style dockable workbench: an activity rail on each side toggles hideable
 // side panels, a footer tab bar toggles the bottom panel, and the splitters
@@ -70,9 +82,16 @@ function WorkbenchDemo() {
   return (
     <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
       <Header>
-        🧱 ZTUI Workbench — click rail icons / footer tabs · drag splitters · Ctrl+C quit
+        🧱 ZTUI Workbench — click rails/tabs · drag splitters · Ctrl+B/Ctrl+Alt+B/Ctrl+J toggle ·
+        Ctrl+C quit
       </Header>
-      <Workbench panels={panels} initialOpen={["left"]} style={{ width: "100%", height: "100%" }}>
+      <Workbench
+        panels={panels}
+        initialOpen={["left"]}
+        initialLayout={savedLayout}
+        onLayoutChange={saveLayout}
+        style={{ width: "100%", height: "100%" }}
+      >
         <Box style={{ padding: 1 }}>
           <Label>Editor area (center).</Label>
           <Label style={{ dim: true }}>Click the folder/search icons on the left rail,</Label>
