@@ -1,5 +1,6 @@
 import { App } from "../../core/app.ts";
 import { runCols } from "../../core/selection.ts";
+import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
 import { Offset } from "../../geometry/offset.ts";
@@ -359,6 +360,8 @@ export class RichLogWidget extends Widget {
       }
     }
     buffer.popClip();
+
+    fadeScrollEdges(buffer, content, first > 0, last < this.rowCount, bg);
 
     this.renderScrollbar(buffer, content, visibleRows, bg);
   }

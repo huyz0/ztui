@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
@@ -284,6 +285,16 @@ export class ListViewWidget extends Widget {
       }
     }
     buffer.popClip();
+
+    // Fade the top/bottom edge when rows are scrolled out of view (before the
+    // scrollbar so the bar stays crisp).
+    fadeScrollEdges(
+      buffer,
+      content,
+      this.scrollTop > 0,
+      this.scrollTop < this.maxScrollTop(visibleRows),
+      this.findResolvedBackground(),
+    );
 
     this.renderScrollbar(buffer, content, visibleRows);
   }

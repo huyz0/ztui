@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
@@ -250,6 +251,14 @@ export class SelectionListWidget extends Widget {
       buffer.drawSegment(content.x, y, new Segment(line, new Style({ color, background })));
     }
     buffer.popClip();
+
+    fadeScrollEdges(
+      buffer,
+      content,
+      this.scrollTop > 0,
+      this.scrollTop < this.maxScrollTop(visibleRows),
+      this.findResolvedBackground(),
+    );
 
     this.renderScrollbar(buffer, content, visibleRows);
   }
