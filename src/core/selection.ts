@@ -1,7 +1,7 @@
 import type { DOMNode } from "../dom/dom.ts";
 import { Widget } from "../dom/widget.ts";
 import type { Cell, ScreenBuffer } from "../render/buffer.ts";
-import { stringWidth } from "../render/segment.ts";
+import { splitGraphemes, stringWidth } from "../render/segment.ts";
 import { extractSelection, type Pos } from "../widgets/controls/text-selection.ts";
 
 /**
@@ -59,7 +59,7 @@ function isSelectable(node: unknown): node is Widget & SelectableWidget {
 export function runCols(text: string, first = 0): number[] {
   const cols: number[] = [];
   let c = first;
-  for (const g of [...text]) {
+  for (const g of splitGraphemes(text)) {
     cols.push(c);
     for (let k = 1; k < stringWidth(g); k++) cols.push(-1);
     c++;

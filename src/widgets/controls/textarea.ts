@@ -3,7 +3,7 @@ import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Syntax } from "../../render/rich/syntax.ts";
 import { RichText } from "../../render/rich/text.ts";
-import { stringWidth } from "../../render/segment.ts";
+import { splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { deleteRange, extractSelection, insertAt, orderPair, type Pos } from "./text-selection.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
@@ -20,15 +20,15 @@ export class TextAreaWidget extends Widget {
 
     const isAtEnd =
       this.cursorRow === oldLines.length - 1 &&
-      this.cursorCol === [...oldLines[this.cursorRow]].length;
+      this.cursorCol === splitGraphemes(oldLines[this.cursorRow]).length;
 
     this.selectionAnchor = null;
     if (isAtEnd || this._value === "") {
       this.cursorRow = newLines.length - 1;
-      this.cursorCol = [...newLines[this.cursorRow]].length;
+      this.cursorCol = splitGraphemes(newLines[this.cursorRow]).length;
     } else {
       this.cursorRow = Math.min(this.cursorRow, newLines.length - 1);
-      this.cursorCol = Math.min(this.cursorCol, [...newLines[this.cursorRow]].length);
+      this.cursorCol = Math.min(this.cursorCol, splitGraphemes(newLines[this.cursorRow]).length);
     }
   }
   public declare onChange?: (val: string) => void;
@@ -109,12 +109,12 @@ export class TextAreaWidget extends Widget {
       if (shift) startSel();
       else this.selectionAnchor = null;
       this.cursorRow = Math.max(0, this.cursorRow - 1);
-      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
+      this.cursorCol = Math.min(this.cursorCol, splitGraphemes(lines[this.cursorRow]).length);
     } else if (keyName === "down") {
       if (shift) startSel();
       else this.selectionAnchor = null;
       this.cursorRow = Math.min(lines.length - 1, this.cursorRow + 1);
-      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
+      this.cursorCol = Math.min(this.cursorCol, splitGraphemes(lines[this.cursorRow]).length);
     } else if (keyName === "left") {
       if (shift) {
         startSel();
@@ -146,29 +146,29 @@ export class TextAreaWidget extends Widget {
     } else if (keyName === "end") {
       if (shift) startSel();
       else this.selectionAnchor = null;
-      this.cursorCol = [...lines[this.cursorRow]].length;
+      this.cursorCol = splitGraphemes(lines[this.cursorRow]).length;
     } else if (keyName === "pageup") {
       if (shift) startSel();
       else this.selectionAnchor = null;
       this.cursorRow = Math.max(0, this.cursorRow - viewportHeight + 1);
-      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
+      this.cursorCol = Math.min(this.cursorCol, splitGraphemes(lines[this.cursorRow]).length);
     } else if (keyName === "pagedown") {
       if (shift) startSel();
       else this.selectionAnchor = null;
       this.cursorRow = Math.min(lines.length - 1, this.cursorRow + viewportHeight - 1);
-      this.cursorCol = Math.min(this.cursorCol, [...lines[this.cursorRow]].length);
+      this.cursorCol = Math.min(this.cursorCol, splitGraphemes(lines[this.cursorRow]).length);
     } else if (keyName === "backspace") {
       const after = this.spliceSelection(lines);
       if (after) {
         lines = after;
       } else if (this.cursorCol > 0) {
-        const chars = [...lines[this.cursorRow]];
+        const chars = splitGraphemes(lines[this.cursorRow]);
         chars.splice(this.cursorCol - 1, 1);
         lines[this.cursorRow] = chars.join("");
         this.cursorCol--;
       } else if (this.cursorRow > 0) {
         const prevRow = this.cursorRow - 1;
-        const prevLen = [...lines[prevRow]].length;
+        const prevLen = splitGraphemes(lines[prevRow]).length;
         lines[prevRow] = lines[prevRow] + lines[this.cursorRow];
         lines.splice(this.cursorRow, 1);
         this.cursorRow = prevRow;
@@ -180,7 +180,7 @@ export class TextAreaWidget extends Widget {
       if (after) {
         lines = after;
       } else {
-        const chars = [...lines[this.cursorRow]];
+        const chars = splitGraphemes(lines[this.cursorRow]);
         if (this.cursorCol < chars.length) {
           chars.splice(this.cursorCol, 1);
           lines[this.cursorRow] = chars.join("");
@@ -193,7 +193,7 @@ export class TextAreaWidget extends Widget {
     } else if (keyName === "enter") {
       const after = this.spliceSelection(lines);
       if (after) lines = after;
-      const chars = [...lines[this.cursorRow]];
+      const chars = splitGraphemes(lines[this.cursorRow]);
       const line1 = chars.slice(0, this.cursorCol).join("");
       const line2 = chars.slice(this.cursorCol).join("");
       lines[this.cursorRow] = line1;
@@ -204,15 +204,15 @@ export class TextAreaWidget extends Widget {
     } else if (keyName === "tab") {
       const after = this.spliceSelection(lines);
       if (after) lines = after;
-      const chars = [...lines[this.cursorRow]];
+      const chars = splitGraphemes(lines[this.cursorRow]);
       chars.splice(this.cursorCol, 0, " ", " ");
       lines[this.cursorRow] = chars.join("");
       this.cursorCol += 2;
       this._value = lines.join("\n");
-    } else if (ev.key && [...ev.key].length === 1 && !ev.ctrl && !ev.meta) {
+    } else if (ev.key && splitGraphemes(ev.key).length === 1 && !ev.ctrl && !ev.meta) {
       const after = this.spliceSelection(lines);
       if (after) lines = after;
-      const chars = [...lines[this.cursorRow]];
+      const chars = splitGraphemes(lines[this.cursorRow]);
       chars.splice(this.cursorCol, 0, ev.key);
       lines[this.cursorRow] = chars.join("");
       this.cursorCol++;
@@ -233,12 +233,12 @@ export class TextAreaWidget extends Widget {
       this.cursorCol--;
     } else if (this.cursorRow > 0) {
       this.cursorRow--;
-      this.cursorCol = [...lines[this.cursorRow]].length;
+      this.cursorCol = splitGraphemes(lines[this.cursorRow]).length;
     }
   }
 
   private moveRight(lines: string[]): void {
-    if (this.cursorCol < [...lines[this.cursorRow]].length) {
+    if (this.cursorCol < splitGraphemes(lines[this.cursorRow]).length) {
       this.cursorCol++;
     } else if (this.cursorRow < lines.length - 1) {
       this.cursorRow++;
@@ -308,7 +308,7 @@ export class TextAreaWidget extends Widget {
     const lines = this.value.split(/\r?\n/);
     this.selectionAnchor = { row: 0, col: 0 };
     this.cursorRow = lines.length - 1;
-    this.cursorCol = [...lines[lines.length - 1]].length;
+    this.cursorCol = splitGraphemes(lines[lines.length - 1]).length;
     App.instance?.queueRender();
   }
 
@@ -355,7 +355,7 @@ export class TextAreaWidget extends Widget {
     } else if (this.cursorCol >= this.scrollX + textViewportWidth) {
       this.scrollX = this.cursorCol - textViewportWidth + 1;
     }
-    const maxLineLen = [...lines[this.cursorRow]].length;
+    const maxLineLen = splitGraphemes(lines[this.cursorRow]).length;
     const maxScrollX = Math.max(0, maxLineLen - textViewportWidth + 1);
     this.scrollX = Math.max(0, Math.min(maxScrollX, this.scrollX));
   }
@@ -368,7 +368,7 @@ export class TextAreaWidget extends Widget {
     const row = Math.max(0, Math.min(lines.length - 1, this.scrollY + (y - contentRect.y)));
     const col = Math.max(
       0,
-      Math.min([...lines[row]].length, this.scrollX + (x - contentRect.x - gutterWidth)),
+      Math.min(splitGraphemes(lines[row]).length, this.scrollX + (x - contentRect.x - gutterWidth)),
     );
     return { row, col };
   }
@@ -474,7 +474,7 @@ export class TextAreaWidget extends Widget {
       if (this.value === "" && this.placeholder && lineIndex === 0) {
         const phColor = App.instance?.cssResolver.resolveVariable(this, "$placeholder") || "gray";
         const placeholderStyle = new Style({ color: phColor, background: bg });
-        const phChars = [...this.placeholder];
+        const phChars = splitGraphemes(this.placeholder);
         for (const char of phChars) {
           cells.push({ char, style: placeholderStyle });
         }
@@ -487,7 +487,7 @@ export class TextAreaWidget extends Widget {
               segment.style.color
             : undefined;
           const resolvedStyle = segment.style.merge({ color: resolvedColor });
-          const chars = [...segment.text];
+          const chars = splitGraphemes(segment.text);
           for (const char of chars) {
             cells.push({ char, style: resolvedStyle });
           }

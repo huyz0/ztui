@@ -7,7 +7,7 @@ import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { RichText } from "../../render/rich/text.ts";
-import { Segment, stringWidth } from "../../render/segment.ts";
+import { Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
@@ -21,14 +21,14 @@ interface DisplayLine {
 function sliceToWidth(text: string, width: number): string {
   let out = "";
   let w = 0;
-  for (const ch of text) {
+  for (const ch of splitGraphemes(text)) {
     const cw = stringWidth(ch);
     if (w + cw > width) break;
     out += ch;
     w += cw;
   }
   // Guarantee forward progress even for a single too-wide glyph.
-  return out || Array.from(text)[0] || "";
+  return out || splitGraphemes(text)[0] || "";
 }
 
 /** Greedy word-wrap of one already-newline-free styled line to `width`. */

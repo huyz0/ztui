@@ -1,7 +1,7 @@
 import { Scrollable } from "../../dom/scrollable.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { charWidth, stringWidth } from "../../render/segment.ts";
+import { charWidth, splitGraphemes, stringWidth } from "../../render/segment.ts";
 
 export class BoxWidget extends Widget {
   /** Optional text drawn into the top border edge (only shown when the box has a border). */
@@ -38,7 +38,7 @@ export class BoxWidget extends Widget {
     if (!borderStyle) return;
 
     let x = rect.x + 2;
-    for (const ch of label) {
+    for (const ch of splitGraphemes(label)) {
       if (x >= rect.right - 1) break;
       buffer.setCell(x, rect.y, ch, borderStyle);
       x += charWidth(ch);
@@ -52,7 +52,7 @@ function truncateToWidth(text: string, max: number): string {
   if (max <= 1) return "…";
   let out = "";
   let w = 0;
-  for (const ch of text) {
+  for (const ch of splitGraphemes(text)) {
     const cw = charWidth(ch);
     if (w + cw > max - 1) break;
     out += ch;

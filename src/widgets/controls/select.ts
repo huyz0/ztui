@@ -2,7 +2,7 @@ import { App } from "../../core/app.ts";
 import { Screen } from "../../dom/screen.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
+import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
@@ -105,7 +105,7 @@ export class DropdownOverlayWidget extends Widget {
       }
 
       const displayText = prefix + option.label;
-      const displayChars = [...displayText];
+      const displayChars = splitGraphemes(displayText);
       const targetWidth = this.dropdownWidth - 2;
       let currentWidth = 0;
       const visibleChars: string[] = [];
@@ -366,7 +366,7 @@ export class SelectWidget extends Widget {
     // Shrink text if too long to fit with chevron (safely handling wide chars/emojis)
     const maxTextWidth = contentRect.width - 3; // 2 for chevron + 1 spacing
     if (stringWidth(displayLabel) > maxTextWidth) {
-      const displayChars = [...displayLabel];
+      const displayChars = splitGraphemes(displayLabel);
       let currentWidth = 0;
       let truncated = "";
       for (const char of displayChars) {

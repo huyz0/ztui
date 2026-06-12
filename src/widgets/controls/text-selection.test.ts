@@ -91,3 +91,19 @@ describe("text-selection — 2D helpers", () => {
     expect(insertAt([""], { row: 0, col: 0 }, "a\r\nb").lines).toEqual(["a", "b"]);
   });
 });
+
+describe("text-selection — grapheme clusters count as one column", () => {
+  const FAMILY = "👨‍👩‍👧"; // ZWJ emoji sequence
+
+  test("a multi-codepoint emoji occupies a single column for slicing", () => {
+    // "a" + emoji + "b": deleting column [1,2) removes the whole emoji, not a
+    // stray code point that would corrupt the cluster.
+    expect(deleteRange([`a${FAMILY}b`], { row: 0, col: 1 }, { row: 0, col: 2 })).toEqual(["ab"]);
+    expect(extractSelection([`a${FAMILY}b`], { row: 0, col: 1 }, { row: 0, col: 2 })).toBe(FAMILY);
+  });
+
+  test("inserting an emoji advances the caret by one column", () => {
+    const { caret } = insertAt([""], { row: 0, col: 0 }, FAMILY);
+    expect(caret).toEqual({ row: 0, col: 1 });
+  });
+});

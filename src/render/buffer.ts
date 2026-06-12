@@ -2,7 +2,7 @@ import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import type { Segment } from "./segment.ts";
-import { charWidth, isControlChar, stringWidth } from "./segment.ts";
+import { charWidth, isControlChar, splitGraphemes, stringWidth } from "./segment.ts";
 import { Style } from "./style.ts";
 
 export interface GraphicMetadata {
@@ -115,7 +115,7 @@ export class ScreenBuffer {
     let x = startX;
     const y = startY;
 
-    for (const char of segment.text) {
+    for (const char of splitGraphemes(segment.text)) {
       const w = charWidth(char);
       // Check clipping
       if (clipRegion) {

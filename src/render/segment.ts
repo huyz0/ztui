@@ -1,6 +1,37 @@
 import stringWidthLib from "string-width";
 import { Style } from "./style.ts";
 
+/**
+ * Splits a string into user-perceived characters (grapheme clusters) rather
+ * than code points. ZWJ emoji (👨‍👩‍👧), flag pairs, skin-tone modifiers, and
+ * combining marks each collapse to a single unit — so they occupy one cell,
+ * advance the caret by one column, and select/delete atomically.
+ *
+ * `Intl.Segmenter` is the correct, Unicode-version-tracking implementation; the
+ * `[...str]` (code-point) fallback only matters on ancient runtimes that lack
+ * it. This is the canonical way to iterate display text in ztui — never iterate
+ * a string by code point (`[...str]`, `for..of`) for column/caret math.
+ */
+const _segmenter =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
+
+export function splitGraphemes(str: string): string[] {
+  if (str === "") return [];
+  if (_segmenter) {
+    const out: string[] = [];
+    for (const { segment } of _segmenter.segment(str)) out.push(segment);
+    return out;
+  }
+  return [...str];
+}
+
+/**
+ * Cell width of a single grapheme cluster (0, 1, or 2). The control/PUA checks
+ * look at the cluster's base code point; the visible width is measured across
+ * the whole cluster so combining marks contribute 0 and ZWJ emoji stay 2.
+ */
 export function charWidth(char: string): number {
   const code = char.codePointAt(0);
   if (!code) return 0;
@@ -15,8 +46,8 @@ export function charWidth(char: string): number {
 
 export function stringWidth(str: string): number {
   let width = 0;
-  for (const char of str) {
-    width += charWidth(char);
+  for (const g of splitGraphemes(str)) {
+    width += charWidth(g);
   }
   return width;
 }
@@ -51,7 +82,7 @@ export class Segment {
     let currentCell = 0;
     let croppedText = "";
 
-    for (const char of this.text) {
+    for (const char of splitGraphemes(this.text)) {
       const w = charWidth(char);
       if (currentCell >= endCell) {
         break;

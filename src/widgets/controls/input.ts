@@ -2,7 +2,7 @@ import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
-import { Segment, stringWidth } from "../../render/segment.ts";
+import { Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { normalizeRange } from "./text-selection.ts";
 import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
@@ -127,7 +127,7 @@ export class InputWidget extends Widget implements ValidatableField {
     const suffixWidth = this.suffixIcon ? Math.max(2, stringWidth(this.suffixIcon)) + 1 : 0;
     const textWidth = Math.max(1, contentRect.width - prefixWidth - suffixWidth);
 
-    let chars = [...this.value];
+    let chars = splitGraphemes(this.value);
     if (this.cursorCol > chars.length) {
       this.cursorCol = chars.length;
     }
@@ -182,15 +182,15 @@ export class InputWidget extends Widget implements ValidatableField {
       }
     } else if (keyName === "enter" || keyName === "tab") {
       // ignore control keys
-    } else if (ev.key && [...ev.key].length === 1 && !ev.ctrl && !ev.meta) {
+    } else if (ev.key && splitGraphemes(ev.key).length === 1 && !ev.ctrl && !ev.meta) {
       this.deleteSelectionInto(chars);
-      chars = [...this._value];
+      chars = splitGraphemes(this._value);
       chars.splice(this.cursorCol, 0, ev.key);
       this._value = chars.join("");
       this.cursorCol++;
     }
 
-    this.keepCursorInView(textWidth, [...this._value].length);
+    this.keepCursorInView(textWidth, splitGraphemes(this._value).length);
 
     if (this.value !== originalValue) {
       this.onChange?.(this.value);
@@ -237,7 +237,7 @@ export class InputWidget extends Widget implements ValidatableField {
   public copySelection(): string | null {
     const range = this.selectionRange();
     if (!range) return null;
-    const text = [...this._value].slice(range[0], range[1]).join("");
+    const text = splitGraphemes(this._value).slice(range[0], range[1]).join("");
     App.instance?.driver.clipboard.set(text);
     return text;
   }
@@ -246,7 +246,7 @@ export class InputWidget extends Widget implements ValidatableField {
   public cutSelection(): string | null {
     const text = this.copySelection();
     if (text === null) return null;
-    const chars = [...this._value];
+    const chars = splitGraphemes(this._value);
     this.deleteSelectionInto(chars);
     this.onChange?.(this.value);
     this.validation.maybeValidate("change");
@@ -263,7 +263,7 @@ export class InputWidget extends Widget implements ValidatableField {
   /** Select the entire value. */
   public selectAll(): void {
     this.selectionAnchor = 0;
-    this.cursorCol = [...this._value].length;
+    this.cursorCol = splitGraphemes(this._value).length;
     App.instance?.queueRender();
   }
 
@@ -275,12 +275,12 @@ export class InputWidget extends Widget implements ValidatableField {
   public insertText(text: string): void {
     const sanitized = text.replace(/[\r\n]+/g, " ");
     const originalValue = this._value;
-    const chars = [...this._value];
+    const chars = splitGraphemes(this._value);
     this.deleteSelectionInto(chars);
-    const next = [...this._value];
-    next.splice(this.cursorCol, 0, ...[...sanitized]);
+    const next = splitGraphemes(this._value);
+    next.splice(this.cursorCol, 0, ...splitGraphemes(sanitized));
     this._value = next.join("");
-    this.cursorCol += [...sanitized].length;
+    this.cursorCol += splitGraphemes(sanitized).length;
     this.selectionAnchor = null;
     if (this._value !== originalValue) {
       this.onChange?.(this.value);
@@ -294,7 +294,7 @@ export class InputWidget extends Widget implements ValidatableField {
     const contentRect = this.getContentRect();
     const prefixWidth = this.icon ? Math.max(2, stringWidth(this.icon)) + 1 : 0;
     const absoluteCol = this.scrollX + (x - (contentRect.x + prefixWidth));
-    return Math.max(0, Math.min([...this.value].length, absoluteCol));
+    return Math.max(0, Math.min(splitGraphemes(this.value).length, absoluteCol));
   }
 
   public override handleMouse(ev: any): void {
@@ -356,7 +356,7 @@ export class InputWidget extends Widget implements ValidatableField {
     const suffixWidth = this.suffixIcon ? Math.max(2, stringWidth(this.suffixIcon)) + 1 : 0;
     const textWidth = Math.max(1, contentRect.width - prefixWidth - suffixWidth);
 
-    const chars = [...this.value];
+    const chars = splitGraphemes(this.value);
     if (this.cursorCol > chars.length) {
       this.cursorCol = chars.length;
     }
@@ -450,14 +450,14 @@ export class InputWidget extends Widget implements ValidatableField {
     if (this.value === "" && this.placeholder) {
       const phColor = App.instance?.cssResolver.resolveVariable(this, "$placeholder") || "gray";
       const placeholderStyle = new Style({ color: phColor, background: bg });
-      const phChars = [...this.placeholder];
+      const phChars = splitGraphemes(this.placeholder);
       for (const char of phChars) {
         cells.push({ char, style: placeholderStyle });
       }
     } else {
-      const valChars = [...this.value];
+      const valChars = splitGraphemes(this.value);
       const displayValue = this.type === "password" ? "•".repeat(valChars.length) : this.value;
-      const displayChars = [...displayValue];
+      const displayChars = splitGraphemes(displayValue);
       for (const char of displayChars) {
         cells.push({ char, style });
       }

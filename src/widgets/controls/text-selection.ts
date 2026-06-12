@@ -8,9 +8,12 @@
  *   - **2D** (`TextArea`): a caret is a `{ row, col }` position into a `string[]`
  *     of lines, where `col` indexes into that line's grapheme array.
  *
- * All slicing uses spread (`[...str]`) so astral characters / emoji count as a
- * single column, matching the rest of the widget code.
+ * All slicing splits on grapheme clusters (`splitGraphemes`) so ZWJ emoji,
+ * combining marks, and astral characters count as a single column, matching the
+ * rest of the widget code.
  */
+
+import { splitGraphemes } from "../../render/segment.ts";
 
 // ── Linear (1D) ──────────────────────────────────────────────────────────────
 
@@ -48,12 +51,12 @@ export function orderPair(anchor: Pos, caret: Pos): [Pos, Pos] {
  */
 export function extractSelection(lines: string[], start: Pos, end: Pos): string {
   if (start.row === end.row) {
-    return [...lines[start.row]].slice(start.col, end.col).join("");
+    return splitGraphemes(lines[start.row]).slice(start.col, end.col).join("");
   }
   const parts: string[] = [];
-  parts.push([...lines[start.row]].slice(start.col).join(""));
+  parts.push(splitGraphemes(lines[start.row]).slice(start.col).join(""));
   for (let r = start.row + 1; r < end.row; r++) parts.push(lines[r]);
-  parts.push([...lines[end.row]].slice(0, end.col).join(""));
+  parts.push(splitGraphemes(lines[end.row]).slice(0, end.col).join(""));
   return parts.join("\n");
 }
 
@@ -65,13 +68,13 @@ export function extractSelection(lines: string[], start: Pos, end: Pos): string 
 export function deleteRange(lines: string[], start: Pos, end: Pos): string[] {
   const result = lines.slice();
   if (start.row === end.row) {
-    const chars = [...result[start.row]];
+    const chars = splitGraphemes(result[start.row]);
     chars.splice(start.col, end.col - start.col);
     result[start.row] = chars.join("");
     return result;
   }
-  const head = [...result[start.row]].slice(0, start.col).join("");
-  const tail = [...result[end.row]].slice(end.col).join("");
+  const head = splitGraphemes(result[start.row]).slice(0, start.col).join("");
+  const tail = splitGraphemes(result[end.row]).slice(end.col).join("");
   result.splice(start.row, end.row - start.row + 1, head + tail);
   return result;
 }
@@ -85,7 +88,7 @@ export function insertAt(lines: string[], pos: Pos, text: string): { lines: stri
   // delivers line breaks as a lone `\r`, while `\r\n` / `\n` come from files and
   // OSC 52. Splitting on all three keeps a multi-line paste multi-line.
   const segments = text.split(/\r\n|\r|\n/);
-  const target = [...lines[pos.row]];
+  const target = splitGraphemes(lines[pos.row]);
   const before = target.slice(0, pos.col).join("");
   const after = target.slice(pos.col).join("");
   const result = lines.slice();
@@ -94,7 +97,7 @@ export function insertAt(lines: string[], pos: Pos, text: string): { lines: stri
     result[pos.row] = before + segments[0] + after;
     return {
       lines: result,
-      caret: { row: pos.row, col: pos.col + [...segments[0]].length },
+      caret: { row: pos.row, col: pos.col + splitGraphemes(segments[0]).length },
     };
   }
 
@@ -103,6 +106,6 @@ export function insertAt(lines: string[], pos: Pos, text: string): { lines: stri
   result.splice(pos.row, 1, ...block);
   return {
     lines: result,
-    caret: { row: pos.row + segments.length - 1, col: [...last].length },
+    caret: { row: pos.row + segments.length - 1, col: splitGraphemes(last).length },
   };
 }
