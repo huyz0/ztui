@@ -33,6 +33,17 @@ export function parseStyleString(styleStr: string): Style {
       props.italic = true;
     } else if (part === "underline") {
       props.underline = true;
+    } else if (part === "undercurl" || part === "curly") {
+      props.underlineStyle = "curly";
+    } else if (
+      part === "double-underline" ||
+      part === "dotted-underline" ||
+      part === "dashed-underline"
+    ) {
+      props.underlineStyle = part.slice(0, part.indexOf("-"));
+    } else if (part.startsWith("underline=")) {
+      // e.g. "underline=red" → coloured underline, independent of the foreground.
+      props.underlineColor = part.substring(10);
     } else if (part === "reverse") {
       props.reverse = true;
     } else if (part === "dim") {

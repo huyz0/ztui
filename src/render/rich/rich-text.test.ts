@@ -13,6 +13,15 @@ describe("RichText Engine", () => {
     expect(s2.italic).toBe(true);
     expect(s2.dim).toBe(true);
     expect(s2.link).toBe("https://example.com");
+
+    // Underline shapes and coloured underlines.
+    expect(parseStyleString("undercurl").underlineStyle).toBe("curly");
+    expect(parseStyleString("dotted-underline").underlineStyle).toBe("dotted");
+    expect(parseStyleString("double-underline").underlineStyle).toBe("double");
+    const s3 = parseStyleString("undercurl underline=red");
+    expect(s3.underline).toBe(true);
+    expect(s3.underlineStyle).toBe("curly");
+    expect(s3.underlineColor).toBe("red");
   });
 
   test("RichText.fromMarkup simple tag parsing", () => {

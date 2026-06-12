@@ -128,6 +128,14 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
               <RichText>[italic]Italic Text:[/] [italic]This is slanted[/]</RichText>
               <RichText>[underline]Underlined Text:[/] [underline]Underline this line[/]</RichText>
               <RichText>
+                [bold]Underline shapes:[/] [undercurl]undercurl[/], [double-underline]double[/],
+                [dotted-underline]dotted[/], [dashed-underline]dashed[/]
+              </RichText>
+              <RichText>
+                [bold]Coloured underlines:[/] [undercurl underline=red]misspeled[/], [undercurl
+                underline=yellow]warning[/], [underline underline=#89b4fa]info[/]
+              </RichText>
+              <RichText>
                 [red]Colored Text:[/] [red]Red[/], [green]Green[/], [yellow]Yellow[/], [blue]Blue[/]
               </RichText>
               <RichText>

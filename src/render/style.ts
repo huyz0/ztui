@@ -1,9 +1,32 @@
+import { parseColor } from "./color.ts";
+
+/**
+ * Underline rendering style. `single` is the classic flat line; the rest map to
+ * the colon sub-parameter forms standardised by Kitty and supported by Ghostty,
+ * iTerm2, WezTerm, and our web/canvas backend. `curly` (undercurl) is the
+ * conventional cue for spelling/diagnostic squiggles.
+ */
+export type UnderlineStyle = "single" | "double" | "curly" | "dotted" | "dashed";
+
+// SGR 4 sub-parameter values per the Kitty underline spec.
+const UNDERLINE_SGR: Record<UnderlineStyle, number> = {
+  single: 1,
+  double: 2,
+  curly: 3,
+  dotted: 4,
+  dashed: 5,
+};
+
 export interface StyleProps {
   color?: string; // e.g., "red", "#ff0000", "rgb(255, 0, 0)"
   background?: string; // e.g., "blue", "#0000ff"
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  /** Underline shape. Implies `underline`; defaults to `single` when underlined. */
+  underlineStyle?: UnderlineStyle;
+  /** Colour of the underline, independent of the foreground (SGR 58). */
+  underlineColor?: string;
   reverse?: boolean;
   dim?: boolean;
   strikethrough?: boolean;
@@ -27,6 +50,8 @@ export class Style {
   public readonly bold: boolean;
   public readonly italic: boolean;
   public readonly underline: boolean;
+  public readonly underlineStyle?: UnderlineStyle;
+  public readonly underlineColor?: string;
   public readonly reverse: boolean;
   public readonly dim: boolean;
   public readonly strikethrough: boolean;
@@ -37,7 +62,9 @@ export class Style {
     this.background = props.background;
     this.bold = !!props.bold;
     this.italic = !!props.italic;
-    this.underline = !!props.underline;
+    this.underline = !!props.underline || props.underlineStyle !== undefined;
+    this.underlineStyle = props.underlineStyle;
+    this.underlineColor = props.underlineColor;
     this.reverse = !!props.reverse;
     this.dim = !!props.dim;
     this.strikethrough = !!props.strikethrough;
@@ -53,6 +80,8 @@ export class Style {
       this.bold === other.bold &&
       this.italic === other.italic &&
       this.underline === other.underline &&
+      this.underlineStyle === other.underlineStyle &&
+      this.underlineColor === other.underlineColor &&
       this.reverse === other.reverse &&
       this.dim === other.dim &&
       this.strikethrough === other.strikethrough &&
@@ -67,6 +96,10 @@ export class Style {
       bold: other.bold !== undefined ? other.bold : this.bold,
       italic: other.italic !== undefined ? other.italic : this.italic,
       underline: other.underline !== undefined ? other.underline : this.underline,
+      underlineStyle:
+        other.underlineStyle !== undefined ? other.underlineStyle : this.underlineStyle,
+      underlineColor:
+        other.underlineColor !== undefined ? other.underlineColor : this.underlineColor,
       reverse: other.reverse !== undefined ? other.reverse : this.reverse,
       dim: other.dim !== undefined ? other.dim : this.dim,
       strikethrough: other.strikethrough !== undefined ? other.strikethrough : this.strikethrough,
@@ -92,8 +125,18 @@ export class Style {
       end += "\x1b[23m";
     }
     if (this.underline) {
-      start += "\x1b[4m";
+      // Colon sub-parameter form (Kitty/Ghostty/iTerm2/WezTerm). `4:1` is plain
+      // single and degrades to bare `4` on terminals that ignore the sub-param.
+      const sub = UNDERLINE_SGR[this.underlineStyle ?? "single"];
+      start += `\x1b[4:${sub}m`;
       end += "\x1b[24m";
+      if (this.underlineColor) {
+        const c = parseColor(this.underlineColor)?.rgb;
+        if (c) {
+          start += `\x1b[58:2::${c.r}:${c.g}:${c.b}m`;
+          end += "\x1b[59m";
+        }
+      }
     }
     if (this.strikethrough) {
       start += "\x1b[9m";

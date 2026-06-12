@@ -70,9 +70,18 @@ function fgCSS(style: any): string {
   if (fg && fg !== "default") css.push(`color: ${normalizeColorForCSS(fg)}`);
   if (style.bold) css.push("font-weight: bold");
   if (style.italic) css.push("font-style: italic");
-  if (style.underline && style.strikethrough) css.push("text-decoration: underline line-through");
-  else if (style.underline) css.push("text-decoration: underline");
-  else if (style.strikethrough) css.push("text-decoration: line-through");
+  const lines: string[] = [];
+  if (style.underline) lines.push("underline");
+  if (style.strikethrough) lines.push("line-through");
+  if (lines.length) {
+    css.push(`text-decoration-line: ${lines.join(" ")}`);
+    if (style.underline) {
+      const shape = style.underlineStyle === "curly" ? "wavy" : style.underlineStyle;
+      if (shape && shape !== "single") css.push(`text-decoration-style: ${shape}`);
+      if (style.underlineColor)
+        css.push(`text-decoration-color: ${normalizeColorForCSS(style.underlineColor)}`);
+    }
+  }
   return css.join("; ");
 }
 
@@ -143,6 +152,8 @@ export function renderBufferToHTML(buffer: ScreenBuffer): string {
         bold: cellStyle.bold,
         italic: cellStyle.italic,
         underline: cellStyle.underline,
+        underlineStyle: cellStyle.underlineStyle,
+        underlineColor: cellStyle.underlineColor,
         strikethrough: cellStyle.strikethrough,
         reverse: cellStyle.reverse,
         link: cellStyle.link,
@@ -174,6 +185,8 @@ function stylesEqual(s1: any, s2: any): boolean {
     s1.bold === s2.bold &&
     s1.italic === s2.italic &&
     s1.underline === s2.underline &&
+    s1.underlineStyle === s2.underlineStyle &&
+    s1.underlineColor === s2.underlineColor &&
     s1.strikethrough === s2.strikethrough &&
     s1.reverse === s2.reverse &&
     s1.link === s2.link

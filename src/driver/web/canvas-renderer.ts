@@ -28,6 +28,10 @@ export interface CanvasCell {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  /** Underline shape; absent means single. */
+  uStyle?: "double" | "curly" | "dotted" | "dashed";
+  /** Underline CSS color, independent of fg. */
+  uColor?: string;
   strike?: boolean;
   /** Continuation cell of a wide glyph to its left — skipped when drawing. */
   cont?: boolean;
@@ -107,7 +111,11 @@ export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
       if (bg && bg !== "default") out.bg = normalizeColorForCSS(bg);
       if (s.bold) out.bold = true;
       if (s.italic) out.italic = true;
-      if (s.underline) out.underline = true;
+      if (s.underline) {
+        out.underline = true;
+        if (s.underlineStyle && s.underlineStyle !== "single") out.uStyle = s.underlineStyle;
+        if (s.underlineColor) out.uColor = normalizeColorForCSS(s.underlineColor);
+      }
       if (s.strikethrough) out.strike = true;
       if (cell.icon) out.icon = true;
       row.push(out);
@@ -362,14 +370,45 @@ export function renderBufferToCanvas(
       } else {
         ctx.fillText(cell.c, x0 + (span * cw) / 2, cy + baseline);
       }
-      if (cell.underline || cell.strike) {
+      if (cell.strike) {
         ctx.strokeStyle = color;
         ctx.lineWidth = t;
-        const yy = cell.underline ? cy + ch - t : cy + Math.round(baseline * 0.7);
+        const yy = cy + Math.round(baseline * 0.7);
         ctx.beginPath();
         ctx.moveTo(x0, yy + 0.5);
         ctx.lineTo(x0 + span * cw, yy + 0.5);
         ctx.stroke();
+      }
+      if (cell.underline) {
+        const x1 = x0 + span * cw;
+        const yy = cy + ch - t;
+        ctx.strokeStyle = cell.uColor ?? color;
+        ctx.lineWidth = t;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        if (cell.uStyle === "curly") {
+          // Undercurl: a half-cell-period sine ridge, the conventional squiggle.
+          const amp = Math.max(1, t);
+          const period = Math.max(4, cw / 2);
+          const mid = yy - amp / 2;
+          for (let px = x0; px <= x1; px++) {
+            const yv = mid + (amp / 2) * Math.sin(((px - x0) / period) * Math.PI * 2);
+            if (px === x0) ctx.moveTo(px, yv);
+            else ctx.lineTo(px, yv);
+          }
+        } else if (cell.uStyle === "double") {
+          ctx.moveTo(x0, yy - t);
+          ctx.lineTo(x1, yy - t);
+          ctx.moveTo(x0, yy + t + 0.5);
+          ctx.lineTo(x1, yy + t + 0.5);
+        } else {
+          if (cell.uStyle === "dotted") ctx.setLineDash([t, t]);
+          else if (cell.uStyle === "dashed") ctx.setLineDash([cw / 3, cw / 4]);
+          ctx.moveTo(x0, yy + 0.5);
+          ctx.lineTo(x1, yy + 0.5);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
     }
   }

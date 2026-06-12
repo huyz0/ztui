@@ -125,8 +125,20 @@ describe("rendering system", () => {
     expect(c3.start.includes("\x1b[31m")).toBe(true);
     expect(c3.start.includes("\x1b[2m")).toBe(true); // dim
     expect(c3.start.includes("\x1b[3m")).toBe(true); // italic
-    expect(c3.start.includes("\x1b[4m")).toBe(true); // underline
+    expect(c3.start.includes("\x1b[4:1m")).toBe(true); // single underline
     expect(c3.start.includes("\x1b[7m")).toBe(true); // reverse
+
+    // Underline shapes map to SGR 4 colon sub-params; color sets SGR 58.
+    const curly = new Style({ underlineStyle: "curly", underlineColor: "#ff0000" });
+    const cu = curly.getEscapeCodes();
+    expect(curly.underline).toBe(true); // underlineStyle implies underline
+    expect(cu.start.includes("\x1b[4:3m")).toBe(true); // undercurl
+    expect(cu.start.includes("\x1b[58:2::255:0:0m")).toBe(true); // underline color
+    expect(cu.end.includes("\x1b[59m")).toBe(true); // color reset
+    expect(cu.end.includes("\x1b[24m")).toBe(true); // underline reset
+    expect(
+      new Style({ underlineStyle: "dashed" }).getEscapeCodes().start.includes("\x1b[4:5m"),
+    ).toBe(true);
 
     // Test invalid hex fallback
     const s4 = new Style({ color: "#invalidhex", background: "badcolor" });
@@ -261,14 +273,22 @@ describe("rendering system", () => {
     const buffer = new ScreenBuffer(10, 1);
     buffer.drawSegment(0, 0, new Segment("Struck", s1));
     const html1 = renderBufferToHTML(buffer);
-    expect(html1.includes("text-decoration: line-through")).toBe(true);
+    expect(html1.includes("text-decoration-line: line-through")).toBe(true);
 
     // HTML Renderer combining underline and strikethrough
     const s2 = new Style({ underline: true, strikethrough: true });
     const buffer2 = new ScreenBuffer(10, 1);
     buffer2.drawSegment(0, 0, new Segment("Both", s2));
     const html2 = renderBufferToHTML(buffer2);
-    expect(html2.includes("text-decoration: underline line-through")).toBe(true);
+    expect(html2.includes("text-decoration-line: underline line-through")).toBe(true);
+
+    // Undercurl + colored underline map to CSS wavy + decoration-color.
+    const s3 = new Style({ underlineStyle: "curly", underlineColor: "#ff0000" });
+    const buffer3 = new ScreenBuffer(10, 1);
+    buffer3.drawSegment(0, 0, new Segment("Curl", s3));
+    const html3 = renderBufferToHTML(buffer3);
+    expect(html3.includes("text-decoration-style: wavy")).toBe(true);
+    expect(html3.includes("text-decoration-color: #ff0000")).toBe(true);
   });
 
   test("HTML renders block rows in stacked background+text layers, sized by line height", () => {
