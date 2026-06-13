@@ -9,6 +9,7 @@ import {
   Workbench,
   type WorkbenchPanel,
 } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // The full IDE layout: a Workbench (hideable side/bottom panels + activity rail)
 // wrapping a SplitView editor grid in the center. Everything is mouse-driven —
@@ -106,8 +107,7 @@ function IDEDemo() {
     <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
       <ThemePalette />
       <Header>
-        🧰 ZTUI IDE — drag to re-dock · split/resize panes · Ctrl+B / Ctrl+Space toggle · Ctrl+C
-        quit
+        🧰 ZTUI IDE — drag to re-dock · split/resize panes · Ctrl+B / Ctrl+Space toggle{quitHint()}
       </Header>
       <Workbench
         panels={panels}

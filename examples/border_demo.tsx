@@ -1,4 +1,5 @@
 import { Footer, HBox, Header, Label, VBox } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // Showcases the available border styles, including the new rounded corners
 // (mirrors Textual's "round" border: solid edges, rounded corner glyphs).
@@ -13,7 +14,7 @@ function BorderDemo() {
   return (
     <VBox style={{ background: "$surface", padding: 1 }}>
       <Header>🟦 ZTUI Border Styles</Header>
-      <Footer>Ctrl+C quit</Footer>
+      <Footer>{quitHint("")}</Footer>
 
       <HBox style={{ padding: 1 }}>
         {styles.map((s) => (

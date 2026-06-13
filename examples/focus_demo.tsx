@@ -26,7 +26,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
-import { exitApp } from "./exit-button.tsx";
+import { exitApp, quitHint } from "./exit-button.tsx";
 
 function FocusDemo() {
   const [, force] = useState(0);
@@ -108,7 +108,7 @@ function FocusDemo() {
         </VBox>
       </HBox>
 
-      <Footer>Tab focus · F2 motion on/off · F3 re-arm · Ctrl+C quit</Footer>
+      <Footer>Tab focus · F2 motion on/off · F3 re-arm{quitHint()}</Footer>
     </VBox>
   );
 }

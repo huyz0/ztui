@@ -12,6 +12,7 @@ import {
   serializeSplit,
   VBox,
 } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // VSCode editor-grid model: a recursively splittable, drag-resizable pane grid.
 // The root splits left/right; the right side splits top/bottom; the bottom-right
@@ -77,7 +78,7 @@ function SplitViewDemo() {
   return (
     <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
       <Header>
-        🪟 ZTUI SplitView — drag dividers · ↔/↕ split · ✕ close · layout persists · Ctrl+C quit
+        🪟 ZTUI SplitView — drag dividers · ↔/↕ split · ✕ close · layout persists{quitHint()}
       </Header>
       <Box style={{ width: "100%", height: "1fr", padding: 1 }}>
         <SplitView

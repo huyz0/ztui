@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Footer, Header, Label, type QAResult, QuestionAnswer, VBox } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // Showcases the QuestionAnswer composite: a single-select ask with free text,
 // a multi-select ask, and a horizontal yes/no-style ask. Each reports its
@@ -17,7 +18,7 @@ function QADemo() {
   return (
     <VBox style={{ background: "$surface", padding: 1 }}>
       <Header>◍ ZTUI QuestionAnswer</Header>
-      <Footer>tab next field · ↑↓ move · space select · enter submit · Ctrl+C quit</Footer>
+      <Footer>tab next field · ↑↓ move · space select · enter submit{quitHint()}</Footer>
 
       <Label style={{ color: "$foreground", bold: true, margin: { top: 1 } }}>
         single-select + free text

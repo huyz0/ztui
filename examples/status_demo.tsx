@@ -9,6 +9,7 @@ import {
   type StatusState,
   VBox,
 } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 import type { Demo } from "./gallery/types.ts";
 
 // Showcases the status indicators: single-cell StatusDot across glyph sets,
@@ -35,7 +36,7 @@ function StatusDemo() {
   return (
     <VBox style={{ background: "$surface", padding: 1 }}>
       <Header>◍ ZTUI Status Indicators</Header>
-      <Footer>Ctrl+C quit</Footer>
+      <Footer>{quitHint("")}</Footer>
 
       <Label style={{ color: "$foreground", bold: true, margin: { top: 1 } }}>
         StatusDot — single cell, three glyph sets

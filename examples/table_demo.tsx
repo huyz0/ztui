@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { SortState, TableColumn } from "../src/core.ts";
 import { Dock, Footer, Header, Label, Table } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 interface Server {
   id: number;
@@ -56,7 +57,7 @@ function TableDemo() {
     <Dock style={{ background: "$surface" }}>
       <Header>🗄️ ZTUI Table — 50,000 rows, virtualized · click headers to sort</Header>
       <Footer>
-        ↑/↓ select · PgUp/PgDn · Home/End · ←/→ scroll cols · Enter inspect · Ctrl+C quit ·{" "}
+        ↑/↓ select · PgUp/PgDn · Home/End · ←/→ scroll cols · Enter inspect{quitHint()} ·{" "}
         {selected ? `selected: ${selected.name}` : "nothing selected"}
       </Footer>
 

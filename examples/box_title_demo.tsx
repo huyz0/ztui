@@ -1,4 +1,5 @@
 import { Box, Dock, Footer, Header, Label, VBox } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // Box widgets carry an optional `title` drawn into the top border edge as
 // `─ title ─`. It only shows when the box has a border, inherits the border
@@ -7,7 +8,7 @@ function BoxTitleDemo() {
   return (
     <Dock style={{ background: "$surface" }}>
       <Header>🔲 ZTUI Box title — labels on the top border edge</Header>
-      <Footer>Ctrl+C quit</Footer>
+      <Footer>{quitHint("")}</Footer>
 
       <VBox style={{ padding: 1 }}>
         <Box

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { hotkeys } from "../src/core.ts";
 import { Dock, Footer, Header, Markdown } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 import "../src/markdown.ts";
 
 // A markdown document streamed in small chunks, the way a model emits tokens.
@@ -80,7 +81,7 @@ function MarkdownStreamDemo() {
       <Header>
         📝 ZTUI Markdown — streaming token-by-token {paused ? "[paused]" : "[streaming]"}
       </Header>
-      <Footer>Space pause · r restart · Ctrl+C quit</Footer>
+      <Footer>Space pause · r restart{quitHint()}</Footer>
       <Markdown style={{ padding: 1 }}>{shown}</Markdown>
     </Dock>
   );

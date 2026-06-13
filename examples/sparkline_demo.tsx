@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dock, Footer, HBox, Header, Label, Sparkline, VBox } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 import type { Demo } from "./gallery/types.ts";
 
 // A live agent HUD: dense one-row sparklines for the signals you'd watch while
@@ -43,7 +44,7 @@ function SparklineDemo() {
     <Dock style={{ background: "$surface" }}>
       <Header>📈 ZTUI Sparkline — live agent HUD</Header>
       <Footer>
-        one-row micro-charts · auto-ranged · tails the most recent samples · Ctrl+C quit
+        one-row micro-charts · auto-ranged · tails the most recent samples{quitHint()}
       </Footer>
 
       <VBox style={{ padding: 1 }}>

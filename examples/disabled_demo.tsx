@@ -17,7 +17,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { ExitButton, quitHint } from "./exit-button.tsx";
 
 // Shows the `disabled` prop across every interactive control: a disabled widget
 // is muted, skipped by Tab, and ignores keyboard/mouse. The bottom section wraps
@@ -39,7 +39,7 @@ function DisabledDemo() {
   return (
     <Dock style={{ background: "$background" }}>
       <Header>🚫 ZTUI Disabled State — enabled vs disabled</Header>
-      <Footer>Tab skips disabled controls · disabled widgets ignore input · Ctrl+C: Exit</Footer>
+      <Footer>Tab skips disabled controls · disabled widgets ignore input{quitHint()}</Footer>
 
       <HBox style={{ padding: 1 }}>
         {/* Left: each control type, enabled on top, disabled below. */}

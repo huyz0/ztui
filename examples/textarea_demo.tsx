@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dock, Footer, HBox, Header, Input, Label, TextArea, VBox, View } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { ExitButton, quitHint } from "./exit-button.tsx";
 
 function TextDemoApp() {
   const [inputText, setInputText] = useState("");
@@ -12,7 +12,7 @@ function TextDemoApp() {
     <Dock style={{ background: "$background" }}>
       <Header>🚀 ZTUI Rich Text Editor Demo</Header>
 
-      <Footer>Tab: Cycle Focus │ Click: Position Cursor │ Press Exit to Quit</Footer>
+      <Footer>Tab: Cycle Focus │ Click: Position Cursor{quitHint(" │ ")}</Footer>
 
       <HBox style={{ padding: 1 }}>
         {/* Left column: input fields */}

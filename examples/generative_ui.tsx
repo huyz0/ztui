@@ -12,7 +12,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { ExitButton, quitHint } from "./exit-button.tsx";
 import "../src/markdown.ts";
 
 const MARKDOWN_PAYLOAD = `# 🤖 Generative AI Response
@@ -115,7 +115,7 @@ function GenerativeUIApp() {
   return (
     <Dock style={{ background: "$background" }}>
       <Header>✨ ZTUI Generative UI & Streaming Demo</Header>
-      <Footer>Tab: Cycle Focus │ Click: Interact │ Ctrl+C: Quit</Footer>
+      <Footer>Tab: Cycle Focus │ Click: Interact{quitHint(" │ ")}</Footer>
 
       <VBox style={{ padding: 1, height: "100%" }}>
         {/* Top Split Layout */}

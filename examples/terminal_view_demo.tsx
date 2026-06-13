@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dock, Footer, Header, TerminalView, VBox } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // Simulated bash/shell tool output streaming into a sandboxed terminal view:
 // ANSI colors, a \r progress bar that redraws in place, then a summary. The
@@ -55,7 +56,7 @@ function TerminalViewDemo() {
     <Dock style={{ background: "$surface" }}>
       <Header>🖥 ZTUI TerminalView — sandboxed streaming command output</Header>
       <Footer>
-        ↑↓ scroll · ANSI colors + \r progress · output can't escape the view · Ctrl+C quit
+        ↑↓ scroll · ANSI colors + \r progress · output can't escape the view{quitHint()}
       </Footer>
 
       <VBox style={{ padding: 1 }}>

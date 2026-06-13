@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ListItem } from "../src/core.ts";
 import { Dock, Footer, Header, ListView } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // A mixed list with icons, dimmed detail text, disabled rows, and thousands of
 // generated entries to show virtualization + scrolling.
@@ -26,7 +27,7 @@ function ListViewDemo() {
     <Dock style={{ background: "$surface" }}>
       <Header>📋 ZTUI ListView — flat selection list (virtualized, 5000+ rows)</Header>
       <Footer>
-        ↑/↓ move · PgUp/PgDn jump · Enter/dbl-click open · Ctrl+C quit ·{" "}
+        ↑/↓ move · PgUp/PgDn jump · Enter/dbl-click open{quitHint()} ·{" "}
         {selected ? `sel: ${selected}` : "—"}
         {opened ? ` · opened: ${opened}` : ""}
       </Footer>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { deriveTheme, Spacing, ThemeManager } from "../src/core.ts";
 import { Button, Dock, Footer, HBox, Header, Input, Label, VBox, View } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { ExitButton, quitHint } from "./exit-button.tsx";
 
 function ThemeExplorerApp() {
   const _themes = [
@@ -61,7 +61,7 @@ function ThemeExplorerApp() {
       <Header>🎨 ZTUI Theme Explorer</Header>
 
       <Footer>
-        Tab: Cycle Focus │ Use Buttons to Switch Global / Local Themes │ Press Exit to Quit
+        Tab: Cycle Focus │ Use Buttons to Switch Global / Local Themes{quitHint(" │ ")}
       </Footer>
 
       <HBox style={{ padding: 1 }}>

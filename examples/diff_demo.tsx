@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { hotkeys } from "../src/core.ts";
 import { Diff, Dock, Footer, Header, Label, VBox } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // The view a coding agent shows when it proposes a file edit: a syntax-
 // highlighted diff with a +/- gutter and line numbers. Toggle unified vs
@@ -102,7 +103,7 @@ function DiffDemo() {
     <Dock style={{ background: "$surface" }}>
       <Header>🪢 ZTUI Diff — a proposed edit to greet.ts</Header>
       <Footer>
-        click Unified/Split to switch view · c collapse/full context · ↑↓ scroll · Ctrl+C quit
+        click Unified/Split to switch view · c collapse/full context · ↑↓ scroll{quitHint()}
       </Footer>
 
       <VBox style={{ padding: 1 }}>

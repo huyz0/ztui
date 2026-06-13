@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { TreeNode } from "../src/core.ts";
 import { Dock, Footer, Header, Tree } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // A workspace tree. `data` is a forest (no synthetic root needed); a deep
 // folder is generated to show virtualization + scrolling.
@@ -45,7 +46,7 @@ function TreeDemo() {
     <Dock style={{ background: "$surface" }}>
       <Header>🗂️ ZTUI Tree — workspace navigation (virtualized)</Header>
       <Footer>
-        ↑/↓ move · →/← expand · Enter/dbl-click open · Ctrl+C quit ·{" "}
+        ↑/↓ move · →/← expand · Enter/dbl-click open{quitHint()} ·{" "}
         {selected ? `sel: ${selected}` : "—"}
         {opened ? ` · opened: ${opened}` : ""}
       </Footer>

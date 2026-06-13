@@ -11,6 +11,7 @@ import {
   type WorkbenchLayout,
   type WorkbenchPanel,
 } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // Persist the layout to a temp file so re-launching restores the last state.
 const LAYOUT_FILE = join(tmpdir(), "ztui-workbench-demo.json");
@@ -82,8 +83,8 @@ function WorkbenchDemo() {
     <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
       <ThemePalette />
       <Header>
-        🧱 ZTUI Workbench — drag to re-dock · drag splitters · Ctrl+B / Ctrl+Space toggle · Ctrl+C
-        quit
+        🧱 ZTUI Workbench — drag to re-dock · drag splitters · Ctrl+B / Ctrl+Space toggle
+        {quitHint()}
       </Header>
       <Workbench
         panels={panels}

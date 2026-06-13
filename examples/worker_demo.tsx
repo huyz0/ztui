@@ -12,6 +12,7 @@ import {
   useWorker,
   VBox,
 } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // A cancellable async task, the way an agent loop runs one model/tool call at a
 // time: Run starts a job, Run again supersedes the in-flight one (latest wins),
@@ -62,7 +63,7 @@ function WorkerDemo() {
   return (
     <Dock style={{ background: "$surface" }}>
       <Header>🧵 ZTUI useWorker — one cancellable task at a time</Header>
-      <Footer>r run (again = supersede) · x cancel · Ctrl+C quit</Footer>
+      <Footer>r run (again = supersede) · x cancel{quitHint()}</Footer>
 
       <VBox style={{ padding: 1 }}>
         <HBox style={{ height: 1, margin: { bottom: 1 } }}>

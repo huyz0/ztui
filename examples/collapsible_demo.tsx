@@ -1,4 +1,5 @@
 import { Collapsible, Dock, Footer, Header, Label, Syntax, VBox } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 import "../src/syntax.ts";
 
 // Foldable sections, the way an agent transcript groups reasoning and tool
@@ -8,7 +9,7 @@ function CollapsibleDemo() {
   return (
     <Dock style={{ background: "$surface" }}>
       <Header>🧩 ZTUI Collapsible — foldable reasoning / tool blocks</Header>
-      <Footer>Tab focus · Enter/Space or click toggle · →/← expand/collapse · Ctrl+C quit</Footer>
+      <Footer>Tab focus · Enter/Space or click toggle · →/← expand/collapse{quitHint()}</Footer>
 
       <VBox style={{ padding: 1 }}>
         <Collapsible title="💭 Reasoning" defaultOpen>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Spacing } from "../src/core.ts";
 import { Button, Dock, Footer, HBox, Header, HeroIcon, Label, VBox, View } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { canQuit, ExitButton, quitHint } from "./exit-button.tsx";
 import type { Demo } from "./gallery/types.ts";
 
 function HeroiconsDemo() {
@@ -17,7 +17,10 @@ function HeroiconsDemo() {
     <Dock style={{ background: "$surface" }}>
       <Header>✨ ZTUI Heroicons Gallery Demo</Header>
 
-      <Footer>Cycle Color / click Exit │ Exit with CTRL+C</Footer>
+      <Footer>
+        Cycle Color{canQuit() ? " / click Exit" : ""}
+        {quitHint(" │ ")}
+      </Footer>
 
       <VBox style={{ padding: 1 }}>
         <HBox style={{ height: 3, margin: new Spacing(0, 0, 1, 0) }}>

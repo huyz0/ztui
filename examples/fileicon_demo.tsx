@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { App, loadSetiIcons, resolveFileIcon } from "../src/core.ts";
 import { Dock, FileIcon, Footer, HBox, Header, Label, VBox, View } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { ExitButton, quitHint } from "./exit-button.tsx";
 
 const sampleFiles = [
   { name: "package.json", isFolder: false },
@@ -61,9 +61,7 @@ function FileIconDemo() {
     <Dock style={{ background: "$background" }}>
       <Header>📁 ZTUI VS Code Seti File Icons Explorer</Header>
 
-      <Footer>
-        Use Up/Down Arrow keys to select file │ Tab: Move Focus │ Exit with Exit Button or CTRL+C
-      </Footer>
+      <Footer>Use Up/Down Arrow keys to select file │ Tab: Move Focus{quitHint(" │ ")}</Footer>
 
       <HBox style={{ flexGrow: 1, padding: 1 }}>
         {/* Left Panel: Interactive File List */}

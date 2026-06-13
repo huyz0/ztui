@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Dock, Footer, Header, Label, SelectionList, VBox } from "../src/react.ts";
 import type { ListItem } from "../src/widgets/data/list-view.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // "Pick which changes to apply" — the multi-select an agent shows before it
 // commits a batch of file edits. Arrows move the cursor, Space/Enter or click
@@ -25,7 +26,7 @@ function SelectionListDemo() {
   return (
     <Dock style={{ background: "$surface" }}>
       <Header>☑ ZTUI SelectionList — choose changes to apply</Header>
-      <Footer>↑↓ move · Space/Enter or click toggle · a toggle all · Ctrl+C quit</Footer>
+      <Footer>↑↓ move · Space/Enter or click toggle · a toggle all{quitHint()}</Footer>
 
       <VBox style={{ padding: 1 }}>
         <Label style={{ dim: true, margin: { bottom: 1 } }}>

@@ -12,7 +12,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { canQuit, ExitButton } from "./exit-button.tsx";
 
 /**
  * Demonstrates first-class text selection + clipboard:
@@ -42,8 +42,8 @@ function ClipboardDemo() {
       <Header>📋 ZTUI Copy / Paste & Selection Demo</Header>
 
       <Footer>
-        Shift+Arrows: select · Drag+release: copy · Ctrl+C: copy selection / quit · Ctrl+V: paste ·
-        Ctrl+A: all
+        Shift+Arrows: select · Drag+release: copy · Ctrl+C: copy selection
+        {canQuit() ? " / quit" : ""} · Ctrl+V: paste · Ctrl+A: all
       </Footer>
 
       <HBox style={{ padding: 1 }}>

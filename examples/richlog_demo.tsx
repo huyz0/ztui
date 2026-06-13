@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { hotkeys } from "../src/core.ts";
 import { Dock, Footer, Header, RichLog } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // A scripted "agent" turn: each step appends one or more markup lines to the
 // log, the way a real streaming agent would emit reasoning, tool calls, tool
@@ -69,7 +70,7 @@ function RichLogDemo() {
         🤖 ZTUI RichLog — streaming agent transcript {paused ? "[paused]" : "[streaming]"}
       </Header>
       <Footer>
-        ↑/↓ scroll · PgUp/PgDn · Home/End (End resumes tail) · Space pause · c clear · Ctrl+C quit
+        ↑/↓ scroll · PgUp/PgDn · Home/End (End resumes tail) · Space pause · c clear{quitHint()}
       </Footer>
       <RichLog style={{ padding: 1 }} lines={lines} maxLines={2000} />
     </Dock>

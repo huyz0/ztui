@@ -11,7 +11,7 @@ import {
   Syntax,
   VBox,
 } from "../src/react.ts";
-import { ExitButton } from "./exit-button.tsx";
+import { ExitButton, quitHint } from "./exit-button.tsx";
 import "../src/markdown.ts";
 import "../src/syntax.ts";
 
@@ -71,7 +71,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
     <Dock style={{ background: "$background" }}>
       <Header>🚀 ZTUI Rich Rendering Engine Demo</Header>
       <Footer>
-        Switch tabs with the buttons │ Drag to select text, release to copy │ Exit to Quit
+        Switch tabs with the buttons │ Drag to select text, release to copy{quitHint(" │ ")}
       </Footer>
 
       <HBox style={{ padding: 1 }}>

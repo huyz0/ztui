@@ -11,6 +11,7 @@ import {
   WaitingPanel,
   type WaitingPanelVariant,
 } from "../src/react.ts";
+import { quitHint } from "./exit-button.tsx";
 
 // Showcases the waiting indicators: single-cell Spinner modes, the small
 // WaitingGrid variants, and the free-size WaitingPanel animations.
@@ -30,7 +31,7 @@ function WaitingDemo() {
   return (
     <VBox style={{ background: "$surface", padding: 1 }}>
       <Header>⏳ ZTUI Waiting Indicators</Header>
-      <Footer>Ctrl+C quit</Footer>
+      <Footer>{quitHint("")}</Footer>
 
       <Label style={{ color: "$foreground", bold: true, margin: { top: 1 } }}>
         Spinner — single cell, inline

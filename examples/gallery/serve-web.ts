@@ -71,7 +71,17 @@ document.addEventListener("keydown", (ev) => {
 });
 screen.addEventListener("mousedown", (ev) => { ev.preventDefault(); screen.focus(); sendMouse("press", ev, BTN[ev.button] || "left"); });
 window.addEventListener("mouseup", (ev) => sendMouse("release", ev, BTN[ev.button] || "left"));
-window.addEventListener("mousemove", (ev) => { if (ev.buttons) sendMouse("drag", ev, "left"); });
+let lastMoveCell = "";
+window.addEventListener("mousemove", (ev) => {
+  if (ev.buttons) { sendMouse("drag", ev, "left"); lastMoveCell = ""; return; }
+  // Forward plain moves for :hover, but only when the pointer crosses into a new
+  // cell — otherwise every pixel of motion would fire a request.
+  const { x, y } = toCell(ev);
+  const cell = x + "," + y;
+  if (cell === lastMoveCell) return;
+  lastMoveCell = cell;
+  sendMouse("move", ev, "none");
+});
 screen.addEventListener("wheel", (ev) => { ev.preventDefault(); sendMouse(ev.deltaY < 0 ? "scroll_up" : "scroll_down", ev, "none"); }, { passive: false });
 window.addEventListener("resize", () => { syncSize().then(refresh); });
 
