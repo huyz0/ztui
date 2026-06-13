@@ -41,7 +41,7 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
   status: { cols: 56, rows: 16 },
   collapsible: { cols: 64, rows: 16 },
   // Batch 2
-  terminal: { cols: 72, rows: 18 },
+  terminal: { cols: 72, rows: 18, wait: 5500 }, // plays a ~5s build/test session
   qa: { cols: 64, rows: 16 },
   rich: { cols: 72, rows: 18 },
   splitview: { cols: 72, rows: 18 },
