@@ -6,11 +6,11 @@
 //
 // Keys: space animate to a new value · e cycle easing · q / Ctrl+C quit.
 import { useState } from "react";
+import type { Easing } from "../src/core.ts";
 import {
   Box,
   Button,
   Dialog,
-  type Easing,
   Footer,
   HBox,
   Header,
@@ -20,7 +20,7 @@ import {
   useAnimatedValue,
   useHotkey,
   VBox,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 const EASINGS: Easing[] = [
   "linear",

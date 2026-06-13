@@ -1,24 +1,20 @@
 import { useState } from "react";
+import { App, email, minLength, pattern, required } from "../src/core.ts";
 import {
-  App,
   Button,
   Checkbox,
   Dock,
-  email,
   FieldError,
   Footer,
   Form,
   Header,
   Input,
   Label,
-  minLength,
   PasswordInput,
-  pattern,
-  required,
   ValidationSummary,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 function SignupForm() {
   const [submitted, setSubmitted] = useState<Record<string, unknown> | null>(null);

@@ -9,7 +9,7 @@ import {
   SplitView,
   serializeSplit,
   splitLeaf,
-} from "../../../index.ts";
+} from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
 const leaf = (id: string): SplitLeaf => ({ type: "leaf", id, content: id });

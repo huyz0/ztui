@@ -8,6 +8,7 @@
  *   bun run demo:web   →  open http://localhost:3010
  */
 import { createElement } from "react";
+import { App, HTML_FONT_FAMILY, HTML_FONT_SIZE, HTML_PADDING, WebDriver } from "../src/core.ts";
 import { canvasClientScript } from "../src/driver/web/canvas-bundle.ts";
 import { serializeForCanvas } from "../src/driver/web/canvas-renderer.ts";
 import {
@@ -17,14 +18,7 @@ import {
   setiFontPath,
   webHostStyles,
 } from "../src/driver/web/host-page.ts";
-import {
-  App,
-  HTML_FONT_FAMILY,
-  HTML_FONT_SIZE,
-  HTML_PADDING,
-  render,
-  WebDriver,
-} from "../src/index.ts";
+import { render } from "../src/react.ts";
 import { WebDemoUI } from "./web_demo_ui.tsx";
 
 const driver = new WebDriver();

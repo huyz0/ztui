@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
-import { Button, Label, Spacing, View } from "../index.ts";
+import { Spacing } from "../core.ts";
+import { Button, Label, View } from "../react.ts";
 import { mountApp, VTEDriver } from "./harness.tsx";
 
 function InteractiveApp() {

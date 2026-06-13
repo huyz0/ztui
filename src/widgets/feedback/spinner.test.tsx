@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { HBox, Spinner, WaitingGrid, WaitingPanel } from "../../index.ts";
+import { HBox, Spinner, WaitingGrid, WaitingPanel } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 const channelSum = (c: string): number =>

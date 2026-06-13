@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
-import { HBox, ProgressBar } from "../../index.ts";
+import { HBox, ProgressBar } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { ProgressBarWidget } from "./progress-bar.ts";
 

@@ -12,8 +12,9 @@
  *  - Ctrl+C (handled by the driver) restores the terminal and exits 0.
  */
 import { useState } from "react";
+import { App } from "../../src/core.ts";
 import type { Widget } from "../../src/dom/widget.ts";
-import { App, Button, Label, render, VBox } from "../../src/index.ts";
+import { Button, Label, render, VBox } from "../../src/react.ts";
 
 function CounterApp() {
   const [count, setCount] = useState(0);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Footer, Header, Label, type QAResult, QuestionAnswer, VBox } from "../src/index.ts";
+import { Footer, Header, Label, type QAResult, QuestionAnswer, VBox } from "../src/react.ts";
 
 // Showcases the QuestionAnswer composite: a single-select ask with free text,
 // a multi-select ask, and a horizontal yes/no-style ask. Each reports its

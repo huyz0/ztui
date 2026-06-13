@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { HeroIcon, Icon, iconRegistry, VBox } from "../../index.ts";
+import { iconRegistry } from "../../core.ts";
+import { HeroIcon, Icon, VBox } from "../../react.ts";
 import { parseColorToRGB } from "../../render/icon-registry.ts";
 import { mountApp } from "../../test/harness.tsx";
 

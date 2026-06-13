@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { Button, Label, Table, type TableColumn } from "../../index.ts";
+import type { TableColumn } from "../../core.ts";
+import { Button, Label, Table } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { fitCell, type TableWidget } from "./table.ts";
 

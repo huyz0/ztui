@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { HBox, Label } from "../../index.ts";
+import { HBox, Label } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 /** Drive a press→drag→release over a widget's rendered cells (one row). */

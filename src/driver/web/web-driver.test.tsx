@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { App } from "../../core/app.ts";
-import { Button, Label, render, VBox } from "../../index.ts";
 import { unmount } from "../../react/reconciler.ts";
+import { Button, Label, render, VBox } from "../../react.ts";
 import { flush } from "../../test/harness.tsx";
 import { translateKeyboardEvent, translateMouseEvent } from "./dom.ts";
 import { WebDriver } from "./index.ts";

@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 import { TextNode } from "../../dom/text-node.ts";
 import type { Widget } from "../../dom/widget.ts";
-import { Markdown } from "../../index.ts";
+import { Markdown } from "../../react.ts";
+import "../../markdown.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { MarkdownWidget } from "./markdown.ts";
 

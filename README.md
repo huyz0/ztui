@@ -4,7 +4,8 @@ A premium, declarative, React-based Text User Interface (TUI) framework for Type
 
 ```tsx
 import React, { useState } from "react";
-import { App, View, Button, Label } from "ztui";
+import { App } from "ztui";
+import { View, Button, Label } from "ztui/react";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -45,14 +46,33 @@ function Counter() {
 ## Installation
 
 ```bash
-bun install ztui
+bun add ztui
 ```
 
-Make sure the following dependencies are installed to support graphics and terminal testing:
-```bash
-# Developer and graphics tools
-bun add @resvg/resvg-js heroicons
-bun add -d @xterm/headless vitest @biomejs/biome
+`ztui` ships as a slim core with **opt-in entry points**, so you only install the
+dependencies for the features you actually use. The core entry pulls no React and
+no heavy rendering engines.
+
+| Import | What you get | Install alongside |
+|--------|--------------|-------------------|
+| `ztui` | Core: `App`, `Widget`, `Screen`, drivers, geometry, render, theme, animations, and all imperative widgets | — |
+| `ztui/react` | React reconciler `render` + all JSX components and hooks | `bun add react react-reconciler` |
+| `ztui/markdown` | Markdown engine + `MarkdownWidget` | `bun add marked` (code blocks highlight if `prismjs` is present; ` ```mermaid ` blocks render if `ztui/mermaid` is imported) |
+| `ztui/syntax` | Syntax highlighting engine + `SyntaxWidget` | `bun add prismjs` (without it, code renders as plain text) |
+| `ztui/mermaid` | Mermaid diagrams + `MermaidWidget` | `bun add beautiful-mermaid` (`sharp` enables the SVG render path) |
+
+These extras are declared as **optional `peerDependencies`** — they are never
+installed automatically, and the widgets that need them throw an actionable error
+(or degrade gracefully) when they are missing. SVG-icon rasterization (kitty/iTerm)
+uses an optional `sharp`; seti file icons use an optional `opentype.js`; both fall
+back to unicode glyphs when absent.
+
+```tsx
+// A React app that renders markdown with highlighted code blocks:
+import { App } from "ztui";
+import { render, Markdown } from "ztui/react";
+import "ztui/markdown"; // registers the widget + pulls `marked`
+import "ztui/syntax";   // optional: highlight fenced code via `prismjs`
 ```
 
 ---
@@ -119,7 +139,7 @@ sequenceDiagram
 
 ## Vector SVG Graphics & Heroicons
 
-`ztui` handles vector graphics natively through the `<Icon>` and `<HeroicIcon>` components. 
+`ztui` handles vector graphics natively through the `<Icon>` and `<HeroIcon>` components. 
 
 ### Custom SVG Icon Registration
 ```typescript
@@ -132,18 +152,18 @@ iconRegistry.register("my-icon", {
 ```
 
 ### Heroicons Integration
-The `<HeroicIcon>` wrapper automatically loads, sanitizes, and registers icons from the standard `heroicons` package:
+The `<HeroIcon>` wrapper automatically loads, sanitizes, and registers icons from the standard `heroicons` package:
 
 ```tsx
 import React from "react";
-import { HeroicIcon } from "ztui";
+import { HeroIcon } from "ztui/react";
 
 function App() {
   return (
     <HBox>
       {/* Dynamic color injection mapping parent backgrounds and text colors */}
-      <HeroicIcon name="academic-cap" variant="outline" style={{ color: "yellow" }} />
-      <HeroicIcon name="beaker" variant="solid" style={{ color: "emerald" }} />
+      <HeroIcon name="academic-cap" variant="outline" style={{ color: "yellow" }} />
+      <HeroIcon name="beaker" variant="solid" style={{ color: "emerald" }} />
     </HBox>
   );
 }

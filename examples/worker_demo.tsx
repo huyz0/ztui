@@ -1,17 +1,17 @@
 import { useState } from "react";
+import { hotkeys } from "../src/core.ts";
 import {
   Button,
   Dock,
   Footer,
   HBox,
   Header,
-  hotkeys,
   Label,
   RichLog,
   Spinner,
   useWorker,
   VBox,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 // A cancellable async task, the way an agent loop runs one model/tool call at a
 // time: Run starts a job, Run again supersedes the in-flight one (latest wins),

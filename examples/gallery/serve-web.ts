@@ -1,3 +1,10 @@
+import {
+  type App,
+  HTML_FONT_FAMILY,
+  HTML_FONT_SIZE,
+  HTML_PADDING,
+  type WebDriver,
+} from "../../src/core.ts";
 import { canvasClientScript } from "../../src/driver/web/canvas-bundle.ts";
 import { serializeForCanvas } from "../../src/driver/web/canvas-renderer.ts";
 import {
@@ -7,13 +14,6 @@ import {
   setiFontPath,
   webHostStyles,
 } from "../../src/driver/web/host-page.ts";
-import {
-  type App,
-  HTML_FONT_FAMILY,
-  HTML_FONT_SIZE,
-  HTML_PADDING,
-  type WebDriver,
-} from "../../src/index.ts";
 
 /**
  * Serve a headless ztui {@link App} (running on a {@link WebDriver}) to a

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { App, Dock, Footer, HBox, Header, Label, ListView, VBox, View } from "../../src/index.ts";
+import { App } from "../../src/core.ts";
+import { Dock, Footer, HBox, Header, Label, ListView, VBox, View } from "../../src/react.ts";
 import { autoFocus } from "./auto-focus.ts";
 import { demos } from "./registry.ts";
 import type { Demo, DemoCapability } from "./types.ts";

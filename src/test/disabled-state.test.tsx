@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Button, Checkbox, Input, Select, VBox } from "../index.ts";
+import { Button, Checkbox, Input, Select, VBox } from "../react.ts";
 import type { InputWidget } from "../widgets/controls/input.ts";
 import { mountApp } from "./harness.tsx";
 

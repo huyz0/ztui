@@ -98,7 +98,16 @@ function ensureFontLoaded(customResourcesDir?: string): void {
 
   // Synchronous lazy require (Bun ESM) so the font is only parsed on first
   // demand; ensureFontLoaded is sync, so a dynamic import() is not an option.
-  const opentype = require("opentype.js") as typeof import("opentype.js");
+  // opentype.js is an optional dependency — surface an actionable error if absent.
+  let opentype: typeof import("opentype.js");
+  try {
+    opentype = require("opentype.js") as typeof import("opentype.js");
+  } catch (_err) {
+    throw new Error(
+      "Seti file icons require the optional 'opentype.js' dependency, which is not installed. " +
+        "Install it to enable glyph-based file icons: `bun add opentype.js` (or `npm i opentype.js`).",
+    );
+  }
   const fontBuffer = readFileSync(woffPath);
   setiFont = opentype.parse(
     fontBuffer.buffer.slice(fontBuffer.byteOffset, fontBuffer.byteOffset + fontBuffer.byteLength),

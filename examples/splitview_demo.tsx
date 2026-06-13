@@ -11,7 +11,7 @@ import {
   SplitView,
   serializeSplit,
   VBox,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 // VSCode editor-grid model: a recursively splittable, drag-resizable pane grid.
 // The root splits left/right; the right side splits top/bottom; the bottom-right

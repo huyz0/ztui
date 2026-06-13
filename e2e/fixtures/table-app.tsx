@@ -4,8 +4,10 @@
  * Runs the real framework end-to-end (real BunDriver). Renders a large,
  * virtualized table and auto-focuses it so arrow keys scroll without a Tab.
  */
+
+import { App, type TableColumn } from "../../src/core.ts";
 import type { Widget } from "../../src/dom/widget.ts";
-import { App, Dock, Header, render, Table, type TableColumn } from "../../src/index.ts";
+import { Dock, Header, render, Table } from "../../src/react.ts";
 
 interface Row {
   id: number;

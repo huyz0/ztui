@@ -9,7 +9,7 @@ import { useState } from "react";
 //     keeping the text readable but dimmed to concrete colours.
 //
 // Press `d` to toggle the dialog. Press `q` / Ctrl+C to quit.
-import { Box, Button, Dialog, Footer, Header, Label, useHotkey, VBox } from "../src/index.ts";
+import { Box, Button, Dialog, Footer, Header, Label, useHotkey, VBox } from "../src/react.ts";
 
 // Height of the stage that holds the backdrop text and the floating panels. The
 // panels are positioned absolutely within it, so the stage needs an explicit

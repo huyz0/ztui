@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react";
 //                   input WITHOUT stealing focus: you keep typing, ↑/↓ move the
 //                   highlight, Enter inserts the command, and the list filters
 //                   live as you type.
+import { toast, type Widget } from "../src/core.ts";
 import {
   Button,
   Dialog,
@@ -15,10 +16,8 @@ import {
   Label,
   StickyPanel,
   ToastHost,
-  toast,
   VBox,
-  type Widget,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 const COMMANDS = ["/help", "/clear", "/model", "/retry", "/exit", "/theme", "/copy"];
 

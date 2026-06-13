@@ -1,18 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  App,
-  Button,
-  Dock,
-  FileIcon,
-  Footer,
-  HBox,
-  Header,
-  Label,
-  loadSetiIcons,
-  resolveFileIcon,
-  VBox,
-  View,
-} from "../src/index.ts";
+import { App, loadSetiIcons, resolveFileIcon } from "../src/core.ts";
+import { Button, Dock, FileIcon, Footer, HBox, Header, Label, VBox, View } from "../src/react.ts";
 
 const sampleFiles = [
   { name: "package.json", isFolder: false },

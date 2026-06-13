@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { type ListItem, ListView } from "../../index.ts";
+import type { ListItem } from "../../core.ts";
+import { ListView } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { ListViewWidget } from "./list-view.ts";
 

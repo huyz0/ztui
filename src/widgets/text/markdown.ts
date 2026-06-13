@@ -1,4 +1,4 @@
-import { marked, type Token, type Tokens } from "marked";
+import type { Token, Tokens } from "marked";
 import remend from "remend";
 import { App } from "../../core/app.ts";
 import type { DOMNode } from "../../dom/dom.ts";
@@ -10,6 +10,7 @@ import type { MouseEvent } from "../../driver/driver.ts";
 import { Spacing } from "../../geometry/spacing.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { tokensToMarkup } from "../../render/rich/markdown.ts";
+import { getMarked } from "../../render/rich/marked-loader.ts";
 import { stringWidth } from "../../render/segment.ts";
 import { logger } from "../../utils/logger.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
@@ -214,13 +215,13 @@ export class MarkdownWidget extends Scrollable(Widget) {
             rawMarkdown.startsWith(this.committedRaw)
           ) {
             tailRaw = rawMarkdown.slice(this.committedRaw.length);
-            tailAll = marked.lexer(remend(tailRaw));
+            tailAll = getMarked().lexer(remend(tailRaw));
             blockTokens = this.committedTokens.concat(tailAll.filter((t) => t.type !== "space"));
           } else {
             this.committedRaw = "";
             this.committedTokens = [];
             tailRaw = rawMarkdown;
-            tailAll = marked.lexer(processedMarkdown);
+            tailAll = getMarked().lexer(processedMarkdown);
             blockTokens = tailAll.filter((t) => t.type !== "space");
           }
 

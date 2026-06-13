@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { App } from "../src/core.ts";
 import {
-  App,
   Button,
   Checkbox,
   Dock,
@@ -17,7 +17,7 @@ import {
   ToggleButton,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 // Shows the `disabled` prop across every interactive control: a disabled widget
 // is muted, skipped by Tab, and ignores keyboard/mouse. The bottom section wraps

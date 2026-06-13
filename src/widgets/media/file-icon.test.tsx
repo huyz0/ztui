@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { describe, expect, test } from "vitest";
-import { FileIcon } from "../../index.ts";
+import { FileIcon } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { FileIconWidget } from "./file-icon.ts";
 

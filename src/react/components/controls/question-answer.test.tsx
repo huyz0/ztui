@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 // Import from the package root so the widget registrations in
 // `src/widgets/index.ts` run — without them the host elements fall back to
 // non-focusable generic widgets and the composite can't be driven.
-import { type QAResult, QuestionAnswer } from "../../../index.ts";
+import { type QAResult, QuestionAnswer } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
 // These exercise the composite through the real App ↔ React ↔ driver pipeline,

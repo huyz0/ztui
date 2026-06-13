@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Dock, Footer, Header, type ListItem, ListView } from "../src/index.ts";
+import type { ListItem } from "../src/core.ts";
+import { Dock, Footer, Header, ListView } from "../src/react.ts";
 
 // A mixed list with icons, dimmed detail text, disabled rows, and thousands of
 // generated entries to show virtualization + scrolling.

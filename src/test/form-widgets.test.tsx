@@ -10,7 +10,7 @@ import {
   Switch,
   ToggleButton,
   VBox,
-} from "../index.ts";
+} from "../react.ts";
 import { mountApp } from "./harness.tsx";
 
 describe("ZTUI Form Widgets Suite", () => {

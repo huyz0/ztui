@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { Tree, type TreeNode } from "../../index.ts";
+import type { TreeNode } from "../../core.ts";
+import { Tree } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { TreeWidget } from "./tree.ts";
 

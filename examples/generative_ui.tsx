@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { App, Spacing } from "../src/core.ts";
 import {
-  App,
   Button,
   Dock,
   Footer,
@@ -9,10 +9,10 @@ import {
   JSONUI,
   Label,
   Markdown,
-  Spacing,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
+import "../src/markdown.ts";
 
 const MARKDOWN_PAYLOAD = `# 🤖 Generative AI Response
 

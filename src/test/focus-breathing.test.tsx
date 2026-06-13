@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { motion } from "../anim/motion.ts";
 import { App } from "../core/app.ts";
-import { Attention, Input, Label, VBox } from "../index.ts";
+import { Attention, Input, Label, VBox } from "../react.ts";
 import { mountApp } from "./harness.tsx";
 
 afterEach(() => motion.reset());

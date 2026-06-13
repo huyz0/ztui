@@ -8,7 +8,7 @@ import {
   StatusList,
   type StatusState,
   VBox,
-} from "../src/index.ts";
+} from "../src/react.ts";
 import type { Demo } from "./gallery/types.ts";
 
 // Showcases the status indicators: single-cell StatusDot across glyph sets,

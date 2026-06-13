@@ -10,7 +10,7 @@ import {
   type WaitingGridVariant,
   WaitingPanel,
   type WaitingPanelVariant,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 // Showcases the waiting indicators: single-cell Spinner modes, the small
 // WaitingGrid variants, and the free-size WaitingPanel animations.

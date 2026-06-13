@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { App, Button, Label, render, startInspector, VBox, View } from "../index.ts";
+import { App, startInspector } from "../core.ts";
+import { Button, Label, render, VBox, View } from "../react.ts";
 import { VTEDriver } from "../test/vte-runner.ts";
 
 const PORT = 8765;

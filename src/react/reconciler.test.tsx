@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { Size } from "../geometry/size.ts";
-import { View } from "../index.ts";
+import { View } from "../react.ts";
 import { mountApp } from "../test/harness.tsx";
 import { reconciler } from "./reconciler.ts";
 

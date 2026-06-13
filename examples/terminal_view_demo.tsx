@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dock, Footer, Header, TerminalView, VBox } from "../src/index.ts";
+import { Dock, Footer, Header, TerminalView, VBox } from "../src/react.ts";
 
 // Simulated bash/shell tool output streaming into a sandboxed terminal view:
 // ANSI colors, a \r progress bar that redraws in place, then a summary. The

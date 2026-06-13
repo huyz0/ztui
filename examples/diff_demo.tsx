@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Diff, Dock, Footer, Header, hotkeys, Label, VBox } from "../src/index.ts";
+import { hotkeys } from "../src/core.ts";
+import { Diff, Dock, Footer, Header, Label, VBox } from "../src/react.ts";
 
 // The view a coding agent shows when it proposes a file edit: a syntax-
 // highlighted diff with a +/- gutter and line numbers. Toggle unified vs

@@ -10,7 +10,8 @@
  *   bun run examples/gallery/run.tsx --list       # print every demo id
  */
 import { createElement } from "react";
-import { App, BunDriver, render, WebDriver } from "../../src/index.ts";
+import { App, BunDriver, WebDriver } from "../../src/core.ts";
+import { render } from "../../src/react.ts";
 import { autoFocus } from "./auto-focus.ts";
 import { Gallery } from "./gallery.tsx";
 import { demos, findDemo } from "./registry.ts";

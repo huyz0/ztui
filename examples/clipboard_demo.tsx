@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { App } from "../src/core.ts";
 import {
-  App,
   Button,
   Dock,
   Footer,
@@ -11,7 +11,7 @@ import {
   TextArea,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 /**
  * Demonstrates first-class text selection + clipboard:

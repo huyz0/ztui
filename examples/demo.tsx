@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { App } from "../src/core.ts";
 import {
-  App,
   Button,
   Checkbox,
   Dock,
@@ -19,7 +19,7 @@ import {
   ToggleButton,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 function DemoApp() {
   // Form states

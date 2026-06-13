@@ -8,7 +8,7 @@ import {
   Workbench,
   type WorkbenchLayout,
   type WorkbenchPanel,
-} from "../../../index.ts";
+} from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
 const panels: WorkbenchPanel[] = [

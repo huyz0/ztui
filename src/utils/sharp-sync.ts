@@ -40,6 +40,19 @@ export function renderSvgSync(options: {
     throw new Error(`Failed to spawn sharp-render-sync: ${res.error.message}`);
   }
 
+  // sharp is an optional dependency: if it isn't installed the subprocess
+  // exits before emitting JSON, with a module-resolution error on stderr.
+  const stderr = res.stderr || "";
+  const sharpMissing =
+    /Cannot find (module|package) ['"]?sharp/.test(stderr) ||
+    (res.status !== 0 && !res.stdout.trim() && /sharp/.test(stderr));
+  if (sharpMissing) {
+    throw new Error(
+      "SVG rasterization requires the optional 'sharp' dependency, which is not installed. " +
+        "Install it to enable SVG/Mermaid rendering: `bun add sharp` (or `npm i sharp`).",
+    );
+  }
+
   let result: any;
   try {
     result = JSON.parse(res.stdout.trim());

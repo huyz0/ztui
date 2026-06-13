@@ -5,17 +5,8 @@
 //                       active bindings (and the palette listing) change.
 //   • <HotkeyPalette> — Ctrl+Space opens a filterable, grouped command list.
 import { useState } from "react";
-import {
-  HBox,
-  Header,
-  HotkeyPalette,
-  hotkeys,
-  Label,
-  ToastHost,
-  toast,
-  useHotkey,
-  VBox,
-} from "../src/index.ts";
+import { hotkeys, toast } from "../src/core.ts";
+import { HBox, Header, HotkeyPalette, Label, ToastHost, useHotkey, VBox } from "../src/react.ts";
 
 // App-lifetime bindings registered once, outside React.
 hotkeys.register({

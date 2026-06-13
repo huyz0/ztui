@@ -1,4 +1,4 @@
-import { type App, Widget } from "../../src/index.ts";
+import { type App, Widget } from "../../src/core.ts";
 
 /**
  * Focus the first widget with tag `tag` (or the first focusable widget when

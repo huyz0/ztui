@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Box, TabContainer } from "../../index.ts";
+import { Box, TabContainer } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 describe("TabContainer Widget Suite", () => {

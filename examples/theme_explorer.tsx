@@ -1,19 +1,6 @@
 import { useState } from "react";
-import {
-  App,
-  Button,
-  Dock,
-  deriveTheme,
-  Footer,
-  HBox,
-  Header,
-  Input,
-  Label,
-  Spacing,
-  ThemeManager,
-  VBox,
-  View,
-} from "../src/index.ts";
+import { App, deriveTheme, Spacing, ThemeManager } from "../src/core.ts";
+import { Button, Dock, Footer, HBox, Header, Input, Label, VBox, View } from "../src/react.ts";
 
 function ThemeExplorerApp() {
   const _themes = [

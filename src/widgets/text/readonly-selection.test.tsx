@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { Markdown, RichText, Syntax } from "../../index.ts";
+import { Markdown, RichText, Syntax } from "../../react.ts";
+import "../../markdown.ts";
+import "../../syntax.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 /** Drive a press→drag→release over a widget's rendered cells (one row). */

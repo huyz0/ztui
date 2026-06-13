@@ -8,7 +8,7 @@ import {
   VBox,
   Workbench,
   type WorkbenchPanel,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 // The full IDE layout: a Workbench (hideable side/bottom panels + activity rail)
 // wrapping a SplitView editor grid in the center. Everything is mouse-driven —

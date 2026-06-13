@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
+import { App, MockDriver, renderBufferToHTML, renderBufferToText } from "../core.ts";
 import {
-  App,
   Box,
   Button,
   Dock,
@@ -11,13 +11,10 @@ import {
   Header,
   Input,
   Label,
-  MockDriver,
   render,
-  renderBufferToHTML,
-  renderBufferToText,
   VBox,
   View,
-} from "../index.ts";
+} from "../react.ts";
 
 function SimpleTestApp() {
   const [count, setCount] = useState(0);

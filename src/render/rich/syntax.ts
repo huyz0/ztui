@@ -1,25 +1,44 @@
-import Prism from "prismjs";
-// Load Prism components
-import "prismjs/components/prism-markup.js";
-import "prismjs/components/prism-css.js";
-import "prismjs/components/prism-clike.js";
-import "prismjs/components/prism-javascript.js";
-import "prismjs/components/prism-typescript.js";
-import "prismjs/components/prism-json.js";
-import "prismjs/components/prism-python.js";
-import "prismjs/components/prism-go.js";
-import "prismjs/components/prism-rust.js";
-import "prismjs/components/prism-java.js";
-import "prismjs/components/prism-kotlin.js";
-import "prismjs/components/prism-toml.js";
-import "prismjs/components/prism-yaml.js";
-import "prismjs/components/prism-mermaid.js";
-import "prismjs/components/prism-plant-uml.js";
-import "prismjs/components/prism-sql.js";
-import "prismjs/components/prism-plsql.js";
-
+import { createRequire } from "node:module";
+import type Prism from "prismjs";
 import { Style } from "../style.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
+
+/**
+ * `prismjs` is an optional peer dependency. It is loaded lazily on first use via
+ * a synchronous `require` (prismjs is CommonJS, so this works under Node + Bun
+ * and keeps the synchronous render path intact). When it is not installed,
+ * `loadPrism()` returns null and `Syntax` degrades to plain, unhighlighted text.
+ */
+let prismRuntime: typeof Prism | null | undefined;
+function loadPrism(): typeof Prism | null {
+  if (prismRuntime !== undefined) return prismRuntime;
+  try {
+    const require = createRequire(import.meta.url);
+    const P = require("prismjs") as typeof Prism;
+    // Load language grammars (side effects register onto the Prism instance).
+    require("prismjs/components/prism-markup.js");
+    require("prismjs/components/prism-css.js");
+    require("prismjs/components/prism-clike.js");
+    require("prismjs/components/prism-javascript.js");
+    require("prismjs/components/prism-typescript.js");
+    require("prismjs/components/prism-json.js");
+    require("prismjs/components/prism-python.js");
+    require("prismjs/components/prism-go.js");
+    require("prismjs/components/prism-rust.js");
+    require("prismjs/components/prism-java.js");
+    require("prismjs/components/prism-kotlin.js");
+    require("prismjs/components/prism-toml.js");
+    require("prismjs/components/prism-yaml.js");
+    require("prismjs/components/prism-mermaid.js");
+    require("prismjs/components/prism-plant-uml.js");
+    require("prismjs/components/prism-sql.js");
+    require("prismjs/components/prism-plsql.js");
+    prismRuntime = P;
+  } catch {
+    prismRuntime = null;
+  }
+  return prismRuntime;
+}
 
 const THEME_DYNAMIC_STYLE: Record<string, Style> = {
   comment: new Style({ color: "$comment", dim: true }),
@@ -37,19 +56,19 @@ const THEME_DYNAMIC_STYLE: Record<string, Style> = {
   function: new Style({ color: "$function" }),
 };
 
-function getGrammar(lang: string): Prism.Grammar | undefined {
+function getGrammar(P: typeof Prism, lang: string): Prism.Grammar | undefined {
   const normalized = lang.toLowerCase();
   if (normalized === "ts" || normalized === "typescript" || normalized === "tsx") {
-    return Prism.languages.typescript;
+    return P.languages.typescript;
   }
   if (normalized === "js" || normalized === "javascript" || normalized === "jsx") {
-    return Prism.languages.javascript;
+    return P.languages.javascript;
   }
   if (normalized === "json") {
-    return Prism.languages.json;
+    return P.languages.json;
   }
   if (normalized === "css") {
-    return Prism.languages.css;
+    return P.languages.css;
   }
   if (
     normalized === "html" ||
@@ -57,34 +76,34 @@ function getGrammar(lang: string): Prism.Grammar | undefined {
     normalized === "markup" ||
     normalized === "svg"
   ) {
-    return Prism.languages.markup;
+    return P.languages.markup;
   }
   if (normalized === "py" || normalized === "python") {
-    return Prism.languages.python;
+    return P.languages.python;
   }
   if (normalized === "go" || normalized === "golang") {
-    return Prism.languages.go;
+    return P.languages.go;
   }
   if (normalized === "rs" || normalized === "rust") {
-    return Prism.languages.rust;
+    return P.languages.rust;
   }
   if (normalized === "java") {
-    return Prism.languages.java;
+    return P.languages.java;
   }
   if (normalized === "kt" || normalized === "kotlin") {
-    return Prism.languages.kotlin;
+    return P.languages.kotlin;
   }
   if (normalized === "toml") {
-    return Prism.languages.toml;
+    return P.languages.toml;
   }
   if (normalized === "yaml" || normalized === "yml") {
-    return Prism.languages.yaml;
+    return P.languages.yaml;
   }
   if (normalized === "mermaid") {
-    return Prism.languages.mermaid;
+    return P.languages.mermaid;
   }
   if (normalized === "plantuml" || normalized === "plant-uml") {
-    return Prism.languages["plant-uml"];
+    return P.languages["plant-uml"];
   }
   if (
     normalized === "sql" ||
@@ -94,12 +113,12 @@ function getGrammar(lang: string): Prism.Grammar | undefined {
     normalized === "postgresql" ||
     normalized === "sqlite"
   ) {
-    return Prism.languages.sql;
+    return P.languages.sql;
   }
   if (normalized === "plsql" || normalized === "pl-sql") {
-    return Prism.languages.plsql;
+    return P.languages.plsql;
   }
-  return Prism.languages[normalized];
+  return P.languages[normalized];
 }
 
 function traverseTokens(
@@ -150,15 +169,21 @@ export class Syntax {
       return Syntax.highlightDiff(code, _themeName);
     }
 
+    // prismjs is optional: without it, fall back to plain unhighlighted text.
+    const P = loadPrism();
+    if (!P) {
+      return new RichText(code, []);
+    }
+
     const theme = THEME_DYNAMIC_STYLE;
-    const grammar = getGrammar(language);
+    const grammar = getGrammar(P, language);
 
     if (!grammar) {
       // Default unstyled text if no grammar matches
       return new RichText(code, []);
     }
 
-    const tokens = Prism.tokenize(code, grammar);
+    const tokens = P.tokenize(code, grammar);
     const spans: Span[] = [];
 
     let currentOffset = 0;

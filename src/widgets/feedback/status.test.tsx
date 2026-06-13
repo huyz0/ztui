@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { HBox, StatusBadge, StatusDot, StatusList, VBox } from "../../index.ts";
+import { HBox, StatusBadge, StatusDot, StatusList, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 describe("ZTUI Status Widget Suite", () => {

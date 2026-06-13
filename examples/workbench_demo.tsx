@@ -10,7 +10,7 @@ import {
   Workbench,
   type WorkbenchLayout,
   type WorkbenchPanel,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 // Persist the layout to a temp file so re-launching restores the last state.
 const LAYOUT_FILE = join(tmpdir(), "ztui-workbench-demo.json");

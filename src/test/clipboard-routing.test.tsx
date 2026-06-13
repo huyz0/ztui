@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { Input, TextArea } from "../index.ts";
+import { Input, TextArea } from "../react.ts";
 import { flush, mountApp } from "./harness.tsx";
 
 const ctrlC = { key: "ctrl+c", name: "c", ctrl: true, meta: false, shift: false };

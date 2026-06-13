@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
+import { reconciler } from "../react/reconciler.ts";
 import {
   Box,
   Footer,
@@ -16,8 +17,10 @@ import {
   Syntax,
   TextArea,
   VBox,
-} from "../index.ts";
-import { reconciler } from "../react/reconciler.ts";
+} from "../react.ts";
+import "../markdown.ts";
+import "../mermaid.ts";
+import "../syntax.ts";
 import { JSONUIWidget } from "../widgets/text/json-ui.ts";
 import { MarkdownWidget } from "../widgets/text/markdown.ts";
 import { mountApp } from "./harness.tsx";

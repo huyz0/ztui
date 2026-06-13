@@ -8,6 +8,7 @@
 // Keys: Tab move focus · F2 toggle motion (breathing on/off) · F3 re-arm the
 //       attention panel · Ctrl+C quit.
 import { useState } from "react";
+import { motion } from "../src/core.ts";
 import {
   Attention,
   Button,
@@ -17,7 +18,6 @@ import {
   Header,
   Input,
   Label,
-  motion,
   Select,
   Slider,
   Switch,
@@ -25,7 +25,7 @@ import {
   useHotkey,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 function FocusDemo() {
   const [, force] = useState(0);

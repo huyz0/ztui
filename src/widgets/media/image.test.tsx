@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, test } from "vitest";
 import { fullColorRgbaToSixel } from "../../driver/bun/graphics.ts";
-import { Image, SvgImage } from "../../index.ts";
+import { Image, SvgImage } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { decodeImage, resizeImage } from "./image.ts";
 

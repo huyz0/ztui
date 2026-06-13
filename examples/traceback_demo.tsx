@@ -1,4 +1,4 @@
-import { Dock, Footer, Header, Traceback, VBox } from "../src/index.ts";
+import { Dock, Footer, Header, Traceback, VBox } from "../src/react.ts";
 
 // The readable error panel an agent shows when a tool call throws: the
 // exception heads the panel, frames follow (library frames dimmed), and the

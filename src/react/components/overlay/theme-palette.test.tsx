@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
-import { ThemeManager, ThemePalette, VBox } from "../../../index.ts";
+import { ThemeManager } from "../../../core.ts";
+import { ThemePalette, VBox } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
 type Mounted = Awaited<ReturnType<typeof mountApp>>;

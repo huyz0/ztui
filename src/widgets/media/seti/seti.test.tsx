@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { FileIcon, iconRegistry, loadSetiIcons, resolveFileIcon } from "../../../index.ts";
+import { iconRegistry, loadSetiIcons, resolveFileIcon } from "../../../core.ts";
+import { FileIcon } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
 describe("Seti File Icon Theme Loader and Component", () => {

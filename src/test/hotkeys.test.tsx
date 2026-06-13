@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { HotkeyRegistry, hotkeys } from "../core/hotkeys.ts";
 import type { KeyEvent } from "../driver/driver.ts";
-import { HotkeyPalette, Input, Label, VBox } from "../index.ts";
+import { HotkeyPalette, Input, Label, VBox } from "../react.ts";
 import { mountApp } from "./harness.tsx";
 
 afterEach(() => HotkeyRegistry.reset());

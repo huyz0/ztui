@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import {
+  email,
+  type ListItem,
+  minLength,
+  required,
+  type TableColumn,
+  type TreeNode,
+} from "../src/core.ts";
+import {
   Box,
   Button,
   Checkbox,
   Dock,
-  email,
   FieldError,
   FileIcon,
   Footer,
@@ -14,13 +21,10 @@ import {
   HeroIcon,
   Input,
   Label,
-  type ListItem,
   ListView,
   Markdown,
-  minLength,
   ProgressBar,
   RadioGroup,
-  required,
   Select,
   Slider,
   Spinner,
@@ -30,12 +34,11 @@ import {
   Switch,
   TabContainer,
   Table,
-  type TableColumn,
   Tree,
-  type TreeNode,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
+import "../src/markdown.ts";
 
 /**
  * The widget showcase shown by both the live web demo (`examples/web_demo.tsx`)

@@ -1,16 +1,6 @@
 import { useState } from "react";
-import {
-  Button,
-  Dock,
-  Footer,
-  HBox,
-  Header,
-  HeroIcon,
-  Label,
-  Spacing,
-  VBox,
-  View,
-} from "../src/index.ts";
+import { Spacing } from "../src/core.ts";
+import { Button, Dock, Footer, HBox, Header, HeroIcon, Label, VBox, View } from "../src/react.ts";
 import type { Demo } from "./gallery/types.ts";
 
 function HeroiconsDemo() {

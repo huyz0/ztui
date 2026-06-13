@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { HotkeyPalette, useHotkey, VBox } from "../../../index.ts";
+import { HotkeyPalette, useHotkey, VBox } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
 type Mounted = Awaited<ReturnType<typeof mountApp>>;

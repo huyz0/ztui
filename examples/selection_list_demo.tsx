@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dock, Footer, Header, Label, SelectionList, VBox } from "../src/index.ts";
+import { Dock, Footer, Header, Label, SelectionList, VBox } from "../src/react.ts";
 import type { ListItem } from "../src/widgets/data/list-view.ts";
 
 // "Pick which changes to apply" — the multi-select an agent shows before it

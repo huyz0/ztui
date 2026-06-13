@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Dock, Footer, Header, hotkeys, Markdown } from "../src/index.ts";
+import { hotkeys } from "../src/core.ts";
+import { Dock, Footer, Header, Markdown } from "../src/react.ts";
+import "../src/markdown.ts";
 
 // A markdown document streamed in small chunks, the way a model emits tokens.
 // The Markdown widget re-lexes only the trailing (incomplete) block each tick

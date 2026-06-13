@@ -1,4 +1,5 @@
-import { Collapsible, Dock, Footer, Header, Label, Syntax, VBox } from "../src/index.ts";
+import { Collapsible, Dock, Footer, Header, Label, Syntax, VBox } from "../src/react.ts";
+import "../src/syntax.ts";
 
 // Foldable sections, the way an agent transcript groups reasoning and tool
 // calls: a one-line title you can expand to see the detail. Tab moves focus

@@ -12,7 +12,16 @@ export default defineConfig({
       exclude: [
         "src/**/*.test.ts",
         "src/**/*.test.tsx",
-        "src/index.ts",
+        // Re-export-only package entry points (no logic to cover).
+        "src/core.ts",
+        "src/react.ts",
+        "src/markdown.ts",
+        "src/syntax.ts",
+        "src/mermaid.ts",
+        "src/widgets/register-core.ts",
+        "src/widgets/text/register-markdown.ts",
+        "src/widgets/text/register-syntax.ts",
+        "src/widgets/text/register-mermaid.ts",
         "src/react/jsx-namespace.d.ts",
         "src/react/host-config.ts",
         "src/core/inspector.ts",

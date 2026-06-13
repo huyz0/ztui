@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Dock, Footer, Header, Tree, type TreeNode } from "../src/index.ts";
+import type { TreeNode } from "../src/core.ts";
+import { Dock, Footer, Header, Tree } from "../src/react.ts";
 
 // A workspace tree. `data` is a forest (no synthetic root needed); a deep
 // folder is generated to show virtualization + scrolling.

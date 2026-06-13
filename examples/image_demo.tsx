@@ -1,5 +1,5 @@
+import { App } from "../src/core.ts";
 import {
-  App,
   Button,
   Dock,
   Footer,
@@ -10,7 +10,7 @@ import {
   SvgImage,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 // A beautiful, premium gradient SVG featuring a colorful background, circle, and text
 const BEAUTIFUL_SVG = `

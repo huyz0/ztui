@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { TextArea, VBox } from "../../index.ts";
+import { TextArea, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 describe("ZTUI TextArea Widget Suite", () => {

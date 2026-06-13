@@ -1,6 +1,7 @@
-import { marked, type Token } from "marked";
+import type { Token } from "marked";
 import { stringWidth } from "../segment.ts";
 import { Style } from "../style.ts";
+import { getMarked } from "./marked-loader.ts";
 import { Syntax } from "./syntax.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
 
@@ -74,7 +75,7 @@ export class Markdown {
    * Parses markdown and returns an array of RichText lines pre-formatted and styled.
    */
   public static renderToLines(markdown: string, themeName = "theme"): RichText[] {
-    const tokens = marked.lexer(markdown);
+    const tokens = getMarked().lexer(markdown);
     const lines: RichText[] = [];
 
     // Base theme styles

@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { App } from "../src/core.ts";
 import {
-  App,
   Button,
   Checkbox,
   Dock,
@@ -13,7 +13,7 @@ import {
   TabContainer,
   VBox,
   View,
-} from "../src/index.ts";
+} from "../src/react.ts";
 
 function TabDemoApp() {
   const [activeTab, setActiveTab] = useState(0);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Dock, Footer, Header, hotkeys, RichLog } from "../src/index.ts";
+import { hotkeys } from "../src/core.ts";
+import { Dock, Footer, Header, RichLog } from "../src/react.ts";
 
 // A scripted "agent" turn: each step appends one or more markup lines to the
 // log, the way a real streaming agent would emit reasoning, tool calls, tool

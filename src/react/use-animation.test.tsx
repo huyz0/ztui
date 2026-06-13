@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
-import { HBox, Label, useAnimatedColor, useAnimatedValue } from "../index.ts";
+import { HBox, Label, useAnimatedColor, useAnimatedValue } from "../react.ts";
 import { mountApp } from "../test/harness.tsx";
 
 // Each test captures the component's setter so it can change the tween target

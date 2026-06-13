@@ -1,13 +1,6 @@
 import { useMemo, useState } from "react";
-import {
-  Dock,
-  Footer,
-  Header,
-  Label,
-  type SortState,
-  Table,
-  type TableColumn,
-} from "../src/index.ts";
+import type { SortState, TableColumn } from "../src/core.ts";
+import { Dock, Footer, Header, Label, Table } from "../src/react.ts";
 
 interface Server {
   id: number;

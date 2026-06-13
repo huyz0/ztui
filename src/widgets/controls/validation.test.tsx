@@ -7,7 +7,7 @@ import {
   Input,
   Select,
   ValidationSummary,
-} from "../../index.ts";
+} from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { CheckboxWidget } from "./checkbox.ts";
 import type { FieldErrorWidget } from "./field-error.ts";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Label, Panel } from "../../../index.ts";
+import { Label, Panel } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
 describe("Panel", () => {

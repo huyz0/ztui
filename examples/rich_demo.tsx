@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { App } from "../src/core.ts";
 import {
-  App,
   Button,
   Dock,
   Footer,
@@ -11,7 +11,9 @@ import {
   RichText,
   Syntax,
   VBox,
-} from "../src/index.ts";
+} from "../src/react.ts";
+import "../src/markdown.ts";
+import "../src/syntax.ts";
 
 function RichDemoApp() {
   const [tab, setTab] = useState<"markup" | "syntax" | "markdown">("markup");

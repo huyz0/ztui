@@ -1,4 +1,4 @@
-import { Footer, HBox, Header, Label, VBox } from "../src/index.ts";
+import { Footer, HBox, Header, Label, VBox } from "../src/react.ts";
 
 // Showcases the available border styles, including the new rounded corners
 // (mirrors Textual's "round" border: solid edges, rounded corner glyphs).

@@ -1,18 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  App,
-  Button,
-  Dock,
-  Footer,
-  HBox,
-  Header,
-  HeroIcon,
-  Icon,
-  iconRegistry,
-  Label,
-  Spacing,
-  VBox,
-} from "../src/index.ts";
+import { App, iconRegistry, Spacing } from "../src/core.ts";
+import { Button, Dock, Footer, HBox, Header, HeroIcon, Icon, Label, VBox } from "../src/react.ts";
 
 iconRegistry.registerIcons([
   {

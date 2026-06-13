@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dock, Footer, HBox, Header, Label, Sparkline, VBox } from "../src/index.ts";
+import { Dock, Footer, HBox, Header, Label, Sparkline, VBox } from "../src/react.ts";
 import type { Demo } from "./gallery/types.ts";
 
 // A live agent HUD: dense one-row sparklines for the signals you'd watch while
