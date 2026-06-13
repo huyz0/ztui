@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Widget } from "../src/dom/widget.ts";
-import { App, Dock, Footer, Header, hotkeys, RichLog, render } from "../src/index.ts";
+import { Dock, Footer, Header, hotkeys, RichLog } from "../src/index.ts";
 
 // A scripted "agent" turn: each step appends one or more markup lines to the
 // log, the way a real streaming agent would emit reasoning, tool calls, tool
@@ -76,17 +75,13 @@ function RichLogDemo() {
   );
 }
 
-const app = new App();
-render(<RichLogDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the log so the keyboard scrolls it without a Tab first.
-const focusLog = () => {
-  let log: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if ((node as Widget).tagName === "richlog") log = node as Widget;
-  });
-  if (log) app.activeScreen.focusWidget(log);
-  else setTimeout(focusLog, 10);
+export const richlogDemo: Demo = {
+  id: "richlog",
+  title: "Rich Log",
+  group: "Data",
+  description: "Scrollable styled log.",
+  autoFocusTag: "richlog",
+  Component: RichLogDemo,
 };
-focusLog();

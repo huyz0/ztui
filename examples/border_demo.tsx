@@ -1,4 +1,4 @@
-import { App, Footer, HBox, Header, Label, render, VBox } from "../src/index.ts";
+import { Footer, HBox, Header, Label, VBox } from "../src/index.ts";
 
 // Showcases the available border styles, including the new rounded corners
 // (mirrors Textual's "round" border: solid edges, rounded corner glyphs).
@@ -37,6 +37,12 @@ function BorderDemo() {
   );
 }
 
-const app = new App();
-render(<BorderDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const borderDemo: Demo = {
+  id: "border",
+  title: "Borders",
+  group: "Layout",
+  description: "Border styles & box drawing.",
+  Component: BorderDemo,
+};

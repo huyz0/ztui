@@ -9,7 +9,6 @@
 //       attention panel · Ctrl+C quit.
 import { useState } from "react";
 import {
-  App,
   Attention,
   Button,
   Checkbox,
@@ -19,7 +18,6 @@ import {
   Input,
   Label,
   motion,
-  render,
   Select,
   Slider,
   Switch,
@@ -114,6 +112,12 @@ function FocusDemo() {
   );
 }
 
-const app = new App();
-render(<FocusDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const focusDemo: Demo = {
+  id: "focus",
+  title: "Focus Ring",
+  group: "Layout",
+  description: "Tab focus navigation & breathing.",
+  Component: FocusDemo,
+};

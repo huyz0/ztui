@@ -186,53 +186,31 @@ describe("TUI Integration", () => {
 
 ## Development & Demos
 
-You can run several interactive example scripts:
+All examples live in one browsable **demo gallery** — pick a demo from the
+grouped sidebar and it mounts in place. The same gallery runs on the terminal
+or, unchanged, in a browser via the WebDriver canvas backend.
 
 ```bash
-# Run the core protocol demo
-bun run dev
+# Open the gallery (terminal)
+bun run demo            # alias: bun run dev
 
-# Run the advanced capability probing gallery
-bun run demo:protocols
-
-# Run the interactive Heroicons collection explorer
-bun run demo:heroicons
-
-# Run the virtualized flat list (5000+ rows)
-bun run demo:list
-
-# Watch a simulated streaming agent transcript in the auto-tailing RichLog
-bun run demo:richlog
-
-# Watch a markdown document render token-by-token (incremental tail re-lex)
-bun run demo:mdstream
-
-# Foldable reasoning / tool-call sections (Collapsible)
-bun run demo:collapsible
-
-# Syntax-highlighted file diff — the view an agent shows when proposing an edit
-bun run demo:diff
-
-# Live one-row micro-charts for an agent HUD (tokens/sec, latency, cost)
-bun run demo:sparkline
-
-# Cancellable async task primitive (useWorker) — run, supersede, cancel
-bun run demo:worker
-
-# Multi-select checkbox list — "pick which changes to apply"
-bun run demo:selectionlist
-
-# Rich exception / stack-trace panel with source context
-bun run demo:traceback
-
-# Sandboxed nested terminal view — streams ANSI command output safely
-bun run demo:terminal
-
-# Run the app in a browser via the WebDriver backend (http://localhost:3010)
-# A tabbed widget showcase: controls, forms, trees, tables/lists, status glyphs,
-# file icons, and rich markdown — all the same widgets the terminal renders.
+# Open the gallery in a browser (WebDriver canvas → http://localhost:3010)
 bun run demo:web
 
+# List every demo id (grouped)
+bun run demo:list
+
+# Launch a single demo directly, on either backend
+bun run examples/gallery/run.tsx table
+bun run examples/gallery/run.tsx heroicons --web
+```
+
+Each demo is a `Demo` module (a component + metadata) registered in
+[`examples/gallery/registry.ts`](examples/gallery/registry.ts) — the single
+source of truth for the gallery, the `--list` output, and the CLI handle.
+Adding a demo is one export plus one registry line; no new npm script needed.
+
+```bash
 # Headless-debug the web backend: screenshot + pixel-accurate grid report
 bun run web:debug                       # screenshots examples/web_demo_ui
 bun run web:debug --module ./my-ui.tsx  # any module default-exporting a UI

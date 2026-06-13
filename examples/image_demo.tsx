@@ -7,7 +7,6 @@ import {
   Header,
   Image,
   Label,
-  render,
   SvgImage,
   VBox,
   View,
@@ -138,7 +137,13 @@ function ImageDemoApp() {
   );
 }
 
-// Instantiate and run the App
-const app = new App();
-render(<ImageDemoApp />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const imageDemo: Demo = {
+  id: "image",
+  title: "Images",
+  group: "Media",
+  description: "Inline rasterized images.",
+  requires: ["graphics"],
+  Component: ImageDemoApp,
+};

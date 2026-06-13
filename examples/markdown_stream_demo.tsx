@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Widget } from "../src/dom/widget.ts";
-import { App, Dock, Footer, Header, hotkeys, Markdown, render } from "../src/index.ts";
+import { Dock, Footer, Header, hotkeys, Markdown } from "../src/index.ts";
 
 // A markdown document streamed in small chunks, the way a model emits tokens.
 // The Markdown widget re-lexes only the trailing (incomplete) block each tick
@@ -85,17 +84,13 @@ function MarkdownStreamDemo() {
   );
 }
 
-const app = new App();
-render(<MarkdownStreamDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the markdown view so wheel/keys scroll it without a Tab first.
-const focusMd = () => {
-  let md: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if ((node as Widget).tagName === "markdown") md = node as Widget;
-  });
-  if (md) app.activeScreen.focusWidget(md);
-  else setTimeout(focusMd, 10);
+export const markdownDemo: Demo = {
+  id: "markdown",
+  title: "Markdown",
+  group: "Text",
+  description: "Streaming markdown rendering.",
+  autoFocusTag: "markdown",
+  Component: MarkdownStreamDemo,
 };
-focusMd();

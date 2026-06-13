@@ -1,7 +1,5 @@
-import { appendFileSync } from "node:fs";
 import { useState } from "react";
 import {
-  App,
   Button,
   Dock,
   Footer,
@@ -9,30 +7,11 @@ import {
   Header,
   HeroIcon,
   Label,
-  render,
   Spacing,
   VBox,
   View,
 } from "../src/index.ts";
-
-process.on("unhandledRejection", (reason) => {
-  try {
-    appendFileSync(
-      "ztui.log",
-      `[${new Date().toISOString()}] Unhandled Rejection: ${reason instanceof Error ? reason.stack : reason}\n`,
-    );
-  } catch {}
-});
-
-process.on("uncaughtException", (error) => {
-  try {
-    appendFileSync(
-      "ztui.log",
-      `[${new Date().toISOString()}] Uncaught Exception: ${error?.stack || error}\n`,
-    );
-  } catch {}
-  process.exit(1);
-});
+import type { Demo } from "./gallery/types.ts";
 
 function HeroiconsDemo() {
   const [activeColor, setActiveColor] = useState("$secondary");
@@ -43,10 +22,9 @@ function HeroiconsDemo() {
     setActiveColor(colors[nextIdx]);
   };
 
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
+  // A demo Component doesn't own process lifecycle (the launcher / global Ctrl+C
+  // handles clean shutdown), so Exit just terminates when run standalone.
+  const handleExit = () => process.exit(0);
 
   return (
     <Dock style={{ background: "$surface" }}>
@@ -131,6 +109,11 @@ function HeroiconsDemo() {
   );
 }
 
-const app = new App();
-render(<HeroiconsDemo />, app.activeScreen);
-app.run({ inspectorPort: 8001 });
+export const heroiconsDemo: Demo = {
+  id: "heroicons",
+  title: "Heroicons",
+  group: "Media",
+  description: "SVG icons rasterized to the terminal graphics protocol.",
+  requires: ["graphics"],
+  Component: HeroiconsDemo,
+};

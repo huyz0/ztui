@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { Widget } from "../src/dom/widget.ts";
-import { App, Dock, Footer, Header, render, Tree, type TreeNode } from "../src/index.ts";
+import { Dock, Footer, Header, Tree, type TreeNode } from "../src/index.ts";
 
 // A workspace tree. `data` is a forest (no synthetic root needed); a deep
 // folder is generated to show virtualization + scrolling.
@@ -63,17 +62,13 @@ function TreeDemo() {
   );
 }
 
-const app = new App();
-render(<TreeDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the tree so the keyboard drives it without a Tab first.
-const focusTree = () => {
-  let tree: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if ((node as Widget).tagName === "tree") tree = node as Widget;
-  });
-  if (tree) app.activeScreen.focusWidget(tree);
-  else setTimeout(focusTree, 10);
+export const treeDemo: Demo = {
+  id: "tree",
+  title: "Tree",
+  group: "Data",
+  description: "Virtualized navigation tree.",
+  autoFocusTag: "tree",
+  Component: TreeDemo,
 };
-focusTree();

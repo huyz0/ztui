@@ -11,7 +11,6 @@ import {
   Input,
   Label,
   RadioGroup,
-  render,
   Select,
   Slider,
   Switch,
@@ -124,6 +123,12 @@ function DisabledDemo() {
   );
 }
 
-const app = new App();
-render(<DisabledDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const disabledDemo: Demo = {
+  id: "disabled",
+  title: "Disabled State",
+  group: "Layout",
+  description: "Disabled / inert widget styling.",
+  Component: DisabledDemo,
+};

@@ -1,16 +1,15 @@
 import {
-  App,
   Footer,
   HBox,
   Header,
   Label,
-  render,
   StatusBadge,
   StatusDot,
   StatusList,
   type StatusState,
   VBox,
 } from "../src/index.ts";
+import type { Demo } from "./gallery/types.ts";
 
 // Showcases the status indicators: single-cell StatusDot across glyph sets,
 // the StatusBadge / StatusPill chips, and a StatusList task column.
@@ -93,6 +92,10 @@ function StatusDemo() {
   );
 }
 
-const app = new App();
-render(<StatusDemo />, app.activeScreen);
-app.run();
+export const statusDemo: Demo = {
+  id: "status",
+  title: "Status",
+  group: "Feedback",
+  description: "Status dots, badges, and lists across glyph sets.",
+  Component: StatusDemo,
+};

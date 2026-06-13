@@ -1,4 +1,4 @@
-import { App, Dock, Footer, Header, render, Traceback, VBox } from "../src/index.ts";
+import { Dock, Footer, Header, Traceback, VBox } from "../src/index.ts";
 
 // The readable error panel an agent shows when a tool call throws: the
 // exception heads the panel, frames follow (library frames dimmed), and the
@@ -37,6 +37,12 @@ function TracebackDemo() {
   );
 }
 
-const app = new App();
-render(<TracebackDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const tracebackDemo: Demo = {
+  id: "traceback",
+  title: "Traceback",
+  group: "Feedback",
+  description: "Pretty Python-style tracebacks.",
+  Component: TracebackDemo,
+};

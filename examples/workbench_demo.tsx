@@ -2,11 +2,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  App,
   Box,
   Header,
   Label,
-  render,
   ThemePalette,
   VBox,
   Workbench,
@@ -104,6 +102,12 @@ function WorkbenchDemo() {
   );
 }
 
-const app = new App();
-render(<WorkbenchDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const workbenchDemo: Demo = {
+  id: "workbench",
+  title: "Workbench",
+  group: "Layout",
+  description: "VSCode-style dockable panels.",
+  Component: WorkbenchDemo,
+};

@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  App,
-  Footer,
-  Header,
-  Label,
-  type QAResult,
-  QuestionAnswer,
-  render,
-  VBox,
-} from "../src/index.ts";
+import { Footer, Header, Label, type QAResult, QuestionAnswer, VBox } from "../src/index.ts";
 
 // Showcases the QuestionAnswer composite: a single-select ask with free text,
 // a multi-select ask, and a horizontal yes/no-style ask. Each reports its
@@ -75,18 +66,13 @@ function QADemo() {
   );
 }
 
-const app = new App();
-render(<QADemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Focus the first QuestionAnswer so the keyboard works without a Tab first.
-// The React tree commits asynchronously, so poll until a focusable exists.
-const focusFirst = () => {
-  const focusable = app.activeScreen.getFocusableWidgets();
-  if (focusable.length > 0) {
-    app.activeScreen.focusWidget(focusable[0]);
-  } else {
-    setTimeout(focusFirst, 10);
-  }
+export const qaDemo: Demo = {
+  id: "qa",
+  title: "Question / Answer",
+  group: "Feedback",
+  description: "Inline Q&A prompts.",
+  autoFocusTag: "@first",
+  Component: QADemo,
 };
-focusFirst();

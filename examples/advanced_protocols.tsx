@@ -10,7 +10,6 @@ import {
   Icon,
   iconRegistry,
   Label,
-  render,
   Spacing,
   VBox,
 } from "../src/index.ts";
@@ -263,7 +262,13 @@ function _View({ style, children }: { style?: any; children?: any }) {
   return <VBox style={style}>{children}</VBox>;
 }
 
-// Run the application
-const app = new App();
-render(<AdvancedProtocolsApp />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const protocolsDemo: Demo = {
+  id: "protocols",
+  title: "Advanced Protocols",
+  group: "Media",
+  description: "Kitty / iTerm2 / Sixel graphics & glyph protocols.",
+  requires: ["graphics"],
+  Component: AdvancedProtocolsApp,
+};

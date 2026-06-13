@@ -9,7 +9,6 @@ import {
   Header,
   Input,
   Label,
-  render,
   Spacing,
   ThemeManager,
   VBox,
@@ -310,6 +309,12 @@ function ThemeExplorerApp() {
   );
 }
 
-const app = new App();
-render(<ThemeExplorerApp />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const themesDemo: Demo = {
+  id: "themes",
+  title: "Theme Explorer",
+  group: "Theme",
+  description: "Browse & switch themes.",
+  Component: ThemeExplorerApp,
+};

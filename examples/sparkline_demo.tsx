@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { App, Dock, Footer, HBox, Header, Label, render, Sparkline, VBox } from "../src/index.ts";
+import { Dock, Footer, HBox, Header, Label, Sparkline, VBox } from "../src/index.ts";
+import type { Demo } from "./gallery/types.ts";
 
 // A live agent HUD: dense one-row sparklines for the signals you'd watch while
 // a model streams — tokens/sec, latency, and running cost — each updating in
@@ -54,6 +55,10 @@ function SparklineDemo() {
   );
 }
 
-const app = new App();
-render(<SparklineDemo />, app.activeScreen);
-app.run();
+export const sparklineDemo: Demo = {
+  id: "sparkline",
+  title: "Sparkline",
+  group: "Data",
+  description: "Live one-row micro-charts (agent HUD).",
+  Component: SparklineDemo,
+};

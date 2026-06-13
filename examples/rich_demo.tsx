@@ -9,7 +9,6 @@ import {
   Label,
   Markdown,
   RichText,
-  render,
   Syntax,
   VBox,
 } from "../src/index.ts";
@@ -182,6 +181,12 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
   );
 }
 
-const app = new App();
-render(<RichDemoApp />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const richDemo: Demo = {
+  id: "rich",
+  title: "Rich Text",
+  group: "Text",
+  description: "Styled rich text & syntax highlighting.",
+  Component: RichDemoApp,
+};

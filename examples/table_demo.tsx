@@ -1,12 +1,9 @@
 import { useMemo, useState } from "react";
-import type { Widget } from "../src/dom/widget.ts";
 import {
-  App,
   Dock,
   Footer,
   Header,
   Label,
-  render,
   type SortState,
   Table,
   type TableColumn,
@@ -84,18 +81,13 @@ function TableDemo() {
   );
 }
 
-const app = new App();
-render(<TableDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the table once it has committed so the keyboard drives it
-// without needing a Tab first.
-const focusTable = () => {
-  let table: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if ((node as Widget).tagName === "table") table = node as Widget;
-  });
-  if (table) app.activeScreen.focusWidget(table);
-  else setTimeout(focusTable, 10);
+export const tableDemo: Demo = {
+  id: "table",
+  title: "Table",
+  group: "Data",
+  description: "Virtualized sortable data grid.",
+  autoFocusTag: "table",
+  Component: TableDemo,
 };
-focusTable();

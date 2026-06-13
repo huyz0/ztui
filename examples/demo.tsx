@@ -12,7 +12,6 @@ import {
   Label,
   PasswordInput,
   RadioGroup,
-  render,
   Select,
   Slider,
   Switch,
@@ -193,7 +192,12 @@ function DemoApp() {
   );
 }
 
-// Instantiate and run the App
-const app = new App();
-render(<DemoApp />, app.activeScreen);
-app.run({ inspectorPort: 8000 });
+import type { Demo } from "./gallery/types.ts";
+
+export const kitchenSinkDemo: Demo = {
+  id: "kitchen-sink",
+  title: "Kitchen Sink",
+  group: "Overview",
+  description: "The original all-in-one showcase.",
+  Component: DemoApp,
+};

@@ -9,7 +9,6 @@ import {
   Header,
   Input,
   Label,
-  render,
   Switch,
   TabContainer,
   VBox,
@@ -118,6 +117,12 @@ function TabDemoApp() {
   );
 }
 
-const app = new App();
-render(<TabDemoApp />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const tabsDemo: Demo = {
+  id: "tabs",
+  title: "Tabs",
+  group: "Layout",
+  description: "Tabbed container.",
+  Component: TabDemoApp,
+};

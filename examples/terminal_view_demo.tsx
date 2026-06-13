@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { App, Dock, Footer, Header, render, TerminalView, VBox } from "../src/index.ts";
+import { Dock, Footer, Header, TerminalView, VBox } from "../src/index.ts";
 
 // Simulated bash/shell tool output streaming into a sandboxed terminal view:
 // ANSI colors, a \r progress bar that redraws in place, then a summary. The
@@ -74,6 +74,12 @@ function TerminalViewDemo() {
   );
 }
 
-const app = new App();
-render(<TerminalViewDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const terminalDemo: Demo = {
+  id: "terminal",
+  title: "Terminal View",
+  group: "Data",
+  description: "Embedded terminal output.",
+  Component: TerminalViewDemo,
+};

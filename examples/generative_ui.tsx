@@ -9,7 +9,6 @@ import {
   JSONUI,
   Label,
   Markdown,
-  render,
   Spacing,
   VBox,
   View,
@@ -175,6 +174,12 @@ function GenerativeUIApp() {
   );
 }
 
-const app = new App();
-render(<GenerativeUIApp />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const generativeUiDemo: Demo = {
+  id: "generative-ui",
+  title: "Generative UI",
+  group: "Overview",
+  description: "JSON-driven dynamic UI.",
+  Component: GenerativeUIApp,
+};

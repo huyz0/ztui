@@ -1,10 +1,8 @@
 import {
-  App,
   Footer,
   HBox,
   Header,
   Label,
-  render,
   Spinner,
   type SpinnerMode,
   VBox,
@@ -72,6 +70,12 @@ function WaitingDemo() {
   );
 }
 
-const app = new App();
-render(<WaitingDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const waitingDemo: Demo = {
+  id: "waiting",
+  title: "Waiting",
+  group: "Feedback",
+  description: "Spinners & waiting panels.",
+  Component: WaitingDemo,
+};

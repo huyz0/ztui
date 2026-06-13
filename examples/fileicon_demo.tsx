@@ -9,7 +9,6 @@ import {
   Header,
   Label,
   loadSetiIcons,
-  render,
   resolveFileIcon,
   VBox,
   View,
@@ -207,6 +206,12 @@ function FileIconDemo() {
   );
 }
 
-const app = new App();
-render(<FileIconDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const fileIconDemo: Demo = {
+  id: "file-icon",
+  title: "File Icons",
+  group: "Media",
+  description: "Seti file-type icons.",
+  Component: FileIconDemo,
+};

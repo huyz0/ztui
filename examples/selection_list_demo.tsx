@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { Widget } from "../src/dom/widget.ts";
-import { App, Dock, Footer, Header, Label, render, SelectionList, VBox } from "../src/index.ts";
+import { Dock, Footer, Header, Label, SelectionList, VBox } from "../src/index.ts";
 import type { ListItem } from "../src/widgets/data/list-view.ts";
 
 // "Pick which changes to apply" — the multi-select an agent shows before it
@@ -48,17 +47,13 @@ function SelectionListDemo() {
   );
 }
 
-const app = new App();
-render(<SelectionListDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the list so the keyboard drives it without a Tab first.
-const focusFirst = () => {
-  let first: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if (!first && (node as Widget).tagName === "selection-list") first = node as Widget;
-  });
-  if (first) app.activeScreen.focusWidget(first);
-  else setTimeout(focusFirst, 10);
+export const selectionListDemo: Demo = {
+  id: "selection-list",
+  title: "Selection List",
+  group: "Data",
+  description: "Multi-select checklist.",
+  autoFocusTag: "selection-list",
+  Component: SelectionListDemo,
 };
-focusFirst();

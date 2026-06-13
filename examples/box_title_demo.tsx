@@ -1,4 +1,4 @@
-import { App, Box, Dock, Footer, Header, Label, render, VBox } from "../src/index.ts";
+import { Box, Dock, Footer, Header, Label, VBox } from "../src/index.ts";
 
 // Box widgets carry an optional `title` drawn into the top border edge as
 // `─ title ─`. It only shows when the box has a border, inherits the border
@@ -36,6 +36,12 @@ function BoxTitleDemo() {
   );
 }
 
-const app = new App();
-render(<BoxTitleDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const boxTitleDemo: Demo = {
+  id: "box-title",
+  title: "Box Title",
+  group: "Layout",
+  description: "Titled box containers.",
+  Component: BoxTitleDemo,
+};

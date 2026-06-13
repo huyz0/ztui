@@ -14,7 +14,6 @@ import {
   minLength,
   PasswordInput,
   pattern,
-  render,
   required,
   ValidationSummary,
   VBox,
@@ -117,6 +116,12 @@ function SignupForm() {
   );
 }
 
-const app = new App();
-render(<SignupForm />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const formDemo: Demo = {
+  id: "form",
+  title: "Form Validation",
+  group: "Forms",
+  description: "Validated signup form.",
+  Component: SignupForm,
+};

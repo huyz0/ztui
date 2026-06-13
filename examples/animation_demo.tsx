@@ -7,7 +7,6 @@
 // Keys: space animate to a new value · e cycle easing · q / Ctrl+C quit.
 import { useState } from "react";
 import {
-  App,
   Box,
   Button,
   Dialog,
@@ -17,7 +16,6 @@ import {
   Header,
   Label,
   ProgressBar,
-  render,
   useAnimatedColor,
   useAnimatedValue,
   useHotkey,
@@ -128,6 +126,12 @@ function AnimationDemo() {
   );
 }
 
-const app = new App();
-render(<AnimationDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const animationDemo: Demo = {
+  id: "animation",
+  title: "Animation",
+  group: "Effects",
+  description: "Tween engine & breathing emphasis.",
+  Component: AnimationDemo,
+};

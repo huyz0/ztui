@@ -8,7 +8,6 @@ import {
   Header,
   Input,
   Label,
-  render,
   TextArea,
   VBox,
   View,
@@ -79,6 +78,12 @@ function TextDemoApp() {
   );
 }
 
-const app = new App();
-render(<TextDemoApp />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const textareaDemo: Demo = {
+  id: "textarea",
+  title: "Text Area",
+  group: "Text",
+  description: "Multiline text editing.",
+  Component: TextDemoApp,
+};

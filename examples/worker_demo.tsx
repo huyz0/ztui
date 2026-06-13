@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  App,
   Button,
   Dock,
   Footer,
@@ -9,7 +8,6 @@ import {
   hotkeys,
   Label,
   RichLog,
-  render,
   Spinner,
   useWorker,
   VBox,
@@ -86,6 +84,12 @@ function WorkerDemo() {
   );
 }
 
-const app = new App();
-render(<WorkerDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const workerDemo: Demo = {
+  id: "worker",
+  title: "Worker",
+  group: "Overview",
+  description: "Background worker integration.",
+  Component: WorkerDemo,
+};

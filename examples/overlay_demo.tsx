@@ -6,7 +6,6 @@ import { useMemo, useRef, useState } from "react";
 //                   highlight, Enter inserts the command, and the list filters
 //                   live as you type.
 import {
-  App,
   Button,
   Dialog,
   Footer,
@@ -14,7 +13,6 @@ import {
   Header,
   Input,
   Label,
-  render,
   StickyPanel,
   ToastHost,
   toast,
@@ -155,6 +153,12 @@ function ChatDemo() {
   );
 }
 
-const app = new App();
-render(<ChatDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const overlayDemo: Demo = {
+  id: "overlay",
+  title: "Overlays",
+  group: "Layout",
+  description: "Modal dialogs & sticky panels.",
+  Component: ChatDemo,
+};

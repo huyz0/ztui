@@ -1,9 +1,7 @@
 import {
-  App,
   Box,
   Header,
   Label,
-  render,
   type SplitNode,
   SplitView,
   ThemePalette,
@@ -122,6 +120,12 @@ function IDEDemo() {
   );
 }
 
-const app = new App();
-render(<IDEDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const ideDemo: Demo = {
+  id: "ide",
+  title: "IDE",
+  group: "Layout",
+  description: "Dockable IDE-style workbench.",
+  Component: IDEDemo,
+};

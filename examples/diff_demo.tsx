@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { Widget } from "../src/dom/widget.ts";
-import { App, Diff, Dock, Footer, Header, hotkeys, Label, render, VBox } from "../src/index.ts";
+import { Diff, Dock, Footer, Header, hotkeys, Label, VBox } from "../src/index.ts";
 
 // The view a coding agent shows when it proposes a file edit: a syntax-
 // highlighted diff with a +/- gutter and line numbers. Toggle unified vs
@@ -127,17 +126,13 @@ function DiffDemo() {
   );
 }
 
-const app = new App();
-render(<DiffDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the diff so ↑↓ scroll without a Tab first.
-const focusFirst = () => {
-  let first: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if (!first && (node as Widget).tagName === "diff") first = node as Widget;
-  });
-  if (first) app.activeScreen.focusWidget(first);
-  else setTimeout(focusFirst, 10);
+export const diffDemo: Demo = {
+  id: "diff",
+  title: "Diff",
+  group: "Data",
+  description: "Side-by-side / unified diff viewer.",
+  autoFocusTag: "diff",
+  Component: DiffDemo,
 };
-focusFirst();

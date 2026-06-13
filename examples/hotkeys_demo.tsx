@@ -6,13 +6,11 @@
 //   • <HotkeyPalette> — Ctrl+Space opens a filterable, grouped command list.
 import { useState } from "react";
 import {
-  App,
   HBox,
   Header,
   HotkeyPalette,
   hotkeys,
   Label,
-  render,
   ToastHost,
   toast,
   useHotkey,
@@ -51,7 +49,7 @@ hotkeys.register({
   handler: () => toast.show({ message: "Reloading (browser-only)" }),
 });
 
-function Demo() {
+function HotkeysDemo() {
   const [context, setContext] = useState<string | null>(null);
   const [count, setCount] = useState(0);
 
@@ -124,6 +122,12 @@ function Demo() {
   );
 }
 
-const app = new App();
-render(<Demo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const hotkeysDemo: Demo = {
+  id: "hotkeys",
+  title: "Hotkeys",
+  group: "Input",
+  description: "Global hotkey palette & bindings.",
+  Component: HotkeysDemo,
+};

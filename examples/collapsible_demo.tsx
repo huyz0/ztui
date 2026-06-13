@@ -1,15 +1,4 @@
-import type { Widget } from "../src/dom/widget.ts";
-import {
-  App,
-  Collapsible,
-  Dock,
-  Footer,
-  Header,
-  Label,
-  render,
-  Syntax,
-  VBox,
-} from "../src/index.ts";
+import { Collapsible, Dock, Footer, Header, Label, Syntax, VBox } from "../src/index.ts";
 
 // Foldable sections, the way an agent transcript groups reasoning and tool
 // calls: a one-line title you can expand to see the detail. Tab moves focus
@@ -49,17 +38,13 @@ function CollapsibleDemo() {
   );
 }
 
-const app = new App();
-render(<CollapsibleDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the first collapsible so the keyboard drives it without a Tab first.
-const focusFirst = () => {
-  let first: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if (!first && (node as Widget).tagName === "collapsible") first = node as Widget;
-  });
-  if (first) app.activeScreen.focusWidget(first);
-  else setTimeout(focusFirst, 10);
+export const collapsibleDemo: Demo = {
+  id: "collapsible",
+  title: "Collapsible",
+  group: "Layout",
+  description: "Expand / collapse sections.",
+  autoFocusTag: "collapsible",
+  Component: CollapsibleDemo,
 };
-focusFirst();

@@ -2,12 +2,10 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  App,
   Box,
   Header,
   hydrateSplit,
   Label,
-  render,
   type SerializedSplitNode,
   type SplitNode,
   SplitView,
@@ -93,6 +91,12 @@ function SplitViewDemo() {
   );
 }
 
-const app = new App();
-render(<SplitViewDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const splitviewDemo: Demo = {
+  id: "splitview",
+  title: "Split View",
+  group: "Layout",
+  description: "Resizable split panes.",
+  Component: SplitViewDemo,
+};

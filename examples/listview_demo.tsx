@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { Widget } from "../src/dom/widget.ts";
-import { App, Dock, Footer, Header, type ListItem, ListView, render } from "../src/index.ts";
+import { Dock, Footer, Header, type ListItem, ListView } from "../src/index.ts";
 
 // A mixed list with icons, dimmed detail text, disabled rows, and thousands of
 // generated entries to show virtualization + scrolling.
@@ -41,17 +40,13 @@ function ListViewDemo() {
   );
 }
 
-const app = new App();
-render(<ListViewDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
 
-// Auto-focus the list so the keyboard drives it without a Tab first.
-const focusList = () => {
-  let list: Widget | null = null;
-  app.activeScreen.walk((node) => {
-    if ((node as Widget).tagName === "listview") list = node as Widget;
-  });
-  if (list) app.activeScreen.focusWidget(list);
-  else setTimeout(focusList, 10);
+export const listviewDemo: Demo = {
+  id: "listview",
+  title: "List View",
+  group: "Data",
+  description: "Virtualized single-select list.",
+  autoFocusTag: "listview",
+  Component: ListViewDemo,
 };
-focusList();

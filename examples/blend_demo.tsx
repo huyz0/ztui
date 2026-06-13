@@ -9,18 +9,7 @@ import { useState } from "react";
 //     keeping the text readable but dimmed to concrete colours.
 //
 // Press `d` to toggle the dialog. Press `q` / Ctrl+C to quit.
-import {
-  App,
-  Box,
-  Button,
-  Dialog,
-  Footer,
-  Header,
-  Label,
-  render,
-  useHotkey,
-  VBox,
-} from "../src/index.ts";
+import { Box, Button, Dialog, Footer, Header, Label, useHotkey, VBox } from "../src/index.ts";
 
 // Height of the stage that holds the backdrop text and the floating panels. The
 // panels are positioned absolutely within it, so the stage needs an explicit
@@ -121,6 +110,12 @@ function BlendDemo() {
   );
 }
 
-const app = new App();
-render(<BlendDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const blendDemo: Demo = {
+  id: "blend",
+  title: "Blend",
+  group: "Effects",
+  description: "Alpha blending & transparent layers.",
+  Component: BlendDemo,
+};

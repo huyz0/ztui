@@ -8,7 +8,6 @@ import {
   Header,
   Input,
   Label,
-  render,
   TextArea,
   VBox,
   View,
@@ -91,6 +90,12 @@ function ClipboardDemo() {
   );
 }
 
-const app = new App();
-render(<ClipboardDemo />, app.activeScreen);
-app.run();
+import type { Demo } from "./gallery/types.ts";
+
+export const clipboardDemo: Demo = {
+  id: "clipboard",
+  title: "Clipboard",
+  group: "Text",
+  description: "OSC 52 copy/paste & selection.",
+  Component: ClipboardDemo,
+};
