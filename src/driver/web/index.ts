@@ -56,6 +56,9 @@ export class WebDriver extends Driver {
       // The canvas draws images/SVG natively (drawImage), so widgets emit
       // vector/raster source instead of ANSI-encoding pixels.
       graphicsProtocol: "web",
+      // The browser page (and any server behind it) is long-lived and shared —
+      // a user's Ctrl+C must never tear it down, so the App won't process.exit.
+      ownsProcess: false,
     };
 
     // Backed by the browser clipboard when available (requires a secure

@@ -38,6 +38,15 @@ export interface TerminalCapabilities {
    * than ANSI-encoding it. `none` falls back to Unicode half-block art.
    */
   graphicsProtocol: "kitty" | "iterm2" | "sixel" | "web" | "none";
+  /**
+   * Whether this backend owns the host process, so a quit gesture (a bare
+   * Ctrl+C) may terminate it. True/undefined on a terminal — Ctrl+C is the
+   * conventional way to exit and the process is the user's own. False on the web
+   * backend, where the page (and any server behind it) is long-lived and shared:
+   * an end user pressing Ctrl+C must copy/cancel, never tear down the host. The
+   * App skips its `process.exit` when this is false.
+   */
+  ownsProcess?: boolean;
   terminalProgram?: string;
   cellSize?: { width: number; height: number };
 }

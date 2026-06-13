@@ -181,6 +181,13 @@ export class App extends DOMNode {
           this.queueRender();
           return;
         }
+        // On a backend that doesn't own its host process (the web canvas, served
+        // to many users), Ctrl+C must never quit — it would kill the shared page
+        // and any server behind it. With nothing to copy, just swallow it.
+        if (this.driver.capabilities.ownsProcess === false) {
+          ev.handled = true;
+          return;
+        }
         ev.handled = true;
         this.stop();
         process.exit(0);

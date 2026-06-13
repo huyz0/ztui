@@ -132,6 +132,25 @@ describe("App — clipboard key routing", () => {
     }
   });
 
+  test("on a backend that doesn't own the process (web), Ctrl+C never quits", async () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
+    try {
+      const { findById, screen, driver } = await mountApp(<Input id="in" value="hi" />, {
+        cols: 40,
+        rows: 5,
+        capabilities: { ownsProcess: false },
+      });
+      const input = findById("in");
+      screen.focusWidget(input);
+      // No selection: a terminal would quit here, but the web backend must not.
+      driver.emit("key", { ...ctrlC });
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(input.value).toBe("hi");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
   test("a bracketed-paste event inserts into the focused textarea", async () => {
     const { findById, screen, driver } = await mountApp(<TextArea id="ta" value="" />, {
       cols: 40,
