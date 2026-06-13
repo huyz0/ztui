@@ -49,7 +49,7 @@ function TabDemoApp() {
             <View style={{ height: 1 }} />
             <Label style={{ color: "$success" }}>System Metrics:</Label>
             <VBox
-              style={{ border: "dashed", borderColor: "gray", padding: 1, width: 45, height: 6 }}
+              style={{ border: "dashed", borderColor: "gray", padding: 1, width: 45, height: 8 }}
             >
               <Label style={{ color: "$foreground" }}>• Framework: ZTUI v0.1.0</Label>
               <Label style={{ color: "$foreground" }}>• Environment: Bun Runtime</Label>

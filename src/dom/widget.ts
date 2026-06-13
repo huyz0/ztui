@@ -479,12 +479,14 @@ export class Widget extends DOMNode {
   }
 
   public renderChildren(buffer: ScreenBuffer): void {
-    // Enforce `overflow: hidden`: clip children to the content box so an
-    // oversized or mispositioned child can't draw on top of sibling widgets.
-    // (Scrollable overrides this to always clip.) Matches CSS semantics, which
-    // also keeps the model portable to a web/DOM backend.
+    // Clip children to the content box by default so an oversized or
+    // mispositioned child can never paint over this widget's own border or its
+    // siblings — the spill-over that plagues naive TUIs. Opt out per axis with
+    // `overflow: "visible"` (e.g. a deliberately escaping badge). Top-level
+    // layers that must paint outside their parent (dialogs, dropdowns) portal to
+    // a full-screen overlay root instead. (Scrollable always clips.)
     const clipOverflow =
-      this.computedStyle.overflowX === "hidden" || this.computedStyle.overflowY === "hidden";
+      this.computedStyle.overflowX !== "visible" && this.computedStyle.overflowY !== "visible";
     if (clipOverflow) {
       buffer.pushClip(this.getContentRect());
     }

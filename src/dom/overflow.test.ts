@@ -23,7 +23,7 @@ class Filler extends Widget {
 function makeTree(overflow: "hidden" | "visible") {
   const parent = new Widget("view");
   parent.region = new Region(new Offset(0, 0), new Size(5, 2));
-  parent.style = overflow === "hidden" ? { overflowX: "hidden" } : {};
+  parent.style = overflow === "visible" ? { overflowX: "visible", overflowY: "visible" } : {};
   const child = new Filler("f");
   // Child is larger than the parent content box (would overflow).
   child.region = new Region(new Offset(0, 0), new Size(10, 5));
@@ -32,7 +32,7 @@ function makeTree(overflow: "hidden" | "visible") {
 }
 
 describe("overflow containment", () => {
-  test("overflow:hidden clips children to the content box", () => {
+  test("default clips children to the content box", () => {
     const buf = new ScreenBuffer(10, 5);
     makeTree("hidden").renderChildren(buf);
 
@@ -44,11 +44,11 @@ describe("overflow containment", () => {
     expect(buf.cells[2][0].char).toBe(" ");
   });
 
-  test("default (visible) does not clip — content can overflow", () => {
+  test("overflow:visible opts out — content can overflow", () => {
     const buf = new ScreenBuffer(10, 5);
     makeTree("visible").renderChildren(buf);
 
-    // Without clipping, the child paints beyond the parent's box.
+    // With the opt-out, the child paints beyond the parent's box.
     expect(buf.cells[0][5].char).toBe("#");
     expect(buf.cells[2][0].char).toBe("#");
   });

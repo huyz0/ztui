@@ -2,6 +2,9 @@ import { describe, expect, test } from "vitest";
 import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import { MockDriver } from "../driver/mock/index.ts";
+import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
+import { Size } from "../geometry/size.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { ButtonWidget } from "../widgets/controls/button.ts";
 import { decodeImage } from "../widgets/media/image.ts";
@@ -30,8 +33,11 @@ class FlagWidget extends Widget {
 describe("render/measure isolation", () => {
   test("a throwing child does not prevent siblings from rendering", () => {
     const parent = new Widget("view");
+    parent.region = new Region(new Offset(0, 0), new Size(20, 5));
     const boom = new BoomWidget("boom");
+    boom.region = new Region(new Offset(0, 0), new Size(10, 5));
     const ok = new FlagWidget("ok");
+    ok.region = new Region(new Offset(10, 0), new Size(10, 5));
     parent.appendChild(boom);
     parent.appendChild(ok);
 
