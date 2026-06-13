@@ -74,7 +74,11 @@ export default defineConfig({
             },
             {
               label: "Media",
-              items: [{ label: "Image", slug: "widgets/image" }],
+              items: [
+                { label: "Image", slug: "widgets/image" },
+                { label: "HeroIcon", slug: "widgets/heroicon" },
+                { label: "File Icon", slug: "widgets/file-icon" },
+              ],
             },
           ],
         },

@@ -46,3 +46,5 @@ batch by batch; the remaining controls, layout, and media widgets land next.
 ## Media
 
 - [Image](/ztui/widgets/image/) — inline raster/SVG images with graceful fallback.
+- [HeroIcon](/ztui/widgets/heroicon/) — Heroicons as crisp, theme-tinted vectors.
+- [File Icon](/ztui/widgets/file-icon/) — VS Code-style Seti file-type icons.
