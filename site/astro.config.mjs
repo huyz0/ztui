@@ -28,7 +28,43 @@ export default defineConfig({
           label: "Guides",
           items: [{ label: "Architecture", slug: "guides/architecture" }],
         },
-        // Widgets, React binding, Recipes, Reference are added in later phases.
+        {
+          label: "Widgets",
+          items: [
+            { label: "Gallery", slug: "widgets" },
+            {
+              label: "Data",
+              items: [
+                { label: "Table", slug: "widgets/table" },
+                { label: "Tree", slug: "widgets/tree" },
+                { label: "List View", slug: "widgets/list-view" },
+                { label: "Selection List", slug: "widgets/selection-list" },
+                { label: "Sparkline", slug: "widgets/sparkline" },
+                { label: "Diff", slug: "widgets/diff" },
+                { label: "Rich Log", slug: "widgets/rich-log" },
+              ],
+            },
+            {
+              label: "Text & input",
+              items: [
+                { label: "Markdown", slug: "widgets/markdown" },
+                { label: "Text Area", slug: "widgets/text-area" },
+              ],
+            },
+            {
+              label: "Feedback",
+              items: [
+                { label: "Status", slug: "widgets/status" },
+                { label: "Waiting & Progress", slug: "widgets/waiting" },
+              ],
+            },
+            {
+              label: "Layout",
+              items: [{ label: "Collapsible", slug: "widgets/collapsible" }],
+            },
+          ],
+        },
+        // React binding, Recipes, and Reference are added in later phases.
       ],
     }),
   ],

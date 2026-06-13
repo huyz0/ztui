@@ -19,6 +19,7 @@
     "demo:web": "bun run examples/gallery/run.tsx --web",
     "demo:list": "bun run examples/gallery/run.tsx --list",
     "web:debug": "bun run scripts/web-debug.ts",
+    "docs:screenshots": "bun run scripts/docs-screenshots.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
