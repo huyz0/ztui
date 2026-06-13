@@ -6,8 +6,8 @@ import {
   type CanvasMetrics,
   measureCellFromBlock,
   renderBufferToCanvas,
-  serializeForCanvas,
 } from "./canvas-renderer.ts";
+import { serializeForCanvas } from "./canvas-serialize.ts";
 
 /** A minimal CanvasRenderingContext2D stand-in that records draw calls. */
 function mockCtx() {

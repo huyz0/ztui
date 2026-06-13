@@ -66,9 +66,20 @@ window.ztuiCanvas = {
       ctx.imageSmoothingEnabled = false;
     };
 
+    // Keep the last frame so a vector icon that finishes decoding after the
+    // initial paint can be redrawn (drawImage no-ops until the SVG is ready).
+    let lastCells: CanvasCell[][] = [];
     const render = (cells: CanvasCell[][]) => {
+      lastCells = cells;
       if (rows === 0 && cells.length) resize(cells[0]?.length ?? 0, cells.length);
-      renderBufferToCanvas(cells, ctx, metrics, { fontSize, fontFamily, dpr, defaultBg });
+      renderBufferToCanvas(cells, ctx, metrics, {
+        fontSize,
+        fontFamily,
+        dpr,
+        defaultBg,
+        requestRepaint: () =>
+          renderBufferToCanvas(lastCells, ctx, metrics, { fontSize, fontFamily, dpr, defaultBg }),
+      });
     };
 
     return { canvas, cellWidth, cellHeight, resize, render };

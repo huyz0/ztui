@@ -10,7 +10,7 @@
 import { createElement } from "react";
 import { App, HTML_FONT_FAMILY, HTML_FONT_SIZE, HTML_PADDING, WebDriver } from "../src/core.ts";
 import { canvasClientScript } from "../src/driver/web/canvas-bundle.ts";
-import { serializeForCanvas } from "../src/driver/web/canvas-renderer.ts";
+import { serializeForCanvas } from "../src/driver/web/canvas-serialize.ts";
 import {
   bundledFontFaces,
   bundledFontPath,

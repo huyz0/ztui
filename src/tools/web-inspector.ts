@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { App } from "../core/app.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { canvasClientScript } from "../driver/web/canvas-bundle.ts";
-import { serializeForCanvas } from "../driver/web/canvas-renderer.ts";
+import { serializeForCanvas } from "../driver/web/canvas-serialize.ts";
 import {
   bundledFontFaces,
   bundledFontPath,

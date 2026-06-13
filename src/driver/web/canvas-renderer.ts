@@ -1,6 +1,3 @@
-import type { ScreenBuffer } from "../../render/buffer.ts";
-import { normalizeColorForCSS } from "../../render/html-renderer.ts";
-
 /**
  * Hardware-accelerated canvas renderer for the web backend.
  *
@@ -14,8 +11,10 @@ import { normalizeColorForCSS } from "../../render/html-renderer.ts";
  * its low-latency GPU-composited path; the same draw calls also work on an
  * OffscreenCanvas in a worker.
  *
- * This module is self-contained (only a color helper and the `ScreenBuffer`
- * cell *type*), so it bundles cleanly for the browser.
+ * This module is fully browser-safe — it has no Node/`sharp`/registry imports,
+ * so it bundles cleanly for the canvas client. Flattening a `ScreenBuffer` into
+ * `CanvasCell[][]` (which *does* need the icon registry) lives server-side in
+ * `canvas-serialize.ts`.
  */
 
 /** A cell flattened to the data a canvas needs — JSON-serializable for the wire. */
@@ -37,6 +36,13 @@ export interface CanvasCell {
   cont?: boolean;
   /** Seti file-icon glyph — centered vertically rather than sitting on the baseline. */
   icon?: boolean;
+  /**
+   * Raw SVG markup for a vector icon (heroicon, Seti file icon, …). When present
+   * the canvas draws the SVG natively — the browser rasterizes it crisply at the
+   * device pixel ratio — instead of the `c` text fallback. `currentColor` in the
+   * markup is tinted to the cell's `fg` at draw time.
+   */
+  svg?: string;
 }
 
 export interface CanvasMetrics {
@@ -81,49 +87,58 @@ export interface CanvasRenderOptions {
   defaultBg?: string;
   /** Device pixel ratio the context is already scaled by (for crisp strokes). */
   dpr?: number;
+  /**
+   * Called when an async-loaded vector icon finishes decoding, so the caller can
+   * repaint the last frame (the SVG wasn't ready on the first draw). Omit on
+   * non-browser callers (tests) — SVG cells are simply skipped there.
+   */
+  requestRepaint?: () => void;
+}
+
+// Decoded vector-icon cache, keyed by the tinted SVG markup. Lives module-level
+// so it survives across frames; entries are cheap (one <img> per distinct icon).
+const svgImageCache = new Map<string, HTMLImageElement>();
+
+/**
+ * Draw a vector icon into a cell box, rasterized natively by the browser. The
+ * SVG is tinted (`currentColor` → `color`) and decoded once, cached by markup.
+ * If it isn't decoded yet, kick off the load and ask the caller to repaint when
+ * it lands. No-ops in non-DOM environments (no `Image`).
+ */
+function drawSvgCell(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  svg: string,
+  color: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  requestRepaint?: () => void,
+): void {
+  if (typeof Image === "undefined") return;
+  const tinted = svg.replace(/currentColor/g, color);
+  let img = svgImageCache.get(tinted);
+  if (!img) {
+    img = new Image();
+    img.onload = () => requestRepaint?.();
+    img.src = `data:image/svg+xml,${encodeURIComponent(tinted)}`;
+    svgImageCache.set(tinted, img);
+  }
+  if (img.complete && img.naturalWidth > 0) {
+    // Center a square (icons are square) within the cell box.
+    const size = Math.min(w, h);
+    (ctx as CanvasRenderingContext2D).drawImage(
+      img,
+      x + (w - size) / 2,
+      y + (h - size) / 2,
+      size,
+      size,
+    );
+  }
 }
 
 const DEFAULT_FG = "#cdd6f4";
 const DEFAULT_BG = "#1e1e2e";
-
-/**
- * Flatten a {@link ScreenBuffer} to the compact, JSON-serializable grid the
- * canvas renderer consumes (colors resolved to CSS up front).
- */
-export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
-  const rows: CanvasCell[][] = [];
-  for (let y = 0; y < buffer.height; y++) {
-    const row: CanvasCell[] = [];
-    for (let x = 0; x < buffer.width; x++) {
-      const cell = buffer.cells[y][x];
-      if (cell.wideContinuation) {
-        // Inherit the lead cell's background so a wide glyph's two halves fill
-        // with one color instead of leaving the right half on the page default.
-        row.push({ c: "", cont: true, bg: row[row.length - 1]?.bg });
-        continue;
-      }
-      const s = cell.style;
-      let fg = s.color;
-      let bg = s.background;
-      if (s.reverse) [fg, bg] = [bg, fg];
-      const out: CanvasCell = { c: cell.char };
-      if (fg && fg !== "default") out.fg = normalizeColorForCSS(fg);
-      if (bg && bg !== "default") out.bg = normalizeColorForCSS(bg);
-      if (s.bold) out.bold = true;
-      if (s.italic) out.italic = true;
-      if (s.underline) {
-        out.underline = true;
-        if (s.underlineStyle && s.underlineStyle !== "single") out.uStyle = s.underlineStyle;
-        if (s.underlineColor) out.uColor = normalizeColorForCSS(s.underlineColor);
-      }
-      if (s.strikethrough) out.strike = true;
-      if (cell.icon) out.icon = true;
-      row.push(out);
-    }
-    rows.push(row);
-  }
-  return rows;
-}
 
 // --- block elements (U+2580–U+259F) as fractional rectangles -----------------
 
@@ -356,6 +371,22 @@ export function renderBufferToCanvas(
       // A wide glyph spans this cell plus the continuation to its right.
       const wide = x + 1 < cols && cells[y][x + 1]?.cont;
       const span = wide ? 2 : 1;
+
+      // Vector icons render natively from their SVG (crisp at DPR), tinted to fg.
+      if (cell.svg) {
+        drawSvgCell(
+          ctx,
+          cell.svg,
+          color,
+          colX[x],
+          rowY[y],
+          colX[x + span] - colX[x],
+          rowY[y + 1] - rowY[y],
+          opts.requestRepaint,
+        );
+        continue;
+      }
+
       ctx.font = `${cell.italic ? "italic " : ""}${cell.bold ? "bold " : ""}${opts.fontSize}px ${opts.fontFamily}`;
       ctx.fillStyle = color;
       if (cell.icon) {

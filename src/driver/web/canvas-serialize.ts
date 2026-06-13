@@ -1,0 +1,57 @@
+import type { ScreenBuffer } from "../../render/buffer.ts";
+import { normalizeColorForCSS } from "../../render/html-renderer.ts";
+import { iconRegistry } from "../../render/icon-registry.ts";
+import type { CanvasCell } from "./canvas-renderer.ts";
+
+/**
+ * Flatten a {@link ScreenBuffer} into the compact, JSON-serializable grid the
+ * canvas client consumes (colors resolved to CSS up front). This is the
+ * **server-side** half of the canvas backend: it may touch the icon registry
+ * (and, transitively, Node-only deps), so it is kept out of `canvas-renderer.ts`
+ * — which must bundle cleanly for the browser.
+ *
+ * Vector icons (heroicons, Seti file icons) are resolved to their raw SVG here
+ * and shipped on the cell, so the client can rasterize them natively at the
+ * device pixel ratio instead of drawing an emoji/glyph text fallback.
+ */
+export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
+  const rows: CanvasCell[][] = [];
+  for (let y = 0; y < buffer.height; y++) {
+    const row: CanvasCell[] = [];
+    for (let x = 0; x < buffer.width; x++) {
+      const cell = buffer.cells[y][x];
+      if (cell.wideContinuation) {
+        // Inherit the lead cell's background so a wide glyph's two halves fill
+        // with one color instead of leaving the right half on the page default.
+        row.push({ c: "", cont: true, bg: row[row.length - 1]?.bg });
+        continue;
+      }
+      const s = cell.style;
+      let fg = s.color;
+      let bg = s.background;
+      if (s.reverse) [fg, bg] = [bg, fg];
+      const out: CanvasCell = { c: cell.char };
+      if (fg && fg !== "default") out.fg = normalizeColorForCSS(fg);
+      if (bg && bg !== "default") out.bg = normalizeColorForCSS(bg);
+      if (s.bold) out.bold = true;
+      if (s.italic) out.italic = true;
+      if (s.underline) {
+        out.underline = true;
+        if (s.underlineStyle && s.underlineStyle !== "single") out.uStyle = s.underlineStyle;
+        if (s.underlineColor) out.uColor = normalizeColorForCSS(s.underlineColor);
+      }
+      if (s.strikethrough) out.strike = true;
+      if (cell.icon) {
+        out.icon = true;
+        // Ship the icon's vector source so the canvas renders it natively. Falls
+        // back to the `c` glyph/emoji when the icon has no SVG (e.g. a missing
+        // Seti glyph registered with an empty svg).
+        const svg = iconRegistry.get(cell.icon)?.svg;
+        if (svg) out.svg = svg;
+      }
+      row.push(out);
+    }
+    rows.push(row);
+  }
+  return rows;
+}

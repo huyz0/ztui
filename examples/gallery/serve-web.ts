@@ -6,7 +6,7 @@ import {
   type WebDriver,
 } from "../../src/core.ts";
 import { canvasClientScript } from "../../src/driver/web/canvas-bundle.ts";
-import { serializeForCanvas } from "../../src/driver/web/canvas-renderer.ts";
+import { serializeForCanvas } from "../../src/driver/web/canvas-serialize.ts";
 import {
   bundledFontFaces,
   bundledFontPath,

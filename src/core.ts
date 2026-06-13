@@ -54,8 +54,8 @@ export {
   type CanvasRenderOptions,
   measureCellFromBlock,
   renderBufferToCanvas,
-  serializeForCanvas,
 } from "./driver/web/canvas-renderer.ts";
+export { serializeForCanvas } from "./driver/web/canvas-serialize.ts";
 export {
   type AttachOptions,
   attachToDOM,
