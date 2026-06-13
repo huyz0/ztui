@@ -108,7 +108,9 @@ describe("HotkeyPalette", () => {
     expect(frame).toContain("Ctrl+S");
     expect(frame).toContain("Save file");
     expect(frame).toContain("Write to disk");
-    expect(frame).toContain("HELP"); // the palette's own toggle binding
+    // The palette's own toggle binding is hidden from its list (self-referential
+    // noise), so the HELP group it lives in does not appear.
+    expect(frame).not.toContain("HELP");
 
     driver.emit("key", key({ key: "escape", name: "escape" }));
     await settle();

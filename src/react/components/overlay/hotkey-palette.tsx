@@ -163,6 +163,11 @@ export function HotkeyPalette({
     name: "Command palette",
     description: "Show or hide this command list",
     group: "Help",
+    // Keep the binding active but out of its own list — it's self-referential
+    // noise, and the footer already shows the toggle key. This also means the
+    // first real command is the default selection, so Enter on a fresh open
+    // runs something useful instead of just closing the palette.
+    hidden: true,
     handler: () => {
       setQuery("");
       setSelected(0);
@@ -201,15 +206,35 @@ export function HotkeyPalette({
     closeOnOutsideClick: true,
     onClose: () => setOpen(false),
     keyInterceptor: (ev) => {
-      if (ev.key === "up") {
-        setSelected(Math.max(0, sel - 1));
+      const last = Math.max(0, items.length - 1);
+      // Clamp every move against the *current* item count via a functional
+      // update, so navigation stays valid even if the list shrank (filter) or
+      // grew since the last render, and never points past the end.
+      const move = (to: (cur: number) => number) => {
+        setSelected((cur) => Math.max(0, Math.min(last, to(Math.min(cur, last)))));
         ev.handled = true;
-      } else if (ev.key === "down") {
-        setSelected(Math.min(Math.max(0, items.length - 1), sel + 1));
-        ev.handled = true;
-      } else if (ev.key === "enter" && items[sel]) {
-        runHotkey(items[sel]);
-        ev.handled = true;
+      };
+      switch (ev.key) {
+        case "up":
+          move((c) => c - 1);
+          break;
+        case "down":
+          move((c) => c + 1);
+          break;
+        case "pageup":
+          move((c) => c - maxVisible);
+          break;
+        case "pagedown":
+          move((c) => c + maxVisible);
+          break;
+        // Home/End are intentionally NOT intercepted: they move the filter
+        // Input's text caret, which the focused field needs.
+        case "enter":
+          if (items[sel]) {
+            runHotkey(items[sel]);
+            ev.handled = true;
+          }
+          break;
       }
     },
   });
