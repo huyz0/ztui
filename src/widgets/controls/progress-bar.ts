@@ -1,5 +1,6 @@
 import { requestAnimationTick } from "../../core/animation.ts";
 import { App } from "../../core/app.ts";
+import type { Easing } from "../../core/easing.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
@@ -23,6 +24,14 @@ export class ProgressBarWidget extends Widget {
   public showPercent = false;
   /** Render an indeterminate sweep instead of a value-driven fill. */
   public indeterminate = false;
+  /**
+   * When > 0, tween the fill toward `value` over this many milliseconds instead
+   * of snapping. Driven by the widget's own animation engine, so the motion
+   * happens regardless of which framework (or none) set `value`. 0 = snap.
+   */
+  public animateMs = 0;
+  /** Easing curve for the {@link animateMs} tween. Defaults to `out-cubic`. */
+  public animateEasing: Easing = "out-cubic";
 
   constructor() {
     super("progress-bar");
@@ -73,15 +82,25 @@ export class ProgressBarWidget extends Widget {
     const trackWidth = Math.max(1, contentRect.width - pctWidth);
     const y = contentRect.y;
 
+    // The value actually painted: tweened toward `value` when animation is on
+    // (the widget books its own frames), or `value` verbatim when snapping.
+    const shown =
+      this.animateMs > 0 && !this.indeterminate
+        ? this.animate("value", this.value, {
+            duration: this.animateMs,
+            easing: this.animateEasing,
+          })
+        : this.value;
+
     if (this.indeterminate) {
       this.renderIndeterminate(buffer, contentRect.x, y, trackWidth, fillRgb, trackRgb, bg);
     } else {
-      this.renderDeterminate(buffer, contentRect.x, y, trackWidth, fillRgb, trackRgb, bg);
+      this.renderDeterminate(buffer, contentRect.x, y, trackWidth, fillRgb, trackRgb, bg, shown);
     }
 
     if (this.showPercent) {
       const range = this.max - this.min;
-      const pct = range === 0 ? 0 : (this.value - this.min) / range;
+      const pct = range === 0 ? 0 : (shown - this.min) / range;
       const clamped = Math.max(0, Math.min(1, pct));
       const text = `${String(Math.round(clamped * 100)).padStart(4)}%`;
       buffer.drawSegment(
@@ -101,9 +120,10 @@ export class ProgressBarWidget extends Widget {
     fillRgb: RGB,
     trackRgb: RGB,
     bg: string,
+    shown: number,
   ): void {
     const range = this.max - this.min;
-    const pct = range === 0 ? 0 : (this.value - this.min) / range;
+    const pct = range === 0 ? 0 : (shown - this.min) / range;
     const clamped = Math.max(0, Math.min(1, pct));
 
     const fillExact = clamped * trackWidth;

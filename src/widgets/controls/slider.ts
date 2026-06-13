@@ -115,18 +115,20 @@ export class SliderWidget extends Widget {
     const currentPct = range === 0 ? 0 : (this.value - this.min) / range;
     const knobPos = Math.round(currentPct * (trackWidth - 1));
 
-    // Colors
+    // Colors. Focused: the *whole* filled bar (not just the knob) glows with the
+    // breathing $focus accent, so the value reads as actively focused.
     const activeStyle = new Style({
-      color: disabled ? disabledColor : this.focused ? selectFg : primaryColor,
+      color: disabled ? disabledColor : this.focused ? displayColor : primaryColor,
       background: sliderBg,
-      bold: this.focused && !disabled,
     });
     const inactiveStyle = new Style({
       color: disabled ? disabledColor : this.focused ? "lightgray" : "gray",
       background: sliderBg,
     });
     const knobStyle = new Style({
-      color: disabled ? disabledColor : this.focused ? primaryColor : displayColor,
+      // Focused: the handle breathes with the $focus accent (displayColor); the
+      // knob stays bold as the value's anchor point.
+      color: disabled ? disabledColor : this.focused ? displayColor : primaryColor,
       background: sliderBg,
       bold: true,
     });
@@ -163,7 +165,6 @@ export class SliderWidget extends Widget {
         new Style({
           color: this.focused ? selectFg : displayColor,
           background: sliderBg,
-          bold: this.focused,
         }),
       ),
       contentRect,

@@ -82,15 +82,36 @@ export class SwitchWidget extends Widget {
     const disabled = this.isDisabled();
     const disabledColor = App.instance?.cssResolver.resolveVariable(this, "$disabled") || fg;
 
-    const style = new Style({
-      color: disabled ? disabledColor : this.active ? primaryColor : displayColor,
-      background: bg,
-      bold: this.focused && !disabled,
-    });
-
     const track = this.active ? "[ ●]" : "[● ]";
-    const text = `${track} ${this.label}`;
-    const segment = new Segment(text, style);
-    buffer.drawSegment(contentRect.x, contentRect.y, segment, contentRect);
+
+    // Borderless control: show focus as a breathing band behind the whole switch
+    // (a tinted label alone is nearly invisible). Text flips to a contrasting
+    // colour so it stays legible as the band glows.
+    const focusBand = this.focused && !disabled && !severityColor;
+    let rowBg = bg;
+    let trackColor = disabled ? disabledColor : this.active ? primaryColor : displayColor;
+    let labelColor = trackColor;
+    if (focusBand && App.instance) {
+      // Band bg glows; text colour eases in lockstep (smooth, not a hard flip).
+      const pair = App.instance.cssResolver.focusGlowPair(this, "$selectionBg");
+      rowBg = pair.bg;
+      labelColor = pair.fg;
+      trackColor = labelColor;
+      const client = this.getClientRect();
+      const bandStyle = new Style({ background: rowBg });
+      for (let y = client.y; y < client.bottom; y++) {
+        for (let x = client.x; x < client.right; x++) buffer.setCell(x, y, " ", bandStyle);
+      }
+    }
+
+    const trackSeg = new Segment(`${track} `, new Style({ color: trackColor, background: rowBg }));
+    const labelSeg = new Segment(this.label, new Style({ color: labelColor, background: rowBg }));
+    buffer.drawSegment(contentRect.x, contentRect.y, trackSeg, contentRect);
+    buffer.drawSegment(
+      contentRect.x + stringWidth(`${track} `),
+      contentRect.y,
+      labelSeg,
+      contentRect,
+    );
   }
 }

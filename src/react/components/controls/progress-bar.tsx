@@ -1,6 +1,5 @@
 import type { ReactElement } from "react";
 import type { Easing } from "../../../core/easing.ts";
-import { useAnimatedValue } from "../../use-animation.ts";
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
@@ -23,26 +22,38 @@ export interface ProgressBarProps extends ComponentProps {
   animateEasing?: Easing;
 }
 
-const ProgressBarHost = hostComponent<ProgressBarProps>("ztui-progress-bar");
+interface ProgressBarHostProps extends ComponentProps {
+  value?: number;
+  min?: number;
+  max?: number;
+  showPercent?: boolean;
+  indeterminate?: boolean;
+  animateMs?: number;
+  animateEasing?: Easing;
+}
+
+const ProgressBarHost = hostComponent<ProgressBarHostProps>("ztui-progress-bar");
 
 /**
  * A horizontal progress bar. With `animate`, a change to `value` sweeps to the
  * new fill rather than jumping — pleasant for steppy or bursty progress (a
  * download that arrives in chunks, a multi-stage task).
+ *
+ * The tween runs inside the widget (via its portable animation engine), not in
+ * a React hook, so the smoothing is the same no matter what drives `value`.
  */
 export function ProgressBar({
   animate,
   animateEasing,
   value = 0,
-  indeterminate,
   ...props
 }: ProgressBarProps): ReactElement {
-  // Hooks must run unconditionally; when animation is off (or the bar is
-  // indeterminate) we simply ignore the tweened value and forward `value` as-is.
-  const duration = typeof animate === "number" ? animate : 300;
-  const tweened = useAnimatedValue(value, { duration, easing: animateEasing });
-  const shown = animate && !indeterminate ? tweened : value;
-  return <ProgressBarHost value={shown} indeterminate={indeterminate} {...props} />;
+  // Translate the friendly boolean|number `animate` prop into the widget's
+  // `animateMs` (0 = snap). The widget owns the tween from here.
+  const animateMs = animate ? (typeof animate === "number" ? animate : 300) : 0;
+  return (
+    <ProgressBarHost value={value} animateMs={animateMs} animateEasing={animateEasing} {...props} />
+  );
 }
 
 export interface CompactProgressBarProps extends ProgressBarProps {}

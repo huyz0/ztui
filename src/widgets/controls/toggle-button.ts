@@ -82,8 +82,10 @@ export class ToggleButtonWidget extends Widget {
         ? "$primary"
         : this.computedStyle.color || "default";
 
+    // Focused fill uses the breathing $focus accent; the pressed ("active") state
+    // keeps its distinct $selectionBg so focus and active never look identical.
     const bgVar = this.focused
-      ? "$primary"
+      ? "$focus"
       : this.active
         ? "$selectionBg"
         : this.findResolvedBackground();
@@ -99,10 +101,21 @@ export class ToggleButtonWidget extends Widget {
     const style = new Style({
       color: fg,
       background: bg,
-      bold: !disabled,
+      // Breathing focus fill carries the emphasis; drop bold while focused.
+      bold: !disabled && !this.focused,
       strikethrough: this.computedStyle.strikethrough,
       link: this.computedStyle.link,
     });
+
+    // Fill the whole control with `bg` (not just the label cells) so the focus
+    // glow breathes across the entire toggle.
+    const fillStyle = new Style({ background: bg });
+    const fillRect = this.getClientRect();
+    for (let fy = fillRect.y; fy < fillRect.bottom; fy++) {
+      for (let fx = fillRect.x; fx < fillRect.right; fx++) {
+        buffer.setCell(fx, fy, " ", fillStyle);
+      }
+    }
 
     const indicator = this.active ? "[x]" : "[ ]";
     const displayText = `${indicator} ${text}`;

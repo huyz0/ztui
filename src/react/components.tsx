@@ -78,6 +78,8 @@ export type { TracebackProps } from "./components/data/traceback.tsx";
 export { Traceback } from "./components/data/traceback.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";
 export { Tree } from "./components/data/tree.tsx";
+export type { AttentionProps } from "./components/layout/attention.tsx";
+export { Attention } from "./components/layout/attention.tsx";
 export { Box } from "./components/layout/box.tsx";
 export type { CollapsibleProps } from "./components/layout/collapsible.tsx";
 export { Collapsible } from "./components/layout/collapsible.tsx";

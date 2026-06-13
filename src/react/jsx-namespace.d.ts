@@ -83,6 +83,10 @@ declare global {
         "ztui-box": ZTUIElementProps & {
           title?: string;
         };
+        "ztui-attention": ZTUIElementProps & {
+          title?: string;
+          attentive?: boolean;
+        };
         "ztui-splitter": ZTUIElementProps & {
           orientation?: "vertical" | "horizontal";
           onResize?: (delta: number) => void;

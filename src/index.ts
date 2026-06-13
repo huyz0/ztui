@@ -1,5 +1,14 @@
 // Core & DOM
+
+export { requestAnimationTick } from "./core/animation.ts";
 export { App } from "./core/app.ts";
+export {
+  ATTENTION_BREATH,
+  type BreatheSpec,
+  breatheColor,
+  breatheIntensity,
+  FOCUS_BREATH,
+} from "./core/breathe.ts";
 export {
   EASINGS,
   type Easing,
@@ -21,6 +30,7 @@ export {
 } from "./core/hotkeys.ts";
 export { startInspector } from "./core/inspector.ts";
 export { type LogLevel, logger } from "./core/logger.ts";
+export { motion } from "./core/motion.ts";
 export type { Theme } from "./core/theme.ts";
 export { adjustLightness, deriveTheme, ThemeManager } from "./core/theme.ts";
 export {
@@ -30,6 +40,7 @@ export {
   type ToastOptions,
   toast,
 } from "./core/toast.ts";
+export { ColorTween, Tween, type TweenOptions } from "./core/tween.ts";
 export { DOMNode } from "./dom/dom.ts";
 export { type OverlayPlacement, OverlayRootWidget } from "./dom/overlay.ts";
 export { Screen, type ScreenLayer } from "./dom/screen.ts";
@@ -66,6 +77,8 @@ export { Spacing } from "./geometry/spacing.ts";
 export { registerHeroIcon, resolveHeroIcon } from "./react/components/media/heroic-icon.tsx";
 export {
   type AnimationOptions,
+  Attention,
+  type AttentionProps,
   Box,
   Button,
   Checkbox,

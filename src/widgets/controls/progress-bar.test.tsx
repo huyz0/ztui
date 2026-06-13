@@ -87,19 +87,27 @@ describe("ZTUI ProgressBar Widget Suite", () => {
       );
     }
 
-    const { findById, settle } = await mountApp(<Probe />, { cols: 20, rows: 3 });
-    expect(findById<ProgressBarWidget>("pb")?.value).toBe(0);
+    // The widget tweens the *painted* fill internally; `value` stays the target.
+    // Count fully-lit fill cells to observe the motion across frames.
+    const litCells = (cellAt: (x: number, y: number) => { style: { color?: string } }): number => {
+      let n = 0;
+      for (let x = 0; x < 10; x++) if (cellAt(x, 0).style.color === FILL) n++;
+      return n;
+    };
+
+    const { cellAt, settle } = await mountApp(<Probe />, { cols: 20, rows: 3 });
+    expect(litCells(cellAt)).toBe(0);
 
     setV?.(100);
-    // Mid-flight: the widget value has moved off 0 but not yet reached the target.
+    // Mid-flight: the painted fill has grown off empty but not yet filled the bar.
     await settle(40);
-    const mid = findById<ProgressBarWidget>("pb")?.value ?? -1;
+    const mid = litCells(cellAt);
     expect(mid).toBeGreaterThan(0);
-    expect(mid).toBeLessThan(100);
+    expect(mid).toBeLessThan(10);
 
-    // Well past the 300ms default: it lands exactly on the target.
+    // Well past the 300ms default: every cell is lit (landed exactly on 100).
     await settle(360);
-    expect(findById<ProgressBarWidget>("pb")?.value).toBe(100);
+    expect(litCells(cellAt)).toBe(10);
   });
 
   test("without animate, a value change is applied immediately", async () => {

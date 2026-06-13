@@ -328,6 +328,10 @@ export class SelectWidget extends Widget {
     const severityColor = this.validation.resolveColor();
     if (severityColor) {
       this.computedStyle.borderColor = severityColor;
+    } else if (this.focused && this.style.borderColor === undefined && App.instance) {
+      // A focused select breathes its border with the $focus accent, so focus is
+      // visible on the box itself, not only via the value-text colour.
+      this.computedStyle.borderColor = App.instance.cssResolver.resolveVariable(this, "$focus");
     }
 
     super.render(buffer);

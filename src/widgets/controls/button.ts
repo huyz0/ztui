@@ -1,8 +1,8 @@
 import { App } from "../../core/app.ts";
-import { isColorLight } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Spacing } from "../../geometry/spacing.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
+import { contrastText } from "../../render/color.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 
@@ -67,36 +67,59 @@ export class ButtonWidget extends Widget {
     const disabled = this.isDisabled();
     const explicitBg = this.computedStyle.background;
     const hasExplicitBg = explicitBg !== undefined && explicitBg !== "default";
-    let bg = disabled
-      ? "$panel"
-      : this.focused
-        ? "$primary"
-        : hasExplicitBg
-          ? explicitBg
-          : "$panel";
+    // The button's own resting colour: an explicit background (e.g. a `$error`
+    // destructive button), the accent for a default button, or panel chrome.
+    const baseBg = hasExplicitBg ? (explicitBg as string) : "$primary";
+    // Focused buttons glow *their own* colour — pulsing from the base toward a
+    // contrast pole and back, so a red button glows red, a green one green,
+    // rather than every button turning the same accent. Disabled/unfocused sit
+    // flat. A 1-row button has no border to ring, so the surface is the signal.
+    // When focused, the bg glows the button's own colour and the fg is paired to
+    // it — easing light→dark as the fill brightens (a smooth transition, not a
+    // hard flip at a luminance threshold). Unfocused/disabled sit flat.
+    let bg = disabled ? "$panel" : hasExplicitBg ? (explicitBg as string) : "$panel";
+    let glowFg: string | null = null;
     if (App.instance) {
-      bg = App.instance.cssResolver.resolveVariable(this, bg);
+      if (this.focused && !disabled) {
+        const pair = App.instance.cssResolver.focusGlowPair(this, baseBg);
+        bg = pair.bg;
+        glowFg = pair.fg;
+      } else {
+        bg = App.instance.cssResolver.resolveVariable(this, bg);
+      }
     }
 
-    // Pick the text colour to contrast with the *resolved* fill: a themed dark
-    // tone on light fills, a themed light tone on dark fills. This keeps filled
-    // accent buttons legible on every theme without callers hardcoding a colour
-    // (and avoids the muddy "inactive" look of ANSI `black` on a mid-tone fill).
-    // An explicit `color` still wins.
-    let fg = disabled
-      ? "$disabled"
-      : (this.computedStyle.color ?? (isColorLight(bg) ? "$background" : "$foreground"));
-    if (App.instance) {
-      fg = App.instance.cssResolver.resolveVariable(this, fg);
+    // Text colour: explicit `color` wins, disabled is muted, a focused button
+    // uses its paired glow colour, else a static contrast of the fill.
+    let fg: string;
+    if (disabled) {
+      fg = App.instance?.cssResolver.resolveVariable(this, "$disabled") ?? "#8a8a8a";
+    } else if (this.computedStyle.color) {
+      fg = App.instance?.cssResolver.resolveVariable(this, this.computedStyle.color) ?? "#ffffff";
+    } else {
+      fg = glowFg ?? contrastText(bg);
     }
 
     const style = new Style({
       color: fg,
       background: bg,
-      bold: !disabled,
+      // Bold only when *not* focused: the breathing focus fill already carries the
+      // emphasis, so dropping bold there avoids the over-loud "fill + bold" stack.
+      bold: !disabled && !this.focused,
       strikethrough: this.computedStyle.strikethrough,
       link: this.computedStyle.link,
     });
+
+    // Paint the whole button surface with `bg`, not just the text cells, so the
+    // focus accent (and its breathing) fills the entire control rather than
+    // highlighting only the label.
+    const fillStyle = new Style({ background: bg });
+    const fillRect = this.getClientRect();
+    for (let fy = fillRect.y; fy < fillRect.bottom; fy++) {
+      for (let fx = fillRect.x; fx < fillRect.right; fx++) {
+        buffer.setCell(fx, fy, " ", fillStyle);
+      }
+    }
 
     const textLen = stringWidth(text);
     const x = Math.max(

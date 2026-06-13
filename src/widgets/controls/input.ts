@@ -355,13 +355,17 @@ export class InputWidget extends Widget implements ValidatableField {
       this.computedStyle.border = "rounded";
     }
 
-    // Apply severity border color (error/warning) when validation fails.
+    // Border colour, in priority order: a validation error/warning wins, else a
+    // focused input breathes its border with the $focus accent (so focus is
+    // visible on the frame itself, not only via the caret), else the default.
     const severityColor = this.validation.resolveColor();
     if (this._invalidOverride && App.instance) {
       this.computedStyle.borderColor =
         App.instance.cssResolver.resolveVariable(this, "$error") || "red";
     } else if (severityColor) {
       this.computedStyle.borderColor = severityColor;
+    } else if (this.focused && this.style.borderColor === undefined && App.instance) {
+      this.computedStyle.borderColor = App.instance.cssResolver.resolveVariable(this, "$focus");
     }
 
     super.render(buffer);

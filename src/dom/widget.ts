@@ -1,7 +1,10 @@
 // Type-only: erased at runtime, so no import cycle with app.ts.
+
+import { requestAnimationTick } from "../core/animation.ts";
 import type { App } from "../core/app.ts";
 import { logger } from "../core/logger.ts";
 import { themeBlendBase } from "../core/theme.ts";
+import { ColorTween, Tween, type TweenOptions } from "../core/tween.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
@@ -274,6 +277,64 @@ export class Widget extends DOMNode {
       current = current.parent instanceof Widget ? current.parent : null;
     }
     return false;
+  }
+
+  /**
+   * Named tweens owned by this widget. Lazily created on first {@link animate}
+   * call; each key drives one independent in-flight value (e.g. "width",
+   * "scroll", "glow"). Keeping them on the widget — not in a framework hook —
+   * is what makes animation portable: any binding (React, Solid, or none)
+   * animates by calling {@link animate} from the widget's own render.
+   */
+  private _tweens?: Map<string, Tween>;
+  private _colorTweens?: Map<string, ColorTween>;
+
+  /**
+   * Drive a named scalar tween toward `target`, returning the value to show this
+   * frame. Call it from {@link render}: while the tween is still moving it books
+   * the next animation frame on this widget, so the value advances on its own
+   * without any external clock or state. This is the framework-agnostic
+   * counterpart to React's `useAnimatedValue` — the engine lives on the widget,
+   * so every binding gets smooth motion for the same call.
+   *
+   * A non-positive `duration` (or `opts` omitted with a default of 0 from the
+   * caller) snaps immediately, so animation can be turned off by passing
+   * `duration: 0`.
+   */
+  public animate(key: string, target: number, opts?: TweenOptions): number {
+    this._tweens ??= new Map();
+    const map = this._tweens;
+    let tween = map.get(key);
+    if (!tween) {
+      // First sight of this key starts already settled on the target, so a
+      // freshly mounted widget paints its final value rather than tweening in
+      // from zero.
+      tween = new Tween(target);
+      map.set(key, tween);
+    }
+    tween.to(target, opts);
+    const value = tween.value;
+    if (tween.animating) requestAnimationTick(this, 16);
+    return value;
+  }
+
+  /**
+   * Colour counterpart to {@link animate}: tweens a named CSS colour toward
+   * `target`, returning the `rgb(...)` string to paint this frame and booking
+   * the next frame while in flight.
+   */
+  public animateColor(key: string, target: string, opts?: TweenOptions): string {
+    this._colorTweens ??= new Map();
+    const map = this._colorTweens;
+    let tween = map.get(key);
+    if (!tween) {
+      tween = new ColorTween(target);
+      map.set(key, tween);
+    }
+    tween.to(target, opts);
+    const value = tween.value;
+    if (tween.animating) requestAnimationTick(this, 16);
+    return value;
   }
 
   public findResolvedBackground(): string {

@@ -85,14 +85,39 @@ export class CheckboxWidget extends Widget {
     const disabledColor = App.instance?.cssResolver.resolveVariable(this, "$disabled") || fg;
 
     const marker = this.checked ? "☑" : "☐";
-    const style = new Style({
-      color: disabled ? disabledColor : this.checked ? primaryColor : displayColor,
-      background: bg,
-      bold: this.focused && !disabled,
-    });
 
-    const text = `${marker} ${this.label}`;
-    const segment = new Segment(text, style);
-    buffer.drawSegment(contentRect.x, contentRect.y, segment, contentRect);
+    // A focused, valid checkbox is borderless, so focus is shown as a breathing
+    // band behind the whole control (like a highlighted row) — far more visible
+    // than tinting the label alone. Text/marker flip to a contrasting colour so
+    // they stay legible as the band glows.
+    const focusBand = this.focused && !disabled && !severityColor;
+    let rowBg = bg;
+    let markerColor = disabled ? disabledColor : this.checked ? primaryColor : displayColor;
+    let labelColor = markerColor;
+    if (focusBand && App.instance) {
+      // Band bg glows; text colour eases in lockstep (smooth, not a hard flip).
+      const pair = App.instance.cssResolver.focusGlowPair(this, "$selectionBg");
+      rowBg = pair.bg;
+      labelColor = pair.fg;
+      markerColor = labelColor;
+      const client = this.getClientRect();
+      const bandStyle = new Style({ background: rowBg });
+      for (let y = client.y; y < client.bottom; y++) {
+        for (let x = client.x; x < client.right; x++) buffer.setCell(x, y, " ", bandStyle);
+      }
+    }
+
+    const markerSeg = new Segment(
+      `${marker} `,
+      new Style({ color: markerColor, background: rowBg }),
+    );
+    const labelSeg = new Segment(this.label, new Style({ color: labelColor, background: rowBg }));
+    buffer.drawSegment(contentRect.x, contentRect.y, markerSeg, contentRect);
+    buffer.drawSegment(
+      contentRect.x + stringWidth(`${marker} `),
+      contentRect.y,
+      labelSeg,
+      contentRect,
+    );
   }
 }

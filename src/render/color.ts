@@ -43,6 +43,22 @@ export function mix(a: RGB, b: RGB, t: number): RGB {
 export const rgbStr = (c: RGB): string => `rgb(${c.r}, ${c.g}, ${c.b})`;
 
 /**
+ * Pick a near-black or near-white text colour that reads cleanly on `bg`, by
+ * `bg`'s relative luminance. Unlike `isColorLight`, this parses `rgb(...)` too
+ * (so it stays correct as a colour animates) and returns soft poles rather than
+ * harsh pure black/white. Falls back to white for unparseable input.
+ */
+export function contrastText(bg: string): string {
+  const rgb = parseRgb(bg);
+  if (!rgb) return "#ffffff";
+  const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  // Threshold biased above mid (0.6): only genuinely light fills get dark text,
+  // so mid-tone accents (a red/blue button) keep crisp white text and only flip
+  // once the focus glow brightens them near the light end.
+  return lum > 0.6 ? "#0a0a0a" : "#ffffff";
+}
+
+/**
  * Interpolate between two CSS colours, returning an `rgb(...)` string at
  * fraction `t` (0 → `from`, 1 → `to`). Unparseable endpoints fall back to the
  * other end, so a tween from/to `default` degrades to a hold rather than a throw.
