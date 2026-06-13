@@ -21,8 +21,13 @@ import { WebInspector } from "../src/tools/web-inspector.ts";
 
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "../site/src/assets/widgets");
 
-/** Demo ids shot by default (the documented widget batch), with a render size. */
-const BATCH: Record<string, { cols: number; rows: number }> = {
+/**
+ * Demo ids shot by default (the documented widget batch), with a render size and
+ * an optional `wait` (ms). Streaming/animated demos (markdown stream, spinners,
+ * tweens) drive their content from timers, so we let them run `wait` ms and
+ * re-render before capturing — otherwise we'd shoot an empty first frame.
+ */
+const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
   table: { cols: 64, rows: 16 },
   tree: { cols: 48, rows: 18 },
   listview: { cols: 48, rows: 14 },
@@ -30,9 +35,9 @@ const BATCH: Record<string, { cols: number; rows: number }> = {
   sparkline: { cols: 64, rows: 12 },
   diff: { cols: 72, rows: 18 },
   richlog: { cols: 72, rows: 16 },
-  markdown: { cols: 72, rows: 22 },
+  markdown: { cols: 72, rows: 22, wait: 4000 }, // streams in token-by-token
   textarea: { cols: 64, rows: 16 },
-  waiting: { cols: 56, rows: 14 },
+  waiting: { cols: 56, rows: 14, wait: 800 }, // spinners mid-animation
   status: { cols: 56, rows: 16 },
   collapsible: { cols: 64, rows: 16 },
   // Batch 2
@@ -47,6 +52,15 @@ const BATCH: Record<string, { cols: number; rows: number }> = {
   heroicons: { cols: 64, rows: 12 },
   "file-icon": { cols: 56, rows: 18 },
   image: { cols: 48, rows: 16 },
+  // Batch 3 — controls
+  button: { cols: 40, rows: 12 },
+  input: { cols: 48, rows: 14 },
+  checkbox: { cols: 40, rows: 10 },
+  switch: { cols: 40, rows: 8 },
+  select: { cols: 44, rows: 12 },
+  slider: { cols: 44, rows: 10 },
+  radio: { cols: 44, rows: 14 },
+  "toggle-button": { cols: 40, rows: 8 },
 };
 
 const DEFAULT_SIZE = { cols: 72, rows: 20 };
@@ -67,12 +81,21 @@ async function main() {
       continue;
     }
     const size = BATCH[id] ?? DEFAULT_SIZE;
+    const wait = (BATCH[id] as { wait?: number } | undefined)?.wait ?? 0;
     const out = join(OUT_DIR, `${id}.png`);
     const insp = await WebInspector.launch(createElement(demo.Component), size);
     try {
+      if (wait > 0) {
+        // Let the demo's timers (streaming, animation) advance, then re-render
+        // the now-current buffer before capturing.
+        await new Promise((r) => setTimeout(r, wait));
+        await insp.render();
+      }
       await insp.screenshot(out);
       console.log(
-        `✓ ${id.padEnd(16)} → site/src/assets/widgets/${id}.png  (${size.cols}×${size.rows})`,
+        `✓ ${id.padEnd(16)} → site/src/assets/widgets/${id}.png  (${size.cols}×${size.rows})${
+          wait ? `  [+${wait}ms]` : ""
+        }`,
       );
     } finally {
       await insp.close();

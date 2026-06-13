@@ -33,6 +33,19 @@ export default defineConfig({
           items: [
             { label: "Gallery", slug: "widgets" },
             {
+              label: "Controls",
+              items: [
+                { label: "Button", slug: "widgets/button" },
+                { label: "Input", slug: "widgets/input" },
+                { label: "Checkbox", slug: "widgets/checkbox" },
+                { label: "Switch", slug: "widgets/switch" },
+                { label: "Select", slug: "widgets/select" },
+                { label: "Slider", slug: "widgets/slider" },
+                { label: "Radio Group", slug: "widgets/radio-group" },
+                { label: "Toggle Button", slug: "widgets/toggle-button" },
+              ],
+            },
+            {
               label: "Data",
               items: [
                 { label: "Table", slug: "widgets/table" },

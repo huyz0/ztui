@@ -11,6 +11,17 @@ repo.
 ztui ships ~66 components across seven categories. This gallery is filling in
 batch by batch; the remaining controls, layout, and media widgets land next.
 
+## Controls
+
+- [Button](/ztui/widgets/button/) — clickable, focusable button.
+- [Input](/ztui/widgets/input/) — single-line text field with icons and validation.
+- [Checkbox](/ztui/widgets/checkbox/) — labelled boolean checkbox.
+- [Switch](/ztui/widgets/switch/) — on/off toggle switch.
+- [Select](/ztui/widgets/select/) — single/multi-select dropdown.
+- [Slider](/ztui/widgets/slider/) — numeric range slider.
+- [Radio Group](/ztui/widgets/radio-group/) — single-choice radio group.
+- [Toggle Button](/ztui/widgets/toggle-button/) — button with a pressed state.
+
 ## Data
 
 - [Table](/ztui/widgets/table/) — virtualized, sortable data grid for huge row sets.
