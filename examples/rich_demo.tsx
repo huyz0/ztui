@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { App } from "../src/core.ts";
 import {
   Button,
   Dock,
@@ -12,16 +11,12 @@ import {
   Syntax,
   VBox,
 } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 import "../src/markdown.ts";
 import "../src/syntax.ts";
 
 function RichDemoApp() {
   const [tab, setTab] = useState<"markup" | "syntax" | "markdown">("markup");
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
 
   const codeSnippet = `// TypeScript Syntax Highlighting Demonstration
 interface User {
@@ -114,9 +109,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
           </Button>
 
           <VBox style={{ flexGrow: 1 }} />
-          <Button style={{ background: "$error", margin: 1 }} onClick={handleExit}>
-            Exit App
-          </Button>
+          <ExitButton style={{ margin: 1 }}>Exit App</ExitButton>
         </VBox>
 
         {/* Content Viewer Panel */}

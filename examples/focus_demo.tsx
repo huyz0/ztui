@@ -26,6 +26,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
+import { exitApp } from "./exit-button.tsx";
 
 function FocusDemo() {
   const [, force] = useState(0);
@@ -43,7 +44,7 @@ function FocusDemo() {
     },
   });
   useHotkey({ key: "f3", name: "Re-arm attention", handler: () => setDecided(null) });
-  useHotkey({ key: "ctrl+c", name: "Quit", handler: () => process.exit(0) });
+  useHotkey({ key: "ctrl+c", name: "Quit", handler: exitApp });
 
   return (
     <VBox style={{ width: "100%", height: "100%", background: "$background" }}>

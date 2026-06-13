@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { App, loadSetiIcons, resolveFileIcon } from "../src/core.ts";
-import { Button, Dock, FileIcon, Footer, HBox, Header, Label, VBox, View } from "../src/react.ts";
+import { Dock, FileIcon, Footer, HBox, Header, Label, VBox, View } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 const sampleFiles = [
   { name: "package.json", isFolder: false },
@@ -51,11 +52,6 @@ function FileIconDemo() {
       setSelectedIndex((prev) => Math.min(sampleFiles.length - 1, prev + 1));
       ev.handled = true;
     }
-  };
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
   };
 
   const selectedFile = sampleFiles[selectedIndex];
@@ -177,17 +173,7 @@ function FileIconDemo() {
 
           <View style={{ height: "fr" }} />
 
-          <Button
-            onClick={handleExit}
-            style={{
-              width: 15,
-              height: 1,
-              background: "$error",
-              align: "center",
-            }}
-          >
-            ❌ Exit
-          </Button>
+          <ExitButton style={{ width: 15, height: 1, align: "center" }}>❌ Exit</ExitButton>
         </VBox>
       </HBox>
     </Dock>

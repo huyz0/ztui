@@ -1,28 +1,12 @@
 import { useState } from "react";
-import { App } from "../src/core.ts";
-import {
-  Button,
-  Dock,
-  Footer,
-  HBox,
-  Header,
-  Input,
-  Label,
-  TextArea,
-  VBox,
-  View,
-} from "../src/react.ts";
+import { Dock, Footer, HBox, Header, Input, Label, TextArea, VBox, View } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 function TextDemoApp() {
   const [inputText, setInputText] = useState("");
   const [editorText, setEditorText] = useState(
     "// Type TypeScript code here\nconst msg: string = 'Hello ZTUI!';\nconsole.log(msg);\n\nfunction add(a: number, b: number): number {\n  return a + b;\n}",
   );
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
 
   return (
     <Dock style={{ background: "$background" }}>
@@ -49,9 +33,7 @@ function TextDemoApp() {
           <Label style={{ color: "$warning" }}>{inputText || "(empty)"}</Label>
 
           <View style={{ height: 4 }} />
-          <Button style={{ background: "$error", margin: 1 }} onClick={handleExit}>
-            Exit Application
-          </Button>
+          <ExitButton style={{ margin: 1 }}>Exit Application</ExitButton>
         </VBox>
 
         {/* Right column: Multi-line editor */}

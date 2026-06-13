@@ -1,16 +1,5 @@
-import { App } from "../src/core.ts";
-import {
-  Button,
-  Dock,
-  Footer,
-  HBox,
-  Header,
-  Image,
-  Label,
-  SvgImage,
-  VBox,
-  View,
-} from "../src/react.ts";
+import { Dock, Footer, HBox, Header, Image, Label, SvgImage, VBox, View } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 // Gradient-filled rounded rect with a `$success` ring (a `$background` inner
 // circle cuts it out) and a `$warning` star — the theme tokens resolve at render.
@@ -36,11 +25,6 @@ const TINY_PNG_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
 function ImageDemoApp() {
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
-
   return (
     <Dock style={{ background: "$background" }}>
       {/* Header with premium styling */}
@@ -130,12 +114,9 @@ function ImageDemoApp() {
           </HBox>
 
           <View style={{ height: 2 }} />
-          <Button
-            style={{ background: "$error", color: "$background", bold: true, align: "center" }}
-            onClick={handleExit}
-          >
+          <ExitButton style={{ color: "$background", bold: true, align: "center" }}>
             Exit Application
-          </Button>
+          </ExitButton>
         </VBox>
       </HBox>
     </Dock>

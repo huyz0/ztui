@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Spacing } from "../src/core.ts";
 import { Button, Dock, Footer, HBox, Header, HeroIcon, Label, VBox, View } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 import type { Demo } from "./gallery/types.ts";
 
 function HeroiconsDemo() {
@@ -11,10 +12,6 @@ function HeroiconsDemo() {
     const nextIdx = (colors.indexOf(activeColor) + 1) % colors.length;
     setActiveColor(colors[nextIdx]);
   };
-
-  // A demo Component doesn't own process lifecycle (the launcher / global Ctrl+C
-  // handles clean shutdown), so Exit just terminates when run standalone.
-  const handleExit = () => process.exit(0);
 
   return (
     <Dock style={{ background: "$surface" }}>
@@ -28,9 +25,7 @@ function HeroiconsDemo() {
             🎨 Cycle Icon Color
           </Button>
           <View style={{ width: 2 }} />
-          <Button style={{ width: 20, background: "$error" }} onClick={handleExit}>
-            ❌ Exit
-          </Button>
+          <ExitButton style={{ width: 20 }}>❌ Exit</ExitButton>
         </HBox>
 
         <VBox style={{ flexGrow: 1, border: "rounded", padding: 1 }}>

@@ -21,6 +21,7 @@ import {
   useHotkey,
   VBox,
 } from "../src/react.ts";
+import { exitApp } from "./exit-button.tsx";
 
 const EASINGS: Easing[] = [
   "linear",
@@ -64,7 +65,7 @@ function AnimationDemo() {
     handler: () => setEasingIdx((i) => (i + 1) % EASINGS.length),
   });
   useHotkey({ key: "d", name: "Toggle dialog", handler: () => setDialogOpen((v) => !v) });
-  useHotkey({ key: "q", name: "Quit", handler: () => process.exit(0) });
+  useHotkey({ key: "q", name: "Quit", handler: exitApp });
 
   const width = Math.max(0, Math.round(fill * BAR_MAX));
   const pct = Math.round(fill * 100);

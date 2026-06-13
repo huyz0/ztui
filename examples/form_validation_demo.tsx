@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { App, email, minLength, pattern, required } from "../src/core.ts";
+import { email, minLength, pattern, required } from "../src/core.ts";
 import {
   Button,
   Checkbox,
@@ -15,14 +15,10 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 function SignupForm() {
   const [submitted, setSubmitted] = useState<Record<string, unknown> | null>(null);
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
 
   return (
     <Dock style={{ background: "$background" }}>
@@ -104,9 +100,7 @@ function SignupForm() {
         )}
 
         <View style={{ height: 1 }} />
-        <Button style={{ background: "$error" }} onClick={handleExit}>
-          Exit
-        </Button>
+        <ExitButton>Exit</ExitButton>
       </VBox>
     </Dock>
   );

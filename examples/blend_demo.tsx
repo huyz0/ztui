@@ -10,6 +10,7 @@ import { useState } from "react";
 //
 // Press `d` to toggle the dialog. Press `q` / Ctrl+C to quit.
 import { Box, Button, Dialog, Footer, Header, Label, useHotkey, VBox } from "../src/react.ts";
+import { exitApp } from "./exit-button.tsx";
 
 // Height of the stage that holds the backdrop text and the floating panels. The
 // panels are positioned absolutely within it, so the stage needs an explicit
@@ -73,7 +74,7 @@ function BlendDemo() {
   // Global hotkeys: bare-key bindings fire when no focused widget consumes the
   // key (an `onKey` on a non-focusable container never receives anything).
   useHotkey({ key: "d", name: "Toggle modal", handler: () => setOpen((v) => !v) });
-  useHotkey({ key: "q", name: "Quit", handler: () => process.exit(0) });
+  useHotkey({ key: "q", name: "Quit", handler: exitApp });
 
   return (
     <VBox style={{ width: "100%", height: "100%", background: "$background" }}>

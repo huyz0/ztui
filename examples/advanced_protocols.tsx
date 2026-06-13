@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { App, iconRegistry, Spacing } from "../src/core.ts";
 import { Button, Dock, Footer, HBox, Header, HeroIcon, Icon, Label, VBox } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 iconRegistry.registerIcons([
   {
@@ -53,11 +54,6 @@ function AdvancedProtocolsApp() {
       ]);
     }
   }, []);
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
 
   const handleSetBadge = () => {
     const driver = App.instance?.driver;
@@ -230,15 +226,7 @@ function AdvancedProtocolsApp() {
             Set Terminal Window Badge ({badgeText})
           </Button>
 
-          <Button
-            style={{
-              background: "$error",
-              margin: new Spacing(0, 1, 0, 1),
-            }}
-            onClick={handleExit}
-          >
-            Exit Application
-          </Button>
+          <ExitButton style={{ margin: new Spacing(0, 1, 0, 1) }}>Exit Application</ExitButton>
         </VBox>
       </HBox>
     </Dock>

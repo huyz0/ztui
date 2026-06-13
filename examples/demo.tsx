@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { App } from "../src/core.ts";
 import {
   Button,
   Checkbox,
@@ -20,6 +19,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 function DemoApp() {
   // Form states
@@ -33,11 +33,6 @@ function DemoApp() {
   const [agree, setAgree] = useState(false);
   const [volume, setVolume] = useState(70);
   const [darkTheme, setDarkTheme] = useState(true);
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
 
   const isEmailInvalid = email.length > 0 && !email.includes("@");
 
@@ -180,12 +175,7 @@ function DemoApp() {
             </Label>
           </VBox>
 
-          <Button
-            style={{ background: "$error", margin: { top: 1 }, height: 1 }}
-            onClick={handleExit}
-          >
-            Exit Application
-          </Button>
+          <ExitButton style={{ margin: { top: 1 }, height: 1 }}>Exit Application</ExitButton>
         </VBox>
       </HBox>
     </Dock>

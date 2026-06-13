@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { App, deriveTheme, Spacing, ThemeManager } from "../src/core.ts";
+import { deriveTheme, Spacing, ThemeManager } from "../src/core.ts";
 import { Button, Dock, Footer, HBox, Header, Input, Label, VBox, View } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 function ThemeExplorerApp() {
   const _themes = [
@@ -52,11 +53,6 @@ function ThemeExplorerApp() {
   const switchGlobalTheme = (name: string) => {
     themeManager.setTheme(name);
     setActiveTheme(name);
-  };
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
   };
 
   return (
@@ -235,12 +231,9 @@ function ThemeExplorerApp() {
 
           <View style={{ height: 1 }} />
 
-          <Button
-            style={{ background: "$error", color: "$background", margin: new Spacing(0, 1, 0, 1) }}
-            onClick={handleExit}
-          >
+          <ExitButton style={{ color: "$background", margin: new Spacing(0, 1, 0, 1) }}>
             Exit Explorer
-          </Button>
+          </ExitButton>
         </VBox>
 
         {/* Right column: Interactive widgets demonstrating variables & scoped themes */}

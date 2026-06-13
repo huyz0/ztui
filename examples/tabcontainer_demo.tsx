@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { App } from "../src/core.ts";
 import {
-  Button,
   Checkbox,
   Dock,
   Footer,
@@ -14,6 +12,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 function TabDemoApp() {
   const [activeTab, setActiveTab] = useState(0);
@@ -22,11 +21,6 @@ function TabDemoApp() {
   const [username, setUsername] = useState("ZTUI Developer");
   const [notifications, setNotifications] = useState(true);
   const [analytics, setAnalytics] = useState(false);
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
 
   return (
     <Dock style={{ background: "$surface" }}>
@@ -106,12 +100,7 @@ function TabDemoApp() {
         </TabContainer>
 
         <View style={{ height: 1 }} />
-        <Button
-          style={{ background: "$error", width: 20, height: 1, align: "center" }}
-          onClick={handleExit}
-        >
-          Exit Dashboard
-        </Button>
+        <ExitButton style={{ width: 20, height: 1, align: "center" }}>Exit Dashboard</ExitButton>
       </VBox>
     </Dock>
   );

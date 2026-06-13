@@ -12,6 +12,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 /**
  * Demonstrates first-class text selection + clipboard:
@@ -34,11 +35,6 @@ function ClipboardDemo() {
   const showClipboard = async () => {
     const text = (await App.instance?.driver.clipboard.get()) ?? "";
     setClip(text === "" ? "(clipboard empty)" : text);
-  };
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
   };
 
   return (
@@ -69,9 +65,7 @@ function ClipboardDemo() {
           <Label style={{ color: "$warning" }}>{clip}</Label>
 
           <View style={{ height: 1 }} />
-          <Button style={{ background: "$error", margin: 1 }} onClick={handleExit}>
-            Exit (or Ctrl+C with no selection)
-          </Button>
+          <ExitButton style={{ margin: 1 }}>Exit (or Ctrl+C with no selection)</ExitButton>
         </VBox>
 
         <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>

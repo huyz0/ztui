@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { App, Spacing } from "../src/core.ts";
+import { Spacing } from "../src/core.ts";
 import {
   Button,
   Dock,
@@ -12,6 +12,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 import "../src/markdown.ts";
 
 const MARKDOWN_PAYLOAD = `# 🤖 Generative AI Response
@@ -78,11 +79,6 @@ function GenerativeUIApp() {
       `[Action] Triggered "${name}" from ID "${data.id}" (${data.type})`,
       ...prev.slice(0, 4),
     ]);
-  };
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
   };
 
   const startStreaming = () => {
@@ -164,9 +160,7 @@ function GenerativeUIApp() {
             >
               ▶ Start Stream
             </Button>
-            <Button style={{ background: "$error" }} onClick={handleExit}>
-              🛑 Exit App
-            </Button>
+            <ExitButton>🛑 Exit App</ExitButton>
           </VBox>
         </HBox>
       </VBox>

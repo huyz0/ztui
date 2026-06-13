@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { App } from "../src/core.ts";
 import {
   Button,
   Checkbox,
@@ -18,6 +17,7 @@ import {
   VBox,
   View,
 } from "../src/react.ts";
+import { ExitButton } from "./exit-button.tsx";
 
 // Shows the `disabled` prop across every interactive control: a disabled widget
 // is muted, skipped by Tab, and ignores keyboard/mouse. The bottom section wraps
@@ -35,11 +35,6 @@ function Pair({ label, children }: { label: string; children: React.ReactNode })
 
 function DisabledDemo() {
   const [formLocked, setFormLocked] = useState(true);
-
-  const handleExit = () => {
-    App.instance?.stop();
-    process.exit(0);
-  };
 
   return (
     <Dock style={{ background: "$background" }}>
@@ -115,9 +110,7 @@ function DisabledDemo() {
       </HBox>
 
       <HBox style={{ dock: "bottom", height: 1, padding: { left: 1 } }}>
-        <Button style={{ background: "$error" }} onClick={handleExit}>
-          Exit
-        </Button>
+        <ExitButton>Exit</ExitButton>
       </HBox>
     </Dock>
   );
