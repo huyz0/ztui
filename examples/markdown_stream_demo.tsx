@@ -75,7 +75,7 @@ function MarkdownStreamDemo() {
   }, []);
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>
         📝 ZTUI Markdown — streaming token-by-token {paused ? "[paused]" : "[streaming]"}
       </Header>

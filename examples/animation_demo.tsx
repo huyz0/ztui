@@ -36,7 +36,7 @@ const EASINGS: Easing[] = [
 ];
 
 const BAR_MAX = 50; // columns the bar can span
-const COLORS = ["#89b4fa", "#a6e3a1", "#f9e2af", "#f38ba8", "#cba6f7"];
+const COLORS = ["$secondary", "$success", "$warning", "$error", "$primary"];
 
 function AnimationDemo() {
   const [easingIdx, setEasingIdx] = useState(2);
@@ -95,7 +95,7 @@ function AnimationDemo() {
 
         {/* A colour-fading card driven by useAnimatedColor. */}
         <Box style={{ width: BAR_MAX, height: 3, background: color, border: "round" }}>
-          <Label style={{ padding: 1, color: "#11111b", bold: true }}>
+          <Label style={{ padding: 1, color: "$surface", bold: true }}>
             colour fades, not snaps
           </Label>
         </Box>

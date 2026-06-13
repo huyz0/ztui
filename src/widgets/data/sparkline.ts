@@ -81,7 +81,7 @@ export class SparklineWidget extends Widget {
     const color =
       this.computedStyle.color ||
       (this.app ?? App.instance)?.cssResolver.resolveVariable(this, "$accent") ||
-      "cyan";
+      "#4daafc";
     const style = new Style({
       color,
       background: bg,

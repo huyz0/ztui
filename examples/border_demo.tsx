@@ -3,15 +3,15 @@ import { App, Footer, HBox, Header, Label, render, VBox } from "../src/index.ts"
 // Showcases the available border styles, including the new rounded corners
 // (mirrors Textual's "round" border: solid edges, rounded corner glyphs).
 const styles: Array<{ border: string; color: string; title: string }> = [
-  { border: "solid", color: "#89b4fa", title: "solid" },
-  { border: "rounded", color: "#a6e3a1", title: "rounded" },
-  { border: "double", color: "#f9e2af", title: "double" },
-  { border: "dashed", color: "#f38ba8", title: "dashed" },
+  { border: "solid", color: "$secondary", title: "solid" },
+  { border: "rounded", color: "$success", title: "rounded" },
+  { border: "double", color: "$warning", title: "double" },
+  { border: "dashed", color: "$error", title: "dashed" },
 ];
 
 function BorderDemo() {
   return (
-    <VBox style={{ background: "#11111b", padding: 1 }}>
+    <VBox style={{ background: "$surface", padding: 1 }}>
       <Header>🟦 ZTUI Border Styles</Header>
       <Footer>Ctrl+C quit</Footer>
 
@@ -29,7 +29,7 @@ function BorderDemo() {
             }}
           >
             <Label>{s.title}</Label>
-            <Label style={{ color: "#a6adc8" }}>border: "{s.border}"</Label>
+            <Label style={{ color: "$dimmed" }}>border: "{s.border}"</Label>
           </VBox>
         ))}
       </HBox>

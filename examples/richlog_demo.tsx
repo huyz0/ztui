@@ -64,7 +64,7 @@ function RichLogDemo() {
   }, []);
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>
         🤖 ZTUI RichLog — streaming agent transcript {paused ? "[paused]" : "[streaming]"}
       </Header>

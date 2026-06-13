@@ -42,7 +42,7 @@ function TreeDemo() {
   const [opened, setOpened] = useState<string>("");
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>🗂️ ZTUI Tree — workspace navigation (virtualized)</Header>
       <Footer>
         ↑/↓ move · →/← expand · Enter/dbl-click open · Ctrl+C quit ·{" "}

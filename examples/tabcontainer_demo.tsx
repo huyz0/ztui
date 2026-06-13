@@ -30,7 +30,7 @@ function TabDemoApp() {
   };
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>✨ ZTUI Dynamic TabContainer Dashboard</Header>
 
       <Footer>
@@ -46,27 +46,27 @@ function TabDemoApp() {
         >
           {/* Tab 1: Profile Overview */}
           <VBox label="👤 Profile Overview" style={{ padding: 1 }}>
-            <Label style={{ color: "#cba6f7", bold: true }}>Welcome back, {username}!</Label>
+            <Label style={{ color: "$primary", bold: true }}>Welcome back, {username}!</Label>
             <View style={{ height: 1 }} />
-            <Label style={{ color: "#a6e3a1" }}>System Metrics:</Label>
+            <Label style={{ color: "$success" }}>System Metrics:</Label>
             <VBox
               style={{ border: "dashed", borderColor: "gray", padding: 1, width: 45, height: 6 }}
             >
-              <Label style={{ color: "#cdd6f4" }}>• Framework: ZTUI v0.1.0</Label>
-              <Label style={{ color: "#cdd6f4" }}>• Environment: Bun Runtime</Label>
-              <Label style={{ color: "#cdd6f4" }}>• Active Tab Index: {activeTab}</Label>
-              <Label style={{ color: "#cdd6f4" }}>• Status: Operational 🟢</Label>
+              <Label style={{ color: "$foreground" }}>• Framework: ZTUI v0.1.0</Label>
+              <Label style={{ color: "$foreground" }}>• Environment: Bun Runtime</Label>
+              <Label style={{ color: "$foreground" }}>• Active Tab Index: {activeTab}</Label>
+              <Label style={{ color: "$foreground" }}>• Status: Operational 🟢</Label>
             </VBox>
           </VBox>
 
           {/* Tab 2: Settings Form */}
           <VBox label="⚙️ Preferences & Edit" style={{ padding: 1 }}>
-            <Label style={{ color: "#f9e2af", bold: true }}>Configure User Profile Settings</Label>
+            <Label style={{ color: "$warning", bold: true }}>Configure User Profile Settings</Label>
             <View style={{ height: 1 }} />
 
-            <Label style={{ color: "#89b4fa" }}>Edit Username:</Label>
+            <Label style={{ color: "$secondary" }}>Edit Username:</Label>
             <Input
-              style={{ height: 3, background: "#313244", color: "#cdd6f4", width: 40 }}
+              style={{ height: 3, background: "$panel", color: "$foreground", width: 40 }}
               value={username}
               onChange={(val) => setUsername(val)}
               placeholder="Username..."
@@ -90,25 +90,25 @@ function TabDemoApp() {
 
           {/* Tab 3: Help & Info */}
           <VBox label="ℹ️ About & Help" style={{ padding: 1 }}>
-            <Label style={{ color: "#a6e3a1", bold: true }}>About ZTUI TabContainer</Label>
+            <Label style={{ color: "$success", bold: true }}>About ZTUI TabContainer</Label>
             <View style={{ height: 1 }} />
-            <Label style={{ color: "#cdd6f4" }}>
+            <Label style={{ color: "$foreground" }}>
               The TabContainer widget dynamically manages layout child rendering.
             </Label>
-            <Label style={{ color: "#cdd6f4" }}>
+            <Label style={{ color: "$foreground" }}>
               Only the child matching the active tab index is measured and rendered.
             </Label>
             <View style={{ height: 1 }} />
-            <Label style={{ color: "#f38ba8", bold: true }}>Keyboard shortcuts:</Label>
-            <Label style={{ color: "#cdd6f4" }}>• Arrow Left/Right: Navigate tabs</Label>
-            <Label style={{ color: "#cdd6f4" }}>• Space / Enter: Select highlighted tab</Label>
-            <Label style={{ color: "#cdd6f4" }}>• Tab: Cycle focus to other inputs</Label>
+            <Label style={{ color: "$error", bold: true }}>Keyboard shortcuts:</Label>
+            <Label style={{ color: "$foreground" }}>• Arrow Left/Right: Navigate tabs</Label>
+            <Label style={{ color: "$foreground" }}>• Space / Enter: Select highlighted tab</Label>
+            <Label style={{ color: "$foreground" }}>• Tab: Cycle focus to other inputs</Label>
           </VBox>
         </TabContainer>
 
         <View style={{ height: 1 }} />
         <Button
-          style={{ background: "#f38ba8", color: "black", width: 20, height: 1, align: "center" }}
+          style={{ background: "$error", width: 20, height: 1, align: "center" }}
           onClick={handleExit}
         >
           Exit Dashboard

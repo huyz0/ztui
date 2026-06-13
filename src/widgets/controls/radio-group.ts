@@ -152,6 +152,8 @@ export class RadioGroupWidget extends Widget {
     const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan";
     const selectBg = App.instance?.cssResolver.resolveVariable(this, "$selectionBg") || "blue";
     const selectFg = App.instance?.cssResolver.resolveVariable(this, "$selectionFg") || "white";
+    const disabled = this.isDisabled();
+    const disabledColor = App.instance?.cssResolver.resolveVariable(this, "$disabled") || fg;
 
     if (this.orientation === "vertical") {
       for (let i = 0; i < resolved.length; i++) {
@@ -166,7 +168,10 @@ export class RadioGroupWidget extends Widget {
         if (isHovered && this.focused) {
           style = new Style({ color: selectFg, background: selectBg, bold: true });
         } else {
-          style = new Style({ color: isSelected ? primaryColor : fg, background: bg });
+          style = new Style({
+            color: disabled ? disabledColor : isSelected ? primaryColor : fg,
+            background: bg,
+          });
         }
 
         const segment = new Segment(`${marker} ${option.label}`, style);
@@ -194,7 +199,10 @@ export class RadioGroupWidget extends Widget {
         if (isHovered && this.focused) {
           style = new Style({ color: selectFg, background: selectBg, bold: true });
         } else {
-          style = new Style({ color: isSelected ? primaryColor : fg, background: bg });
+          style = new Style({
+            color: disabled ? disabledColor : isSelected ? primaryColor : fg,
+            background: bg,
+          });
         }
 
         const text = `${marker} ${option.label}`;

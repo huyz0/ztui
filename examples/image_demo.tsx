@@ -23,9 +23,9 @@ const BEAUTIFUL_SVG = `
     </linearGradient>
   </defs>
   <rect width="100" height="100" rx="15" fill="url(#lavenderPink)"/>
-  <circle cx="50" cy="50" r="25" fill="#a6e3a1"/>
-  <circle cx="50" cy="50" r="18" fill="#1e1e2e"/>
-  <polygon points="50,38 53,46 62,46 55,51 57,59 50,54 43,59 45,51 38,46 47,46" fill="#f9e2af"/>
+  <circle cx="50" cy="50" r="25" fill="$success"/>
+  <circle cx="50" cy="50" r="18" fill="$background"/>
+  <polygon points="50,38 53,46 62,46 55,51 57,59 50,54 43,59 45,51 38,46 47,46" fill="$warning"/>
 </svg>
 `;
 
@@ -40,28 +40,28 @@ function ImageDemoApp() {
   };
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       {/* Header with premium styling */}
-      <Header style={{ background: "#313244", color: "#cba6f7" }}>
+      <Header style={{ background: "$panel", color: "$primary" }}>
         🎨 ZTUI Image & SVG Rendering Engine Demo
       </Header>
 
       {/* Footer */}
-      <Footer style={{ background: "#313244", color: "#a6adc8" }}>
+      <Footer style={{ background: "$panel", color: "$dimmed" }}>
         Interactive TUI • Supports Kitty / iTerm2 / Sixel • Graceful Half-Block Fallback
       </Footer>
 
       {/* Main Content Layout */}
       <HBox style={{ padding: 1 }}>
         {/* Left Side: SVG Image Demo */}
-        <VBox style={{ width: "50%", border: "double", borderColor: "#89b4fa", padding: 1 }}>
-          <Label style={{ color: "#89b4fa", bold: true }}>⚡ Vector Graphics (SVG)</Label>
+        <VBox style={{ width: "50%", border: "double", borderColor: "$secondary", padding: 1 }}>
+          <Label style={{ color: "$secondary", bold: true }}>⚡ Vector Graphics (SVG)</Label>
           <View style={{ height: 1 }} />
 
           {/* Beautiful SVG Image Components side-by-side */}
           <HBox style={{ width: "100%" }}>
             <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
-              <Label style={{ color: "#cba6f7", bold: true }}>Protocol</Label>
+              <Label style={{ color: "$primary", bold: true }}>Protocol</Label>
               <SvgImage
                 src={BEAUTIFUL_SVG}
                 style={{
@@ -72,7 +72,7 @@ function ImageDemoApp() {
               />
             </VBox>
             <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
-              <Label style={{ color: "#fab387", bold: true }}>ANSI</Label>
+              <Label style={{ color: "$accent", bold: true }}>ANSI</Label>
               <SvgImage
                 src={BEAUTIFUL_SVG}
                 ansi={true}
@@ -86,12 +86,12 @@ function ImageDemoApp() {
           </HBox>
 
           <View style={{ height: 1 }} />
-          <Label style={{ color: "#a6adc8" }}>Renders dynamically using @resvg/resvg-js</Label>
+          <Label style={{ color: "$dimmed" }}>Renders dynamically using @resvg/resvg-js</Label>
         </VBox>
 
         {/* Right Side: Raster Image Demo */}
-        <VBox style={{ width: "50%", border: "double", borderColor: "#f9e2af", padding: 1 }}>
-          <Label style={{ color: "#f9e2af", bold: true }}>
+        <VBox style={{ width: "50%", border: "double", borderColor: "$warning", padding: 1 }}>
+          <Label style={{ color: "$warning", bold: true }}>
             🖼️ Raster Graphics (PNG / JPEG / GIF)
           </Label>
           <View style={{ height: 1 }} />
@@ -99,7 +99,7 @@ function ImageDemoApp() {
           {/* Transparent PNG components side-by-side */}
           <HBox style={{ width: "100%" }}>
             <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
-              <Label style={{ color: "#cba6f7", bold: true }}>Protocol</Label>
+              <Label style={{ color: "$primary", bold: true }}>Protocol</Label>
               <Image
                 src={TINY_PNG_DATA_URL}
                 style={{
@@ -111,7 +111,7 @@ function ImageDemoApp() {
               />
             </VBox>
             <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
-              <Label style={{ color: "#fab387", bold: true }}>ANSI</Label>
+              <Label style={{ color: "$accent", bold: true }}>ANSI</Label>
               <Image
                 src={TINY_PNG_DATA_URL}
                 ansi={true}
@@ -127,7 +127,7 @@ function ImageDemoApp() {
 
           <View style={{ height: 2 }} />
           <Button
-            style={{ background: "#f38ba8", color: "#1e1e2e", bold: true, align: "center" }}
+            style={{ background: "$error", color: "$background", bold: true, align: "center" }}
             onClick={handleExit}
           >
             Exit Application

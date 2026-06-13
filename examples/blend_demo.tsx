@@ -73,7 +73,7 @@ function GlassPanel({
         borderColor: "$foreground",
       }}
     >
-      <Label style={{ padding: 1, color: "#11111b", bold: true }}>{label}</Label>
+      <Label style={{ padding: 1, color: "$surface", bold: true }}>{label}</Label>
     </Box>
   );
 }

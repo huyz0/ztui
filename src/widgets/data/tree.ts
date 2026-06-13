@@ -54,11 +54,11 @@ export class TreeWidget extends Widget {
   /** Selected node id, or null. */
   public selectedId: string | null = null;
   /** Background color painted across the selected row. */
-  public selectedBackground = "#585b70";
+  public selectedBackground = "$selectionBg";
   /** Draw a dotted vertical guide line at each indentation level. */
   public showGuides = false;
   /** Color of the indentation guides. Subtle/muted by default. */
-  public guideColor = "#585b70";
+  public guideColor = "$border";
 
   /** Selection changed (arrow navigation or single click). */
   public declare onSelect?: (node: TreeNode) => void;
@@ -371,11 +371,13 @@ export class TreeWidget extends Widget {
 
     buffer.pushClip(new Region(new Offset(content.x, content.y), new Size(bodyW, content.height)));
     const selIdx = this.selectedIndex;
-    const guideColor = this.guideColor || "default";
+    const resolver = (this.app ?? App.instance)?.cssResolver;
+    const selectedBg = resolver?.resolveVariable(this, this.selectedBackground) ?? "#264f78";
+    const guideColor = resolver?.resolveVariable(this, this.guideColor) || "default";
     for (let v = first; v < last; v++) {
       const row = this.flat[v];
       const y = content.y + (v - first) * this.rowHeight;
-      const background = v === selIdx ? this.selectedBackground : this.findResolvedBackground();
+      const background = v === selIdx ? selectedBg : this.findResolvedBackground();
       const line = fitCell(this.rowText(row), Math.max(bodyW, this.lastContentWidth), "left");
       const seg = new Segment(
         line,

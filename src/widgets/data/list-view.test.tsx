@@ -49,7 +49,7 @@ describe("ListView rendering", () => {
     const list = findList(t);
     await t.settle();
     const content = (list as any).getContentRect();
-    expect(t.cellAt(content.x, content.y).style.background).toBe(list.selectedBackground);
+    expect(t.cellAt(content.x, content.y).style.background).toBe("#264f78"); // resolved $selectionBg
   });
 });
 

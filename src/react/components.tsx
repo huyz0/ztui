@@ -139,6 +139,8 @@ export type { HotkeyPaletteProps } from "./components/overlay/hotkey-palette.tsx
 export { HotkeyPalette, useHotkey } from "./components/overlay/hotkey-palette.tsx";
 export type { StickyPanelProps } from "./components/overlay/sticky-panel.tsx";
 export { StickyPanel } from "./components/overlay/sticky-panel.tsx";
+export type { ThemePaletteProps } from "./components/overlay/theme-palette.tsx";
+export { ThemePalette } from "./components/overlay/theme-palette.tsx";
 export type {
   ToastGlyphSet,
   ToastHostProps,

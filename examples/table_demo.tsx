@@ -52,7 +52,7 @@ function TableDemo() {
       render: (row) => (
         <Label
           style={{
-            color: row.status === "ok" ? "#a6e3a1" : row.status === "warn" ? "#f9e2af" : "#f38ba8",
+            color: row.status === "ok" ? "$success" : row.status === "warn" ? "$warning" : "$error",
             bold: true,
           }}
         >
@@ -63,7 +63,7 @@ function TableDemo() {
   ];
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>🗄️ ZTUI Table — 50,000 rows, virtualized · click headers to sort</Header>
       <Footer>
         ↑/↓ select · PgUp/PgDn · Home/End · ←/→ scroll cols · Enter inspect · Ctrl+C quit ·{" "}
@@ -75,7 +75,7 @@ function TableDemo() {
         style={{ padding: 1 }}
         data={data}
         columns={columns}
-        headerStyle={{ bold: true, underline: true, color: "#89b4fa" }}
+        headerStyle={{ bold: true, underline: true, color: "$secondary" }}
         sort={sort}
         onSortChange={setSort}
         onSelect={(row) => setSelected(row)}

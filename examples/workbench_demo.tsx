@@ -7,6 +7,7 @@ import {
   Header,
   Label,
   render,
+  ThemePalette,
   VBox,
   Workbench,
   type WorkbenchLayout,
@@ -80,7 +81,8 @@ const panels: WorkbenchPanel[] = [
 
 function WorkbenchDemo() {
   return (
-    <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
+    <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
+      <ThemePalette />
       <Header>
         🧱 ZTUI Workbench — drag to re-dock · drag splitters · Ctrl+B / Ctrl+Space toggle · Ctrl+C
         quit

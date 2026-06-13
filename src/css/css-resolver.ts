@@ -173,6 +173,12 @@ export class CSSResolver {
     // 3. Derived colors fallback
     const isLight = activeTheme ? isThemeLight(activeTheme) : false;
 
+    // Disabled controls reuse the muted/dimmed tone unless a theme defines its
+    // own `disabled` color. Resolved via `dimmed` so it works on every theme.
+    if (name === "disabled") {
+      return this.lookupVariable(widget, "dimmed");
+    }
+
     if (name === "comment" || name === "placeholder" || name === "gutter" || name === "dimmed") {
       const bg = this.getWidgetColorWithFallback(
         widget,
@@ -219,8 +225,17 @@ export class CSSResolver {
     }
 
     if (name === "selectionFg") {
-      const selBg = this.lookupVariable(widget, "selectionBg") || "#00ffff";
-      return isColorLight(selBg) ? "#000000" : "#ffffff";
+      const selBg = this.lookupVariable(widget, "selectionBg") || "#264f78";
+      // Prefer the theme foreground when it already contrasts with the
+      // selection background; otherwise use a soft near-pole instead of harsh
+      // pure black/white.
+      const fg = this.getWidgetColorWithFallback(
+        widget,
+        "color",
+        activeTheme?.colors?.foreground || "#d6d6d6",
+      );
+      if (isColorLight(selBg) !== isColorLight(fg)) return fg;
+      return isColorLight(selBg) ? "#1a1a1a" : "#f0f0f0";
     }
 
     if (name === "shadow") {

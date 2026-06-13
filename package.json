@@ -28,6 +28,7 @@
     "demo:table": "bun run examples/table_demo.tsx",
     "demo:tree": "bun run examples/tree_demo.tsx",
     "demo:form": "bun run examples/form_validation_demo.tsx",
+    "demo:disabled": "bun run examples/disabled_demo.tsx",
     "demo:waiting": "bun run examples/waiting_demo.tsx",
     "demo:status": "bun run examples/status_demo.tsx",
     "demo:overlay": "bun run examples/overlay_demo.tsx",

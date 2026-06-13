@@ -99,7 +99,7 @@ export class WaitingPanelWidget extends Widget {
     const fillColor =
       this.computedStyle.color ||
       App.instance?.cssResolver.resolveVariable(this, "$primary") ||
-      "cyan";
+      "#4daafc";
     const fillRgb = parseRgb(fillColor) ?? FALLBACK_RGB;
 
     // Animation phase, one full cycle per `period`.

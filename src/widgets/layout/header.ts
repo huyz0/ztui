@@ -6,11 +6,13 @@ import { Style } from "../../render/style.ts";
 export class HeaderWidget extends Widget {
   constructor() {
     super("header");
+    // Surface-based chrome with accent text — a quiet title bar like modern
+    // IDEs, not an accent-filled banner.
     this.defaultStyle = {
       dock: "top",
       height: 1,
-      background: "$primary",
-      color: "$background",
+      background: "$surface",
+      color: "$primary",
     };
   }
 

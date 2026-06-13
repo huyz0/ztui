@@ -91,6 +91,13 @@ export class Widget extends DOMNode {
   public focused = false;
   public visible = true;
   /**
+   * When true, this widget (and its descendants) are inert: not focusable, they
+   * ignore key/mouse input, and interactive controls render in a muted style.
+   * Set via the `disabled` prop. Checked through {@link isDisabled} so disabling
+   * a container disables everything inside it.
+   */
+  public disabled = false;
+  /**
    * When true, a read-only text selection started on any descendant is anchored
    * to *this* widget's region instead of the leaf, so a drag can span the
    * composed children (e.g. selecting across the paragraphs/code blocks a
@@ -254,6 +261,19 @@ export class Widget extends DOMNode {
       Math.max(0, client.height - b.height - p.height),
     );
     return new Region(offset, size);
+  }
+
+  /**
+   * True when this widget or any ancestor is `disabled`, so a disabled container
+   * (e.g. a `<Form disabled>`) propagates to every control inside it.
+   */
+  public isDisabled(): boolean {
+    let current: Widget | null = this;
+    while (current) {
+      if (current.disabled) return true;
+      current = current.parent instanceof Widget ? current.parent : null;
+    }
+    return false;
   }
 
   public findResolvedBackground(): string {

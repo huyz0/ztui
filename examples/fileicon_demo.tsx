@@ -75,7 +75,7 @@ function FileIconDemo() {
   const resolved = resolveFileIcon(selectedFile.name, selectedFile.isFolder);
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       <Header>📁 ZTUI VS Code Seti File Icons Explorer</Header>
 
       <Footer>
@@ -90,12 +90,12 @@ function FileIconDemo() {
           style={{
             width: 40,
             border: "rounded",
-            borderColor: "#cba6f7",
+            borderColor: "$primary",
             padding: 1,
-            background: "#181825",
+            background: "$surface",
           }}
         >
-          <Label style={{ color: "#cba6f7", bold: true }}>🗁 Workspace Files</Label>
+          <Label style={{ color: "$primary", bold: true }}>🗁 Workspace Files</Label>
           <View style={{ height: 1 }} />
 
           <VBox style={{ flexGrow: 1 }}>
@@ -107,13 +107,13 @@ function FileIconDemo() {
                   onClick={() => setSelectedIndex(idx)}
                   style={{
                     height: 1,
-                    background: isSelected ? "#313244" : "transparent",
+                    background: isSelected ? "$panel" : "transparent",
                   }}
                 >
                   <FileIcon filename={file.name} isFolder={file.isFolder} />
                   <Label
                     style={{
-                      color: isSelected ? "#f5e0dc" : "#cdd6f4",
+                      color: isSelected ? "$foreground" : "$foreground",
                       bold: isSelected,
                     }}
                   >
@@ -132,39 +132,39 @@ function FileIconDemo() {
           style={{
             flexGrow: 1,
             border: "rounded",
-            borderColor: "#89b4fa",
+            borderColor: "$secondary",
             padding: 1,
-            background: "#181825",
+            background: "$surface",
           }}
         >
-          <Label style={{ color: "#89b4fa", bold: true }}>🔍 Icon Resolution Details</Label>
+          <Label style={{ color: "$secondary", bold: true }}>🔍 Icon Resolution Details</Label>
           <View style={{ height: 1 }} />
 
           <VBox style={{ border: "dashed", borderColor: "gray", padding: 1, height: 12 }}>
             <HBox style={{ height: 1 }}>
-              <Label style={{ color: "#a6e3a1", bold: true }}>Selected File: </Label>
-              <Label style={{ color: "#cdd6f4" }}>{selectedFile.name}</Label>
+              <Label style={{ color: "$success", bold: true }}>Selected File: </Label>
+              <Label style={{ color: "$foreground" }}>{selectedFile.name}</Label>
             </HBox>
             <HBox style={{ height: 1 }}>
-              <Label style={{ color: "#a6e3a1", bold: true }}>Is Directory: </Label>
-              <Label style={{ color: "#cdd6f4" }}>{selectedFile.isFolder ? "Yes" : "No"}</Label>
+              <Label style={{ color: "$success", bold: true }}>Is Directory: </Label>
+              <Label style={{ color: "$foreground" }}>{selectedFile.isFolder ? "Yes" : "No"}</Label>
             </HBox>
 
             <View style={{ height: 1 }} />
 
             <HBox style={{ height: 1 }}>
-              <Label style={{ color: "#f9e2af", bold: true }}>Icon Name: </Label>
-              <Label style={{ color: "#cdd6f4" }}>{resolved.name}</Label>
+              <Label style={{ color: "$warning", bold: true }}>Icon Name: </Label>
+              <Label style={{ color: "$foreground" }}>{resolved.name}</Label>
             </HBox>
             <HBox style={{ height: 1 }}>
-              <Label style={{ color: "#f9e2af", bold: true }}>Theme Color: </Label>
+              <Label style={{ color: "$warning", bold: true }}>Theme Color: </Label>
               <Label style={{ color: resolved.color }}>{resolved.color}</Label>
             </HBox>
 
             <View style={{ height: 1 }} />
 
             <HBox style={{ height: 1 }}>
-              <Label style={{ color: "#cba6f7", bold: true }}>Preview: </Label>
+              <Label style={{ color: "$primary", bold: true }}>Preview: </Label>
               <FileIcon filename={selectedFile.name} isFolder={selectedFile.isFolder} />
             </HBox>
           </VBox>
@@ -172,17 +172,17 @@ function FileIconDemo() {
           <View style={{ height: 1 }} />
 
           {/* Terminal Capabilities Status */}
-          <Label style={{ color: "#f5c2e7", bold: true }}>🖥 Terminal Capabilities</Label>
-          <VBox style={{ padding: 1, background: "#11111b" }}>
-            <Label style={{ color: "#cdd6f4" }}>
+          <Label style={{ color: "$accent", bold: true }}>🖥 Terminal Capabilities</Label>
+          <VBox style={{ padding: 1, background: "$surface" }}>
+            <Label style={{ color: "$foreground" }}>
               • Graphics Protocol:{" "}
-              <Label style={{ color: graphicsProtocol !== "none" ? "#a6e3a1" : "#f38ba8" }}>
+              <Label style={{ color: graphicsProtocol !== "none" ? "$success" : "$error" }}>
                 {graphicsProtocol.toUpperCase()}
               </Label>
             </Label>
-            <Label style={{ color: "#cdd6f4" }}>
+            <Label style={{ color: "$foreground" }}>
               • Glyph Protocol:{" "}
-              <Label style={{ color: glyphSupport ? "#a6e3a1" : "#f38ba8" }}>
+              <Label style={{ color: glyphSupport ? "$success" : "$error" }}>
                 {glyphSupport ? "SUPPORTED" : "UNSUPPORTED"}
               </Label>
             </Label>
@@ -195,8 +195,7 @@ function FileIconDemo() {
             style={{
               width: 15,
               height: 1,
-              background: "#f38ba8",
-              color: "black",
+              background: "$error",
               align: "center",
             }}
           >

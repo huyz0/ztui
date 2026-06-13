@@ -99,7 +99,7 @@ function DiffDemo() {
   hotkeys.register({ key: "c", name: "Context", handler: () => setFull((f) => !f) });
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>🪢 ZTUI Diff — a proposed edit to greet.ts</Header>
       <Footer>
         click Unified/Split to switch view · c collapse/full context · ↑↓ scroll · Ctrl+C quit

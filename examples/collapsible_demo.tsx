@@ -16,7 +16,7 @@ import {
 // between sections; Enter/Space (or click) toggles; →/← expand/collapse.
 function CollapsibleDemo() {
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>🧩 ZTUI Collapsible — foldable reasoning / tool blocks</Header>
       <Footer>Tab focus · Enter/Space or click toggle · →/← expand/collapse · Ctrl+C quit</Footer>
 

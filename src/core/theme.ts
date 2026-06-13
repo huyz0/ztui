@@ -154,6 +154,15 @@ export class ThemeManager {
     return this.themes.get(this.activeThemeName) || this.themes.get("default-dark")!;
   }
 
+  public getActiveThemeName(): string {
+    return this.activeThemeName;
+  }
+
+  /** All registered themes, in registration order. */
+  public listThemes(): Theme[] {
+    return [...this.themes.values()];
+  }
+
   public setTheme(name: string): void {
     if (this.themes.has(name)) {
       this.activeThemeName = name;
@@ -180,37 +189,64 @@ export class ThemeManager {
   }
 
   private registerBuiltInThemes(): void {
-    // 1. default-dark
+    // 1. default-dark — desaturated, modern-IDE palette (VSCode Dark+ /
+    // GitHub Dark lineage). Foreground is dimmed off pure white to avoid
+    // halation; primary/accent are muted hues, not full-saturation neon.
     this.register({
       name: "default-dark",
       colors: {
-        primary: "#00ffff",
-        secondary: "#569cd6",
-        background: "#121212",
-        foreground: "#ffffff",
-        surface: "#1e1e1e",
+        primary: "#4daafc",
+        secondary: "#56b6c2",
+        background: "#1a1a1a",
+        foreground: "#d6d6d6",
+        surface: "#242424",
         panel: "#2d2d2d",
-        accent: "#ff00ff",
-        success: "#4caf50",
-        warning: "#ffeb3b",
-        error: "#f44336",
+        accent: "#c586c0",
+        success: "#4ec07a",
+        warning: "#e5c07b",
+        error: "#e06c75",
+        comment: "#8a8a8a",
+        placeholder: "#6e6e6e",
+        gutter: "#6e6e6e",
+        dimmed: "#8a8a8a",
+        keyword: "#c586c0",
+        string: "#9ece6a",
+        number: "#d19a66",
+        function: "#4daafc",
+        selectionBg: "#264f78",
+        selectionFg: "#d6d6d6",
+        border: "#3c3c3c",
+        focus: "#4daafc",
       },
     });
 
-    // 2. default-light
+    // 2. default-light — neutral light palette; warning/success are darkened
+    // so they stay legible as text on white.
     this.register({
       name: "default-light",
       colors: {
-        primary: "#0088cc",
-        secondary: "#333333",
+        primary: "#0969da",
+        secondary: "#0e7490",
         background: "#ffffff",
-        foreground: "#000000",
-        surface: "#f5f5f5",
-        panel: "#e0e0e0",
-        accent: "#9c27b0",
-        success: "#2e7d32",
-        warning: "#fbc02d",
-        error: "#c62828",
+        foreground: "#1f2328",
+        surface: "#f6f8fa",
+        panel: "#e7ebef",
+        accent: "#8250df",
+        success: "#1a7f37",
+        warning: "#9a6700",
+        error: "#cf222e",
+        comment: "#6e7781",
+        placeholder: "#8c959f",
+        gutter: "#8c959f",
+        dimmed: "#6e7781",
+        keyword: "#cf222e",
+        string: "#0a3069",
+        number: "#0550ae",
+        function: "#8250df",
+        selectionBg: "#b6d7fb",
+        selectionFg: "#1f2328",
+        border: "#d0d7de",
+        focus: "#0969da",
       },
     });
 
@@ -445,7 +481,7 @@ export class ThemeManager {
         warning: "#e0af68",
         error: "#f7768e",
         comment: "#565f89",
-        placeholder: "#3b4261",
+        placeholder: "#565f89",
         gutter: "#565f89",
         dimmed: "#565f89",
         keyword: "#bb9af3",
@@ -520,7 +556,7 @@ export class ThemeManager {
         warning: "#e6db74",
         error: "#fd971f",
         comment: "#75715e",
-        placeholder: "#49483e",
+        placeholder: "#75715e",
         gutter: "#75715e",
         dimmed: "#75715e",
         keyword: "#f92672",
@@ -628,7 +664,7 @@ export class ThemeManager {
         warning: "#ff9d00",
         error: "#ff628c",
         comment: "#5f85aa",
-        placeholder: "#122738",
+        placeholder: "#5f85aa",
         gutter: "#5f85aa",
         dimmed: "#5f85aa",
         keyword: "#ff9d00",
@@ -653,7 +689,7 @@ export class ThemeManager {
         warning: "#fffac2",
         error: "#ff5874",
         comment: "#767c9d",
-        placeholder: "#16161e",
+        placeholder: "#767c9d",
         gutter: "#767c9d",
         dimmed: "#767c9d",
         keyword: "#5de4c7",
@@ -678,7 +714,7 @@ export class ThemeManager {
         warning: "#e6c384",
         error: "#c34043",
         comment: "#727169",
-        placeholder: "#16161d",
+        placeholder: "#727169",
         gutter: "#727169",
         dimmed: "#727169",
         keyword: "#957fb8",
@@ -720,17 +756,17 @@ export class ThemeManager {
         primary: "#FAB795",
         secondary: "#25B2BC",
         background: "#1C1E26",
-        foreground: "#6C6F93",
+        foreground: "#D5D8DA",
         surface: "#232530",
         panel: "#2E303E",
         accent: "#E95678",
         success: "#09F7A0",
         warning: "#FAC29A",
         error: "#F43E5C",
-        comment: "#474A5E",
-        placeholder: "#2E303E",
-        gutter: "#474A5E",
-        dimmed: "#474A5E",
+        comment: "#6C6F93",
+        placeholder: "#6C6F93",
+        gutter: "#6C6F93",
+        dimmed: "#6C6F93",
         keyword: "#E95678",
         string: "#FAC29A",
         number: "#FAB795",
@@ -753,7 +789,7 @@ export class ThemeManager {
         warning: "#e6db74",
         error: "#ff5874",
         comment: "#7c8f8f",
-        placeholder: "#091f30",
+        placeholder: "#7c8f8f",
         gutter: "#7c8f8f",
         dimmed: "#7c8f8f",
         keyword: "#82aaff",

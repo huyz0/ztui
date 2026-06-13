@@ -4,9 +4,9 @@ import { HBox, ProgressBar } from "../../index.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { ProgressBarWidget } from "./progress-bar.ts";
 
-// Default theme primary is #00ffff (cyan); the bar fills with that and dims
+// Default theme primary is #4daafc; the bar fills with that and dims
 // toward black for the empty track.
-const FILL = "rgb(0, 255, 255)";
+const FILL = "rgb(77, 170, 252)";
 const channelSum = (c: string): number =>
   (c.match(/\d+/g) ?? []).reduce((n, x) => n + Number(x), 0);
 

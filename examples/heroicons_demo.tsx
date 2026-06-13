@@ -35,8 +35,8 @@ process.on("uncaughtException", (error) => {
 });
 
 function HeroiconsDemo() {
-  const [activeColor, setActiveColor] = useState("#89b4fa");
-  const colors = ["#89b4fa", "#a6e3a1", "#f9e2af", "#f38ba8", "#cba6f7", "#f5c2e7"];
+  const [activeColor, setActiveColor] = useState("$secondary");
+  const colors = ["$secondary", "$success", "$warning", "$error", "$primary", "$accent"];
 
   const cycleColor = () => {
     const nextIdx = (colors.indexOf(activeColor) + 1) % colors.length;
@@ -49,27 +49,24 @@ function HeroiconsDemo() {
   };
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>✨ ZTUI Heroicons Gallery Demo</Header>
 
       <Footer>Cycle Color / click Exit │ Exit with CTRL+C</Footer>
 
       <VBox style={{ padding: 1 }}>
         <HBox style={{ height: 3, margin: new Spacing(0, 0, 1, 0) }}>
-          <Button
-            style={{ width: 25, background: activeColor, color: "black" }}
-            onClick={cycleColor}
-          >
+          <Button style={{ width: 25, background: activeColor }} onClick={cycleColor}>
             🎨 Cycle Icon Color
           </Button>
           <View style={{ width: 2 }} />
-          <Button style={{ width: 20, background: "#f38ba8", color: "black" }} onClick={handleExit}>
+          <Button style={{ width: 20, background: "$error" }} onClick={handleExit}>
             ❌ Exit
           </Button>
         </HBox>
 
         <VBox style={{ flexGrow: 1, border: "rounded", padding: 1 }}>
-          <Label style={{ color: "#f5e0dc", bold: true }}>1. Solid Style (24x24 px)</Label>
+          <Label style={{ color: "$foreground", bold: true }}>1. Solid Style (24x24 px)</Label>
           <HBox style={{ height: 1, margin: new Spacing(0, 0, 1, 0) }}>
             <HeroIcon name="home" variant="solid" style={{ color: activeColor }} />
             <Label> Home </Label>
@@ -83,7 +80,7 @@ function HeroiconsDemo() {
             <Label> Cog </Label>
           </HBox>
 
-          <Label style={{ color: "#f5e0dc", bold: true }}>2. Outline Style (24x24 px)</Label>
+          <Label style={{ color: "$foreground", bold: true }}>2. Outline Style (24x24 px)</Label>
           <HBox style={{ height: 1, margin: new Spacing(0, 0, 1, 0) }}>
             <HeroIcon name="home" variant="outline" style={{ color: activeColor }} />
             <Label> Home </Label>
@@ -97,7 +94,9 @@ function HeroiconsDemo() {
             <Label> Cog </Label>
           </HBox>
 
-          <Label style={{ color: "#f5e0dc", bold: true }}>3. Mini Style (20x20 px, Solid)</Label>
+          <Label style={{ color: "$foreground", bold: true }}>
+            3. Mini Style (20x20 px, Solid)
+          </Label>
           <HBox style={{ height: 1, margin: new Spacing(0, 0, 1, 0) }}>
             <HeroIcon name="home" variant="mini" style={{ color: activeColor }} />
             <Label> Home </Label>
@@ -111,7 +110,9 @@ function HeroiconsDemo() {
             <Label> Cog </Label>
           </HBox>
 
-          <Label style={{ color: "#f5e0dc", bold: true }}>4. Micro Style (16x16 px, Solid)</Label>
+          <Label style={{ color: "$foreground", bold: true }}>
+            4. Micro Style (16x16 px, Solid)
+          </Label>
           <HBox style={{ height: 1 }}>
             <HeroIcon name="home" variant="micro" style={{ color: activeColor }} />
             <Label> Home </Label>

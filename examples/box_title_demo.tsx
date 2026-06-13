@@ -5,7 +5,7 @@ import { App, Box, Dock, Footer, Header, Label, render, VBox } from "../src/inde
 // color, and truncates with `…` when wider than the box.
 function BoxTitleDemo() {
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>🔲 ZTUI Box title — labels on the top border edge</Header>
       <Footer>Ctrl+C quit</Footer>
 

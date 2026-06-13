@@ -88,17 +88,18 @@ export class ToggleButtonWidget extends Widget {
         ? "$selectionBg"
         : this.findResolvedBackground();
 
-    let fg = fgVar;
+    const disabled = this.isDisabled();
+    let fg = disabled ? "$disabled" : fgVar;
     let bg = bgVar;
     if (App.instance) {
-      fg = App.instance.cssResolver.resolveVariable(this, fgVar);
+      fg = App.instance.cssResolver.resolveVariable(this, fg);
       bg = App.instance.cssResolver.resolveVariable(this, bgVar);
     }
 
     const style = new Style({
       color: fg,
       background: bg,
-      bold: true,
+      bold: !disabled,
       strikethrough: this.computedStyle.strikethrough,
       link: this.computedStyle.link,
     });

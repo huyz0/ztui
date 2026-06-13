@@ -183,6 +183,8 @@ export {
   type TerminalViewProps,
   TextArea,
   type TextAreaProps,
+  ThemePalette,
+  type ThemePaletteProps,
   type ToastGlyphSet,
   ToastHost,
   type ToastHostProps,

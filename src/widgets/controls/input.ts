@@ -376,7 +376,9 @@ export class InputWidget extends Widget implements ValidatableField {
       this.cursorCol = chars.length;
     }
 
-    const fg = this.computedStyle.color || "default";
+    const fg = this.isDisabled()
+      ? App.instance?.cssResolver.resolveVariable(this, "$disabled") || "gray"
+      : this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
     const style = new Style({ color: fg, background: bg });
 

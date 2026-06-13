@@ -77,7 +77,7 @@ const saveTree = (root: SplitNode) =>
 
 function SplitViewDemo() {
   return (
-    <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
+    <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
       <Header>
         🪟 ZTUI SplitView — drag dividers · ↔/↕ split · ✕ close · layout persists · Ctrl+C quit
       </Header>

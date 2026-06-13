@@ -88,7 +88,7 @@ export class Screen extends Widget {
     const root: Widget = modal ? modal.root : this;
     const list: Widget[] = [];
     root.walk((node) => {
-      if (node instanceof Widget && node.focusable && node.visible) {
+      if (node instanceof Widget && node.focusable && node.visible && !node.isDisabled()) {
         list.push(node);
       }
     });
@@ -115,7 +115,8 @@ export class Screen extends Widget {
     if (layer.modal) {
       const focusables: Widget[] = [];
       layer.root.walk((node) => {
-        if (node instanceof Widget && node.focusable && node.visible) focusables.push(node);
+        if (node instanceof Widget && node.focusable && node.visible && !node.isDisabled())
+          focusables.push(node);
       });
       this.focusWidget(focusables[0] ?? null);
     }
@@ -136,6 +137,8 @@ export class Screen extends Widget {
   }
 
   public focusWidget(widget: Widget | null): void {
+    // A disabled widget can never hold focus.
+    if (widget?.isDisabled()) widget = null;
     if (this._focusedWidget === widget) return;
 
     if (this._focusedWidget) {

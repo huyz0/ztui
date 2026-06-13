@@ -24,15 +24,15 @@ function QADemo() {
     r ? `selected=[${r.selected.join(", ")}]${r.other ? ` other="${r.other}"` : ""}` : "—";
 
   return (
-    <VBox style={{ background: "#11111b", padding: 1 }}>
+    <VBox style={{ background: "$surface", padding: 1 }}>
       <Header>◍ ZTUI QuestionAnswer</Header>
       <Footer>tab next field · ↑↓ move · space select · enter submit · Ctrl+C quit</Footer>
 
-      <Label style={{ color: "#cdd6f4", bold: true, margin: { top: 1 } }}>
+      <Label style={{ color: "$foreground", bold: true, margin: { top: 1 } }}>
         single-select + free text
       </Label>
       <QuestionAnswer
-        style={{ margin: { top: 0, bottom: 0 }, width: 50, borderColor: "#45475a" }}
+        style={{ margin: { top: 0, bottom: 0 }, width: 50, borderColor: "$panel" }}
         question="Which database should I use for the cache?"
         options={[
           { label: "Redis", hint: "in-memory, fast" },
@@ -42,11 +42,11 @@ function QADemo() {
         allowOther
         onSubmit={setDbAnswer}
       />
-      <Label style={{ color: "#a6adc8" }}>{fmt(dbAnswer)}</Label>
+      <Label style={{ color: "$dimmed" }}>{fmt(dbAnswer)}</Label>
 
-      <Label style={{ color: "#cdd6f4", bold: true, margin: { top: 1 } }}>multi-select</Label>
+      <Label style={{ color: "$foreground", bold: true, margin: { top: 1 } }}>multi-select</Label>
       <QuestionAnswer
-        style={{ width: 50, borderColor: "#45475a" }}
+        style={{ width: 50, borderColor: "$panel" }}
         question="Which checks should run before deploy?"
         mode="multi"
         options={[
@@ -58,17 +58,19 @@ function QADemo() {
         allowOther
         onSubmit={setChecks}
       />
-      <Label style={{ color: "#a6adc8" }}>{fmt(checks)}</Label>
+      <Label style={{ color: "$dimmed" }}>{fmt(checks)}</Label>
 
-      <Label style={{ color: "#cdd6f4", bold: true, margin: { top: 1 } }}>horizontal yes/no</Label>
+      <Label style={{ color: "$foreground", bold: true, margin: { top: 1 } }}>
+        horizontal yes/no
+      </Label>
       <QuestionAnswer
-        style={{ width: 50, borderColor: "#45475a" }}
+        style={{ width: 50, borderColor: "$panel" }}
         question="Proceed with the migration?"
         orientation="horizontal"
         options={[{ label: "Yes" }, { label: "No" }, { label: "Dry-run first" }]}
         onSubmit={setMigrate}
       />
-      <Label style={{ color: "#a6adc8" }}>{fmt(migrate)}</Label>
+      <Label style={{ color: "$dimmed" }}>{fmt(migrate)}</Label>
     </VBox>
   );
 }

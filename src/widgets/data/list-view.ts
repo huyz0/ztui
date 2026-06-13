@@ -34,9 +34,9 @@ export class ListViewWidget extends Widget {
   /** Selected item id, or null. */
   public selectedId: string | null = null;
   /** Background color painted across the selected row. */
-  public selectedBackground = "#585b70";
+  public selectedBackground = "$selectionBg";
   /** Color used for the disabled rows and the `detail` text. */
-  public mutedColor = "#6c7086";
+  public mutedColor = "$dimmed";
 
   /** Selection changed (arrow navigation or single click). */
   public declare onSelect?: (item: ListItem) => void;
@@ -263,11 +263,14 @@ export class ListViewWidget extends Widget {
     buffer.pushClip(new Region(new Offset(content.x, content.y), new Size(bodyW, content.height)));
     const selIdx = this.selectedIndex;
     const baseColor = this.computedStyle.color || "default";
+    const resolver = (this.app ?? App.instance)?.cssResolver;
+    const selectedBg = resolver?.resolveVariable(this, this.selectedBackground) ?? "#264f78";
+    const muted = resolver?.resolveVariable(this, this.mutedColor) ?? "#8a8a8a";
     for (let v = first; v < last; v++) {
       const item = this.items[v];
       const y = content.y + (v - first) * this.rowHeight;
-      const background = v === selIdx ? this.selectedBackground : this.findResolvedBackground();
-      const color = item.disabled ? this.mutedColor : baseColor;
+      const background = v === selIdx ? selectedBg : this.findResolvedBackground();
+      const color = item.disabled ? muted : baseColor;
       const line = fitCell(this.rowText(item), Math.max(bodyW, this.lastContentWidth), "left");
       buffer.drawSegment(
         content.x - this.scrollLeft,
@@ -280,7 +283,7 @@ export class ListViewWidget extends Widget {
         buffer.drawSegment(
           content.x - this.scrollLeft + prefixW,
           y,
-          new Segment(item.detail, new Style({ color: this.mutedColor, background })),
+          new Segment(item.detail, new Style({ color: muted, background })),
         );
       }
     }

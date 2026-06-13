@@ -76,8 +76,8 @@ export class SplitterWidget extends Widget {
 
     const active = this.hovered || this.dragging;
     const color = active
-      ? App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan"
-      : App.instance?.cssResolver.resolveVariable(this, "$border") || "gray";
+      ? App.instance?.cssResolver.resolveVariable(this, "$primary") || "#4daafc"
+      : App.instance?.cssResolver.resolveVariable(this, "$border") || "#3c3c3c";
     const style = new Style({
       color,
       background: this.findResolvedBackground(),

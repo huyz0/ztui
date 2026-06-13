@@ -27,7 +27,7 @@ Here is a dynamically rendered markdown response containing an interactive TUI w
   "id": "md-action-btn",
   "text": "Activate System (Markdown Widget)",
   "action": "activate-sys",
-  "style": { "background": "#fab387", "color": "black", "margin": {"top": 1, "bottom": 1} }
+  "style": { "background": "$accent", "color": "black", "margin": {"top": 1, "bottom": 1} }
 }
 \`\`\`
 
@@ -63,7 +63,7 @@ const JSONUI_PAYLOAD = `{
       "id": "jsonui-btn",
       "text": "Approve Allocation (JSONUI Widget)",
       "action": "approve-alloc",
-      "style": { "background": "#cba6f7", "color": "black", "margin": {"top": 1} }
+      "style": { "background": "$primary", "color": "black", "margin": {"top": 1} }
     }
   ]
 }`;
@@ -118,7 +118,7 @@ function GenerativeUIApp() {
   };
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       <Header>✨ ZTUI Generative UI & Streaming Demo</Header>
       <Footer>Tab: Cycle Focus │ Click: Interact │ Ctrl+C: Quit</Footer>
 
@@ -129,14 +129,14 @@ function GenerativeUIApp() {
           <VBox
             style={{ width: "50%", border: "double", padding: 1, margin: new Spacing(0, 1, 0, 0) }}
           >
-            <Label style={{ color: "#89b4fa", bold: true }}>📖 Markdown Stream Panel</Label>
+            <Label style={{ color: "$secondary", bold: true }}>📖 Markdown Stream Panel</Label>
             <View style={{ height: 1 }} />
             <Markdown onAction={handleAction}>{mdText}</Markdown>
           </VBox>
 
           {/* Right Column: JSONUI Stream */}
           <VBox style={{ width: "50%", border: "double", padding: 1 }}>
-            <Label style={{ color: "#a6e3a1", bold: true }}>🧱 JSONUI Stream Panel</Label>
+            <Label style={{ color: "$success", bold: true }}>🧱 JSONUI Stream Panel</Label>
             <View style={{ height: 1 }} />
             <JSONUI onAction={handleAction}>{jsonText}</JSONUI>
           </VBox>
@@ -148,10 +148,10 @@ function GenerativeUIApp() {
         >
           {/* Logs Output */}
           <VBox style={{ width: "70%" }}>
-            <Label style={{ color: "#cdd6f4", bold: true }}>📋 Action Log Console:</Label>
+            <Label style={{ color: "$foreground", bold: true }}>📋 Action Log Console:</Label>
             {logs.map((log, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: log array is read-only prepend list
-              <Label key={i} style={{ color: log.startsWith("[Action]") ? "#f9e2af" : "#bac2de" }}>
+              <Label key={i} style={{ color: log.startsWith("[Action]") ? "$warning" : "$dimmed" }}>
                 {log}
               </Label>
             ))}
@@ -160,12 +160,12 @@ function GenerativeUIApp() {
           {/* Controls */}
           <VBox style={{ width: "30%", padding: new Spacing(0, 0, 0, 2) }}>
             <Button
-              style={{ background: "#a6e3a1", color: "black", margin: new Spacing(0, 0, 1, 0) }}
+              style={{ background: "$success", margin: new Spacing(0, 0, 1, 0) }}
               onClick={startStreaming}
             >
               ▶ Start Stream
             </Button>
-            <Button style={{ background: "#f38ba8", color: "black" }} onClick={handleExit}>
+            <Button style={{ background: "$error" }} onClick={handleExit}>
               🛑 Exit App
             </Button>
           </VBox>

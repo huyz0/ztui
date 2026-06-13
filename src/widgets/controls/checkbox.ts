@@ -81,12 +81,14 @@ export class CheckboxWidget extends Widget {
     if (severityColor) displayColor = severityColor;
 
     const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan";
+    const disabled = this.isDisabled();
+    const disabledColor = App.instance?.cssResolver.resolveVariable(this, "$disabled") || fg;
 
     const marker = this.checked ? "☑" : "☐";
     const style = new Style({
-      color: this.checked ? primaryColor : displayColor,
+      color: disabled ? disabledColor : this.checked ? primaryColor : displayColor,
       background: bg,
-      bold: this.focused,
+      bold: this.focused && !disabled,
     });
 
     const text = `${marker} ${this.label}`;

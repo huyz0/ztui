@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import { App } from "../../core/app.ts";
 import { logger } from "../../core/logger.ts";
+import { ThemeManager } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { parseColorToRGB } from "../../render/icon-registry.ts";
@@ -31,7 +32,9 @@ export class SvgImageWidget extends Widget {
     if (client.width <= 0 || client.height <= 0) return;
 
     const bgHex = this.findResolvedBackground();
-    const bgRgb = parseColorToRGB(bgHex === "default" ? "#1e1e2e" : bgHex);
+    const bgRgb = parseColorToRGB(
+      bgHex === "default" ? ThemeManager.getInstance().getActiveTheme().colors.background : bgHex,
+    );
     const style = new Style({
       color: "default",
       background: bgHex,
@@ -126,7 +129,8 @@ export class SvgImageWidget extends Widget {
     }
 
     try {
-      const colorBg = bgHex === "default" ? "#1e1e2e" : bgHex;
+      const colorBg =
+        bgHex === "default" ? ThemeManager.getInstance().getActiveTheme().colors.background : bgHex;
       const rendered = renderSvgSync({
         svg: svgContent,
         width: targetPixelWidth,

@@ -26,7 +26,7 @@ function TextDemoApp() {
   };
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       <Header>🚀 ZTUI Rich Text Editor Demo</Header>
 
       <Footer>Tab: Cycle Focus │ Click: Position Cursor │ Press Exit to Quit</Footer>
@@ -34,34 +34,34 @@ function TextDemoApp() {
       <HBox style={{ padding: 1 }}>
         {/* Left column: input fields */}
         <VBox style={{ width: "50%", border: "double", padding: 1 }}>
-          <Label style={{ color: "#cba6f7", bold: true }}>Single-line Input Widget</Label>
+          <Label style={{ color: "$primary", bold: true }}>Single-line Input Widget</Label>
           <View style={{ height: 1 }} />
 
-          <Label style={{ color: "#a6e3a1" }}>Enter username:</Label>
+          <Label style={{ color: "$success" }}>Enter username:</Label>
           <Input
-            style={{ height: 3, background: "#313244", color: "#f5c2e7" }}
+            style={{ height: 3, background: "$panel", color: "$accent" }}
             value={inputText}
             onChange={(val) => setInputText(val)}
             placeholder="Type your username..."
           />
 
           <View style={{ height: 2 }} />
-          <Label style={{ color: "#89b4fa" }}>Current Input Value:</Label>
-          <Label style={{ color: "#f9e2af" }}>{inputText || "(empty)"}</Label>
+          <Label style={{ color: "$secondary" }}>Current Input Value:</Label>
+          <Label style={{ color: "$warning" }}>{inputText || "(empty)"}</Label>
 
           <View style={{ height: 4 }} />
-          <Button style={{ background: "#f38ba8", color: "black", margin: 1 }} onClick={handleExit}>
+          <Button style={{ background: "$error", margin: 1 }} onClick={handleExit}>
             Exit Application
           </Button>
         </VBox>
 
         {/* Right column: Multi-line editor */}
         <VBox style={{ width: "50%", border: "double", padding: 1 }}>
-          <Label style={{ color: "#cba6f7", bold: true }}>Multiline Code Editor (TextArea)</Label>
+          <Label style={{ color: "$primary", bold: true }}>Multiline Code Editor (TextArea)</Label>
           <View style={{ height: 1 }} />
 
           <TextArea
-            style={{ height: 12, background: "#181825", color: "#cdd6f4" }}
+            style={{ height: 12, background: "$surface", color: "$foreground" }}
             value={editorText}
             onChange={(val) => setEditorText(val)}
             placeholder="Type code here..."
@@ -70,7 +70,7 @@ function TextDemoApp() {
           />
 
           <View style={{ height: 1 }} />
-          <Label style={{ color: "#89b4fa" }}>
+          <Label style={{ color: "$secondary" }}>
             Lines: {editorText.split("\n").length} │ Characters: {editorText.length}
           </Label>
         </VBox>

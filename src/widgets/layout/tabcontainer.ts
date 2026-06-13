@@ -165,9 +165,9 @@ export class TabContainerWidget extends Widget {
     const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
 
-    const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan";
-    const _selectBg = App.instance?.cssResolver.resolveVariable(this, "$selectionBg") || "blue";
-    const _selectFg = App.instance?.cssResolver.resolveVariable(this, "$selectionFg") || "white";
+    const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "#4daafc";
+    const _selectBg = App.instance?.cssResolver.resolveVariable(this, "$selectionBg") || "#264f78";
+    const _selectFg = App.instance?.cssResolver.resolveVariable(this, "$selectionFg") || "#d6d6d6";
     const surfaceBg = App.instance?.cssResolver.resolveVariable(this, "$surface");
 
     let resolvedInactiveBg = surfaceBg || adjustLightness(bg, -20);

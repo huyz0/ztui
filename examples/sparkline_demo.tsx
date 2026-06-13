@@ -39,7 +39,7 @@ function SparklineDemo() {
   );
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>📈 ZTUI Sparkline — live agent HUD</Header>
       <Footer>
         one-row micro-charts · auto-ranged · tails the most recent samples · Ctrl+C quit

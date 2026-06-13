@@ -130,37 +130,38 @@ describe("CSSResolver Theming and Variables", () => {
     const resolver = new CSSResolver([]);
     const widget = new Widget("code");
 
-    // Test syntax color fallbacks mapped to primary, secondary, warning, accent, etc.
+    // Syntax keys defined directly by default-dark resolve from the theme.
     widget.style.color = "$keyword";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+    expect(resolver.resolveStyles(widget, false).color).toBe("#c586c0"); // default-dark keyword
 
     widget.style.color = "$string";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#ffeb3b"); // default-dark warning
+    expect(resolver.resolveStyles(widget, false).color).toBe("#9ece6a"); // default-dark string
 
     widget.style.color = "$number";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#ff00ff"); // default-dark accent
+    expect(resolver.resolveStyles(widget, false).color).toBe("#d19a66"); // default-dark number
 
     widget.style.color = "$function";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#569cd6"); // default-dark secondary
+    expect(resolver.resolveStyles(widget, false).color).toBe("#4daafc"); // default-dark function
 
+    // Keys the theme leaves undefined fall back to semantic colors.
     widget.style.color = "$operator";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#ffffff"); // default-dark foreground
+    expect(resolver.resolveStyles(widget, false).color).toBe("#d6d6d6"); // default-dark foreground
 
     widget.style.color = "$property";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+    expect(resolver.resolveStyles(widget, false).color).toBe("#4daafc"); // default-dark primary
 
     widget.style.color = "$tag";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#569cd6"); // default-dark secondary
+    expect(resolver.resolveStyles(widget, false).color).toBe("#56b6c2"); // default-dark secondary
 
     // Test diff color fallbacks
     widget.style.color = "$diff-added";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#4caf50"); // default-dark success
+    expect(resolver.resolveStyles(widget, false).color).toBe("#4ec07a"); // default-dark success
 
     widget.style.color = "$diff-removed";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#f44336"); // default-dark error
+    expect(resolver.resolveStyles(widget, false).color).toBe("#e06c75"); // default-dark error
 
     widget.style.color = "$diff-header";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+    expect(resolver.resolveStyles(widget, false).color).toBe("#4daafc"); // default-dark primary
 
     // Test comment/dimmed blend fallback when undefined in theme
     widget.style.color = "$comment";
@@ -182,7 +183,7 @@ describe("CSSResolver Theming and Variables", () => {
     expect(borderDark?.startsWith("#")).toBe(true);
 
     widget.style.color = "$focus";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#00ffff"); // default-dark primary
+    expect(resolver.resolveStyles(widget, false).color).toBe("#4daafc"); // default-dark focus/primary
 
     widget.style.color = "$selectionBg";
     const selectionBgDark = resolver.resolveStyles(widget, false).color;
@@ -190,7 +191,7 @@ describe("CSSResolver Theming and Variables", () => {
 
     widget.style.color = "$selectionFg";
     const selectionFgDark = resolver.resolveStyles(widget, false).color;
-    expect(selectionFgDark).toBe("#ffffff"); // selectionBg is dark, so foreground is white
+    expect(selectionFgDark).toBe("#d6d6d6"); // defined by default-dark
 
     widget.style.color = "$shadow";
     expect(resolver.resolveStyles(widget, false).color).toBe("#000000"); // dark theme shadow is black
@@ -204,7 +205,7 @@ describe("CSSResolver Theming and Variables", () => {
     expect(borderLight).not.toBe(borderDark); // different backgrounds
 
     widget.style.color = "$focus";
-    expect(resolver.resolveStyles(widget, false).color).toBe("#0088cc"); // default-light primary
+    expect(resolver.resolveStyles(widget, false).color).toBe("#0969da"); // default-light focus/primary
 
     widget.style.color = "$selectionBg";
     const selectionBgLight = resolver.resolveStyles(widget, false).color;

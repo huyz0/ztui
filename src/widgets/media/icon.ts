@@ -1,3 +1,4 @@
+import { ThemeManager } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
@@ -24,7 +25,7 @@ export class IconWidget extends Widget {
     const fg = this.computedStyle.color || "default";
     let resolvedBg = this.findResolvedBackground();
     if (resolvedBg === "default") {
-      resolvedBg = "#1e1e2e";
+      resolvedBg = ThemeManager.getInstance().getActiveTheme().colors.background;
     }
 
     const style = new Style({

@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import { isColorLight } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Spacing } from "../../geometry/spacing.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
@@ -56,18 +57,43 @@ export class ButtonWidget extends Widget {
     const text = this.getTextContent();
     if (!text) return;
 
-    let fg = this.focused ? "$background" : this.computedStyle.color || "default";
-    let bg = this.focused ? "$primary" : this.findResolvedBackground();
+    // A button needs its own surface to read as a control. Focused: a filled
+    // accent (primary). Unfocused: a raised neutral (panel) chrome — never the
+    // parent's own background, which would make the button vanish (notably on
+    // light themes). An explicit background still wins so callers can theme a
+    // button (e.g. a destructive `$error` button).
+    // Disabled: a flat muted chrome (panel fill, dimmed text) with no focus
+    // accent — it reads as inert and isn't interactive.
+    const disabled = this.isDisabled();
+    const explicitBg = this.computedStyle.background;
+    const hasExplicitBg = explicitBg !== undefined && explicitBg !== "default";
+    let bg = disabled
+      ? "$panel"
+      : this.focused
+        ? "$primary"
+        : hasExplicitBg
+          ? explicitBg
+          : "$panel";
+    if (App.instance) {
+      bg = App.instance.cssResolver.resolveVariable(this, bg);
+    }
 
+    // Pick the text colour to contrast with the *resolved* fill: a themed dark
+    // tone on light fills, a themed light tone on dark fills. This keeps filled
+    // accent buttons legible on every theme without callers hardcoding a colour
+    // (and avoids the muddy "inactive" look of ANSI `black` on a mid-tone fill).
+    // An explicit `color` still wins.
+    let fg = disabled
+      ? "$disabled"
+      : (this.computedStyle.color ?? (isColorLight(bg) ? "$background" : "$foreground"));
     if (App.instance) {
       fg = App.instance.cssResolver.resolveVariable(this, fg);
-      bg = App.instance.cssResolver.resolveVariable(this, bg);
     }
 
     const style = new Style({
       color: fg,
       background: bg,
-      bold: true,
+      bold: !disabled,
       strikethrough: this.computedStyle.strikethrough,
       link: this.computedStyle.link,
     });

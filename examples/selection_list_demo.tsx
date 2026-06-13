@@ -24,7 +24,7 @@ function SelectionListDemo() {
   const [picked, setPicked] = useState<string[]>(["src/app.ts", "README.md"]);
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>☑ ZTUI SelectionList — choose changes to apply</Header>
       <Footer>↑↓ move · Space/Enter or click toggle · a toggle all · Ctrl+C quit</Footer>
 

@@ -30,7 +30,7 @@ function SignupForm() {
   };
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       <Header>📝 ZTUI Form Validation Demo</Header>
       <Footer>Tab: Next Field │ Enter on a field-less button submits │ Errors show inline</Footer>
 
@@ -45,18 +45,18 @@ function SignupForm() {
           onSubmit={(values) => setSubmitted(values)}
           style={{ border: "round", padding: 1 }}
         >
-          <Label style={{ color: "#a6e3a1" }}>Username</Label>
+          <Label style={{ color: "$success" }}>Username</Label>
           <Input
             id="username"
             icon="👤"
             placeholder="at least 3 characters"
             validateOn="blur"
             validators={[required("Username is required"), minLength(3)]}
-            style={{ background: "#313244", color: "#f5c2e7" }}
+            style={{ background: "$panel", color: "$accent" }}
           />
-          <FieldError targetId="username" style={{ color: "#f38ba8" }} />
+          <FieldError targetId="username" style={{ color: "$error" }} />
 
-          <Label style={{ color: "#a6e3a1" }}>Email</Label>
+          <Label style={{ color: "$success" }}>Email</Label>
           <Input
             id="email"
             icon="✉️"
@@ -64,11 +64,11 @@ function SignupForm() {
             placeholder="you@example.com"
             validateOn="blur"
             validators={[required("Email is required"), email()]}
-            style={{ background: "#313244", color: "#f5c2e7" }}
+            style={{ background: "$panel", color: "$accent" }}
           />
-          <FieldError targetId="email" style={{ color: "#f38ba8" }} />
+          <FieldError targetId="email" style={{ color: "$error" }} />
 
-          <Label style={{ color: "#a6e3a1" }}>Password</Label>
+          <Label style={{ color: "$success" }}>Password</Label>
           <PasswordInput
             id="password"
             placeholder="8+ chars, 1 number"
@@ -78,9 +78,9 @@ function SignupForm() {
               minLength(8, "Use at least 8 characters"),
               pattern(/\d/, "Include at least one number"),
             ]}
-            style={{ background: "#313244", color: "#f5c2e7" }}
+            style={{ background: "$panel", color: "$accent" }}
           />
-          <FieldError targetId="password" style={{ color: "#f38ba8" }} />
+          <FieldError targetId="password" style={{ color: "$error" }} />
 
           {/* Boolean field: required() treats `false` as empty → "must accept". */}
           <Checkbox
@@ -89,27 +89,27 @@ function SignupForm() {
             validateOn="change"
             validators={[required("You must accept the terms")]}
           />
-          <FieldError targetId="terms" style={{ color: "#f38ba8" }} />
+          <FieldError targetId="terms" style={{ color: "$error" }} />
 
           <View style={{ height: 1 }} />
           {/* Roll-up of every error; ↑/↓ + Enter jumps to a field. Zero rows when valid. */}
           <ValidationSummary title="Please fix:" style={{ width: "100%" }} />
 
           <View style={{ height: 1 }} />
-          <Button formAction="submit" style={{ background: "#a6e3a1", color: "black" }}>
+          <Button formAction="submit" style={{ background: "$success" }}>
             Create Account
           </Button>
         </Form>
 
         <View style={{ height: 1 }} />
         {submitted ? (
-          <Label style={{ color: "#a6e3a1" }}>✅ Submitted: {JSON.stringify(submitted)}</Label>
+          <Label style={{ color: "$success" }}>✅ Submitted: {JSON.stringify(submitted)}</Label>
         ) : (
-          <Label style={{ color: "#6c7086" }}>Fill the form and submit…</Label>
+          <Label style={{ color: "$dimmed" }}>Fill the form and submit…</Label>
         )}
 
         <View style={{ height: 1 }} />
-        <Button style={{ background: "#f38ba8", color: "black" }} onClick={handleExit}>
+        <Button style={{ background: "$error" }} onClick={handleExit}>
           Exit
         </Button>
       </VBox>

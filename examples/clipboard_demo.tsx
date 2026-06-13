@@ -43,7 +43,7 @@ function ClipboardDemo() {
   };
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       <Header>📋 ZTUI Copy / Paste & Selection Demo</Header>
 
       <Footer>
@@ -53,36 +53,33 @@ function ClipboardDemo() {
 
       <HBox style={{ padding: 1 }}>
         <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
-          <Label style={{ color: "#cba6f7", bold: true }}>Single-line Input</Label>
+          <Label style={{ color: "$primary", bold: true }}>Single-line Input</Label>
           <View style={{ height: 1 }} />
           <Input
-            style={{ height: 3, background: "#313244", color: "#f5c2e7" }}
+            style={{ height: 3, background: "$panel", color: "$accent" }}
             value={name}
             onChange={setName}
             placeholder="Type, then select with Shift+Arrows…"
           />
 
           <View style={{ height: 1 }} />
-          <Button
-            style={{ background: "#89b4fa", color: "black", margin: 1 }}
-            onClick={showClipboard}
-          >
+          <Button style={{ background: "$secondary", margin: 1 }} onClick={showClipboard}>
             Read framework clipboard
           </Button>
-          <Label style={{ color: "#89b4fa" }}>Clipboard now holds:</Label>
-          <Label style={{ color: "#f9e2af" }}>{clip}</Label>
+          <Label style={{ color: "$secondary" }}>Clipboard now holds:</Label>
+          <Label style={{ color: "$warning" }}>{clip}</Label>
 
           <View style={{ height: 1 }} />
-          <Button style={{ background: "#f38ba8", color: "black", margin: 1 }} onClick={handleExit}>
+          <Button style={{ background: "$error", margin: 1 }} onClick={handleExit}>
             Exit (or Ctrl+C with no selection)
           </Button>
         </VBox>
 
         <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
-          <Label style={{ color: "#cba6f7", bold: true }}>Multi-line TextArea</Label>
+          <Label style={{ color: "$primary", bold: true }}>Multi-line TextArea</Label>
           <View style={{ height: 1 }} />
           <TextArea
-            style={{ height: 12, background: "#181825", color: "#cdd6f4" }}
+            style={{ height: 12, background: "$surface", color: "$foreground" }}
             value={code}
             onChange={setCode}
             language="typescript"

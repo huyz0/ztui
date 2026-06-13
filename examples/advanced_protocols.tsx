@@ -119,7 +119,7 @@ function AdvancedProtocolsApp() {
   };
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       <Header>🚀 ZTUI Advanced Terminal Protocols & Graceful Fallbacks</Header>
 
       <Footer>
@@ -130,7 +130,7 @@ function AdvancedProtocolsApp() {
       <HBox style={{ padding: 1 }}>
         {/* Left Column - Hyperlinks, Font Formats & Capabilities */}
         <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
-          <Label style={{ color: "#cba6f7", bold: true }}>1. Font Formats (SGR 1/2/3/4/9)</Label>
+          <Label style={{ color: "$primary", bold: true }}>1. Font Formats (SGR 1/2/3/4/9)</Label>
           <HBox style={{ margin: new Spacing(0, 1, 0, 1) }}>
             <Label style={{ bold: true }}>Bold </Label>
             <Label style={{ italic: true }}>Italic </Label>
@@ -140,12 +140,12 @@ function AdvancedProtocolsApp() {
             <Label style={{ underline: true, strikethrough: true }}>Both</Label>
           </HBox>
 
-          <Label style={{ color: "#cba6f7", bold: true, margin: new Spacing(1, 0, 0, 0) }}>
+          <Label style={{ color: "$primary", bold: true, margin: new Spacing(1, 0, 0, 0) }}>
             2. OSC 8 Hyperlinks
           </Label>
           <Label
             style={{
-              color: "#89b4fa",
+              color: "$secondary",
               link: "https://ghostty.org",
               margin: new Spacing(0, 1, 0, 1),
             }}
@@ -154,7 +154,7 @@ function AdvancedProtocolsApp() {
           </Label>
           <Label
             style={{
-              color: "#a6e3a1",
+              color: "$success",
               link: "https://github.com",
               margin: new Spacing(0, 1, 0, 1),
             }}
@@ -162,36 +162,36 @@ function AdvancedProtocolsApp() {
             👉 Open GitHub (Ctrl+Click)
           </Label>
 
-          <Label style={{ color: "#cba6f7", bold: true, margin: new Spacing(1, 0, 0, 0) }}>
+          <Label style={{ color: "$primary", bold: true, margin: new Spacing(1, 0, 0, 0) }}>
             3. SVG Icons (Vector/Raster Cache) & Heroicons
           </Label>
           <HBox style={{ margin: new Spacing(0, 1, 0, 1), height: 1 }}>
-            <Icon name="home" style={{ color: "#a6e3a1" }} />
+            <Icon name="home" style={{ color: "$success" }} />
             <Label> Home </Label>
-            <Icon name="settings" style={{ color: "#89b4fa" }} />
+            <Icon name="settings" style={{ color: "$secondary" }} />
             <Label> Settings </Label>
-            <HeroIcon name="beaker" variant="solid" style={{ color: "#f9e2af" }} />
+            <HeroIcon name="beaker" variant="solid" style={{ color: "$warning" }} />
             <Label> Solid Beaker </Label>
-            <HeroIcon name="heart" variant="outline" style={{ color: "#f38ba8" }} />
+            <HeroIcon name="heart" variant="outline" style={{ color: "$error" }} />
             <Label> Outline Heart </Label>
-            <HeroIcon name="bell" variant="mini" style={{ color: "#cba6f7" }} />
+            <HeroIcon name="bell" variant="mini" style={{ color: "$primary" }} />
             <Label> Mini Bell </Label>
           </HBox>
 
-          <Label style={{ color: "#f9e2af", bold: true, margin: new Spacing(1, 0, 0, 0) }}>
+          <Label style={{ color: "$warning", bold: true, margin: new Spacing(1, 0, 0, 0) }}>
             4. Probed Capabilities
           </Label>
           <HBox style={{ margin: new Spacing(0, 1, 0, 1), height: 4 }}>
             <VBox style={{ width: "50%" }}>
               {protocolInfo.slice(0, 4).map((line) => (
-                <Label key={line} style={{ color: "#cdd6f4" }}>
+                <Label key={line} style={{ color: "$foreground" }}>
                   {line}
                 </Label>
               ))}
             </VBox>
             <VBox style={{ width: "50%" }}>
               {protocolInfo.slice(4).map((line) => (
-                <Label key={line} style={{ color: "#cdd6f4" }}>
+                <Label key={line} style={{ color: "$foreground" }}>
                   {line}
                 </Label>
               ))}
@@ -201,13 +201,12 @@ function AdvancedProtocolsApp() {
 
         {/* Right Column - OS Integration & Media */}
         <VBox style={{ width: "50%", border: "rounded", padding: 1 }}>
-          <Label style={{ color: "#f5e0dc", bold: true }}>5. OS Integration & Media</Label>
+          <Label style={{ color: "$foreground", bold: true }}>5. OS Integration & Media</Label>
 
           <HBox style={{ margin: new Spacing(0, 1, 1, 1) }}>
             <Button
               style={{
-                background: "#fab387",
-                color: "black",
+                background: "$accent",
                 flexGrow: 1,
                 margin: new Spacing(0, 1, 0, 0),
               }}
@@ -217,7 +216,7 @@ function AdvancedProtocolsApp() {
             </Button>
 
             <Button
-              style={{ background: "#fab387", color: "black", flexGrow: 1 }}
+              style={{ background: "$accent", flexGrow: 1 }}
               onClick={handleTriggerNotification}
             >
               Show Notification
@@ -226,8 +225,7 @@ function AdvancedProtocolsApp() {
 
           <Button
             style={{
-              background: "#a6e3a1",
-              color: "black",
+              background: "$success",
               margin: new Spacing(0, 1, 1, 1),
             }}
             onClick={handleRenderImage}
@@ -237,8 +235,7 @@ function AdvancedProtocolsApp() {
 
           <Button
             style={{
-              background: "#fab387",
-              color: "black",
+              background: "$accent",
               margin: new Spacing(0, 1, 1, 1),
             }}
             onClick={handleSetBadge}
@@ -248,8 +245,7 @@ function AdvancedProtocolsApp() {
 
           <Button
             style={{
-              background: "#f38ba8",
-              color: "black",
+              background: "$error",
               margin: new Spacing(0, 1, 0, 1),
             }}
             onClick={handleExit}

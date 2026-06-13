@@ -86,7 +86,15 @@ export class TableWidget<Row = any> extends Widget {
   public sort: SortState | null = null;
 
   /** Background color painted across the selected row (and inherited by its cells). */
-  public selectedBackground = "#585b70";
+  public selectedBackground = "$selectionBg";
+
+  /** {@link selectedBackground} with theme variables resolved to a concrete color. */
+  private resolvedSelectedBackground(): string {
+    return (
+      (this.app ?? App.instance)?.cssResolver.resolveVariable(this, this.selectedBackground) ??
+      "#264f78"
+    );
+  }
 
   /** Selection changed (arrow navigation or single click). */
   public declare onSelect?: (row: Row, viewIndex: number) => void;
@@ -517,7 +525,8 @@ export class TableWidget<Row = any> extends Widget {
       cell.region = new Region(new Offset(x, y), new Size(m.colWidths[colIndex], this.rowHeight));
       // Make the cell (and its content, via findResolvedBackground) inherit the
       // selection background so the highlight bar has no gap at this column.
-      const selBg = cell.viewRow === this.selectedIndex ? this.selectedBackground : undefined;
+      const selBg =
+        cell.viewRow === this.selectedIndex ? this.resolvedSelectedBackground() : undefined;
       cell.computedStyle = { ...cell.computedStyle, background: selBg };
     }
     return true;
@@ -708,7 +717,7 @@ export class TableWidget<Row = any> extends Widget {
     // cells can inherit it and the highlight bar stays seamless.
     const seg = new Segment(
       line,
-      this.baseStyle(selected ? { background: this.selectedBackground } : {}),
+      this.baseStyle(selected ? { background: this.resolvedSelectedBackground() } : {}),
     );
     buffer.drawSegment(originX - this.scrollLeft, y, seg);
   }

@@ -30,6 +30,12 @@ export interface ComponentProps {
   label?: string;
   children?: React.ReactNode;
   focusable?: boolean;
+  /**
+   * Marks the widget (and its descendants) as inert: not focusable, ignores
+   * key/mouse input, and interactive controls render in a muted style. A
+   * disabled container propagates to every control inside it.
+   */
+  disabled?: boolean;
   onClick?: (ev: any) => void;
   onKey?: (ev: any) => void;
   onScroll?: (ev: any) => void;

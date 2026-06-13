@@ -159,7 +159,7 @@ function ControlsTab() {
         <Checkbox checked={checked} label="Analytics" onChange={setChecked} />
       </HBox>
       <View style={{ height: 1 }} />
-      <Label style={{ color: "#a6adc8" }}>Density</Label>
+      <Label style={{ color: "$dimmed" }}>Density</Label>
       <RadioGroup
         options={["compact", "comfortable", "spacious"]}
         value={choice}
@@ -167,10 +167,10 @@ function ControlsTab() {
         onChange={setChoice}
       />
       <View style={{ height: 1 }} />
-      <Label style={{ color: "#a6adc8" }}>Favorite fruit</Label>
+      <Label style={{ color: "$dimmed" }}>Favorite fruit</Label>
       <Select options={["apple", "banana", "cherry", "date"]} value={fruit} onChange={setFruit} />
       <View style={{ height: 1 }} />
-      <Label style={{ color: "#a6adc8" }}>Volume: {volume}</Label>
+      <Label style={{ color: "$dimmed" }}>Volume: {volume}</Label>
       <Slider
         value={volume}
         min={0}
@@ -180,7 +180,7 @@ function ControlsTab() {
         style={{ width: 40 }}
       />
       <View style={{ height: 1 }} />
-      <Label style={{ color: "#a6adc8" }}>Download</Label>
+      <Label style={{ color: "$dimmed" }}>Download</Label>
       <ProgressBar value={progress} showPercent style={{ width: 40 }} />
     </VBox>
   );
@@ -195,31 +195,31 @@ function FormTab() {
         onSubmit={(values) => setSubmitted(values)}
         style={{ border: "round", padding: 1, width: 52 }}
       >
-        <Label style={{ color: "#a6e3a1" }}>Username</Label>
+        <Label style={{ color: "$success" }}>Username</Label>
         <Input
           id="username"
           placeholder="at least 3 characters"
           validateOn="blur"
           validators={[required("Username is required"), minLength(3)]}
-          style={{ background: "#313244", color: "#f5c2e7" }}
+          style={{ background: "$panel", color: "$accent" }}
         />
-        <FieldError targetId="username" style={{ color: "#f38ba8" }} />
+        <FieldError targetId="username" style={{ color: "$error" }} />
 
-        <Label style={{ color: "#a6e3a1" }}>Email</Label>
+        <Label style={{ color: "$success" }}>Email</Label>
         <Input
           id="email"
           type="email"
           placeholder="you@example.com"
           validateOn="blur"
           validators={[required("Email is required"), email()]}
-          style={{ background: "#313244", color: "#f5c2e7" }}
+          style={{ background: "$panel", color: "$accent" }}
         />
-        <FieldError targetId="email" style={{ color: "#f38ba8" }} />
+        <FieldError targetId="email" style={{ color: "$error" }} />
         <View style={{ height: 1 }} />
         <Button>Submit</Button>
       </Form>
       <View style={{ height: 1 }} />
-      <Label style={{ color: submitted ? "#a6e3a1" : "#6c7086" }}>
+      <Label style={{ color: submitted ? "$success" : "$dimmed" }}>
         {submitted ? `Submitted: ${JSON.stringify(submitted)}` : "Fill the form and submit…"}
       </Label>
     </VBox>
@@ -230,10 +230,10 @@ function DataTab() {
   const [selected, setSelected] = useState("");
   return (
     <VBox label="📊 Data" style={{ padding: 1 }}>
-      <Label style={{ bold: true, color: "#89b4fa" }}>Table — sortable, virtualized</Label>
+      <Label style={{ bold: true, color: "$secondary" }}>Table — sortable, virtualized</Label>
       <Table data={packages} columns={columns} style={{ height: 8, border: "round" }} />
       <View style={{ height: 1 }} />
-      <Label style={{ bold: true, color: "#89b4fa" }}>
+      <Label style={{ bold: true, color: "$secondary" }}>
         ListView — 200 rows {selected && `· ${selected}`}
       </Label>
       <ListView
@@ -250,7 +250,7 @@ function TreeTab() {
   const [opened, setOpened] = useState("");
   return (
     <VBox label="🌲 Tree" style={{ padding: 1 }}>
-      <Label style={{ color: "#a6adc8" }}>
+      <Label style={{ color: "$dimmed" }}>
         Workspace explorer (virtualized) {opened && `· opened ${opened}`}
       </Label>
       <Tree
@@ -268,13 +268,15 @@ function TreeTab() {
 function StatusTab() {
   return (
     <VBox label="🚦 Status & Glyphs" style={{ padding: 1 }}>
-      <Label style={{ bold: true, color: "#89b4fa" }}>StatusBadge — glyph + label</Label>
+      <Label style={{ bold: true, color: "$secondary" }}>StatusBadge — glyph + label</Label>
       <VBox style={{ padding: 1 }}>
         {STATES.map((s) => (
           <StatusBadge key={s} state={s} />
         ))}
       </VBox>
-      <Label style={{ bold: true, color: "#89b4fa" }}>StatusDot — one cell, three glyph sets</Label>
+      <Label style={{ bold: true, color: "$secondary" }}>
+        StatusDot — one cell, three glyph sets
+      </Label>
       <HBox style={{ height: 1, padding: { left: 1 } }}>
         {STATES.map((s) => (
           <HBox key={s} style={{ width: 4 }}>
@@ -283,21 +285,21 @@ function StatusTab() {
         ))}
       </HBox>
       <View style={{ height: 1 }} />
-      <Label style={{ bold: true, color: "#89b4fa" }}>Heroicons (fallback glyphs)</Label>
+      <Label style={{ bold: true, color: "$secondary" }}>Heroicons (fallback glyphs)</Label>
       <HBox style={{ height: 1, padding: { left: 1 } }}>
         {HERO_ICONS.map((n) => (
           <HBox key={n} style={{ width: 4 }}>
-            <HeroIcon name={n} variant="solid" style={{ color: "#f9e2af" }} />
+            <HeroIcon name={n} variant="solid" style={{ color: "$warning" }} />
           </HBox>
         ))}
       </HBox>
       <View style={{ height: 1 }} />
-      <Label style={{ bold: true, color: "#89b4fa" }}>File icons</Label>
+      <Label style={{ bold: true, color: "$secondary" }}>File icons</Label>
       <HBox style={{ height: 1, padding: { left: 1 } }}>
         {["ts", "json", "rs", "go", "md"].map((ext) => (
           <HBox key={ext} style={{ width: 9 }}>
             <FileIcon extension={ext} />
-            <Label style={{ color: "#a6adc8" }}>.{ext}</Label>
+            <Label style={{ color: "$dimmed" }}>.{ext}</Label>
           </HBox>
         ))}
       </HBox>
@@ -318,7 +320,7 @@ function TextTab() {
 export function WebDemoUI() {
   const [tab, setTab] = useState(0);
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>ZTUI in the browser — same widgets, WebDriver backend</Header>
       <Footer>
         ←/→ switch tabs · Tab to focus · arrows navigate · Enter activates · resize the window

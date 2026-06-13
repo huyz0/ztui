@@ -72,7 +72,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
 `;
 
   return (
-    <Dock style={{ background: "#1e1e2e" }}>
+    <Dock style={{ background: "$background" }}>
       <Header>🚀 ZTUI Rich Rendering Engine Demo</Header>
       <Footer>
         Switch tabs with the buttons │ Drag to select text, release to copy │ Exit to Quit
@@ -83,7 +83,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
         <VBox style={{ width: "30%", border: "rounded", padding: 1 }}>
           <Button
             style={{
-              background: tab === "markup" ? "#89b4fa" : "#313244",
+              background: tab === "markup" ? "$secondary" : "$panel",
               color: tab === "markup" ? "black" : "white",
               margin: 1,
             }}
@@ -93,7 +93,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
           </Button>
           <Button
             style={{
-              background: tab === "syntax" ? "#a6e3a1" : "#313244",
+              background: tab === "syntax" ? "$success" : "$panel",
               color: tab === "syntax" ? "black" : "white",
               margin: 1,
             }}
@@ -103,7 +103,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
           </Button>
           <Button
             style={{
-              background: tab === "markdown" ? "#f9e2af" : "#313244",
+              background: tab === "markdown" ? "$warning" : "$panel",
               color: tab === "markdown" ? "black" : "white",
               margin: 1,
             }}
@@ -113,7 +113,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
           </Button>
 
           <VBox style={{ flexGrow: 1 }} />
-          <Button style={{ background: "#f38ba8", color: "black", margin: 1 }} onClick={handleExit}>
+          <Button style={{ background: "$error", margin: 1 }} onClick={handleExit}>
             Exit App
           </Button>
         </VBox>
@@ -122,7 +122,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
         <VBox style={{ width: "70%", border: "rounded", padding: 1 }}>
           {tab === "markup" && (
             <VBox>
-              <RichText style={{ color: "#cba6f7", bold: true, align: "center" }}>
+              <RichText style={{ color: "$primary", bold: true, align: "center" }}>
                 [bold cyan]CONSOLE MARKUP DEMO[/]
               </RichText>
               <RichText>[bold]Bold Text:[/] [bold]Hello World[/]</RichText>
@@ -134,7 +134,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
               </RichText>
               <RichText>
                 [bold]Coloured underlines:[/] [undercurl underline=red]misspeled[/], [undercurl
-                underline=yellow]warning[/], [underline underline=#89b4fa]info[/]
+                underline=yellow]warning[/], [underline underline=$secondary]info[/]
               </RichText>
               <RichText>
                 [red]Colored Text:[/] [red]Red[/], [green]Green[/], [yellow]Yellow[/], [blue]Blue[/]
@@ -158,7 +158,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
 
           {tab === "syntax" && (
             <VBox>
-              <RichText style={{ color: "#a6e3a1", bold: true }}>
+              <RichText style={{ color: "$success", bold: true }}>
                 TypeScript Highlighting (Gutter Enabled):
               </RichText>
               <Syntax
@@ -168,7 +168,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
               >
                 {codeSnippet}
               </Syntax>
-              <RichText style={{ color: "#f9e2af", bold: true }}>Diff Highlighting:</RichText>
+              <RichText style={{ color: "$warning", bold: true }}>Diff Highlighting:</RichText>
               <Syntax language="diff" lineNumbers={false} style={{ border: "dashed", margin: 1 }}>
                 {diffSnippet}
               </Syntax>

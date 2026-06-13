@@ -62,7 +62,7 @@ function WorkerDemo() {
         : "$accent";
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>🧵 ZTUI useWorker — one cancellable task at a time</Header>
       <Footer>r run (again = supersede) · x cancel · Ctrl+C quit</Footer>
 

@@ -4,6 +4,7 @@ import { GifReader } from "omggif";
 import { PNG } from "pngjs";
 import { App } from "../../core/app.ts";
 import { logger } from "../../core/logger.ts";
+import { ThemeManager } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { parseColorToRGB } from "../../render/icon-registry.ts";
@@ -36,7 +37,9 @@ export class ImageWidget extends Widget {
     if (client.width <= 0 || client.height <= 0) return;
 
     const bgHex = this.findResolvedBackground();
-    const bgRgb = parseColorToRGB(bgHex === "default" ? "#1e1e2e" : bgHex);
+    const bgRgb = parseColorToRGB(
+      bgHex === "default" ? ThemeManager.getInstance().getActiveTheme().colors.background : bgHex,
+    );
     const style = new Style({
       color: "default",
       background: bgHex,

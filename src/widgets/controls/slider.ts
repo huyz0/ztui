@@ -102,6 +102,8 @@ export class SliderWidget extends Widget {
     const primaryColor = App.instance?.cssResolver.resolveVariable(this, "$primary") || "cyan";
     const selectBg = App.instance?.cssResolver.resolveVariable(this, "$selectionBg") || "blue";
     const selectFg = App.instance?.cssResolver.resolveVariable(this, "$selectionFg") || "white";
+    const disabled = this.isDisabled();
+    const disabledColor = App.instance?.cssResolver.resolveVariable(this, "$disabled") || fg;
 
     const sliderBg = this.focused ? selectBg : bg;
 
@@ -115,16 +117,16 @@ export class SliderWidget extends Widget {
 
     // Colors
     const activeStyle = new Style({
-      color: this.focused ? selectFg : primaryColor,
+      color: disabled ? disabledColor : this.focused ? selectFg : primaryColor,
       background: sliderBg,
-      bold: this.focused,
+      bold: this.focused && !disabled,
     });
     const inactiveStyle = new Style({
-      color: this.focused ? "lightgray" : "gray",
+      color: disabled ? disabledColor : this.focused ? "lightgray" : "gray",
       background: sliderBg,
     });
     const knobStyle = new Style({
-      color: this.focused ? primaryColor : displayColor,
+      color: disabled ? disabledColor : this.focused ? primaryColor : displayColor,
       background: sliderBg,
       bold: true,
     });

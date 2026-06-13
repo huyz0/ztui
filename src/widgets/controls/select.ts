@@ -62,7 +62,7 @@ export class DropdownOverlayWidget extends Widget {
     const fg =
       App.instance?.cssResolver.resolveVariable(this.selectWidget, "$foreground") || "#ffffff";
     const primary =
-      App.instance?.cssResolver.resolveVariable(this.selectWidget, "$primary") || "#00ffff";
+      App.instance?.cssResolver.resolveVariable(this.selectWidget, "$primary") || "#4daafc";
 
     const borderStyle = new Style({ color: fg, background: bg });
 
@@ -335,10 +335,13 @@ export class SelectWidget extends Widget {
 
     const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
+    const disabled = this.isDisabled();
 
     // Choose styling based on state
     let displayColor = fg;
-    if (this.focused) {
+    if (disabled) {
+      displayColor = App.instance?.cssResolver.resolveVariable(this, "$disabled") || fg;
+    } else if (this.focused) {
       displayColor = App.instance?.cssResolver.resolveVariable(this, "$focus") || fg;
     }
     const textStyle = new Style({ color: displayColor, background: bg });

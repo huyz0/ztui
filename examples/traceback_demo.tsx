@@ -18,7 +18,7 @@ try {
 
 function TracebackDemo() {
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>💥 ZTUI Traceback — rich exception panel</Header>
       <Footer>↑↓ scroll · real stack from this file · Ctrl+C quit</Footer>
 

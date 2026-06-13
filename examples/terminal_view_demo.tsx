@@ -52,7 +52,7 @@ function TerminalViewDemo() {
   }, []);
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>🖥 ZTUI TerminalView — sandboxed streaming command output</Header>
       <Footer>
         ↑↓ scroll · ANSI colors + \r progress · output can't escape the view · Ctrl+C quit

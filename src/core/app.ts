@@ -260,8 +260,11 @@ export class App extends DOMNode {
         return;
       }
 
-      // Bubble key event up from the focused widget
+      // Bubble key event up from the focused widget. A disabled focused widget
+      // (e.g. it was disabled while focused) swallows nothing — skip its chain
+      // so input can't reach an inert control.
       let current: DOMNode | null = screen.focusedWidget;
+      if (current instanceof Widget && current.isDisabled()) current = null;
       let handledBy: Widget | null = null;
       while (current) {
         if (current instanceof Widget) {
@@ -351,6 +354,12 @@ export class App extends DOMNode {
 
       if (hit) {
         const hitWidget = hit;
+        // A disabled control (or anything inside a disabled container) ignores
+        // pointer input entirely — no activation, focus, or click.
+        if (hitWidget.isDisabled()) {
+          ev.handled = true;
+          return;
+        }
         if (hitWidget.handleMouse) {
           this.safeInvoke(`handleMouse on ${hitWidget.describe()}`, () =>
             hitWidget.handleMouse(ev),

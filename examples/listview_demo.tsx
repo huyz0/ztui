@@ -23,7 +23,7 @@ function ListViewDemo() {
   const [opened, setOpened] = useState<string>("");
 
   return (
-    <Dock style={{ background: "#11111b" }}>
+    <Dock style={{ background: "$surface" }}>
       <Header>📋 ZTUI ListView — flat selection list (virtualized, 5000+ rows)</Header>
       <Footer>
         ↑/↓ move · PgUp/PgDn jump · Enter/dbl-click open · Ctrl+C quit ·{" "}

@@ -27,18 +27,18 @@ const states: StatusState[] = [
 
 const card = {
   border: "rounded",
-  borderColor: "#45475a",
+  borderColor: "$panel",
   padding: 1,
   margin: { right: 2 },
 } as const;
 
 function StatusDemo() {
   return (
-    <VBox style={{ background: "#11111b", padding: 1 }}>
+    <VBox style={{ background: "$surface", padding: 1 }}>
       <Header>◍ ZTUI Status Indicators</Header>
       <Footer>Ctrl+C quit</Footer>
 
-      <Label style={{ color: "#cdd6f4", bold: true, margin: { top: 1 } }}>
+      <Label style={{ color: "$foreground", bold: true, margin: { top: 1 } }}>
         StatusDot — single cell, three glyph sets
       </Label>
       <HBox style={{ padding: { top: 1, bottom: 1 } }}>
@@ -51,19 +51,19 @@ function StatusDemo() {
                 </HBox>
               ))}
             </HBox>
-            <Label style={{ color: "#a6adc8", margin: { top: 1 } }}>{glyphSet}</Label>
+            <Label style={{ color: "$dimmed", margin: { top: 1 } }}>{glyphSet}</Label>
           </VBox>
         ))}
       </HBox>
 
-      <Label style={{ color: "#cdd6f4", bold: true }}>StatusBadge — glyph + label</Label>
+      <Label style={{ color: "$foreground", bold: true }}>StatusBadge — glyph + label</Label>
       <HBox style={{ padding: { top: 1, bottom: 1 } }}>
         {states.map((state) => (
           <StatusBadge key={state} state={state} style={{ margin: { right: 3 } }} />
         ))}
       </HBox>
 
-      <Label style={{ color: "#cdd6f4", bold: true }}>StatusList — task column</Label>
+      <Label style={{ color: "$foreground", bold: true }}>StatusList — task column</Label>
       <HBox style={{ padding: { top: 1 } }}>
         <VBox style={card}>
           <StatusList

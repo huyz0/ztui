@@ -6,6 +6,7 @@ import {
   render,
   type SplitNode,
   SplitView,
+  ThemePalette,
   VBox,
   Workbench,
   type WorkbenchPanel,
@@ -104,7 +105,8 @@ const panels: WorkbenchPanel[] = [
 
 function IDEDemo() {
   return (
-    <VBox style={{ width: "100%", height: "100%", background: "#11111b" }}>
+    <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
+      <ThemePalette />
       <Header>
         🧰 ZTUI IDE — drag to re-dock · split/resize panes · Ctrl+B / Ctrl+Space toggle · Ctrl+C
         quit

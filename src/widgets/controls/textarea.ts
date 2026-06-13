@@ -444,7 +444,9 @@ export class TextAreaWidget extends Widget {
     const gutterWidth = this.lineNumbers ? Math.max(2, String(lines.length).length) + 3 : 0;
     const textViewportWidth = Math.max(0, contentRect.width - gutterWidth);
 
-    const fg = this.computedStyle.color || "default";
+    const fg = this.isDisabled()
+      ? App.instance?.cssResolver.resolveVariable(this, "$disabled") || "gray"
+      : this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
     const baseStyle = new Style({ color: fg, background: bg });
     const gutterColor = App.instance?.cssResolver.resolveVariable(this, "$gutter") || "gray";

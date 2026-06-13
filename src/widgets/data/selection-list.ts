@@ -34,9 +34,9 @@ export class SelectionListWidget extends Widget {
   public value: string[] = [];
   public glyphSet: SelectionGlyphSet = "unicode";
   /** Background painted across the cursor (focused) row. */
-  public cursorBackground = "#585b70";
+  public cursorBackground = "$selectionBg";
   /** Color for disabled rows and `detail` text. */
-  public mutedColor = "#6c7086";
+  public mutedColor = "$dimmed";
   /** Fired with the next checked-id array when the selection changes. */
   public declare onChange?: (selectedIds: string[]) => void;
 
@@ -235,18 +235,19 @@ export class SelectionListWidget extends Widget {
     const last = Math.min(this.rowCount, first + visibleRows);
     const selected = new Set(this.value);
     const baseColor = this.computedStyle.color || "default";
+    const resolver = (this.app ?? App.instance)?.cssResolver;
     const accent =
-      this.computedStyle.color ||
-      (this.app ?? App.instance)?.cssResolver.resolveVariable(this, "$primary") ||
-      "cyan";
+      this.computedStyle.color || resolver?.resolveVariable(this, "$primary") || "#4daafc";
+    const cursorBg = resolver?.resolveVariable(this, this.cursorBackground) ?? "#264f78";
+    const muted = resolver?.resolveVariable(this, this.mutedColor) ?? "#8a8a8a";
 
     buffer.pushClip(new Region(new Offset(content.x, content.y), new Size(bodyW, content.height)));
     for (let v = first; v < last; v++) {
       const item = this.items[v];
       const checked = selected.has(item.id);
       const y = content.y + (v - first);
-      const background = v === this.cursor ? this.cursorBackground : this.findResolvedBackground();
-      const color = item.disabled ? this.mutedColor : checked ? accent : baseColor;
+      const background = v === this.cursor ? cursorBg : this.findResolvedBackground();
+      const color = item.disabled ? muted : checked ? accent : baseColor;
       const line = fitCell(this.rowText(item, checked), bodyW, "left");
       buffer.drawSegment(content.x, y, new Segment(line, new Style({ color, background })));
     }
