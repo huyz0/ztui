@@ -42,13 +42,17 @@ export default defineConfig({
                 { label: "Sparkline", slug: "widgets/sparkline" },
                 { label: "Diff", slug: "widgets/diff" },
                 { label: "Rich Log", slug: "widgets/rich-log" },
+                { label: "Terminal View", slug: "widgets/terminal-view" },
               ],
             },
             {
               label: "Text & input",
               items: [
                 { label: "Markdown", slug: "widgets/markdown" },
+                { label: "Rich Text", slug: "widgets/rich-text" },
                 { label: "Text Area", slug: "widgets/text-area" },
+                { label: "Form", slug: "widgets/form" },
+                { label: "Question / Answer", slug: "widgets/question-answer" },
               ],
             },
             {
@@ -60,7 +64,17 @@ export default defineConfig({
             },
             {
               label: "Layout",
-              items: [{ label: "Collapsible", slug: "widgets/collapsible" }],
+              items: [
+                { label: "Collapsible", slug: "widgets/collapsible" },
+                { label: "Tabs", slug: "widgets/tabs" },
+                { label: "Split View", slug: "widgets/split-view" },
+                { label: "Overlays", slug: "widgets/overlays" },
+                { label: "Workbench", slug: "widgets/workbench" },
+              ],
+            },
+            {
+              label: "Media",
+              items: [{ label: "Image", slug: "widgets/image" }],
             },
           ],
         },

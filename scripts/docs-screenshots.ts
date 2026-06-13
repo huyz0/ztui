@@ -35,6 +35,18 @@ const BATCH: Record<string, { cols: number; rows: number }> = {
   waiting: { cols: 56, rows: 14 },
   status: { cols: 56, rows: 16 },
   collapsible: { cols: 64, rows: 16 },
+  // Batch 2
+  terminal: { cols: 72, rows: 18 },
+  qa: { cols: 64, rows: 16 },
+  rich: { cols: 72, rows: 18 },
+  splitview: { cols: 72, rows: 18 },
+  tabs: { cols: 64, rows: 16 },
+  overlay: { cols: 64, rows: 18 },
+  workbench: { cols: 84, rows: 24 },
+  form: { cols: 56, rows: 20 },
+  heroicons: { cols: 64, rows: 12 },
+  "file-icon": { cols: 56, rows: 18 },
+  image: { cols: 48, rows: 16 },
 };
 
 const DEFAULT_SIZE = { cols: 72, rows: 20 };
