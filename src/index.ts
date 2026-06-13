@@ -1,21 +1,23 @@
 // Core & DOM
 
-export { requestAnimationTick } from "./core/animation.ts";
-export { App } from "./core/app.ts";
+export { requestAnimationTick } from "./anim/animation.ts";
 export {
   ATTENTION_BREATH,
   type BreatheSpec,
   breatheColor,
   breatheIntensity,
   FOCUS_BREATH,
-} from "./core/breathe.ts";
+} from "./anim/breathe.ts";
 export {
   EASINGS,
   type Easing,
   type EasingFn,
   interpolate,
   resolveEasing,
-} from "./core/easing.ts";
+} from "./anim/easing.ts";
+export { motion } from "./anim/motion.ts";
+export { ColorTween, Tween, type TweenOptions } from "./anim/tween.ts";
+export { App } from "./core/app.ts";
 export {
   eventToKey,
   formatKeyLabel,
@@ -29,10 +31,6 @@ export {
   normalizeKey,
 } from "./core/hotkeys.ts";
 export { startInspector } from "./core/inspector.ts";
-export { type LogLevel, logger } from "./core/logger.ts";
-export { motion } from "./core/motion.ts";
-export type { Theme } from "./core/theme.ts";
-export { adjustLightness, deriveTheme, ThemeManager } from "./core/theme.ts";
 export {
   type Toast,
   type ToastLevel,
@@ -40,7 +38,6 @@ export {
   type ToastOptions,
   toast,
 } from "./core/toast.ts";
-export { ColorTween, Tween, type TweenOptions } from "./core/tween.ts";
 export { DOMNode } from "./dom/dom.ts";
 export { type OverlayPlacement, OverlayRootWidget } from "./dom/overlay.ts";
 export { Screen, type ScreenLayer } from "./dom/screen.ts";
@@ -256,36 +253,20 @@ export { Segment } from "./render/segment.ts";
 export type { StyleProps } from "./render/style.ts";
 // Rendering & Styling
 export { Style } from "./render/style.ts";
+export type { Theme } from "./theme.ts";
+export { adjustLightness, deriveTheme, ThemeManager } from "./theme.ts";
+export { type LogLevel, logger } from "./utils/logger.ts";
 export { CheckboxWidget } from "./widgets/controls/checkbox.ts";
 export { FieldErrorWidget } from "./widgets/controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./widgets/controls/form.ts";
-export { ProgressBarWidget } from "./widgets/controls/progress-bar.ts";
 export { RadioGroupWidget } from "./widgets/controls/radio-group.ts";
 export { SelectWidget } from "./widgets/controls/select.ts";
 export { SliderWidget } from "./widgets/controls/slider.ts";
-export {
-  type SpinnerMode as SpinnerWidgetMode,
-  SpinnerWidget,
-} from "./widgets/controls/spinner.ts";
-export {
-  type GlyphSet,
-  StatusBadgeWidget,
-  StatusDotWidget,
-  type StatusListItem as StatusListWidgetItem,
-  StatusListWidget,
-  type StatusState as StatusStateValue,
-  statusGlyph,
-} from "./widgets/controls/status.ts";
 export { SwitchWidget } from "./widgets/controls/switch.ts";
 export { TextAreaWidget } from "./widgets/controls/textarea.ts";
 export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";
 export * from "./widgets/controls/validation.ts";
 export { ValidationSummaryWidget } from "./widgets/controls/validation-summary.ts";
-export {
-  type WaitingGridCells as WaitingGridWidgetCells,
-  WaitingGridWidget,
-} from "./widgets/controls/waiting-grid.ts";
-export { WaitingPanelWidget } from "./widgets/controls/waiting-panel.ts";
 export { type DiffView, DiffWidget } from "./widgets/data/diff.ts";
 export type { ListItem } from "./widgets/data/list-view.ts";
 export { ListViewWidget } from "./widgets/data/list-view.ts";
@@ -303,6 +284,25 @@ export { TerminalViewWidget } from "./widgets/data/terminal-view.ts";
 export { TracebackWidget } from "./widgets/data/traceback.ts";
 export type { TreeNode } from "./widgets/data/tree.ts";
 export { TreeWidget } from "./widgets/data/tree.ts";
+export { ProgressBarWidget } from "./widgets/feedback/progress-bar.ts";
+export {
+  type SpinnerMode as SpinnerWidgetMode,
+  SpinnerWidget,
+} from "./widgets/feedback/spinner.ts";
+export {
+  type GlyphSet,
+  StatusBadgeWidget,
+  StatusDotWidget,
+  type StatusListItem as StatusListWidgetItem,
+  StatusListWidget,
+  type StatusState as StatusStateValue,
+  statusGlyph,
+} from "./widgets/feedback/status.ts";
+export {
+  type WaitingGridCells as WaitingGridWidgetCells,
+  WaitingGridWidget,
+} from "./widgets/feedback/waiting-grid.ts";
+export { WaitingPanelWidget } from "./widgets/feedback/waiting-panel.ts";
 export {
   type CollapsibleGlyphSet,
   CollapsibleWidget,

@@ -4,8 +4,8 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
-import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./caret.ts";
-import { normalizeRange } from "./text-selection.ts";
+import { normalizeRange } from "../../render/text-selection.ts";
+import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./internal/caret.ts";
 import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
 
 export class InputWidget extends Widget implements ValidatableField {

@@ -1,22 +1,17 @@
+import { registerElement } from "../dom/element-registry.ts";
 import { OverlayRootWidget } from "../dom/overlay.ts";
-import { registerElement } from "../react/host-config.ts";
 import { ButtonWidget } from "./controls/button.ts";
 import { CheckboxWidget } from "./controls/checkbox.ts";
 import { FieldErrorWidget } from "./controls/field-error.ts";
 import { FormWidget } from "./controls/form.ts";
 import { InputWidget } from "./controls/input.ts";
-import { ProgressBarWidget } from "./controls/progress-bar.ts";
 import { RadioGroupWidget } from "./controls/radio-group.ts";
 import { SelectWidget } from "./controls/select.ts";
 import { SliderWidget } from "./controls/slider.ts";
-import { SpinnerWidget } from "./controls/spinner.ts";
-import { StatusBadgeWidget, StatusDotWidget, StatusListWidget } from "./controls/status.ts";
 import { SwitchWidget } from "./controls/switch.ts";
 import { TextAreaWidget } from "./controls/textarea.ts";
 import { ToggleButtonWidget } from "./controls/toggle-button.ts";
 import { ValidationSummaryWidget } from "./controls/validation-summary.ts";
-import { WaitingGridWidget } from "./controls/waiting-grid.ts";
-import { WaitingPanelWidget } from "./controls/waiting-panel.ts";
 import { DiffWidget } from "./data/diff.ts";
 import { ListViewWidget } from "./data/list-view.ts";
 import { RichLogWidget } from "./data/rich-log.ts";
@@ -26,6 +21,11 @@ import { TableCellWidget, TableWidget } from "./data/table.ts";
 import { TerminalViewWidget } from "./data/terminal-view.ts";
 import { TracebackWidget } from "./data/traceback.ts";
 import { TreeWidget } from "./data/tree.ts";
+import { ProgressBarWidget } from "./feedback/progress-bar.ts";
+import { SpinnerWidget } from "./feedback/spinner.ts";
+import { StatusBadgeWidget, StatusDotWidget, StatusListWidget } from "./feedback/status.ts";
+import { WaitingGridWidget } from "./feedback/waiting-grid.ts";
+import { WaitingPanelWidget } from "./feedback/waiting-panel.ts";
 import { AttentionWidget } from "./layout/attention.ts";
 import { BoxWidget, ScrollableBoxWidget } from "./layout/box.ts";
 import { CollapsibleWidget } from "./layout/collapsible.ts";
@@ -54,31 +54,14 @@ export { CheckboxWidget } from "./controls/checkbox.ts";
 export { FieldErrorWidget } from "./controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./controls/form.ts";
 export { InputWidget } from "./controls/input.ts";
-export { ProgressBarWidget } from "./controls/progress-bar.ts";
 export { RadioGroupWidget } from "./controls/radio-group.ts";
 export { SelectWidget } from "./controls/select.ts";
 export { SliderWidget } from "./controls/slider.ts";
-export { type SpinnerMode, SpinnerWidget } from "./controls/spinner.ts";
-export {
-  type GlyphSet,
-  StatusBadgeWidget,
-  StatusDotWidget,
-  type StatusListItem,
-  StatusListWidget,
-  type StatusState,
-  statusGlyph,
-} from "./controls/status.ts";
 export { SwitchWidget } from "./controls/switch.ts";
 export { TextAreaWidget } from "./controls/textarea.ts";
 export { ToggleButtonWidget } from "./controls/toggle-button.ts";
 export * from "./controls/validation.ts";
 export { ValidationSummaryWidget } from "./controls/validation-summary.ts";
-export {
-  type WaitingGridCells,
-  type WaitingGridVariant,
-  WaitingGridWidget,
-} from "./controls/waiting-grid.ts";
-export { type WaitingPanelVariant, WaitingPanelWidget } from "./controls/waiting-panel.ts";
 export { type DiffView, DiffWidget } from "./data/diff.ts";
 export type { ListItem } from "./data/list-view.ts";
 export { ListViewWidget } from "./data/list-view.ts";
@@ -91,6 +74,23 @@ export { TerminalViewWidget } from "./data/terminal-view.ts";
 export { TracebackWidget } from "./data/traceback.ts";
 export type { TreeNode } from "./data/tree.ts";
 export { TreeWidget } from "./data/tree.ts";
+export { ProgressBarWidget } from "./feedback/progress-bar.ts";
+export { type SpinnerMode, SpinnerWidget } from "./feedback/spinner.ts";
+export {
+  type GlyphSet,
+  StatusBadgeWidget,
+  StatusDotWidget,
+  type StatusListItem,
+  StatusListWidget,
+  type StatusState,
+  statusGlyph,
+} from "./feedback/status.ts";
+export {
+  type WaitingGridCells,
+  type WaitingGridVariant,
+  WaitingGridWidget,
+} from "./feedback/waiting-grid.ts";
+export { type WaitingPanelVariant, WaitingPanelWidget } from "./feedback/waiting-panel.ts";
 export { AttentionWidget } from "./layout/attention.ts";
 export { BoxWidget, ScrollableBoxWidget } from "./layout/box.ts";
 export { type CollapsibleGlyphSet, CollapsibleWidget } from "./layout/collapsible.ts";

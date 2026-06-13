@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { adjustLightness, deriveTheme, ThemeManager } from "../core/theme.ts";
 import { Widget } from "../dom/widget.ts";
+import { adjustLightness, deriveTheme, ThemeManager } from "../theme.ts";
 import { parseTCSS } from "./css-parser.ts";
 import { CSSResolver } from "./css-resolver.ts";
 

@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { logger } from "../../../core/logger.ts";
 import { iconRegistry } from "../../../render/icon-registry.ts";
+import { logger } from "../../../utils/logger.ts";
 import type { ComponentProps } from "../types.ts";
 import { Icon } from "./icon.tsx";
 

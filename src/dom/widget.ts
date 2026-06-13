@@ -1,22 +1,36 @@
-// Type-only: erased at runtime, so no import cycle with app.ts.
-
-import { requestAnimationTick } from "../core/animation.ts";
-import type { App } from "../core/app.ts";
-import { logger } from "../core/logger.ts";
-import { themeBlendBase } from "../core/theme.ts";
-import { ColorTween, Tween, type TweenOptions } from "../core/tween.ts";
+import { requestAnimationTick } from "../anim/animation.ts";
+import { ColorTween, Tween, type TweenOptions } from "../anim/tween.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
+import { parseDimension } from "../geometry/parse-dimension.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { Spacing } from "../geometry/spacing.ts";
-import { parseDimension } from "../layout/layout.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { mix, parseColor, rgbStr } from "../render/color.ts";
 import { stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
+import { themeBlendBase } from "../theme.ts";
+import { logger } from "../utils/logger.ts";
 import { DOMNode } from "./dom.ts";
 import { TextNode } from "./text-node.ts";
+
+/**
+ * The slice of the owning `App` that widgets reach through {@link Widget.app}:
+ * render scheduling, the focus-bearing active screen, and the style resolver.
+ * Declared structurally (dependency inversion) so the DOM layer carries no
+ * import edge to `core/app` — `App` satisfies this shape. Methods on
+ * `cssResolver` mirror `CSSResolver` without importing it (which would be an
+ * upward `dom → css` dependency).
+ */
+export interface WidgetApp {
+  queueRender(): void;
+  activeScreen: { focusWidget(widget: Widget): void };
+  cssResolver: {
+    resolveVariable(widget: Widget, value: string): string;
+    resolveStyles(widget: Widget, isHovered: boolean): WidgetStyles;
+  };
+}
 
 export interface WidgetStyles {
   color?: string;
@@ -78,10 +92,10 @@ export class Widget extends DOMNode {
    * *this* widget's app — style resolution, render scheduling — so multiple live
    * apps (tests, the web backend) don't resolve each other's trees.
    */
-  public get app(): App | null {
+  public get app(): WidgetApp | null {
     let node: DOMNode | null = this;
     while (node) {
-      if (node.tagName === "app") return node as unknown as App;
+      if (node.tagName === "app") return node as unknown as WidgetApp;
       node = node.parent;
     }
     return null;

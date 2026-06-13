@@ -1,9 +1,9 @@
-import { themeBlendBase } from "../core/theme.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { parseColor } from "../render/color.ts";
+import { themeBlendBase } from "../theme.ts";
 
 // How strongly the edge rows blend toward the background to signal hidden
 // content. The row at the very edge fades hardest, the next one less, giving a

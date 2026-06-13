@@ -1,8 +1,8 @@
-import { ThemeManager } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Style } from "../../render/style.ts";
+import { ThemeManager } from "../../theme.ts";
 
 export class IconWidget extends Widget {
   public name = "";

@@ -1,10 +1,10 @@
-import { themeBlendBase } from "../core/theme.ts";
 import { Offset } from "../geometry/offset.ts";
+import { parseDimension } from "../geometry/parse-dimension.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
-import { parseDimension } from "../layout/layout.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import type { RGB } from "../render/color.ts";
+import { themeBlendBase } from "../theme.ts";
 import { Widget } from "./widget.ts";
 
 /** Modal scrim: a translucent black wash over the backdrop behind a dim modal. */

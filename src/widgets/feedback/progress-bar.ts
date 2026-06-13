@@ -1,6 +1,6 @@
-import { requestAnimationTick } from "../../core/animation.ts";
+import { requestAnimationTick } from "../../anim/animation.ts";
+import type { Easing } from "../../anim/easing.ts";
 import { App } from "../../core/app.ts";
-import type { Easing } from "../../core/easing.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";

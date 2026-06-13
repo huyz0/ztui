@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
 import { App } from "../../core/app.ts";
-import { logger } from "../../core/logger.ts";
-import { ThemeManager } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { parseColorToRGB } from "../../render/icon-registry.ts";
 import { Style } from "../../render/style.ts";
+import { ThemeManager } from "../../theme.ts";
+import { logger } from "../../utils/logger.ts";
 import { renderSvgSync } from "../../utils/sharp-sync.ts";
 import { renderAnsiFallback } from "./image-renderers.ts";
 

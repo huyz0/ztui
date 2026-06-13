@@ -1,6 +1,5 @@
 import { renderMermaidASCII, renderMermaidSVG } from "beautiful-mermaid";
 import { App } from "../../core/app.ts";
-import { isThemeLight } from "../../core/theme.ts";
 import type { DOMNode } from "../../dom/dom.ts";
 import { TextNode } from "../../dom/text-node.ts";
 import { Widget } from "../../dom/widget.ts";
@@ -9,6 +8,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Syntax } from "../../render/rich/syntax.ts";
 import { stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { isThemeLight } from "../../theme.ts";
 import { renderSvgSync } from "../../utils/sharp-sync.ts";
 import { ButtonWidget } from "../controls/button.ts";
 

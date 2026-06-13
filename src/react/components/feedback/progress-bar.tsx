@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { Easing } from "../../../core/easing.ts";
+import type { Easing } from "../../../anim/easing.ts";
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 

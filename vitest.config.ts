@@ -21,7 +21,7 @@ export default defineConfig({
         "src/react/components/text/mermaid.tsx",
         // Browser-/bundler-only web code, verified via Playwright (bun run web:debug)
         // rather than the unit runner.
-        "src/driver/web/web-inspector.ts",
+        "src/tools/web-inspector.ts",
         "src/driver/web/canvas-bundle.ts",
         "src/driver/web/canvas-client.ts",
         "src/driver/web/dom.ts",

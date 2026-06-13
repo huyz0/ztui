@@ -2,7 +2,7 @@ import type { DOMNode } from "../dom/dom.ts";
 import { Widget } from "../dom/widget.ts";
 import type { Cell, ScreenBuffer } from "../render/buffer.ts";
 import { splitGraphemes, stringWidth } from "../render/segment.ts";
-import { extractSelection, type Pos } from "../widgets/controls/text-selection.ts";
+import { extractSelection, type Pos } from "../render/text-selection.ts";
 
 /**
  * Read-only text selection over display widgets, defined in *logical content*

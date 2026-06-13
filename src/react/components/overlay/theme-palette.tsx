@@ -1,6 +1,6 @@
 import { createElement, type ReactNode, useMemo, useRef, useState } from "react";
 import { formatKeyLabel, normalizeKey } from "../../../core/hotkeys.ts";
-import { isThemeLight, type Theme, ThemeManager } from "../../../core/theme.ts";
+import { isThemeLight, type Theme, ThemeManager } from "../../../theme.ts";
 import { Input } from "../controls/input.tsx";
 import { Box } from "../layout/box.tsx";
 import { HBox } from "../layout/hbox.tsx";

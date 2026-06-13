@@ -1,37 +1,43 @@
 import { marked, type Token } from "marked";
-import type { TerminalCapabilities } from "../../driver/driver.ts";
 import { stringWidth } from "../segment.ts";
 import { Style } from "../style.ts";
 import { Syntax } from "./syntax.ts";
 import { RichText, type Span, splitRichTextIntoLines } from "./text.ts";
 
-function tokensToMarkup(tokens: Token[] | undefined): string {
+/**
+ * Translate `marked`'s inline token stream into console markup tags. Relies on
+ * `Token` being a discriminated union on `type`, so each branch narrows without
+ * casting. Shared by the pure-text renderer here and the block-level
+ * `MarkdownWidget` (`widgets/text/markdown.ts`), which is the single source of
+ * truth for inline → markup conversion.
+ */
+export function tokensToMarkup(tokens: Token[] | undefined): string {
   if (!tokens) return "";
   let markup = "";
   for (const token of tokens) {
     if (token.type === "text") {
-      markup += (token as any).text;
+      markup += token.text;
     } else if (token.type === "codespan") {
-      markup += `[dim yellow]${(token as any).text}[/]`;
+      markup += `[dim yellow]${token.text}[/]`;
     } else if (token.type === "strong") {
-      markup += `[bold]${tokensToMarkup((token as any).tokens)}[/]`;
+      markup += `[bold]${tokensToMarkup(token.tokens)}[/]`;
     } else if (token.type === "em") {
-      markup += `[italic]${tokensToMarkup((token as any).tokens)}[/]`;
+      markup += `[italic]${tokensToMarkup(token.tokens)}[/]`;
     } else if (token.type === "del") {
-      markup += `[strikethrough]${tokensToMarkup((token as any).tokens)}[/]`;
+      markup += `[strikethrough]${tokensToMarkup(token.tokens)}[/]`;
     } else if (token.type === "link") {
-      const href = (token as any).href || "";
-      markup += `[bright-blue underline link=${href}]${tokensToMarkup((token as any).tokens)}[/]`;
+      const href = token.href || "";
+      markup += `[bright-blue underline link=${href}]${tokensToMarkup(token.tokens)}[/]`;
     } else if (token.type === "image") {
-      const src = (token as any).href || "";
-      const alt = (token as any).text || "image";
+      const src = token.href || "";
+      const alt = token.text || "image";
       markup += `[dim]🖼️  ${alt} (${src})[/]`;
     } else if (token.type === "escape") {
-      markup += (token as any).text;
+      markup += token.text;
     } else if (token.type === "br") {
       markup += "\n";
-    } else if ((token as any).tokens) {
-      markup += tokensToMarkup((token as any).tokens);
+    } else if ("tokens" in token && token.tokens) {
+      markup += tokensToMarkup(token.tokens);
     } else {
       markup += token.raw || "";
     }
@@ -67,11 +73,7 @@ export class Markdown {
   /**
    * Parses markdown and returns an array of RichText lines pre-formatted and styled.
    */
-  public static renderToLines(
-    markdown: string,
-    themeName = "theme",
-    _capabilities?: TerminalCapabilities,
-  ): RichText[] {
+  public static renderToLines(markdown: string, themeName = "theme"): RichText[] {
     const tokens = marked.lexer(markdown);
     const lines: RichText[] = [];
 
@@ -105,11 +107,11 @@ export class Markdown {
     const processBlocks = (blockTokens: Token[], indentLevel = 0, inBlockquote = false) => {
       for (const token of blockTokens) {
         if (token.type === "heading") {
-          const depth = (token as any).depth;
+          const depth = token.depth;
           const hColor = headingColors[`h${depth}` as keyof typeof headingColors] || "white";
           const headingStyle = new Style({ color: hColor, bold: true });
 
-          const markup = tokensToMarkup((token as any).tokens);
+          const markup = tokensToMarkup(token.tokens);
           const richHeader = RichText.fromMarkup(markup);
           const spans = richHeader.spans.map((s) => ({ ...s }));
           spans.push({ start: 0, end: richHeader.plain.length, style: headingStyle });
@@ -136,7 +138,7 @@ export class Markdown {
           }
           lines.push(new RichText(""));
         } else if (token.type === "paragraph") {
-          const markup = tokensToMarkup((token as any).tokens);
+          const markup = tokensToMarkup(token.tokens);
           const richPara = RichText.fromMarkup(markup);
           const paraLines = splitRichTextIntoLines(richPara);
 
@@ -151,7 +153,7 @@ export class Markdown {
           }
           lines.push(new RichText(""));
         } else if (token.type === "blockquote") {
-          processBlocks((token as any).tokens, indentLevel, true);
+          processBlocks(token.tokens ?? [], indentLevel, true);
         } else if (token.type === "hr") {
           const ruleText = "─".repeat(50);
           lines.push(new RichText(ruleText, [{ start: 0, end: ruleText.length, style: hrStyle }]));
@@ -231,19 +233,19 @@ export class Markdown {
 
           lines.push(new RichText(""));
         } else if (token.type === "list") {
-          let listIndex = (token as any).start !== undefined ? (token as any).start : 1;
-          for (const item of (token as any).items) {
+          let listIndex = token.start !== undefined ? token.start : 1;
+          for (const item of token.items) {
             // Process the list item text / tokens
             let itemTextToken = item.tokens.find(
-              (t: any) => t.type === "text" || t.type === "paragraph",
+              (t: Token) => t.type === "text" || t.type === "paragraph",
             );
             if (!itemTextToken) {
               itemTextToken = item.tokens[0];
             }
 
-            const itemMarkup = itemTextToken
-              ? tokensToMarkup((itemTextToken as any).tokens || [itemTextToken])
-              : "";
+            const inlineTokens =
+              itemTextToken && "tokens" in itemTextToken ? itemTextToken.tokens : undefined;
+            const itemMarkup = itemTextToken ? tokensToMarkup(inlineTokens ?? [itemTextToken]) : "";
             const richItem = RichText.fromMarkup(itemMarkup);
 
             let prefix = "";

@@ -1,5 +1,5 @@
-import { resolveEasing } from "../../core/easing.ts";
-import { BLACK, mix, parseColor, rgbStr, WHITE } from "../../render/color.ts";
+import { resolveEasing } from "../../../anim/easing.ts";
+import { BLACK, mix, parseColor, rgbStr, WHITE } from "../../../render/color.ts";
 
 /** Full blink period (on → off → on) for the smooth caret, in milliseconds. */
 export const SMOOTH_CARET_PERIOD = 1060;

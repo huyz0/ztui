@@ -1,7 +1,7 @@
-import { logger } from "../../core/logger.ts";
 import { Size } from "../../geometry/size.ts";
 import { encodeSimpleGlyf } from "../../render/glyf-encode.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
+import { logger } from "../../utils/logger.ts";
 import { type Clipboard, Driver, type KeyEvent, type TerminalCapabilities } from "../driver.ts";
 import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";

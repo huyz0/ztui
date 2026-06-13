@@ -1,9 +1,9 @@
 import { App } from "../../core/app.ts";
 import type { DOMNode } from "../../dom/dom.ts";
+import { createWidgetByTagName } from "../../dom/element-registry.ts";
 import { TextNode } from "../../dom/text-node.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Spacing } from "../../geometry/spacing.ts";
-import { createWidgetByTagName } from "../../react/host-config.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 
 /**

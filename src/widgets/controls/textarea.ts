@@ -5,8 +5,14 @@ import { Syntax } from "../../render/rich/syntax.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
-import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./caret.ts";
-import { deleteRange, extractSelection, insertAt, orderPair, type Pos } from "./text-selection.ts";
+import {
+  deleteRange,
+  extractSelection,
+  insertAt,
+  orderPair,
+  type Pos,
+} from "../../render/text-selection.ts";
+import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./internal/caret.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class TextAreaWidget extends Widget {

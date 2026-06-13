@@ -1,4 +1,4 @@
-import { requestAnimationTick } from "../../core/animation.ts";
+import { requestAnimationTick } from "../../anim/animation.ts";
 import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";

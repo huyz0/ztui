@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { logger } from "../../../core/logger.ts";
 import type { GlyfContour } from "../../../render/glyf-encode.ts";
 import { iconRegistry } from "../../../render/icon-registry.ts";
+import { logger } from "../../../utils/logger.ts";
 
 /** Shape of an opentype.js TrueType outline point (`glyph.points` entries). */
 interface SetiGlyphPoint {
@@ -96,8 +96,8 @@ function ensureFontLoaded(customResourcesDir?: string): void {
     throw new Error(`Seti font not found at: ${woffPath}`);
   }
 
-  // Dynamic require so the font is only parsed when first needed
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // Synchronous lazy require (Bun ESM) so the font is only parsed on first
+  // demand; ensureFontLoaded is sync, so a dynamic import() is not an option.
   const opentype = require("opentype.js") as typeof import("opentype.js");
   const fontBuffer = readFileSync(woffPath);
   setiFont = opentype.parse(

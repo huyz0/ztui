@@ -13,11 +13,6 @@ export type {
 } from "./components/controls/input.tsx";
 export { EmailInput, Input, PasswordInput } from "./components/controls/input.tsx";
 export type {
-  CompactProgressBarProps,
-  ProgressBarProps,
-} from "./components/controls/progress-bar.tsx";
-export { CompactProgressBar, ProgressBar } from "./components/controls/progress-bar.tsx";
-export type {
   QAMode,
   QAOption,
   QAResult,
@@ -30,17 +25,6 @@ export type { SelectProps } from "./components/controls/select.tsx";
 export { Select } from "./components/controls/select.tsx";
 export type { SliderProps } from "./components/controls/slider.tsx";
 export { Slider } from "./components/controls/slider.tsx";
-export type { SpinnerMode, SpinnerProps } from "./components/controls/spinner.tsx";
-export { Spinner } from "./components/controls/spinner.tsx";
-export type {
-  GlyphSet,
-  StatusBadgeProps,
-  StatusDotProps,
-  StatusListItem,
-  StatusListProps,
-  StatusState,
-} from "./components/controls/status.tsx";
-export { StatusBadge, StatusDot, StatusList } from "./components/controls/status.tsx";
 export type { SwitchProps } from "./components/controls/switch.tsx";
 export { Switch } from "./components/controls/switch.tsx";
 export type { TextAreaProps } from "./components/controls/textarea.tsx";
@@ -49,17 +33,6 @@ export type { ToggleButtonProps } from "./components/controls/toggle-button.tsx"
 export { ToggleButton } from "./components/controls/toggle-button.tsx";
 export type { ValidationSummaryProps } from "./components/controls/validation-summary.tsx";
 export { ValidationSummary } from "./components/controls/validation-summary.tsx";
-export type {
-  WaitingGridCells,
-  WaitingGridProps,
-  WaitingGridVariant,
-} from "./components/controls/waiting-grid.tsx";
-export { WaitingGrid } from "./components/controls/waiting-grid.tsx";
-export type {
-  WaitingPanelProps,
-  WaitingPanelVariant,
-} from "./components/controls/waiting-panel.tsx";
-export { WaitingPanel } from "./components/controls/waiting-panel.tsx";
 export type { DiffProps } from "./components/data/diff.tsx";
 export { Diff } from "./components/data/diff.tsx";
 export type { ListViewProps } from "./components/data/list-view.tsx";
@@ -78,6 +51,33 @@ export type { TracebackProps } from "./components/data/traceback.tsx";
 export { Traceback } from "./components/data/traceback.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";
 export { Tree } from "./components/data/tree.tsx";
+export type {
+  CompactProgressBarProps,
+  ProgressBarProps,
+} from "./components/feedback/progress-bar.tsx";
+export { CompactProgressBar, ProgressBar } from "./components/feedback/progress-bar.tsx";
+export type { SpinnerMode, SpinnerProps } from "./components/feedback/spinner.tsx";
+export { Spinner } from "./components/feedback/spinner.tsx";
+export type {
+  GlyphSet,
+  StatusBadgeProps,
+  StatusDotProps,
+  StatusListItem,
+  StatusListProps,
+  StatusState,
+} from "./components/feedback/status.tsx";
+export { StatusBadge, StatusDot, StatusList } from "./components/feedback/status.tsx";
+export type {
+  WaitingGridCells,
+  WaitingGridProps,
+  WaitingGridVariant,
+} from "./components/feedback/waiting-grid.tsx";
+export { WaitingGrid } from "./components/feedback/waiting-grid.tsx";
+export type {
+  WaitingPanelProps,
+  WaitingPanelVariant,
+} from "./components/feedback/waiting-panel.tsx";
+export { WaitingPanel } from "./components/feedback/waiting-panel.tsx";
 export type { AttentionProps } from "./components/layout/attention.tsx";
 export { Attention } from "./components/layout/attention.tsx";
 export { Box } from "./components/layout/box.tsx";

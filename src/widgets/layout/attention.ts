@@ -1,5 +1,5 @@
-import { requestAnimationTick } from "../../core/animation.ts";
-import { motion } from "../../core/motion.ts";
+import { requestAnimationTick } from "../../anim/animation.ts";
+import { motion } from "../../anim/motion.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { BoxWidget } from "./box.ts";
 

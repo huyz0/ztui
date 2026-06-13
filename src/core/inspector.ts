@@ -1,16 +1,33 @@
 import { readFileSync } from "node:fs";
+import type { Screen } from "../dom/screen.ts";
+import type { Driver } from "../driver/driver.ts";
+import type { ScreenBuffer } from "../render/buffer.ts";
 import { renderBufferToHTML, renderBufferToText } from "../render/html-renderer.ts";
-import type { App } from "./app.ts";
-import { logger } from "./logger.ts";
-import { ThemeManager } from "./theme.ts";
+import { ThemeManager } from "../theme.ts";
+import { logger } from "../utils/logger.ts";
 
 declare const Bun: any;
+
+/**
+ * The slice of `App` the inspector reads. Declared structurally (not as `App`)
+ * via dependency inversion so this module — and the whole inspector subtree —
+ * has no import edge back to `core/app`, keeping the dependency graph acyclic.
+ * `App` satisfies it; only lower-layer types (Screen, ScreenBuffer, Driver) are
+ * imported, all of which are below `core`.
+ */
+export interface InspectableApp {
+  activeScreen: Screen;
+  buffer: ScreenBuffer;
+  driver: Driver;
+  screenStack: Screen[];
+  queueRender(): void;
+}
 
 export interface InspectorServer {
   stop(): void;
 }
 
-export function startInspector(app: App, port = 8000): InspectorServer {
+export function startInspector(app: InspectableApp, port = 8000): InspectorServer {
   if (typeof Bun !== "undefined") {
     const server = Bun.serve({
       port,
@@ -86,7 +103,7 @@ const JSON_HEADERS = {
   "Access-Control-Allow-Origin": "*",
 };
 
-async function handleRequest(app: App, req: Request): Promise<Response> {
+async function handleRequest(app: InspectableApp, req: Request): Promise<Response> {
   const url = new URL(req.url);
 
   if (url.pathname === "/dom" && req.method === "GET") {
@@ -193,7 +210,7 @@ async function handleRequest(app: App, req: Request): Promise<Response> {
 }
 
 /** High-level snapshot of the running app, for quick human/LLM diagnosis. */
-function dumpAppState(app: App): any {
+function dumpAppState(app: InspectableApp): any {
   const screen = app.activeScreen;
   const focused = (screen as any).focusedWidget;
   const driver = app.driver;

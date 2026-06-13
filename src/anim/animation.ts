@@ -1,11 +1,16 @@
-// Type-only: avoids a runtime import of app.ts, which would form an evaluation
-// cycle (app → screen → widget → animation → app) and leave Widget undefined
-// when Screen extends it. The owner reaches its App structurally at call time.
-import type { App } from "./app.ts";
+/**
+ * The single capability an animation tick needs from the owning app: a way to
+ * request a repaint. Declared structurally (not as `App`) so this module has
+ * **zero** dependency on the core/app layer — no import edge, type or runtime —
+ * keeping the animation primitive at the bottom of the dependency graph.
+ */
+interface Repaintable {
+  queueRender(): void;
+}
 
 /** Anything that can ask its owning app to repaint — every mounted widget. */
 interface TickOwner {
-  app?: App | null;
+  app?: Repaintable | null;
 }
 
 /**

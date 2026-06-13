@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
+import { motion } from "../anim/motion.ts";
 import { App } from "../core/app.ts";
-import { motion } from "../core/motion.ts";
 import { Attention, Input, Label, VBox } from "../index.ts";
 import { mountApp } from "./harness.tsx";
 

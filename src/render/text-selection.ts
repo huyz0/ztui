@@ -13,7 +13,7 @@
  * rest of the widget code.
  */
 
-import { splitGraphemes } from "../../render/segment.ts";
+import { splitGraphemes } from "./segment.ts";
 
 // ── Linear (1D) ──────────────────────────────────────────────────────────────
 

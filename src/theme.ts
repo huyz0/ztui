@@ -1,5 +1,5 @@
-import { parseColor, type RGB } from "../render/color.ts";
-import { logger } from "./logger.ts";
+import { parseColor, type RGB } from "./render/color.ts";
+import { logger } from "./utils/logger.ts";
 
 const BLEND_BLACK: RGB = { r: 0, g: 0, b: 0 };
 const BLEND_WHITE: RGB = { r: 255, g: 255, b: 255 };

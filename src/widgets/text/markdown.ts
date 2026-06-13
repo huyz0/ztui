@@ -1,54 +1,21 @@
-import { marked, type Token } from "marked";
+import { marked, type Token, type Tokens } from "marked";
 import remend from "remend";
 import { App } from "../../core/app.ts";
-import { logger } from "../../core/logger.ts";
 import type { DOMNode } from "../../dom/dom.ts";
+import { createWidgetByTagName } from "../../dom/element-registry.ts";
 import { Scrollable } from "../../dom/scrollable.ts";
 import { TextNode } from "../../dom/text-node.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
 import { Spacing } from "../../geometry/spacing.ts";
-import { createWidgetByTagName } from "../../react/host-config.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
+import { tokensToMarkup } from "../../render/rich/markdown.ts";
 import { stringWidth } from "../../render/segment.ts";
+import { logger } from "../../utils/logger.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 import { parsePartialJson } from "./json-ui.ts";
 import { RichTextWidget } from "./rich-text.ts";
 import { SyntaxWidget } from "./syntax.ts";
-
-function tokensToMarkup(tokens: Token[] | undefined): string {
-  if (!tokens) return "";
-  let markup = "";
-  for (const token of tokens) {
-    if (token.type === "text") {
-      markup += token.text;
-    } else if (token.type === "codespan") {
-      markup += `[dim yellow]${token.text}[/]`;
-    } else if (token.type === "strong") {
-      markup += `[bold]${tokensToMarkup((token as any).tokens)}[/]`;
-    } else if (token.type === "em") {
-      markup += `[italic]${tokensToMarkup((token as any).tokens)}[/]`;
-    } else if (token.type === "del") {
-      markup += `[strikethrough]${tokensToMarkup((token as any).tokens)}[/]`;
-    } else if (token.type === "link") {
-      const href = (token as any).href || "";
-      markup += `[bright-blue underline link=${href}]${tokensToMarkup((token as any).tokens)}[/]`;
-    } else if (token.type === "image") {
-      const src = (token as any).href || "";
-      const alt = (token as any).text || "image";
-      markup += `[dim]🖼️  ${alt} (${src})[/]`;
-    } else if (token.type === "escape") {
-      markup += token.text;
-    } else if (token.type === "br") {
-      markup += "\n";
-    } else if ((token as any).tokens) {
-      markup += tokensToMarkup((token as any).tokens);
-    } else {
-      markup += token.raw || "";
-    }
-  }
-  return markup;
-}
 
 function areTokensEqual(a: any, b: any): boolean {
   if (!a || !b) return a === b;
@@ -423,7 +390,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
       container.style.margin = new Spacing(0, 0, 1, 0);
 
       const isOrdered = token.ordered || false;
-      (token.items as any[]).forEach((itemToken: any, idx: number) => {
+      token.items.forEach((itemToken: Tokens.ListItem, idx: number) => {
         const itemWidget = this.buildListItemWidget(itemToken, isOrdered, idx);
         if (itemWidget) {
           container.appendChild(itemWidget);
@@ -483,7 +450,7 @@ export class MarkdownWidget extends Scrollable(Widget) {
         lang !== "mermaid" && lang !== "ztui-mermaid" ? createWidgetByTagName(lang) : null;
       if (widget) {
         if ("theme" in widget) {
-          (widget as any).theme = this.theme;
+          widget.theme = this.theme;
         }
         const props = parsePartialJson(token.text.trim());
         if (props && typeof props === "object") {
@@ -543,7 +510,11 @@ export class MarkdownWidget extends Scrollable(Widget) {
     return null;
   }
 
-  private buildListItemWidget(token: any, isOrdered: boolean, index: number): Widget | null {
+  private buildListItemWidget(
+    token: Tokens.ListItem,
+    isOrdered: boolean,
+    index: number,
+  ): Widget | null {
     if (token.type !== "list_item") return null;
 
     const container = new Widget("list_item");

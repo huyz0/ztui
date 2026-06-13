@@ -1,10 +1,10 @@
 import { App } from "../../core/app.ts";
-import { adjustLightness } from "../../core/theme.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { adjustLightness } from "../../theme.ts";
 
 export interface TabMetric {
   index: number;

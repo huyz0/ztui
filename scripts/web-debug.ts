@@ -14,7 +14,7 @@
  */
 import { createElement, isValidElement, type ReactNode } from "react";
 import { WebDemoUI } from "../examples/web_demo_ui.tsx";
-import { WebInspector } from "../src/driver/web/web-inspector.ts";
+import { WebInspector } from "../src/tools/web-inspector.ts";
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);

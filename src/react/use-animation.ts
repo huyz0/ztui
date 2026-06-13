@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { Easing } from "../core/easing.ts";
-import { ColorTween, Tween, type TweenOptions } from "../core/tween.ts";
+import type { Easing } from "../anim/easing.ts";
+import { ColorTween, Tween, type TweenOptions } from "../anim/tween.ts";
 
 export type AnimationOptions = TweenOptions;
 

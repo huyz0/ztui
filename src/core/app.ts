@@ -13,11 +13,11 @@ import { DockLayout } from "../layout/dock-layout.ts";
 import { GridLayout } from "../layout/grid-layout.ts";
 import { parseDimension } from "../layout/layout.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
+import { ThemeManager } from "../theme.ts";
+import { logger } from "../utils/logger.ts";
 import { HotkeyRegistry } from "./hotkeys.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
-import { logger } from "./logger.ts";
 import { ReadonlySelectionManager } from "./selection.ts";
-import { ThemeManager } from "./theme.ts";
 
 /**
  * Optional clipboard/selection surface implemented by editable text widgets

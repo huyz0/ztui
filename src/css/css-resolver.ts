@@ -1,10 +1,10 @@
-import { ATTENTION_BREATH, breatheColor, breatheIntensity, FOCUS_BREATH } from "../core/breathe.ts";
-import { motion } from "../core/motion.ts";
-import { isColorLight, isThemeLight, ThemeManager } from "../core/theme.ts";
+import { ATTENTION_BREATH, breatheColor, breatheIntensity, FOCUS_BREATH } from "../anim/breathe.ts";
+import { motion } from "../anim/motion.ts";
 import type { WidgetStyles } from "../dom/widget.ts";
 import { Widget } from "../dom/widget.ts";
 import { Spacing } from "../geometry/spacing.ts";
 import { contrastText, lerpColor, mix, parseRgb, rgbStr } from "../render/color.ts";
+import { isColorLight, isThemeLight, ThemeManager } from "../theme.ts";
 import type { CSSRule } from "./css-parser.ts";
 
 export function blendColors(color1: string, color2: string, weight = 0.5): string {

@@ -4,31 +4,15 @@ const NoEventPriority = 0;
 
 import { createContext } from "react";
 import { App } from "../core/app.ts";
-import { logger } from "../core/logger.ts";
 import type { DOMNode } from "../dom/dom.ts";
+import { createWidgetByTagName, registerElement } from "../dom/element-registry.ts";
 import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
+import { logger } from "../utils/logger.ts";
 
-// Re-exported for backward compatibility; TextNode now lives in the DOM layer.
-export { TextNode };
-
-const elementRegistry: Record<string, () => Widget> = {
-  "ztui-view": () => new Widget("view"),
-  "ztui-button": () => new Widget("button"),
-  "ztui-label": () => new Widget("label"),
-  "ztui-input": () => new Widget("input"),
-  "ztui-header": () => new Widget("header"),
-  "ztui-footer": () => new Widget("footer"),
-};
-
-export function registerElement(tagName: string, ctor: () => Widget) {
-  elementRegistry[tagName.toLowerCase()] = ctor;
-}
-
-export function createWidgetByTagName(tagName: string): Widget | null {
-  const ctor = elementRegistry[tagName.toLowerCase()];
-  return ctor ? ctor() : null;
-}
+// Re-exported for backward compatibility; these now live in the DOM layer so
+// widget modules can register without importing the React layer.
+export { createWidgetByTagName, registerElement, TextNode };
 
 // Handler props that map 1:1 to Widget fields. Applied on every commit and
 // reset when removed between renders. Typed against Widget so a typo here (or
@@ -123,15 +107,12 @@ export const hostConfig: any = {
   scheduleMicrotask: queueMicrotask,
 
   createInstance(type: string, props: any) {
-    const tagName = type.toLowerCase();
-    let instance: Widget;
-    if (elementRegistry[tagName]) {
-      instance = elementRegistry[tagName]();
-    } else {
+    let instance = createWidgetByTagName(type);
+    if (!instance) {
       // Unknown tag → generic, non-rendering widget. Often a typo, so leave a
       // breadcrumb rather than failing silently.
       logger.debug("reconciler", `unknown element <${type}>; using generic Widget`);
-      instance = new Widget(tagName);
+      instance = new Widget(type.toLowerCase());
     }
     applyProps(instance, props);
     return instance;

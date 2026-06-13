@@ -1,16 +1,9 @@
 import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
-import { App } from "../../core/app.ts";
-import { render, unmount } from "../../react/reconciler.ts";
-import {
-  BUNDLED_FONT_FAMILY,
-  HTML_FONT_FAMILY,
-  HTML_FONT_SIZE,
-  HTML_PADDING,
-} from "../../render/html-renderer.ts";
-import type { KeyEvent, MouseEvent } from "../driver.ts";
-import { canvasClientScript } from "./canvas-bundle.ts";
-import { serializeForCanvas } from "./canvas-renderer.ts";
+import { App } from "../core/app.ts";
+import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
+import { canvasClientScript } from "../driver/web/canvas-bundle.ts";
+import { serializeForCanvas } from "../driver/web/canvas-renderer.ts";
 import {
   bundledFontFaces,
   bundledFontPath,
@@ -18,8 +11,15 @@ import {
   setiFontPath,
   type WebFontFace,
   webHostStyles,
-} from "./host-page.ts";
-import { WebDriver } from "./index.ts";
+} from "../driver/web/host-page.ts";
+import { WebDriver } from "../driver/web/index.ts";
+import { render, unmount } from "../react/reconciler.ts";
+import {
+  BUNDLED_FONT_FAMILY,
+  HTML_FONT_FAMILY,
+  HTML_FONT_SIZE,
+  HTML_PADDING,
+} from "../render/html-renderer.ts";
 
 /**
  * Headless-browser debug harness for the web backend.

@@ -1,8 +1,8 @@
 import type React from "react";
 import ReactReconciler from "react-reconciler";
 import { ConcurrentRoot } from "react-reconciler/constants";
-import { logger } from "../core/logger.ts";
 import type { DOMNode } from "../dom/dom.ts";
+import { logger } from "../utils/logger.ts";
 import { hostConfig } from "./host-config.ts";
 
 export const reconciler = ReactReconciler(hostConfig);

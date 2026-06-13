@@ -1,5 +1,5 @@
-import { requestAnimationTick } from "../core/animation.ts";
-import { motion } from "../core/motion.ts";
+import { requestAnimationTick } from "../anim/animation.ts";
+import { motion } from "../anim/motion.ts";
 import type { KeyEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";

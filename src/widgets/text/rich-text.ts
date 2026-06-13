@@ -1,5 +1,4 @@
 import { App } from "../../core/app.ts";
-import { logger } from "../../core/logger.ts";
 import { runCols } from "../../core/selection.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
@@ -7,6 +6,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { logger } from "../../utils/logger.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
 export class RichTextWidget extends Widget {
