@@ -26,7 +26,12 @@ export default defineConfig({
         },
         {
           label: "Guides",
-          items: [{ label: "Architecture", slug: "guides/architecture" }],
+          items: [
+            { label: "Architecture", slug: "guides/architecture" },
+            { label: "Layout", slug: "guides/layout" },
+            { label: "Styling", slug: "guides/styling" },
+            { label: "Theming", slug: "guides/theming" },
+          ],
         },
         {
           label: "Widgets",
