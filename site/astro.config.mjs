@@ -1,6 +1,13 @@
 // @ts-check
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
+import { createStarlightTypeDocPlugin } from "starlight-typedoc";
+
+// Generate one API-reference section per public entry point from the TSDoc in
+// the source. Each call returns a plugin (runs TypeDoc at build time) plus a
+// sidebar group placeholder to drop into the sidebar below.
+const [coreTypeDoc, coreTypeDocSidebar] = createStarlightTypeDocPlugin();
+const [reactTypeDoc, reactTypeDocSidebar] = createStarlightTypeDocPlugin();
 
 // GitHub Pages project site: https://huyz0.github.io/ztui/
 // (override `site`/`base` here if you later attach a custom domain.)
@@ -31,6 +38,7 @@ export default defineConfig({
             { label: "Layout", slug: "guides/layout" },
             { label: "Styling", slug: "guides/styling" },
             { label: "Theming", slug: "guides/theming" },
+            { label: "React binding", slug: "guides/react" },
           ],
         },
         {
@@ -100,7 +108,24 @@ export default defineConfig({
             },
           ],
         },
-        // React binding, Recipes, and Reference are added in later phases.
+        coreTypeDocSidebar,
+        reactTypeDocSidebar,
+      ],
+      plugins: [
+        coreTypeDoc({
+          entryPoints: ["../src/core.ts"],
+          tsconfig: "../tsconfig.json",
+          output: "api/core",
+          sidebar: { label: "ztui (core)", collapsed: true },
+          typeDoc: { excludeInternal: true, excludePrivate: true, excludeProtected: true },
+        }),
+        reactTypeDoc({
+          entryPoints: ["../src/react.ts"],
+          tsconfig: "../tsconfig.json",
+          output: "api/react",
+          sidebar: { label: "ztui/react", collapsed: true },
+          typeDoc: { excludeInternal: true, excludePrivate: true, excludeProtected: true },
+        }),
       ],
     }),
   ],

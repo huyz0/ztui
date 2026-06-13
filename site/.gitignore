@@ -2,3 +2,6 @@
 dist/
 .astro/
 node_modules/
+
+# TypeDoc API reference — regenerated from source on every `astro build`
+src/content/docs/api/
