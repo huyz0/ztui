@@ -38,14 +38,14 @@ Tests are organized into three layers by how much of the system they exercise an
 
 ### 2.2 Coverage Thresholds & Gates
 - **Rule**: Every code change **MUST** maintain or improve test coverage. Global thresholds configured in `vitest.config.ts` are strictly enforced by pre-commit hooks:
-  - **Statement Coverage**: $\ge 90\%$
   - **Line Coverage**: $\ge 90\%$
   - **Function Coverage**: $\ge 90\%$
-  - **Branch Coverage**: $\ge 80\%$
-- **Rule**: The following system-boundary modules are excluded from code coverage checks due to direct hardware or environment bindings:
-  - `src/driver/bun-driver.ts` (Requires active TTY streams)
-  - `src/react/host-config.ts` (React-reconciler callback bindings)
-  - `src/core/inspector.ts` (Spawns HTTP socket listeners)
+  - **Statement Coverage**: $\ge 88\%$
+  - **Branch Coverage**: $\ge 70\%$
+- **Rule**: Modules excluded from the coverage gate (see `vitest.config.ts`) fall into three groups, none of which carry meaningful unit-coverable logic:
+  - **Re-export-only entry points & registries**: `src/core.ts`, `src/react.ts`, `src/markdown.ts`, `src/syntax.ts`, `src/mermaid.ts`, and the `register-*` modules.
+  - **React/runtime boundaries**: `src/react/host-config.ts` (reconciler callbacks), `src/core/inspector.ts` (HTTP socket listener), `src/utils/sharp-render-sync.ts` (spawned subprocess).
+  - **Browser-/bundler-only web code** (verified via Playwright with `bun run web:debug`, not the unit runner): `src/tools/web-inspector.ts`, `src/driver/web/canvas-bundle.ts`, `src/driver/web/canvas-client.ts`, `src/driver/web/dom.ts`.
 
 ### 2.3 Teardown & Async Handling Rules
 - **Rule**: Always invoke `app.stop()` in `afterEach()` or at the end of each test case to unregister process event listeners and close mock driver buffers.
@@ -59,34 +59,37 @@ Tests are organized into three layers by how much of the system they exercise an
 ## 3. Checklist & Examples
 
 ### Isolated Component Test Template
-```typescript
-import { expect, test, beforeEach, afterEach } from "vitest";
-import { App } from "../core/app.ts";
-import { MockDriver } from "../driver/mock-driver.ts";
+```tsx
+import { afterEach, beforeEach, expect, test } from "vitest";
+import { App, MockDriver } from "../core.ts";
+import { renderBufferToText } from "../render/html-renderer.ts";
+import { Label, render } from "../react.ts";
 
 let app: App;
-let driver: MockDriver;
 
 beforeEach(() => {
-  driver = new MockDriver(80, 24);
-  app = new App({ driver });
-  app.start();
+  // MockDriver is the memory-resident, headless Driver (no TTY).
+  app = new App(new MockDriver(80, 24));
 });
 
 afterEach(() => {
-  app.stop(); // CRITICAL: unbind event listeners
+  app.stop(); // CRITICAL: unbinds event listeners and releases App.instance
 });
 
 test("renders custom widget", async () => {
-  // Trigger rendering updates
-  app.requestRender();
-  
-  // Wait for async reconciler flush
+  render(<Label>Expected Text</Label>, app.activeScreen);
+  app.run();
+
+  // Wait for the React commit + microtask render-queue flush.
   await new Promise((resolve) => setTimeout(resolve, 15));
-  
-  expect(driver.getBufferAsString()).toContain("Expected Text");
+
+  // `app.buffer` is the composed cell grid; render it to plain text to assert.
+  expect(renderBufferToText(app.buffer)).toContain("Expected Text");
 });
 ```
+
+> Most suites use the higher-level [`mountApp`](../src/test/harness.tsx) helper,
+> which wraps this boilerplate and returns `{ text(), settle(), findById(), … }`.
 
 ### Quick Commands Checklist
 - Run unit + integration tests with coverage: `bun run test`

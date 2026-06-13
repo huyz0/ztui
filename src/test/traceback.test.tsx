@@ -7,7 +7,7 @@ import { mountApp } from "./harness.tsx";
 const OPTS = {
   cols: 80,
   rows: 20,
-  capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+  capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
 };
 
 const STACK = [

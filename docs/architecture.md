@@ -44,8 +44,8 @@ The entire application state, DOM tree, and drawn buffers must be fully serializ
 
 ### 1.9 Backend Portability Boundary (verified)
 The render model is split so a non-terminal backend (web DOM/canvas, WASM) can be added without touching layout or widgets:
-- **Backend-agnostic (reuse as-is)**: `geometry/*`, `layout/*`, `dom/*`, `widgets/*`, `render/*` (style, segment cell-width model, `icon-registry` icon store + SVG rasterization + color parsing, `rich/*`), `utils/*` (`png`, `sharp-sync`), and the `ScreenBuffer` *cell model* (`cells`, `setCell`, `clear`, `resize`, `copyTo`). A scan confirms these contain no ANSI/`process`/`stdout` coupling, and that `src/widgets` imports no driver and `src/driver` imports no widget (clean bidirectional decoupling). The pipeline produces a 2-D grid of styled `Cell`s — the portable hand-off point.
-- **Terminal-specific (swap per backend)**: `ScreenBuffer.renderDiff`/`flushRun` (ANSI delta + cursor moves), and `driver/bun/*` (raw-mode stdin, ANSI/escape parsing, Kitty/iTerm2/Sixel graphics — including the `rgbaToSixel`/`fullColorRgbaToSixel` Sixel encoders, which live in the driver, never in widgets). A web backend implements a `Driver` that, instead of consuming an ANSI diff, renders the cell grid directly — `renderBufferToText` / `renderBufferToHTML` already demonstrate consuming the buffer without ANSI. This is implemented: `Driver.presentBuffer(buffer)` is the portable frame hand-off (the App calls it after every changed frame), `WebDriver` (`driver/web/index.ts`) consumes it and exposes `toHTML()`/`toText()` plus `dispatchKey`/`dispatchMouse`/`dispatchPaste`/`resize` for input, and `attachToDOM` (`driver/web/dom.ts`) binds it to a browser element with pure, unit-tested DOM→ztui event translators. `examples/web_demo.tsx` serves a full app to a browser this way.
+- **Backend-agnostic (reuse as-is)**: `geometry/*`, `layout/*`, `dom/*`, `widgets/*`, `render/*` (the `Style` *data model*, segment cell-width model, `icon-registry` icon store + SVG rasterization + color parsing, `rich/*`), `utils/*` (`png`, `sharp-sync`), and the `ScreenBuffer` *cell model* (`cells`, `setCell`, `clear`, `resize`, `copyTo`). A scan confirms these contain no ANSI/`process`/`stdout` coupling, and that `src/widgets` imports no driver and `src/driver` imports no widget (clean bidirectional decoupling). The pipeline produces a 2-D grid of styled `Cell`s — the portable hand-off point. `Style` is a pure data model — its SGR serialization lives separately in `render/ansi-style.ts` (terminal-specific, below), so non-terminal backends read its fields directly without importing any ANSI generation.
+- **Terminal-specific (swap per backend)**: `ScreenBuffer.renderDiff`/`flushRun` (ANSI delta + cursor moves), `render/ansi-style.ts` (`styleToEscapeCodes` turns a `Style` into SGR escapes; plus the `renderCapabilities` colour-depth flags the driver publishes), and `driver/bun/*` (raw-mode stdin, ANSI/escape parsing, Kitty/iTerm2/Sixel graphics — including the `rgbaToSixel`/`fullColorRgbaToSixel` Sixel encoders, which live in the driver, never in widgets). A web backend implements a `Driver` that, instead of consuming an ANSI diff, renders the cell grid directly — `renderBufferToText` / `renderBufferToHTML` already demonstrate consuming the buffer without ANSI. This is implemented: `Driver.presentBuffer(buffer)` is the portable frame hand-off (the App calls it after every changed frame), `WebDriver` (`driver/web/index.ts`) consumes it and exposes `toHTML()`/`toText()` plus `dispatchKey`/`dispatchMouse`/`dispatchPaste`/`resize` for input, and `attachToDOM` (`driver/web/dom.ts`) binds it to a browser element with pure, unit-tested DOM→ztui event translators. `examples/web_demo.tsx` serves a full app to a browser this way.
 - **App wiring note**: `App` defaults to `new BunDriver()` for CLI convenience (the one intentional app→driver reference); any other backend is selected by passing a `Driver` to the `App` constructor (as the tests do with `MockDriver`/`VTEDriver`). No widget or layout code references a concrete driver.
 
 #### 1.9.1 Web rendering — canvas backend (primary)
@@ -62,7 +62,7 @@ The **Cascadia Mono** webfont (MIT, Windows Terminal) is vendored in `resources/
 `renderBufferToHTML` (a two-layer DOM/text renderer) is retained for the REST inspector (`core/inspector.ts`) and the render tests, but the canvas path is what the live web backend uses.
 
 #### 1.9.2 Web debug harness (LLM-inspectable)
-`driver/web/web-inspector.ts` (`WebInspector`) runs a ztui app on a `WebDriver`, paints each frame into headless Chromium via Playwright (resolving a system Chrome when the bundled browser is absent), and exposes `screenshot()` (full or clipped/zoomed), a pixel-accurate `report()` (row gaps, page overflow, font-loaded, selection-disabled, cell width), and input injection (`click`/`key`/`wheel`). It is the built-in way for *any* coding agent — not just an interactive session — to see and verify the web backend without a human at a browser. The `bun run web:debug` CLI (`scripts/web-debug.ts`) screenshots a UI and prints the report; point it at a custom UI with `--module`. Playwright is a devDependency, imported lazily, so it never burdens normal framework use. This realizes principle §1.5 (AI-native inspectability) for the web backend.
+`tools/web-inspector.ts` (`WebInspector`) runs a ztui app on a `WebDriver`, paints each frame into headless Chromium via Playwright (resolving a system Chrome when the bundled browser is absent), and exposes `screenshot()` (full or clipped/zoomed), a pixel-accurate `report()` (row gaps, page overflow, font-loaded, selection-disabled, cell width), and input injection (`click`/`key`/`wheel`). It is the built-in way for *any* coding agent — not just an interactive session — to see and verify the web backend without a human at a browser. The `bun run web:debug` CLI (`scripts/web-debug.ts`) screenshots a UI and prints the report; point it at a custom UI with `--module`. Playwright is a devDependency, imported lazily, so it never burdens normal framework use. This realizes principle §1.5 (AI-native inspectability) for the web backend.
 
 ---
 
@@ -234,7 +234,7 @@ sequenceDiagram
   - **Rule**: If a global hotkey event is handled, further propagation and normal widget event handler execution MUST be blocked.
 
 ### 5.1a Text Selection & Clipboard
-Editable text widgets (`Input`, `TextArea`) support range selection and clipboard interchange. The range math lives in pure, backend-neutral helpers (`widgets/controls/text-selection.ts`); widgets hold only an `anchor` (the fixed end) with the live caret as the other end.
+Editable text widgets (`Input`, `TextArea`) support range selection and clipboard interchange. The range math lives in pure, backend-neutral helpers (`render/text-selection.ts`); widgets hold only an `anchor` (the fixed end) with the live caret as the other end.
 - **Selection input**: `Shift` + `Arrow/Home/End/PageUp/PageDown` extends the selection; a bare movement collapses it. Mouse `press` anchors a selection, `drag` extends the caret end, and `release` copies a non-empty selection to the clipboard — the mouse path works on every terminal. Modified arrows are decoded from the xterm `\x1b[1;<mod>[A-D|H|F]` / `\x1b[<n>;<mod>~` forms so the modifier survives even **without** the Kitty keyboard protocol.
 - **Keybindings (terminal-conflict-free)**: the primary copy is **selection-aware `Ctrl+C`** — when the focused widget has a non-empty selection, `Ctrl+C` copies it and the selection **stays visible** (standard editor behavior; repeat `Ctrl+C` re-copies). `Escape` (or clicking elsewhere) deselects, after which `Ctrl+C` quits as usual. This is the only keyboard copy that works on terminals **without** the Kitty protocol, where `Ctrl+Shift+C` is byte-identical to `Ctrl+C`. Under Kitty, `Ctrl+Shift+C`/`Ctrl+Shift+X` additionally bind copy/cut (decoded as key `ctrl+C`/`ctrl+X`). Paste = `Ctrl+V` (reads the OSC 52 framework clipboard); select-all = `Ctrl+A`. We never bind a key the terminal reserves and never silently drop a copy.
 - **Ctrl+C ownership**: the BunDriver no longer hard-exits on the raw `0x03` byte. It emits `ctrl+c` as a normal key and only falls back to `process.exit` if nothing marks the event handled — so the App's selection-aware copy can claim it, while a wedged/headless path still quits.
@@ -330,9 +330,12 @@ The framework enforces a **Strict Unidirectional Dependency Flow** between direc
 3. **`src/layout/`**: Computes spatial size distribution for child regions inside DOM elements.
 4. **`src/css/`**: Implements stylesheets parsing and specificity cascade overrides.
 5. **`src/dom/`**: Implements base DOMNodes, Widgets, Viewport Screens, and event targets.
-6. **`src/driver/`**: Handles OS/TTY stdin read decoders, signal hooks, and off-screen screen buffer grids.
-7. **`src/geometry/`**: Pure algebraic primitives (Size, Offset, Spacing, Region) with no dependencies.
-8. **`src/core/`**: Coordinates driver startup, App loops, layout schedules, and the inspector API.
+6. **`src/render/`**: The `ScreenBuffer` cell model and terminal diff, the `Style` data model + `Segment` cell-width model, rich-text engines, icon rasterization, and the terminal SGR serializer (`ansi-style.ts`).
+7. **`src/driver/`**: OS/TTY stdin decoders, capability probing, signal hooks, and ANSI/graphics emission (`bun/`), plus the headless `mock/` and browser `web/` backends.
+8. **`src/geometry/`**: Pure algebraic primitives (Size, Offset, Spacing, Region) with no dependencies.
+9. **`src/anim/`**: Framework-neutral tween/easing/motion engine driving `Widget.animate` and the React animation hooks.
+10. **`src/core/`**: Coordinates driver startup, App loops, layout schedules, and the inspector API.
+11. **`src/utils/` / `src/tools/`**: Leaf utilities (logger, PNG/sharp helpers) and composition-root harnesses (the `WebInspector`), respectively.
 
 ---
 
@@ -357,11 +360,13 @@ Ensure all workspace directories conform to this single-responsibility layout:
 - `src/core/`: Orchestration, event loop, and REST inspector.
 - `src/css/`: TCSS lexical parsing and specificity matching.
 - `src/dom/`: Node tree representation, viewport screen, widget bases, and `TextNode` (the literal-text DOM node — a DOM concept, so framework-neutral widgets read `TextNode.text` without importing the React layer; `host-config` re-exports it for compatibility).
-- `src/driver/`: ANSI device input decoders and screen buffers.
+- `src/render/`: The `ScreenBuffer` cell grid + terminal diff, `Style`/`Segment`, rich-text engines, icon rasterization, and `ansi-style.ts` (SGR serialization).
+- `src/driver/`: ANSI device input decoders and capability probing (`bun/`), the headless `mock/` driver, and the browser `web/` backend.
 - `src/geometry/`: Spatial primitives (Region, Size, Offset, Spacing).
 - `src/layout/`: Layout managers (BoxLayout, GridLayout, DockLayout).
-- `src/react/`: Reconciler and React component declarations, grouped under `components/{layout,controls,media,text}/` plus a `factory.tsx` for thin host-element wrappers.
-- `src/widgets/`: Concrete elements grouped under `{layout,controls,media,text}/`, mirroring the React component folders one-to-one.
+- `src/anim/`: Framework-neutral tween/easing/motion engine.
+- `src/react/`: Reconciler and React component declarations, grouped under `components/{controls,data,feedback,layout,media,overlay,text}/` plus a `factory.tsx` for thin host-element wrappers.
+- `src/widgets/`: Concrete elements grouped under `{controls,data,feedback,layout,media,text}/`, mirroring the React component folders.
 
 ---
 

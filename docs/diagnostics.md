@@ -29,7 +29,7 @@ Grid border lines consume space. When planning element sizes, developers must ac
 - **Rule**: **HTML Render Output (`GET /render`)** MUST return a raw HTML string mapping ScreenBuffer cell formatting to CSS styles.
 - **Rule**: **Input Simulation (`POST /input`)** MUST accept mouse or keyboard JSON payload structures and inject them directly into the driver event queue.
 
-### 2.2 Centralized Logging (`src/core/logger.ts`)
+### 2.2 Centralized Logging (`src/utils/logger.ts`)
 - **Rule**: While a TUI owns the terminal, diagnostics MUST NOT be written to `stdout`/`stderr` (it corrupts the live frame). All logging goes through the file-only `logger` singleton.
 - **Rule**: Log lines are leveled (`debug|info|warn|error|silent`), scoped, and ISO-timestamped: `[<iso>] [<LEVEL>] [<scope>] <message>`. `Error` payloads serialize their stack; object payloads serialize as JSON.
 - **Rule**: Logging MUST never throw — every write is guarded so a read-only filesystem cannot crash the app.

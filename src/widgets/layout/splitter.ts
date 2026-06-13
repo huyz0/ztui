@@ -26,7 +26,7 @@ export class SplitterWidget extends Widget {
    * Initialized (not `declare`d) so the React host-config's generic prop
    * mapping sees the field via an `in` check and forwards the callback.
    */
-  public onResize: ((delta: number) => void) | null = null;
+  public onResize: ((delta: number) => void) | undefined = undefined;
 
   private dragging = false;
   private hovered = false;

@@ -1,10 +1,10 @@
 import type { Token, Tokens } from "marked";
 import remend from "remend";
 import { App } from "../../core/app.ts";
-import type { DOMNode } from "../../dom/dom.ts";
 import { createWidgetByTagName } from "../../dom/element-registry.ts";
 import { Scrollable } from "../../dom/scrollable.ts";
 import { TextNode } from "../../dom/text-node.ts";
+import { TextSource } from "../../dom/text-source.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
 import { Spacing } from "../../geometry/spacing.ts";
@@ -50,7 +50,7 @@ function areTokensEqual(a: any, b: any): boolean {
   return true;
 }
 
-export class MarkdownWidget extends Scrollable(Widget) {
+export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
   private _markdownTheme?: string = "theme";
   public override get theme(): string | undefined {
     return this._markdownTheme;
@@ -79,7 +79,6 @@ export class MarkdownWidget extends Scrollable(Widget) {
   }
   public declare onAction?: (actionName: string, eventData: any) => void;
 
-  private textNode: TextNode | null = null;
   private lastRawMarkdown = "";
   private lastBlocks: { token: Token; widget: Widget | null }[] = [];
 
@@ -115,35 +114,8 @@ export class MarkdownWidget extends Scrollable(Widget) {
     handleReadonlySelectionMouse(this, ev);
   }
 
-  public override appendChild(child: DOMNode): void {
-    if (child instanceof TextNode) {
-      this.textNode = child;
-      child.parent = this;
-    } else {
-      super.appendChild(child);
-    }
-  }
-
-  public override removeChild(child: DOMNode): void {
-    if (child === this.textNode) {
-      this.textNode = null;
-      child.parent = null;
-    } else {
-      super.removeChild(child);
-    }
-  }
-
-  public override insertBefore(child: DOMNode, before: DOMNode): void {
-    if (child instanceof TextNode) {
-      this.textNode = child;
-      child.parent = this;
-    } else {
-      super.insertBefore(child, before);
-    }
-  }
-
   public getRawMarkdown(): string {
-    return this.textNode ? this.textNode.text : "";
+    return this.rawText();
   }
 
   /**

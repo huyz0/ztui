@@ -5,7 +5,7 @@ import type { MarkdownWidget } from "../widgets/text/markdown.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
-const CAPS = { glyphProtocol: false, graphicsProtocol: "none" } as const;
+const CAPS = { glyphProtocol: false, graphicsProtocol: "none" as const } as const;
 const OPTS = { cols: 50, rows: 40, capabilities: CAPS };
 
 // Documents that mix committable blocks (heading/paragraph/hr) with ones that

@@ -30,6 +30,14 @@ export interface WidgetApp {
     resolveVariable(widget: Widget, value: string): string;
     resolveStyles(widget: Widget, isHovered: boolean): WidgetStyles;
   };
+  /**
+   * Read-only text-selection manager. Selectable widgets register their visible
+   * runs here each frame (the run shape mirrors `SelectableRun` in
+   * `core/selection`, inlined to keep the DOM layer free of an upward import).
+   */
+  selection: {
+    addRun(run: { widget: Widget; line: number; y: number; x: number; cols: number[] }): void;
+  };
 }
 
 export interface WidgetStyles {

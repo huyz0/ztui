@@ -13,7 +13,8 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["bun", "node"]
   },
   "include": ["src/**/*", "examples/**/*", "e2e/**/*"]
 }

@@ -42,7 +42,7 @@ function findSplitter(
   t: Awaited<ReturnType<typeof mountApp>>,
   orientation: "vertical" | "horizontal",
 ) {
-  let found: import("../../../index.ts").Widget | undefined;
+  let found: import("../../../dom/widget.ts").Widget | undefined;
   t.screen.walk((node: any) => {
     if (!found && node.tagName === "splitter" && node.orientation === orientation) found = node;
   });

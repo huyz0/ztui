@@ -7,7 +7,7 @@ import { mountApp } from "./harness.tsx";
 const OPTS = {
   cols: 40,
   rows: 8,
-  capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+  capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
 };
 
 describe("Sparkline", () => {

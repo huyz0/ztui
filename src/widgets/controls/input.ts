@@ -5,7 +5,7 @@ import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { normalizeRange } from "../../render/text-selection.ts";
-import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./internal/caret.ts";
+import { blendCaretColors, CaretBlink, smoothCaretIntensity } from "./internal/caret.ts";
 import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
 
 export class InputWidget extends Widget implements ValidatableField {
@@ -73,13 +73,19 @@ export class InputWidget extends Widget implements ValidatableField {
   private selectionAnchor: number | null = null;
 
   private _focused = false;
-  private blinkInterval: any = null;
-  private cursorVisible = true;
+  private caret = new CaretBlink(() => App.instance?.queueRender());
   /** Eased fade-blink (default) instead of a hard on/off toggle. Set false for
    * the classic square-wave blink. */
-  public smoothCaret = true;
-  /** Timestamp the caret last reset to solid, driving the smooth-blink phase. */
-  private caretSolidAt = 0;
+  public get smoothCaret(): boolean {
+    return this.caret.smooth;
+  }
+  public set smoothCaret(v: boolean) {
+    this.caret.smooth = v;
+  }
+  /** Whether the caret cell is currently shown (drives rendering; read-only). */
+  public get cursorVisible(): boolean {
+    return this.caret.visible;
+  }
 
   constructor() {
     super("input");
@@ -105,34 +111,16 @@ export class InputWidget extends Widget implements ValidatableField {
   }
 
   private startBlinking() {
-    this.cursorVisible = true;
-    this.caretSolidAt = Date.now();
-    if (this.blinkInterval) clearInterval(this.blinkInterval);
-    if (this.smoothCaret) {
-      // Smooth blink: repaint at the animation cadence; the caret's opacity is
-      // derived from the elapsed phase in render(), not a boolean toggle.
-      this.blinkInterval = setInterval(() => {
-        App.instance?.queueRender();
-      }, SMOOTH_CARET_TICK);
-    } else {
-      this.blinkInterval = setInterval(() => {
-        this.cursorVisible = !this.cursorVisible;
-        App.instance?.queueRender();
-      }, 530);
-    }
+    this.caret.start();
   }
 
   private stopBlinking() {
-    if (this.blinkInterval) {
-      clearInterval(this.blinkInterval);
-      this.blinkInterval = null;
-    }
-    this.cursorVisible = false;
+    this.caret.stop();
   }
 
   private handleInputKey(ev: any) {
     if (this.focused) {
-      this.cursorVisible = true;
+      this.caret.visible = true;
       this.startBlinking();
     }
 
@@ -326,7 +314,7 @@ export class InputWidget extends Widget implements ValidatableField {
         // Drag extends the caret end of the selection; the anchor stays put.
         this.cursorCol = col;
       }
-      this.cursorVisible = true;
+      this.caret.visible = true;
       this.startBlinking();
       App.instance?.queueRender();
     } else if (ev.type === "release" && ev.button === "left") {
@@ -497,11 +485,13 @@ export class InputWidget extends Widget implements ValidatableField {
     }
 
     // Add cursor styling
-    if (this.focused && (this.cursorVisible || this.smoothCaret)) {
+    if (this.focused && (this.caret.visible || this.smoothCaret)) {
       const focusColor = App.instance?.cssResolver.resolveVariable(this, "$focus") || fg;
       // Smooth caret: opacity eases through the blink phase. Hard caret: fully
-      // lit while visible (the interval toggles `cursorVisible`).
-      const intensity = this.smoothCaret ? smoothCaretIntensity(Date.now() - this.caretSolidAt) : 1;
+      // lit while visible (the CaretBlink interval toggles `caret.visible`).
+      const intensity = this.smoothCaret
+        ? smoothCaretIntensity(Date.now() - this.caret.solidAt)
+        : 1;
       if (this.cursorCol === cells.length) {
         const c = blendCaretColors(intensity, focusColor, bg, fg, true);
         cells.push({ char: "█", style: new Style(c) });

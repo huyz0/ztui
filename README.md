@@ -3,23 +3,43 @@
 A premium, declarative, React-based Text User Interface (TUI) framework for TypeScript and Bun, featuring dynamic terminal capability probing, advanced graphic protocols, and graceful fallbacks.
 
 ```tsx
-import React, { useState } from "react";
+// app.tsx — run with: bun run app.tsx
+import { useState } from "react";
 import { App } from "ztui";
-import { View, Button, Label } from "ztui/react";
+import { Button, Label, render, VBox } from "ztui/react";
 
 function Counter() {
   const [count, setCount] = useState(0);
 
   return (
-    <View style={{ layout: "vertical", width: 40, height: 10, align: "center", justify: "center" }}>
+    <VBox style={{ width: 40, height: 10, align: "center", verticalAlign: "middle" }}>
       <Label style={{ bold: true, color: "cyan" }}>Count: {count}</Label>
       <Button onClick={() => setCount(count + 1)} style={{ background: "blue", color: "white" }}>
         Increment
       </Button>
-    </View>
+    </VBox>
   );
 }
+
+// Mount the tree onto the App's screen, then start the render/event loop.
+const app = new App();
+render(<Counter />, app.activeScreen);
+app.run();
 ```
+
+Press `Tab` to focus the button, `Enter`/`Space` to increment, and `Ctrl+C` to quit.
+
+## Contents
+
+- [Features](#features)
+- [Installation](#installation) — slim core + opt-in entry points
+- [Layout and Styling System](#layout-and-styling-system)
+- [Active Terminal Capability Probing](#active-terminal-capability-probing)
+- [Vector SVG Graphics & Heroicons](#vector-svg-graphics--heroicons)
+- [Headless Integration Testing](#headless-integration-testing)
+- [Development & Demos](#development--demos)
+- [Quality Gates](#quality-gates)
+- [Documentation](#documentation)
 
 ---
 
@@ -38,7 +58,7 @@ function Counter() {
   - **Glyph Protocol**: Registers custom vector SVGs directly to terminal-side fonts (APC protocol).
   - **Aspect-Ratio-Preserving Probing**: Automatically queries cell dimensions (CSI 16t) to scale graphics to your active terminal font size.
 - **Flex-like Layout System**: Complete grid alignment, dock panels, and box margin tracking with bresenham-style rounding distribution to avoid visual grid gaps.
-- **Headless Virtual Terminal Emulator (VTE) Tests**: Mock driver streams piped directly to `@xterm/headless` to verify terminal-grid attributes, colors, custom graphics, and mouse-hover events.
+- **Headless Virtual Terminal Emulator (VTE) Tests**: A `VTEDriver` streams output directly into `@xterm/headless` to verify terminal-grid attributes, colors, custom graphics, and mouse-hover events.
 - **Built-in HTML Inspector**: Spin up a live browser-based server to inspect your terminal buffer layout in real-time.
 
 ---
@@ -83,6 +103,7 @@ import "ztui/syntax";   // optional: highlight fenced code via `prismjs`
 
 ### Layout Elements
 - `<Box>`: Base container element (`ztui-box`) that supports margin allocations, border calculations, and transparent background propagation.
+- `<View>`: A minimal generic container (`ztui-view`, the base `Widget`) — layout and background only, no border. Handy as a neutral, semantic root.
 - `<VBox>`: Vertical layout organizer mapping child sizes and flex-growth.
 - `<HBox>`: Horizontal layout organizer.
 - `<Grid>`: Configurable structural cell layouts.
@@ -91,8 +112,9 @@ import "ztui/syntax";   // optional: highlight fenced code via `prismjs`
 ### Custom Styling Props
 ```typescript
 interface WidgetStyles {
-  display?: "flex" | "block" | "none";
-  flexDirection?: "vertical" | "horizontal";
+  layout?: "vertical" | "horizontal" | "dock" | "grid";
+  display?: "flex" | "grid" | "dock";
+  flexDirection?: "row" | "column";
   flexGrow?: number;
   width?: string | number;
   height?: string | number;
@@ -104,12 +126,13 @@ interface WidgetStyles {
   underline?: boolean;
   strikethrough?: boolean;
   link?: string;        // OSC 8 terminal hyperlink
-  align?: "left" | "center" | "right";
+  align?: "left" | "center" | "right";          // Horizontal alignment of children
+  verticalAlign?: "top" | "middle" | "bottom";  // Vertical alignment of children
 }
 ```
 
 > [!TIP]
-> **Strikethrough Decoration**: If both `underline` and `strikethrough` are active, they compile into terminal sequences `\x1b[4;9m` and translate in HTML to `text-decoration: underline line-through` without visual artifacts.
+> **Strikethrough Decoration**: If both `underline` and `strikethrough` are active, they compile into the terminal sequences `\x1b[4:1m` (underline, colon sub-parameter form) and `\x1b[9m` (strikethrough), and translate in HTML to `text-decoration: underline line-through` without visual artifacts.
 
 ---
 
@@ -155,10 +178,9 @@ iconRegistry.register("my-icon", {
 The `<HeroIcon>` wrapper automatically loads, sanitizes, and registers icons from the standard `heroicons` package:
 
 ```tsx
-import React from "react";
-import { HeroIcon } from "ztui/react";
+import { HBox, HeroIcon } from "ztui/react";
 
-function App() {
+function IconRow() {
   return (
     <HBox>
       {/* Dynamic color injection mapping parent backgrounds and text colors */}
@@ -173,34 +195,35 @@ function App() {
 
 ## Headless Integration Testing
 
-Ensure pixel-perfect layouts using our Virtual Terminal Emulator (VTE) harness:
+Apps run fully headless in CI — no TTY required. Drive the real
+React→DOM→layout→buffer pipeline with the in-memory `MockDriver`, then assert on
+the composed cell grid via `renderBufferToText` (or `renderBufferToHTML` to check
+colors/styles as inline-styled spans):
 
-```typescript
-import { describe, expect, test } from "vitest";
-import React from "react";
-import { VTEDriver } from "./src/test/vte-runner";
-import { App, render, Label } from "ztui";
+```tsx
+import { expect, test } from "vitest";
+import { App, MockDriver, renderBufferToText } from "ztui";
+import { Label, render } from "ztui/react";
 
-describe("TUI Integration", () => {
-  test("assert screen contents", async () => {
-    const vte = new VTEDriver(80, 24);
-    const app = new App(vte);
+test("renders to the cell grid", async () => {
+  const app = new App(new MockDriver(80, 24));
 
-    render(<Label style={{ color: "cyan" }}>Hello VTE</Label>, app.activeScreen);
-    app.run();
+  render(<Label style={{ color: "cyan" }}>Hello TUI</Label>, app.activeScreen);
+  app.run();
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  // React commits and the render queue flush on a microtask — wait one tick.
+  await new Promise((resolve) => setTimeout(resolve, 15));
 
-    // Verify cell contents
-    const line = vte.getLineText(0);
-    expect(line.includes("Hello VTE")).toBe(true);
+  expect(renderBufferToText(app.buffer)).toContain("Hello TUI");
 
-    // Verify character color attributes
-    const cell = vte.getCell(0, 0);
-    expect(cell.fg).toBe("cyan");
-  });
+  app.stop(); // unbind listeners and release the App singleton
 });
 ```
+
+For terminal-attribute fidelity (real SGR colors, mouse-hover, graphics), the
+repo's own suites pipe a `VTEDriver` into `@xterm/headless`; see
+[`docs/testing_standards.md`](docs/testing_standards.md) and the `mountApp`
+harness in [`src/test/harness.tsx`](src/test/harness.tsx).
 
 ---
 
@@ -255,8 +278,30 @@ screenshots plus a canvas/cell-metrics report — with no human at a browser.
   ```bash
   bun run lint:fix
   ```
-- **Test Runner & Coverage**: Tests are executed via Vitest. To view code coverage reports:
+- **Type Checking**: Strict TypeScript, enforced in the pre-commit hook:
   ```bash
-  bun run test
+  bun run typecheck
   ```
-  *Current overall coverage is around **90% statement / 92% line coverage** (see `bun run test` output for the live number).*
+- **Test Runner & Coverage**: Tests are executed via Vitest with v8 coverage:
+  ```bash
+  bun run test           # unit + integration, with coverage
+  bun run test:e2e       # end-to-end (spawns the real binary)
+  ```
+  Coverage is gate-enforced (lines ≥ 90%, functions ≥ 90%, statements ≥ 88%,
+  branches ≥ 70%); the suite currently sits at **~91% line / ~89% statement**.
+  See `bun run test` output for the live number.
+
+All three gates (lint, type-check, tests+coverage) run automatically on every
+commit via the version-controlled `.githooks/pre-commit` hook.
+
+---
+
+## Documentation
+
+Deep-dive design docs live in [`docs/`](docs/):
+
+- [architecture.md](docs/architecture.md) — layer boundaries, the render pipeline, the portable cell model, and the backend-agnostic vs. terminal-specific split.
+- [coding_standards.md](docs/coding_standards.md) — module/design rules, React wrapper patterns, driver-concern containment.
+- [testing_standards.md](docs/testing_standards.md) — the unit/integration/E2E taxonomy, the `mountApp` harness, and coverage gates.
+- [diagnostics.md](docs/diagnostics.md) — the REST inspector endpoints and the file-only logger.
+- [tdd_workflow.md](docs/tdd_workflow.md) · [git_best_practices.md](docs/git_best_practices.md) · [code_review.md](docs/code_review.md) — process guides.

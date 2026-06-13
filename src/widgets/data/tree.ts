@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import { selectionDeltaForKey } from "../../dom/key-nav.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
@@ -213,26 +214,14 @@ export class TreeWidget extends Widget {
     const name = ev.name || ev.key;
     const idx = this.selectedIndex;
     const row = idx >= 0 ? this.flat[idx] : undefined;
+    const delta = selectionDeltaForKey(name, this.lastVisibleRows, this.rowCount);
     let handled = true;
+    if (delta !== null) {
+      this.moveSelection(delta);
+      ev.handled = true;
+      return;
+    }
     switch (name) {
-      case "down":
-        this.moveSelection(1);
-        break;
-      case "up":
-        this.moveSelection(-1);
-        break;
-      case "pagedown":
-        this.moveSelection(Math.max(1, this.lastVisibleRows - 1));
-        break;
-      case "pageup":
-        this.moveSelection(-Math.max(1, this.lastVisibleRows - 1));
-        break;
-      case "home":
-        this.moveSelection(-this.rowCount);
-        break;
-      case "end":
-        this.moveSelection(this.rowCount);
-        break;
       case "right":
         // Expand a collapsed node, or step into the first child.
         if (row?.expandable && !row.expanded) this.toggle(row.node.id);

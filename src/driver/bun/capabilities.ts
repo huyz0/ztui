@@ -1,4 +1,4 @@
-import { renderCapabilities } from "../../render/style.ts";
+import { renderCapabilities } from "../../render/ansi-style.ts";
 import type { TerminalCapabilities } from "../driver.ts";
 
 export function getBaselineCapabilities(): TerminalCapabilities {

@@ -5,6 +5,53 @@ import { BLACK, mix, parseColor, rgbStr, WHITE } from "../../../render/color.ts"
 export const SMOOTH_CARET_PERIOD = 1060;
 /** Repaint cadence while a smooth caret is animating (~17fps — easy on the diff). */
 export const SMOOTH_CARET_TICK = 60;
+/** Half-period of the classic hard (square-wave) blink, in milliseconds. */
+export const HARD_CARET_HALF_PERIOD = 530;
+
+/**
+ * Owns the caret blink lifecycle for a text-editing widget: the timer, the
+ * on/off state, and the "last solid" timestamp that drives the smooth fade.
+ * Shared by Input and TextArea so the blink behaves identically and lives in
+ * one place. The widget passes a repaint callback and reads {@link visible} /
+ * {@link solidAt} (and the smooth/hard mode via {@link smooth}) when rendering.
+ */
+export class CaretBlink {
+  /** Whether the caret cell is currently shown (always true in smooth mode). */
+  public visible = true;
+  /** Timestamp the caret last reset to solid; phase origin for the smooth fade. */
+  public solidAt = 0;
+  /** Eased fade-blink (default) instead of a hard on/off toggle. */
+  public smooth = true;
+  private interval: ReturnType<typeof setInterval> | null = null;
+
+  constructor(private readonly repaint: () => void) {}
+
+  /** Reset the caret to solid and (re)start the blink loop. */
+  public start(): void {
+    this.visible = true;
+    this.solidAt = Date.now();
+    if (this.interval) clearInterval(this.interval);
+    if (this.smooth) {
+      // Smooth blink: repaint at the animation cadence; the caret's opacity is
+      // derived from the elapsed phase in render(), not a boolean toggle.
+      this.interval = setInterval(() => this.repaint(), SMOOTH_CARET_TICK);
+    } else {
+      this.interval = setInterval(() => {
+        this.visible = !this.visible;
+        this.repaint();
+      }, HARD_CARET_HALF_PERIOD);
+    }
+  }
+
+  /** Stop the blink loop and hide the caret (e.g. on blur or unmount). */
+  public stop(): void {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+    this.visible = false;
+  }
+}
 
 const easeCaret = resolveEasing("in-out-cubic");
 

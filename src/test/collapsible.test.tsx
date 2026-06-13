@@ -8,7 +8,7 @@ import { mountApp } from "./harness.tsx";
 const OPTS = {
   cols: 40,
   rows: 12,
-  capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+  capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
 };
 
 describe("Collapsible", () => {

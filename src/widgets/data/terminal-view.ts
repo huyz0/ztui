@@ -1,5 +1,6 @@
 import { App } from "../../core/app.ts";
 import { runCols } from "../../core/selection.ts";
+import { scrollTopForKey } from "../../dom/key-nav.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
 import { Offset } from "../../geometry/offset.ts";
@@ -115,33 +116,10 @@ export class TerminalViewWidget extends Widget {
   public override handleKey(ev: any): void {
     super.handleKey(ev);
     if (ev.handled) return;
-    const name = ev.name || ev.key;
-    const page = Math.max(1, this.lastVisibleRows - 1);
     const max = this.maxScrollTop(this.lastVisibleRows);
-    let handled = true;
-    switch (name) {
-      case "up":
-        this.scrollTop = Math.max(0, this.scrollTop - 1);
-        break;
-      case "down":
-        this.scrollTop = Math.min(max, this.scrollTop + 1);
-        break;
-      case "pageup":
-        this.scrollTop = Math.max(0, this.scrollTop - page);
-        break;
-      case "pagedown":
-        this.scrollTop = Math.min(max, this.scrollTop + page);
-        break;
-      case "home":
-        this.scrollTop = 0;
-        break;
-      case "end":
-        this.scrollTop = max;
-        break;
-      default:
-        handled = false;
-    }
-    if (handled) {
+    const next = scrollTopForKey(ev.name || ev.key, this.scrollTop, max, this.lastVisibleRows);
+    if (next !== null) {
+      this.scrollTop = next;
       this.tailing = this.scrollTop >= max;
       ev.handled = true;
       (this.app ?? App.instance)?.queueRender();

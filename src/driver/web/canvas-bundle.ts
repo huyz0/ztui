@@ -14,6 +14,7 @@ export async function canvasClientScript(): Promise<string> {
   if (!out.success) {
     throw new AggregateError(out.logs, "Failed to bundle the ztui canvas client");
   }
-  cached = await out.outputs[0].text();
-  return cached;
+  const script = await out.outputs[0].text();
+  cached = script;
+  return script;
 }

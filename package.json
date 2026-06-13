@@ -19,6 +19,7 @@
     "demo:web": "bun run examples/gallery/run.tsx --web",
     "demo:list": "bun run examples/gallery/run.tsx --list",
     "web:debug": "bun run scripts/web-debug.ts",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "lint": "biome check .",
@@ -85,6 +86,7 @@
     "react": "19.2.6",
     "react-reconciler": "0.33.0",
     "sharp": "^0.34.5",
+    "typescript": "^6.0.3",
     "vitest": "4.1.7"
   }
 }

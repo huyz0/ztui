@@ -9,21 +9,36 @@ function BoxTitleDemo() {
       <Header>🔲 ZTUI Box title — labels on the top border edge</Header>
       <Footer>Ctrl+C quit</Footer>
 
-      <VBox style={{ padding: 1, gap: 1 }}>
-        <Box title="Settings" style={{ border: "rounded", padding: 1, width: 40 }}>
+      <VBox style={{ padding: 1 }}>
+        <Box
+          title="Settings"
+          style={{ border: "rounded", padding: 1, width: 40, margin: { bottom: 1 } }}
+        >
           <Label>Rounded border with a plain title.</Label>
         </Box>
 
         <Box
           title="⚙ Build  ✓ passing"
-          style={{ border: "double", borderColor: "$success", padding: 1, width: 40 }}
+          style={{
+            border: "double",
+            borderColor: "$success",
+            padding: 1,
+            width: 40,
+            margin: { bottom: 1 },
+          }}
         >
           <Label style={{ dim: true }}>Title color follows the border color.</Label>
         </Box>
 
         <Box
           title="A rather long panel title that will not fit"
-          style={{ border: "solid", borderColor: "$warning", padding: 1, width: 40 }}
+          style={{
+            border: "solid",
+            borderColor: "$warning",
+            padding: 1,
+            width: 40,
+            margin: { bottom: 1 },
+          }}
         >
           <Label style={{ dim: true }}>Overlong titles truncate with an ellipsis.</Label>
         </Box>

@@ -9,7 +9,7 @@ This document describes the software design principles, coding patterns, linting
 ### 1.1 Modularity & Anti-God Object Pattern
 Do not create complex classes, files, or folders that manage multiple unrelated concerns. Modules must remain small, focused, and single-purpose.
 - If a class or file exceeds **200 lines**, actively evaluate if it can be split into smaller, focused modules.
-- If a folder contains more than **10 files**, organize them into logical child subdirectories. Both the widgets and their React wrappers are grouped symmetrically under `layout/`, `controls/`, `media/`, and `text/` (e.g. `src/widgets/controls/button.ts` pairs with `src/react/components/controls/button.tsx`) so the widget↔component pairing stays obvious.
+- If a folder contains more than **10 files**, organize them into logical child subdirectories. Both the widgets and their React wrappers are grouped symmetrically under `controls/`, `data/`, `feedback/`, `layout/`, `media/`, and `text/` (e.g. `src/widgets/controls/button.ts` pairs with `src/react/components/controls/button.tsx`) so the widget↔component pairing stays obvious. The React side additionally has an `overlay/` group.
 
 ### 1.2 Unidirectional Dependency Flow
 Module dependencies must flow in one direction only. Circular references (whether direct or indirect via index exports) are strictly forbidden. High-level orchestrators must remain decoupled from specific component implementations.

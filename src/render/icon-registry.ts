@@ -177,7 +177,3 @@ export function parseColorToRGB(color: string): { r: number; g: number; b: numbe
 
   return { r: 255, g: 255, b: 255 };
 }
-
-/**
- * Encodes raw RGBA pixels into a Sixel escape sequence, dynamically coloring the foreground.
- */

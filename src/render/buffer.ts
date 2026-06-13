@@ -1,6 +1,7 @@
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
+import { styleToEscapeCodes } from "./ansi-style.ts";
 import { mix, parseColor, type RGB, rgbStr } from "./color.ts";
 import type { Segment } from "./segment.ts";
 import { charWidth, isControlChar, splitGraphemes, stringWidth } from "./segment.ts";
@@ -315,7 +316,7 @@ export class ScreenBuffer {
     if (!cursor || cursor.y !== y || cursor.x !== x) {
       out += `\x1b[${y + 1};${x + 1}H`;
     }
-    const { start, end } = style.getEscapeCodes();
+    const { start, end } = styleToEscapeCodes(style);
     out += start + content + end;
     return {
       out,

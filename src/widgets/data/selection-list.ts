@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import { selectionDeltaForKey } from "../../dom/key-nav.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
@@ -130,37 +131,16 @@ export class SelectionListWidget extends Widget {
     super.handleKey(ev);
     if (ev.handled) return;
     const name = ev.name || ev.key;
-    const page = Math.max(1, this.lastVisibleRows - 1);
+    const delta = selectionDeltaForKey(name, this.lastVisibleRows, this.rowCount);
     let handled = true;
-    switch (name) {
-      case "down":
-        this.moveCursor(1);
-        break;
-      case "up":
-        this.moveCursor(-1);
-        break;
-      case "pagedown":
-        this.moveCursor(page);
-        break;
-      case "pageup":
-        this.moveCursor(-page);
-        break;
-      case "home":
-        this.moveCursor(-this.rowCount);
-        break;
-      case "end":
-        this.moveCursor(this.rowCount);
-        break;
-      case "space":
-      case " ":
-      case "enter":
-        this.toggleIndex(this.cursor);
-        break;
-      case "a":
-        this.toggleAll();
-        break;
-      default:
-        handled = false;
+    if (delta !== null) {
+      this.moveCursor(delta);
+    } else if (name === "space" || name === " " || name === "enter") {
+      this.toggleIndex(this.cursor);
+    } else if (name === "a") {
+      this.toggleAll();
+    } else {
+      handled = false;
     }
     if (handled) ev.handled = true;
   }

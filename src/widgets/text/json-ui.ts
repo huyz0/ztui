@@ -1,7 +1,7 @@
 import { App } from "../../core/app.ts";
-import type { DOMNode } from "../../dom/dom.ts";
 import { createWidgetByTagName } from "../../dom/element-registry.ts";
 import { TextNode } from "../../dom/text-node.ts";
+import { TextSource } from "../../dom/text-source.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Spacing } from "../../geometry/spacing.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
@@ -86,10 +86,9 @@ export function parsePartialJson(jsonStr: string): any {
   }
 }
 
-export class JSONUIWidget extends Widget {
+export class JSONUIWidget extends TextSource(Widget) {
   public declare onAction?: (actionName: string, eventData: any) => void;
 
-  private textNode: TextNode | null = null;
   private lastRawJson = "";
 
   constructor() {
@@ -97,35 +96,8 @@ export class JSONUIWidget extends Widget {
     this.style.layout = "vertical";
   }
 
-  public override appendChild(child: DOMNode): void {
-    if (child instanceof TextNode) {
-      this.textNode = child;
-      child.parent = this;
-    } else {
-      super.appendChild(child);
-    }
-  }
-
-  public override removeChild(child: DOMNode): void {
-    if (child === this.textNode) {
-      this.textNode = null;
-      child.parent = null;
-    } else {
-      super.removeChild(child);
-    }
-  }
-
-  public override insertBefore(child: DOMNode, before: DOMNode): void {
-    if (child instanceof TextNode) {
-      this.textNode = child;
-      child.parent = this;
-    } else {
-      super.insertBefore(child, before);
-    }
-  }
-
   public getRawJson(): string {
-    return this.textNode ? this.textNode.text : "";
+    return this.rawText();
   }
 
   public override measure(maxW: number, maxH: number): void {

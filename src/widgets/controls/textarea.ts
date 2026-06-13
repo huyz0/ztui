@@ -12,7 +12,7 @@ import {
   orderPair,
   type Pos,
 } from "../../render/text-selection.ts";
-import { blendCaretColors, SMOOTH_CARET_TICK, smoothCaretIntensity } from "./internal/caret.ts";
+import { blendCaretColors, CaretBlink, smoothCaretIntensity } from "./internal/caret.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class TextAreaWidget extends Widget {
@@ -55,13 +55,19 @@ export class TextAreaWidget extends Widget {
   private selectionAnchor: Pos | null = null;
 
   private _focused = false;
-  private blinkInterval: any = null;
-  private cursorVisible = true;
+  private caret = new CaretBlink(() => App.instance?.queueRender());
   /** Eased fade-blink (default) instead of a hard on/off toggle. Set false for
    * the classic square-wave blink. */
-  public smoothCaret = true;
-  /** Timestamp the caret last reset to solid, driving the smooth-blink phase. */
-  private caretSolidAt = 0;
+  public get smoothCaret(): boolean {
+    return this.caret.smooth;
+  }
+  public set smoothCaret(v: boolean) {
+    this.caret.smooth = v;
+  }
+  /** Whether the caret cell is currently shown (drives rendering; read-only). */
+  public get cursorVisible(): boolean {
+    return this.caret.visible;
+  }
 
   constructor() {
     super("textarea");
@@ -79,34 +85,16 @@ export class TextAreaWidget extends Widget {
   }
 
   private startBlinking() {
-    this.cursorVisible = true;
-    this.caretSolidAt = Date.now();
-    if (this.blinkInterval) clearInterval(this.blinkInterval);
-    if (this.smoothCaret) {
-      // Smooth blink: repaint at the animation cadence; opacity is derived from
-      // the elapsed phase in render(), not a boolean toggle.
-      this.blinkInterval = setInterval(() => {
-        App.instance?.queueRender();
-      }, SMOOTH_CARET_TICK);
-    } else {
-      this.blinkInterval = setInterval(() => {
-        this.cursorVisible = !this.cursorVisible;
-        App.instance?.queueRender();
-      }, 530);
-    }
+    this.caret.start();
   }
 
   private stopBlinking() {
-    if (this.blinkInterval) {
-      clearInterval(this.blinkInterval);
-      this.blinkInterval = null;
-    }
-    this.cursorVisible = false;
+    this.caret.stop();
   }
 
   private handleInputKey(ev: any) {
     if (this.focused) {
-      this.cursorVisible = true;
+      this.caret.visible = true;
       this.startBlinking();
     }
 
@@ -410,7 +398,7 @@ export class TextAreaWidget extends Widget {
         this.cursorRow = pos.row;
         this.cursorCol = pos.col;
       }
-      this.cursorVisible = true;
+      this.caret.visible = true;
       this.startBlinking();
       App.instance?.queueRender();
     } else if (ev.type === "release" && ev.button === "left") {
@@ -533,12 +521,12 @@ export class TextAreaWidget extends Widget {
       // 3. Render Cursor cell (eased fade-blink, or reverse video when off)
       if (
         this.focused &&
-        (this.cursorVisible || this.smoothCaret) &&
+        (this.caret.visible || this.smoothCaret) &&
         lineIndex === this.cursorRow
       ) {
         const focusColor = App.instance?.cssResolver.resolveVariable(this, "$focus") || fg;
         const intensity = this.smoothCaret
-          ? smoothCaretIntensity(Date.now() - this.caretSolidAt)
+          ? smoothCaretIntensity(Date.now() - this.caret.solidAt)
           : 1;
         if (this.cursorCol === cells.length) {
           const c = blendCaretColors(intensity, focusColor, bg, fg, true);

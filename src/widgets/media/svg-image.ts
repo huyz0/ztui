@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
+import type { Region } from "../../geometry/region.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { parseColorToRGB } from "../../render/icon-registry.ts";
 import { Style } from "../../render/style.ts";
@@ -87,44 +88,10 @@ export class SvgImageWidget extends Widget {
       this.lastSrc === (this.src || "");
 
     if (isCacheValid) {
-      if (isGraphicsSupported) {
-        buffer.cells[client.y][client.x] = {
-          char: " ",
-          style,
-          wideContinuation: false,
-          graphic: {
-            type: "image",
-            pixelBuffer: this.cachedPixels!,
-            pixelWidth: targetPixelWidth,
-            pixelHeight: targetPixelHeight,
-            cellWidth: client.width,
-            cellHeight: client.height,
-            pngBase64: this.cachedPngBase64,
-            zIndex: this.computedStyle.zIndex,
-          },
-        };
-
-        for (let dy = 0; dy < client.height; dy++) {
-          for (let dx = 0; dx < client.width; dx++) {
-            if (dy === 0 && dx === 0) continue;
-            buffer.cells[client.y + dy][client.x + dx] = {
-              char: "",
-              style,
-              wideContinuation: true,
-            };
-          }
-        }
-      } else {
-        renderAnsiFallback(
-          buffer,
-          this.cachedPixels!,
-          targetPixelWidth,
-          targetPixelHeight,
-          client,
-          bgRgb,
-          bgHex,
-        );
-      }
+      this.blit(buffer, client, style, targetPixelWidth, targetPixelHeight, isGraphicsSupported, {
+        bgRgb,
+        bgHex,
+      });
       return;
     }
 
@@ -146,47 +113,62 @@ export class SvgImageWidget extends Widget {
       this.lastBgHex = bgHex;
       this.lastSrc = this.src || "";
 
-      if (isGraphicsSupported) {
-        buffer.cells[client.y][client.x] = {
-          char: " ",
-          style,
-          wideContinuation: false,
-          graphic: {
-            type: "image",
-            pixelBuffer: this.cachedPixels!,
-            pixelWidth: targetPixelWidth,
-            pixelHeight: targetPixelHeight,
-            cellWidth: client.width,
-            cellHeight: client.height,
-            pngBase64: this.cachedPngBase64,
-            zIndex: this.computedStyle.zIndex,
-          },
-        };
-
-        for (let dy = 0; dy < client.height; dy++) {
-          for (let dx = 0; dx < client.width; dx++) {
-            if (dy === 0 && dx === 0) continue;
-            buffer.cells[client.y + dy][client.x + dx] = {
-              char: "",
-              style,
-              wideContinuation: true,
-            };
-          }
-        }
-      } else {
-        renderAnsiFallback(
-          buffer,
-          this.cachedPixels!,
-          targetPixelWidth,
-          targetPixelHeight,
-          client,
-          bgRgb,
-          bgHex,
-        );
-      }
+      this.blit(buffer, client, style, targetPixelWidth, targetPixelHeight, isGraphicsSupported, {
+        bgRgb,
+        bgHex,
+      });
     } catch (err: any) {
       logger.warn("svgimage", `failed to rasterize SVG: ${this.describe()}`, err);
       this.renderError(buffer, `Render error: ${err.message}`, style);
+    }
+  }
+
+  /**
+   * Paint the cached rasterized pixels into the client rect: either as a single
+   * graphic cell (with the rest of the rect marked as wide-continuation) when
+   * the terminal supports an image protocol, or as an ANSI half-block fallback.
+   */
+  private blit(
+    buffer: ScreenBuffer,
+    client: Region,
+    style: Style,
+    pixelWidth: number,
+    pixelHeight: number,
+    graphics: boolean | undefined,
+    bg: { bgRgb: { r: number; g: number; b: number }; bgHex: string },
+  ): void {
+    if (!graphics) {
+      renderAnsiFallback(
+        buffer,
+        this.cachedPixels!,
+        pixelWidth,
+        pixelHeight,
+        client,
+        bg.bgRgb,
+        bg.bgHex,
+      );
+      return;
+    }
+    buffer.cells[client.y][client.x] = {
+      char: " ",
+      style,
+      wideContinuation: false,
+      graphic: {
+        type: "image",
+        pixelBuffer: this.cachedPixels!,
+        pixelWidth,
+        pixelHeight,
+        cellWidth: client.width,
+        cellHeight: client.height,
+        pngBase64: this.cachedPngBase64,
+        zIndex: this.computedStyle.zIndex,
+      },
+    };
+    for (let dy = 0; dy < client.height; dy++) {
+      for (let dx = 0; dx < client.width; dx++) {
+        if (dy === 0 && dx === 0) continue;
+        buffer.cells[client.y + dy][client.x + dx] = { char: "", style, wideContinuation: true };
+      }
     }
   }
 

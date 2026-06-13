@@ -27,7 +27,7 @@ describe("app hotkey dispatch", () => {
       { cols: 60, rows: 10 },
     );
     await settle();
-    screen.focusWidget(findById("field"));
+    screen.focusWidget(findById("field")!);
     driver.emit("key", key({ key: "ctrl+s", name: "s", ctrl: true }));
     expect(saved).toBe(1);
   });

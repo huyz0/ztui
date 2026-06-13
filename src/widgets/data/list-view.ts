@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import { selectionDeltaForKey } from "../../dom/key-nav.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
@@ -134,33 +135,15 @@ export class ListViewWidget extends Widget {
 
     const name = ev.name || ev.key;
     const idx = this.selectedIndex;
+    const delta = selectionDeltaForKey(name, this.lastVisibleRows, this.rowCount);
     let handled = true;
-    switch (name) {
-      case "down":
-        this.moveSelection(1);
-        break;
-      case "up":
-        this.moveSelection(-1);
-        break;
-      case "pagedown":
-        this.moveSelection(Math.max(1, this.lastVisibleRows - 1));
-        break;
-      case "pageup":
-        this.moveSelection(-Math.max(1, this.lastVisibleRows - 1));
-        break;
-      case "home":
-        this.moveSelection(-this.rowCount);
-        break;
-      case "end":
-        this.moveSelection(this.rowCount);
-        break;
-      case "enter":
-      case "space":
-        if (idx >= 0) this.onActivate?.(this.items[idx]);
-        else handled = false;
-        break;
-      default:
-        handled = false;
+    if (delta !== null) {
+      this.moveSelection(delta);
+    } else if (name === "enter" || name === "space") {
+      if (idx >= 0) this.onActivate?.(this.items[idx]);
+      else handled = false;
+    } else {
+      handled = false;
     }
     if (handled) ev.handled = true;
   }

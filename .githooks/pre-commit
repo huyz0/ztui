@@ -8,7 +8,14 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "2. Running unit and integration tests (Vitest)..."
+echo "2. Type-checking (tsc)..."
+bun run typecheck
+if [ $? -ne 0 ]; then
+  echo "❌ Type errors found! Run 'bun run typecheck' to see details."
+  exit 1
+fi
+
+echo "3. Running unit and integration tests (Vitest)..."
 bun run test
 if [ $? -ne 0 ]; then
   echo "❌ Unit tests failed or coverage threshold was not met!"

@@ -49,7 +49,7 @@ To avoid over-engineering and keep the codebase clean, implement only what is ne
    });
    ```
 2. **Verify Failure**: Run `bun run test` and confirm the runner fails with a compilation or assertion error.
-3. **Implement Code (Green)**: Write minimal logic in `src/widgets/label.ts`:
+3. **Implement Code (Green)**: Write minimal logic in `src/widgets/text/label.ts`:
    ```typescript
    export class LabelWidget extends Widget {
      public text = "";

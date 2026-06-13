@@ -7,7 +7,7 @@ import { mountApp } from "./harness.tsx";
 const OPTS = {
   cols: 40,
   rows: 6,
-  capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+  capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
 };
 
 /** A deferred promise for driving task timing from the test. */

@@ -41,7 +41,7 @@ Commit headers must convey semantic intent (such as feature addition, bug fix, o
 
 ### 2.3 Gated Git Hook Behaviors
 - **Rule**: Git hooks are version-controlled under `.githooks/` and auto-registered.
-- **Rule**: **Pre-commit Hook (`.githooks/pre-commit`)** MUST execute linting and tests, blocking commits on any warning/error or code coverage drop.
+- **Rule**: **Pre-commit Hook (`.githooks/pre-commit`)** MUST run, in order, linting (Biome), type-checking (`tsc --noEmit`), and tests (Vitest), blocking commits on any warning/error, type error, or code coverage drop.
 - **Rule**: **Commit-msg Hook (`.githooks/commit-msg`)** MUST validate the commit message header syntax against the conventional commits pattern, blocking invalid entries.
 
 ---

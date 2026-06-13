@@ -90,7 +90,7 @@ function HotkeysDemo() {
 
   return (
     <VBox style={{ padding: 1 }}>
-      <Header title="Hotkeys demo" />
+      <Header>Hotkeys demo</Header>
       <Label style={{ bold: true, color: "$primary", margin: { top: 1 } }}>
         Press Ctrl+Space to open the command palette.
       </Label>

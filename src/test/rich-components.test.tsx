@@ -337,7 +337,7 @@ describe("Rich Components Integration Tests", () => {
     const { screen, container, settle } = await mountApp(<JSONUI>{json1}</JSONUI>, {
       cols: 80,
       rows: 25,
-      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
     });
 
     // verify first render
@@ -481,7 +481,7 @@ describe("Rich Components Integration Tests", () => {
     const { screen, container, settle } = await mountApp(<Markdown>{initialText}</Markdown>, {
       cols: 80,
       rows: 25,
-      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
     });
 
     const mdWidget = screen.children[0] as MarkdownWidget;
@@ -552,7 +552,7 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
     await mountApp(<Markdown>{mdText}</Markdown>, {
       cols: 80,
       rows: 25,
-      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
     });
   });
 
@@ -776,7 +776,11 @@ A --> B
 
     const { screen } = await mountApp(
       <TextArea value={val} onChange={onChange} lineNumbers={true} language="typescript" />,
-      { cols: 30, rows: 8, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+      {
+        cols: 30,
+        rows: 8,
+        capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
+      },
     );
 
     const textWidget = screen.children[0] as any;

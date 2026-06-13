@@ -125,7 +125,7 @@ export function Workbench({
     };
   };
 
-  const [regions, setRegions] = useState<WorkbenchLayout>(() => ({
+  const [regions, setRegions] = useState<Record<WorkbenchAnchor, RegionState>>(() => ({
     left: init("left", 26),
     right: init("right", 26),
     bottom: init("bottom", 8),

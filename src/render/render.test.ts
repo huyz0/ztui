@@ -2,10 +2,11 @@ import { describe, expect, test } from "vitest";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
+import { renderCapabilities, styleToEscapeCodes } from "./ansi-style.ts";
 import { ScreenBuffer } from "./buffer.ts";
 import { renderBufferToHTML } from "./html-renderer.ts";
 import { Segment } from "./segment.ts";
-import { renderCapabilities, Style } from "./style.ts";
+import { Style } from "./style.ts";
 
 function debugRender(buffer: ScreenBuffer): string {
   let output = "";
@@ -13,7 +14,7 @@ function debugRender(buffer: ScreenBuffer): string {
     for (let x = 0; x < buffer.width; x++) {
       const cell = buffer.cells[y][x];
       if (cell.wideContinuation) continue;
-      const { start } = cell.style.getEscapeCodes();
+      const { start } = styleToEscapeCodes(cell.style);
       output += start ? `[C:${cell.char}]` : cell.char;
     }
     output += "\n";
@@ -24,7 +25,7 @@ function debugRender(buffer: ScreenBuffer): string {
 describe("rendering system", () => {
   test("Style escape codes", () => {
     const s = new Style({ color: "red", bold: true });
-    const { start, end } = s.getEscapeCodes();
+    const { start, end } = styleToEscapeCodes(s);
     expect(start.includes("\x1b[31m")).toBe(true);
     expect(start.includes("\x1b[1m")).toBe(true);
     expect(end.includes("\x1b[39m")).toBe(true);
@@ -102,13 +103,13 @@ describe("rendering system", () => {
 
     // Test RGB colors
     const s1 = new Style({ color: "rgb(255, 0, 0)", background: "rgb(0, 0, 255)" });
-    const c1 = s1.getEscapeCodes();
+    const c1 = styleToEscapeCodes(s1);
     expect(c1.start.includes("38;2;255;0;0")).toBe(true);
     expect(c1.start.includes("48;2;0;0;255")).toBe(true);
 
     // Test Hex colors
     const s2 = new Style({ color: "#ff00bb", background: "#00ff00" });
-    const c2 = s2.getEscapeCodes();
+    const c2 = styleToEscapeCodes(s2);
     expect(c2.start.includes("38;2;255;0;187")).toBe(true);
     expect(c2.start.includes("48;2;0;255;0")).toBe(true);
 
@@ -121,7 +122,7 @@ describe("rendering system", () => {
       underline: true,
       reverse: true,
     });
-    const c3 = s3.getEscapeCodes();
+    const c3 = styleToEscapeCodes(s3);
     expect(c3.start.includes("\x1b[31m")).toBe(true);
     expect(c3.start.includes("\x1b[2m")).toBe(true); // dim
     expect(c3.start.includes("\x1b[3m")).toBe(true); // italic
@@ -130,24 +131,24 @@ describe("rendering system", () => {
 
     // Underline shapes map to SGR 4 colon sub-params; color sets SGR 58.
     const curly = new Style({ underlineStyle: "curly", underlineColor: "#ff0000" });
-    const cu = curly.getEscapeCodes();
+    const cu = styleToEscapeCodes(curly);
     expect(curly.underline).toBe(true); // underlineStyle implies underline
     expect(cu.start.includes("\x1b[4:3m")).toBe(true); // undercurl
     expect(cu.start.includes("\x1b[58:2::255:0:0m")).toBe(true); // underline color
     expect(cu.end.includes("\x1b[59m")).toBe(true); // color reset
     expect(cu.end.includes("\x1b[24m")).toBe(true); // underline reset
     expect(
-      new Style({ underlineStyle: "dashed" }).getEscapeCodes().start.includes("\x1b[4:5m"),
+      styleToEscapeCodes(new Style({ underlineStyle: "dashed" })).start.includes("\x1b[4:5m"),
     ).toBe(true);
 
     // Test invalid hex fallback
     const s4 = new Style({ color: "#invalidhex", background: "badcolor" });
-    const c4 = s4.getEscapeCodes();
+    const c4 = styleToEscapeCodes(s4);
     expect(c4.start).toBe("");
 
     // Test short hex
     const s5 = new Style({ color: "#abc", background: "#f0f" });
-    const c5 = s5.getEscapeCodes();
+    const c5 = styleToEscapeCodes(s5);
     expect(c5.start.includes("38;2;170;187;204")).toBe(true);
   });
 
@@ -157,7 +158,7 @@ describe("rendering system", () => {
     renderCapabilities.color256 = true;
 
     const s256 = new Style({ color: "#ff0000", background: "#00ff00" });
-    const c256 = s256.getEscapeCodes();
+    const c256 = styleToEscapeCodes(s256);
     // #ff0000 maps to 256-color index 196
     expect(c256.start.includes("38;5;196m")).toBe(true);
     // #00ff00 maps to 256-color index 46
@@ -168,7 +169,7 @@ describe("rendering system", () => {
     renderCapabilities.color256 = false;
 
     const s16 = new Style({ color: "#ff0000", background: "#0000ff" });
-    const c16 = s16.getEscapeCodes();
+    const c16 = styleToEscapeCodes(s16);
     // #ff0000 maps to closest basic red (91m for bright red)
     expect(
       c16.start.includes("30m") || c16.start.includes("31m") || c16.start.includes("91m"),
@@ -186,7 +187,7 @@ describe("rendering system", () => {
   test("OSC 8 Hyperlinks & HTML rendering", () => {
     const linkUrl = "https://ghostty.org";
     const s = new Style({ color: "green", link: linkUrl });
-    const { start, end } = s.getEscapeCodes();
+    const { start, end } = styleToEscapeCodes(s);
 
     // Verify hyperlink control sequences
     expect(start.includes(`\x1b]8;;${linkUrl}\x1b\\`)).toBe(true);
@@ -265,7 +266,7 @@ describe("rendering system", () => {
 
   test("Strikethrough rendering and HTML conversion", () => {
     const s1 = new Style({ strikethrough: true });
-    const c1 = s1.getEscapeCodes();
+    const c1 = styleToEscapeCodes(s1);
     expect(c1.start.includes("\x1b[9m")).toBe(true);
     expect(c1.end.includes("\x1b[29m")).toBe(true);
 
