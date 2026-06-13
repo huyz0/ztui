@@ -1,0 +1,62 @@
+---
+title: ztui
+description: A declarative, React-based TUI framework for TypeScript and Bun — one widget tree, terminal and browser-canvas backends.
+template: splash
+hero:
+  tagline: Build terminal UIs with React. Run the same widget tree in a terminal or a browser canvas.
+  actions:
+    - text: Get started
+      link: getting-started/quick-start
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/huyz0/ztui
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## Why ztui
+
+<CardGrid stagger>
+  <Card title="Declarative React" icon="seti:react">
+    Write JSX with state and hooks. A custom React reconciler commits your tree
+    to a widget DOM that lays out and renders into a grid of styled cells.
+  </Card>
+  <Card title="Two backends, one tree" icon="laptop">
+    The same widgets render to a terminal (ANSI diff) or a browser
+    `<canvas>` (hardware-accelerated). The cell grid is the portable hand-off.
+  </Card>
+  <Card title="Graphics with graceful fallback" icon="star">
+    Inline images via Kitty / iTerm2 / Sixel, degrading to Unicode block art —
+    chosen automatically from probed terminal capabilities.
+  </Card>
+  <Card title="AI-native & testable" icon="open-book">
+    The DOM and rendered buffer serialize to JSON / HTML / text; headless
+    drivers and a REST inspector let agents and CI *see* and assert on the UI.
+  </Card>
+</CardGrid>
+
+```tsx
+// app.tsx — run with: bun run app.tsx
+import { useState } from "react";
+import { App } from "ztui";
+import { Button, Label, render, VBox } from "ztui/react";
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  return (
+    <VBox style={{ width: 40, height: 10, align: "center", verticalAlign: "middle" }}>
+      <Label style={{ bold: true, color: "cyan" }}>Count: {count}</Label>
+      <Button onClick={() => setCount(count + 1)} style={{ background: "blue", color: "white" }}>
+        Increment
+      </Button>
+    </VBox>
+  );
+}
+
+const app = new App();
+render(<Counter />, app.activeScreen);
+app.run();
+```

@@ -1,0 +1,4 @@
+# build output & deps for the docs site
+dist/
+.astro/
+node_modules/
