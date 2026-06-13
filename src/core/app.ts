@@ -60,6 +60,8 @@ export class App extends DOMNode {
   private inspectorServer: InspectorServer | null = null;
   private resizeTimeout: ReturnType<typeof setTimeout> | null = null;
   private frameCount = 0;
+  /** Unsubscribe from the global theme manager; called on {@link stop}. */
+  private themeUnsubscribe: (() => void) | null = null;
 
   constructor(driver?: Driver) {
     super("app");
@@ -69,7 +71,7 @@ export class App extends DOMNode {
     const defaultScreen = new Screen();
     this.pushScreen(defaultScreen);
 
-    ThemeManager.getInstance().subscribe(() => {
+    this.themeUnsubscribe = ThemeManager.getInstance().subscribe(() => {
       this.queueRender();
     });
   }
@@ -455,6 +457,15 @@ export class App extends DOMNode {
     if (this.inspectorServer) {
       this.inspectorServer.stop();
       this.inspectorServer = null;
+    }
+    // Drop the global theme subscription so a stopped app stops receiving render
+    // callbacks (and can be garbage-collected instead of lingering for the life
+    // of the process).
+    this.themeUnsubscribe?.();
+    this.themeUnsubscribe = null;
+    // Release the global pointer if it still references us.
+    if (App.instance === this) {
+      App.instance = null;
     }
     this.driver.stop();
   }
