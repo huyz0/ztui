@@ -31,7 +31,13 @@ export interface TerminalCapabilities {
   glyphProtocol: boolean;
   clipboard: boolean;
   notifications: boolean;
-  graphicsProtocol: "kitty" | "iterm2" | "sixel" | "none";
+  /**
+   * Inline-graphics capability. The terminal protocols (`kitty`/`iterm2`/`sixel`)
+   * consume rasterized pixels; `web` means the backend renders images/SVG
+   * natively (the canvas draws them), so widgets ship vector/raster source rather
+   * than ANSI-encoding it. `none` falls back to Unicode half-block art.
+   */
+  graphicsProtocol: "kitty" | "iterm2" | "sixel" | "web" | "none";
   terminalProgram?: string;
   cellSize?: { width: number; height: number };
 }

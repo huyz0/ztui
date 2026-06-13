@@ -12,7 +12,8 @@ import {
   View,
 } from "../src/react.ts";
 
-// A beautiful, premium gradient SVG featuring a colorful background, circle, and text
+// Gradient-filled rounded rect with a `$success` ring (a `$background` inner
+// circle cuts it out) and a `$warning` star — the theme tokens resolve at render.
 const BEAUTIFUL_SVG = `
 <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -28,7 +29,9 @@ const BEAUTIFUL_SVG = `
 </svg>
 `;
 
-// 1x1 transparent PNG data-url
+// 1x1 PNG: a single green pixel at 50% alpha (RGBA 0,255,0,127). Scaled up over a
+// solid background it exercises raster decode + bilinear scaling + alpha
+// compositing — the half-transparent green blends with the bg into olive.
 const TINY_PNG_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -85,7 +88,9 @@ function ImageDemoApp() {
           </HBox>
 
           <View style={{ height: 1 }} />
-          <Label style={{ color: "$dimmed" }}>Renders dynamically using @resvg/resvg-js</Label>
+          <Label style={{ color: "$dimmed" }}>
+            Rasterized dynamically; `$theme` tokens resolve to the active palette
+          </Label>
         </VBox>
 
         {/* Right Side: Raster Image Demo */}
@@ -95,7 +100,7 @@ function ImageDemoApp() {
           </Label>
           <View style={{ height: 1 }} />
 
-          {/* Transparent PNG components side-by-side */}
+          {/* Half-alpha green PNG, scaled, side-by-side */}
           <HBox style={{ width: "100%" }}>
             <VBox style={{ flexGrow: 1, align: "center", margin: 1 }}>
               <Label style={{ color: "$primary", bold: true }}>Protocol</Label>
@@ -105,7 +110,7 @@ function ImageDemoApp() {
                   width: 10,
                   height: 5,
                   margin: 1,
-                  background: "#ff007f", // Background highlights the single transparent pixel scaling
+                  background: "#ff007f", // Blends the 50%-alpha green pixel over this bg (→ olive)
                 }}
               />
             </VBox>
@@ -118,7 +123,7 @@ function ImageDemoApp() {
                   width: 10,
                   height: 5,
                   margin: 1,
-                  background: "#ff007f", // Background highlights the single transparent pixel scaling
+                  background: "#ff007f", // Blends the 50%-alpha green pixel over this bg (→ olive)
                 }}
               />
             </VBox>

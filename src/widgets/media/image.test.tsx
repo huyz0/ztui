@@ -180,4 +180,49 @@ describe("Image & SVG Image Widgets", () => {
     });
     expect(["▚", "▞"]).toContain(line.cellAt(0, 0).char);
   });
+
+  test("resolves $theme variables inside SVG fills before rasterizing", async () => {
+    // A fill of `$success` must be resolved to the theme colour before the SVG
+    // reaches the rasterizer. Unresolved, `$success` is an invalid color and
+    // paints black — this guards that regression.
+    const themedSvg = `
+      <svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+        <rect width="10" height="10" fill="$success"/>
+      </svg>
+    `;
+    const r = await mountApp(<SvgImage src={themedSvg} style={{ width: 1, height: 1 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "none" },
+      screenStyle: { layout: "vertical" },
+    });
+    const hex = (r.cellAt(0, 0).style.background || "").toLowerCase();
+    expect(hex).toMatch(/^#[0-9a-f]{6}$/); // a concrete colour was rasterized…
+    expect(hex).not.toBe("#000000"); // …not the black of an unresolved `$success`.
+  });
+
+  test("SvgImage emits a native vector graphic (no rasterization) on the web backend", async () => {
+    const svg = `<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="$primary"/></svg>`;
+    const r = await mountApp(<SvgImage src={svg} style={{ width: 4, height: 2 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "web" },
+      screenStyle: { layout: "vertical" },
+    });
+    const g = r.cellAt(0, 0).graphic;
+    expect(g?.svg).toBeTruthy(); // ships the SVG for the canvas to draw natively
+    expect(g?.svg).toContain("<rect"); // the resolved markup, not a pixel buffer
+    expect(g?.svg).not.toContain("$primary"); // `$theme` tokens are resolved first
+    expect(g?.pixelBuffer).toBeUndefined(); // no sharp rasterization on web
+  });
+
+  test("Image emits an encoded graphic on the web backend", async () => {
+    const r = await mountApp(<Image src={pngDataUri} style={{ width: 4, height: 2 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "web" },
+      screenStyle: { layout: "vertical" },
+    });
+    expect(r.cellAt(0, 0).graphic?.pngBase64).toBeTruthy(); // canvas draws this PNG
+  });
 });

@@ -53,7 +53,9 @@ export class WebDriver extends Driver {
       glyphProtocol: false,
       clipboard: true,
       notifications: false,
-      graphicsProtocol: "none", // Web driver renders raw DOM/SVG directly rather than writing ANSI protocols
+      // The canvas draws images/SVG natively (drawImage), so widgets emit
+      // vector/raster source instead of ANSI-encoding pixels.
+      graphicsProtocol: "web",
     };
 
     // Backed by the browser clipboard when available (requires a secure

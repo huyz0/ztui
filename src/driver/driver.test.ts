@@ -435,7 +435,9 @@ describe("BunDriver Capability Probing", () => {
     webDriver.start();
     expect(capsResolved).toBe(true);
     expect(webDriver.capabilities.truecolor).toBe(true);
-    expect(webDriver.capabilities.graphicsProtocol).toBe("none");
+    // The canvas backend renders images/SVG natively (drawImage), not via a
+    // terminal graphics protocol.
+    expect(webDriver.capabilities.graphicsProtocol).toBe("web");
 
     webDriver.write("anything");
     webDriver.showNotification("Title", "Body");

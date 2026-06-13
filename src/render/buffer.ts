@@ -15,12 +15,22 @@ export interface BlendBase {
 
 export interface GraphicMetadata {
   type: "image";
-  pixelBuffer: Uint8Array;
-  pixelWidth: number;
-  pixelHeight: number;
+  /**
+   * Rasterized RGBA pixels for the terminal graphics protocols. Absent for a
+   * vector graphic that the web/canvas backend rasterizes natively from {@link svg}.
+   */
+  pixelBuffer?: Uint8Array;
+  pixelWidth?: number;
+  pixelHeight?: number;
   cellWidth: number;
   cellHeight: number;
   pngBase64?: string;
+  /**
+   * Raw SVG markup for native vector rendering on the canvas backend (`$theme`
+   * tokens already resolved). When set, the canvas draws this directly — crisp at
+   * the device pixel ratio — and the terminal pixel fields can be omitted.
+   */
+  svg?: string;
   zIndex?: number;
 }
 

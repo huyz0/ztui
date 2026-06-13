@@ -66,8 +66,25 @@ export class SvgImageWidget extends Widget {
       return;
     }
 
+    // Resolve ztui theme tokens (`$success`, `$background`, …) inside the SVG to
+    // concrete colours before rasterizing — otherwise the rasterizer receives an
+    // invalid color and paints it black. `resolveVariable` rewrites every `$name`
+    // / `var(--name)` in the string, so themed icons/illustrations follow the
+    // active theme on both backends.
+    const resolver = (this.app ?? App.instance)?.cssResolver;
+    if (resolver) svgContent = resolver.resolveVariable(this, svgContent);
+
     const app = App.instance;
     const capabilities = app?.driver.capabilities;
+
+    // Web/canvas backend: hand the resolved SVG to the canvas, which rasterizes
+    // it natively (crisp at the device pixel ratio) — no `sharp`, no pixel buffer.
+    // `ansi` still forces the Unicode half-block path below for parity demos.
+    if (capabilities?.graphicsProtocol === "web" && !this.ansi) {
+      this.blitVector(buffer, client, style, svgContent);
+      return;
+    }
+
     const isGraphicsSupported =
       capabilities && capabilities.graphicsProtocol !== "none" && !this.ansi;
 
@@ -164,6 +181,31 @@ export class SvgImageWidget extends Widget {
         zIndex: this.computedStyle.zIndex,
       },
     };
+    this.fillContinuation(buffer, client, style);
+  }
+
+  /**
+   * Emit a vector graphic cell carrying the raw SVG (for the canvas backend to
+   * rasterize natively), spanning the client rect via wide-continuation cells.
+   */
+  private blitVector(buffer: ScreenBuffer, client: Region, style: Style, svg: string): void {
+    buffer.cells[client.y][client.x] = {
+      char: " ",
+      style,
+      wideContinuation: false,
+      graphic: {
+        type: "image",
+        svg,
+        cellWidth: client.width,
+        cellHeight: client.height,
+        zIndex: this.computedStyle.zIndex,
+      },
+    };
+    this.fillContinuation(buffer, client, style);
+  }
+
+  /** Mark every cell of the client rect except the lead as wide-continuation. */
+  private fillContinuation(buffer: ScreenBuffer, client: Region, style: Style): void {
     for (let dy = 0; dy < client.height; dy++) {
       for (let dx = 0; dx < client.width; dx++) {
         if (dy === 0 && dx === 0) continue;

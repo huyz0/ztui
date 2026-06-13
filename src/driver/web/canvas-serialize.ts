@@ -49,6 +49,17 @@ export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
         const svg = iconRegistry.get(cell.icon)?.svg;
         if (svg) out.svg = svg;
       }
+      // Image/SVG widgets: ship a ready-to-draw source (raw SVG → data URI, or the
+      // already-encoded PNG) plus the cell span, so the canvas draws it natively.
+      const g = cell.graphic;
+      if (g) {
+        if (g.svg) out.img = `data:image/svg+xml,${encodeURIComponent(g.svg)}`;
+        else if (g.pngBase64) out.img = `data:image/png;base64,${g.pngBase64}`;
+        if (out.img) {
+          out.gw = g.cellWidth;
+          out.gh = g.cellHeight;
+        }
+      }
       row.push(out);
     }
     rows.push(row);

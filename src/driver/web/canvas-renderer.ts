@@ -43,6 +43,15 @@ export interface CanvasCell {
    * markup is tinted to the cell's `fg` at draw time.
    */
   svg?: string;
+  /**
+   * A ready-to-draw image source (a `data:` URI for an `Image`/`SvgImage` widget,
+   * either an encoded PNG or an SVG). Drawn as-is (not tinted) across the cell
+   * span {@link gw}×{@link gh}. The lead cell of a multi-cell graphic.
+   */
+  img?: string;
+  /** Graphic cell span in cells (width / height), for {@link img}. */
+  gw?: number;
+  gh?: number;
 }
 
 export interface CanvasMetrics {
@@ -134,6 +143,37 @@ function drawSvgCell(
       size,
       size,
     );
+  }
+}
+
+/**
+ * Draw an `Image`/`SvgImage` graphic to fill its cell-span box (decoded natively
+ * by the browser). Unlike {@link drawSvgCell} the source is used as-is — no
+ * tint — and it fills the box rather than centering a square. Cached by URI.
+ */
+function drawImageCell(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  src: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  requestRepaint?: () => void,
+): void {
+  if (typeof Image === "undefined") return;
+  let img = svgImageCache.get(src);
+  if (!img) {
+    img = new Image();
+    img.onload = () => requestRepaint?.();
+    img.src = src;
+    svgImageCache.set(src, img);
+  }
+  if (img.complete && img.naturalWidth > 0) {
+    const c = ctx as CanvasRenderingContext2D;
+    const prevSmoothing = c.imageSmoothingEnabled;
+    c.imageSmoothingEnabled = true; // smooth scaling for photos/illustrations
+    c.drawImage(img, x, y, w, h);
+    c.imageSmoothingEnabled = prevSmoothing;
   }
 }
 
@@ -332,7 +372,26 @@ export function renderBufferToCanvas(
     const cy = y * ch;
     for (let x = 0; x < cols; x++) {
       const cell = cells[y][x];
-      if (cell.cont || cell.c === "" || cell.c === " ") continue;
+      if (cell.cont) continue;
+
+      // Image/SvgImage graphic: fill its cell-span box. Checked before the
+      // empty-cell skip because the lead cell's glyph is a space.
+      if (cell.img) {
+        const gw = cell.gw ?? 1;
+        const gh = cell.gh ?? 1;
+        drawImageCell(
+          ctx,
+          cell.img,
+          colX[x],
+          rowY[y],
+          colX[Math.min(cols, x + gw)] - colX[x],
+          rowY[Math.min(rows, y + gh)] - rowY[y],
+          opts.requestRepaint,
+        );
+        continue;
+      }
+
+      if (cell.c === "" || cell.c === " ") continue;
       const color = cell.fg ?? defaultFg;
       const x0 = x * cw;
 

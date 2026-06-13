@@ -551,13 +551,15 @@ export class App extends DOMNode {
           prefix = this.driver.getGraphicClearSequence(cell.style.background);
         }
 
-        if (cell.graphic) {
+        // Only rasterized graphics produce a terminal sequence; vector graphics
+        // (web/canvas) carry no pixel buffer and are drawn by the canvas backend.
+        if (cell.graphic?.pixelBuffer) {
           return (
             prefix +
             this.driver.getImageSequence(
               cell.graphic.pixelBuffer,
-              cell.graphic.pixelWidth,
-              cell.graphic.pixelHeight,
+              cell.graphic.pixelWidth ?? 0,
+              cell.graphic.pixelHeight ?? 0,
               cell.graphic.cellWidth,
               cell.graphic.cellHeight,
               cell.graphic.pngBase64,
