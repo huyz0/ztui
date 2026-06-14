@@ -39,6 +39,7 @@ export default defineConfig({
             { label: "Styling", slug: "guides/styling" },
             { label: "Theming", slug: "guides/theming" },
             { label: "React binding", slug: "guides/react" },
+            { label: "Extending ztui", slug: "guides/extending" },
           ],
         },
         {
