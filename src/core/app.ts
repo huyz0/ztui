@@ -33,10 +33,19 @@ interface ClipboardWidget {
   insertText?: (text: string) => void;
 }
 
+/**
+ * Owns a running ztui application: the {@link Driver}, the screen stack, focus,
+ * input dispatch, theming, and the frame scheduler. Construct one, `render()`
+ * your tree onto {@link activeScreen}, then call {@link run}.
+ */
 export class App extends DOMNode {
+  /** The most recently constructed App (convenience singleton; prefer `widget.app`). */
   public static instance: App | null = null;
+  /** The backend this app renders through. */
   public driver: Driver;
+  /** Screen stack; the top is the {@link activeScreen}. */
   public screenStack: Screen[] = [];
+  /** @internal Style/`$token` resolver used during rendering. */
   public cssResolver: CSSResolver = new CSSResolver();
 
   private currentBuffer: ScreenBuffer = new ScreenBuffer();
@@ -45,6 +54,7 @@ export class App extends DOMNode {
   private hoveredWidget: Widget | null = null;
   private activeDragWidget: Widget | null = null;
   /**
+   * @internal
    * Read-only text selection over display widgets (`Syntax`, `RichText`,
    * `Markdown` blocks, `Table` body). Defined in logical content space so it
    * crosses widget boundaries, skips chrome, and copies the true value; editable
@@ -76,6 +86,7 @@ export class App extends DOMNode {
     });
   }
 
+  /** The screen on top of the stack — where {@link render} mounts the tree. */
   public get activeScreen(): Screen {
     return this.screenStack[this.screenStack.length - 1];
   }
@@ -88,6 +99,7 @@ export class App extends DOMNode {
     return this.currentBuffer;
   }
 
+  /** Push a screen onto the stack and make it active (e.g. a full-screen view). */
   public pushScreen(screen: Screen): void {
     screen.parent = this;
     this.screenStack.push(screen);
@@ -98,6 +110,7 @@ export class App extends DOMNode {
     }
   }
 
+  /** Pop the top screen, returning to the one beneath (never empties the stack). */
   public popScreen(): void {
     if (this.screenStack.length > 1) {
       const popped = this.screenStack.pop();
@@ -106,12 +119,14 @@ export class App extends DOMNode {
     }
   }
 
+  /** Load a TCSS stylesheet string (selectors + `:hover`/`:focus` rules) into the resolver. */
   public loadStyles(tcssContent: string): void {
     const rules = parseTCSS(tcssContent);
     this.cssResolver.addRules(rules);
     this.queueRender();
   }
 
+  /** Start the event loop: bind the driver, probe capabilities, and render frames. */
   public run(options?: { inspectorPort?: number }): void {
     logger.init("App started");
     const log = (msg: string) => logger.debug("app", msg);
@@ -456,6 +471,7 @@ export class App extends DOMNode {
     return false;
   }
 
+  /** Stop the loop and restore the backend; releases timers, the inspector, and the singleton. */
   public stop(): void {
     if (this.resizeTimeout) {
       clearTimeout(this.resizeTimeout);
@@ -477,6 +493,7 @@ export class App extends DOMNode {
     this.driver.stop();
   }
 
+  /** Schedule a re-render on the next microtask (coalesced — call freely after state changes). */
   public queueRender(): void {
     if (this.renderQueued) return;
     this.renderQueued = true;

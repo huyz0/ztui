@@ -38,8 +38,10 @@ export interface ScreenLayer {
 /** Repaint cadence for the ambient focus breathing (~13fps — easy on the diff). */
 const FOCUS_TICK_MS = 75;
 
+/** The root widget of one screen: holds the widget tree, focus, and overlay layers. {@link App} renders the active one. */
 export class Screen extends Widget {
   private _focusedWidget: Widget | null = null;
+  /** Top-level overlay roots (dialogs, dropdowns) painted above the tree. */
   public overlays: Widget[] = [];
   /** Active layers, bottom-to-top (last is topmost). */
   public layers: ScreenLayer[] = [];
@@ -48,10 +50,12 @@ export class Screen extends Widget {
     super("screen");
   }
 
+  /** The widget currently holding keyboard focus, if any. */
   public get focusedWidget(): Widget | null {
     return this._focusedWidget;
   }
 
+  /** Resize the screen and re-layout its tree. */
   public resize(width: number, height: number): void {
     this.region = new Region(Offset.ORIGIN, new Size(width, height));
   }
@@ -66,11 +70,13 @@ export class Screen extends Widget {
     this.measuredHeight = maxH;
   }
 
+  /** Add a top-level overlay root (painted above the main tree). */
   public addOverlay(widget: Widget): void {
     widget.parent = this;
     this.overlays.push(widget);
   }
 
+  /** Remove a previously added overlay root. */
   public removeOverlay(widget: Widget): void {
     const idx = this.overlays.indexOf(widget);
     if (idx !== -1) {
@@ -94,6 +100,7 @@ export class Screen extends Widget {
     }
   }
 
+  /** All focusable, enabled, visible widgets in tab order. */
   public getFocusableWidgets(): Widget[] {
     // A modal layer traps focus: Tab cycles only within the topmost modal.
     const modal = this.topModalLayer;
@@ -148,6 +155,7 @@ export class Screen extends Widget {
     }
   }
 
+  /** Move keyboard focus to `widget` (or clear focus with `null`). */
   public focusWidget(widget: Widget | null): void {
     // A disabled widget can never hold focus.
     if (widget?.isDisabled()) widget = null;
@@ -227,6 +235,7 @@ export class Screen extends Widget {
     }
   }
 
+  /** Advance focus to the next focusable widget (or previous when `reverse`). */
   public focusNext(reverse = false): void {
     const widgets = this.getFocusableWidgets();
     if (widgets.length === 0) return;

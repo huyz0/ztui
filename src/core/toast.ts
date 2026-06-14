@@ -5,8 +5,10 @@
  * handlers, async callbacks, code outside React — raise one.
  */
 
+/** Toast severity, driving its icon and color. */
 export type ToastLevel = "info" | "success" | "warn" | "error" | "generic";
 
+/** Options for raising a toast via {@link toast.show}. */
 export interface ToastOptions {
   /** Severity, driving the icon and color. Defaults to `generic`. */
   level?: ToastLevel;
@@ -18,13 +20,19 @@ export interface ToastOptions {
   duration?: number;
 }
 
+/** A live toast as held by the {@link ToastManager}. */
 export interface Toast {
+  /** Unique id, used to {@link toast.dismiss} it. */
   readonly id: number;
+  /** Severity. */
   readonly level: ToastLevel;
+  /** Optional heading. */
   readonly title?: string;
+  /** Body text. */
   readonly message: string;
   /** Resolved duration (ms); `0` means sticky. */
   readonly duration: number;
+  /** Creation timestamp (ms epoch). */
   readonly createdAt: number;
 }
 
@@ -37,8 +45,10 @@ const DEFAULT_DURATIONS: Record<ToastLevel, number> = {
   generic: 4000,
 };
 
+/** Process-wide store of active toasts; `<ToastHost>` subscribes to render them. Prefer the {@link toast} façade. */
 export class ToastManager {
   private static _instance: ToastManager | null = null;
+  /** The shared singleton instance. */
   public static getInstance(): ToastManager {
     if (!ToastManager._instance) ToastManager._instance = new ToastManager();
     return ToastManager._instance;
@@ -53,6 +63,7 @@ export class ToastManager {
     return this._toasts;
   }
 
+  /** Subscribe to changes; returns an unsubscribe function. */
   public subscribe(cb: () => void): () => void {
     this.listeners.add(cb);
     return () => {
@@ -77,6 +88,7 @@ export class ToastManager {
     return id;
   }
 
+  /** Remove the toast with `id`. */
   public dismiss(id: number): void {
     const next = this._toasts.filter((t) => t.id !== id);
     if (next.length !== this._toasts.length) {
@@ -85,6 +97,7 @@ export class ToastManager {
     }
   }
 
+  /** Remove all toasts. */
   public clear(): void {
     if (this._toasts.length > 0) {
       this._toasts = [];
@@ -113,12 +126,20 @@ const at =
  * ```
  */
 export const toast = {
+  /** Raise a toast from full options; returns its id. */
   show: (opts: ToastOptions): number => mgr().notify(opts),
+  /** Info toast. */
   info: at("info"),
+  /** Success toast. */
   success: at("success"),
+  /** Warning toast. */
   warn: at("warn"),
+  /** Error toast (sticky by default). */
   error: at("error"),
+  /** Neutral toast. */
   generic: at("generic"),
+  /** Dismiss a toast by id. */
   dismiss: (id: number): void => mgr().dismiss(id),
+  /** Dismiss all toasts. */
   clear: (): void => mgr().clear(),
 };

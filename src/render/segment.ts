@@ -63,17 +63,21 @@ export function isControlChar(char: string): boolean {
   return code < 32 || (code >= 127 && code < 160);
 }
 
+/** A run of text sharing one {@link Style} — the unit drawn by {@link ScreenBuffer.drawSegment}. */
 export class Segment {
   constructor(
+    /** The run's text. */
     public readonly text: string,
+    /** The run's style. */
     public readonly style: Style = Style.DEFAULT,
   ) {}
 
+  /** Display width of the text in cells (grapheme-aware). */
   public get cellLength(): number {
     return stringWidth(this.text);
   }
 
-  // Crops a segment to fit within a cell width range [startCell, endCell)
+  /** Crop to the cell range `[startCell, endCell)`, padding wide glyphs that straddle the edge with a space. */
   public crop(startCell: number, endCell: number): Segment {
     if (startCell <= 0 && endCell >= this.cellLength) {
       return this;

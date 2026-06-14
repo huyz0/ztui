@@ -6,8 +6,11 @@ export type Severity = "error" | "warning" | "success";
 
 /** Normalized result of validating a single field. */
 export interface ValidationResult {
+  /** Whether the value passed. */
   valid: boolean;
+  /** Message to show when invalid (or for a success/warning note). */
   message?: string;
+  /** Severity driving the control's color (defaults to `"error"` when invalid). */
   severity?: Severity;
 }
 
@@ -25,6 +28,7 @@ export type Validator<T = any> = (
 
 const VALID: ValidationResult = { valid: true };
 
+/** Coerce a validator's loose return value into a {@link ValidationResult}. */
 export function normalizeResult(
   raw: ValidationResult | string | boolean | null | undefined,
 ): ValidationResult {
@@ -59,31 +63,38 @@ export function runValidators<T>(value: T, validators: Validator<T>[]): Validati
 const isEmpty = (v: any): boolean =>
   v == null || v === "" || v === false || (Array.isArray(v) && v.length === 0);
 
+/** Fails when the value is empty (null, "", false, or an empty array). */
 export function required(message = "This field is required"): Validator {
   return (v) => (isEmpty(v) ? message : null);
 }
 
+/** Fails when the string is shorter than `n` characters. */
 export function minLength(n: number, message?: string): Validator<string> {
   return (v) => ((v?.length ?? 0) < n ? (message ?? `Must be at least ${n} characters`) : null);
 }
 
+/** Fails when the string is longer than `n` characters. */
 export function maxLength(n: number, message?: string): Validator<string> {
   return (v) => ((v?.length ?? 0) > n ? (message ?? `Must be at most ${n} characters`) : null);
 }
 
+/** Fails when a non-empty string doesn't match `re`. */
 export function pattern(re: RegExp, message = "Invalid format"): Validator<string> {
   return (v) => (!v || re.test(v) ? null : message);
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Fails when a non-empty string isn't a valid email address. */
 export function email(message = "Enter a valid email address"): Validator<string> {
   return (v) => (!v || EMAIL_RE.test(v) ? null : message);
 }
 
+/** Fails when the number is outside `[min, max]`. */
 export function range(min: number, max: number, message?: string): Validator<number> {
   return (v) => (v < min || v > max ? (message ?? `Must be between ${min} and ${max}`) : null);
 }
 
+/** Fails when the value isn't one of `allowed`. */
 export function oneOf<T>(allowed: T[], message = "Not an allowed value"): Validator<T> {
   return (v) => (allowed.includes(v) ? null : message);
 }
@@ -104,6 +115,7 @@ export type ValidateTrigger = "change" | "blur" | "submit" | "manual";
  * machine so each control only supplies its current value.
  */
 export interface ValidatableField extends Widget {
+  /** The embedded per-field validation state machine. */
   readonly validation: FieldValidation;
   /** Returns the value to validate (e.g. input text, checkbox boolean). */
   getValidationValue(): unknown;

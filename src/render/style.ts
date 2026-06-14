@@ -6,33 +6,55 @@
  */
 export type UnderlineStyle = "single" | "double" | "curly" | "dotted" | "dashed";
 
+/** The attributes used to build a {@link Style} (concrete colors — resolve `$tokens` first). */
 export interface StyleProps {
-  color?: string; // e.g., "red", "#ff0000", "rgb(255, 0, 0)"
-  background?: string; // e.g., "blue", "#0000ff"
+  /** Foreground color, e.g. `"red"`, `"#ff0000"`, `"rgb(255,0,0)"`. */
+  color?: string;
+  /** Background color. */
+  background?: string;
+  /** Bold/bright. */
   bold?: boolean;
+  /** Italic. */
   italic?: boolean;
+  /** Underline. */
   underline?: boolean;
   /** Underline shape. Implies `underline`; defaults to `single` when underlined. */
   underlineStyle?: UnderlineStyle;
   /** Colour of the underline, independent of the foreground (SGR 58). */
   underlineColor?: string;
+  /** Swap foreground and background. */
   reverse?: boolean;
+  /** Reduced intensity. */
   dim?: boolean;
+  /** Struck-through. */
   strikethrough?: boolean;
+  /** Hyperlink target (OSC 8). */
   link?: string;
 }
 
+/** An immutable per-cell visual style. Build one and pass it to {@link ScreenBuffer.setCell}. */
 export class Style {
+  /** Foreground color. */
   public readonly color?: string;
+  /** Background color. */
   public readonly background?: string;
+  /** Bold/bright. */
   public readonly bold: boolean;
+  /** Italic. */
   public readonly italic: boolean;
+  /** Underlined. */
   public readonly underline: boolean;
+  /** Underline shape. */
   public readonly underlineStyle?: UnderlineStyle;
+  /** Underline color (independent of foreground). */
   public readonly underlineColor?: string;
+  /** Foreground/background swapped. */
   public readonly reverse: boolean;
+  /** Reduced intensity. */
   public readonly dim: boolean;
+  /** Struck-through. */
   public readonly strikethrough: boolean;
+  /** Hyperlink target. */
   public readonly link?: string;
 
   constructor(props: StyleProps = {}) {
@@ -49,8 +71,10 @@ export class Style {
     this.link = props.link;
   }
 
+  /** The empty style (terminal defaults). */
   public static readonly DEFAULT = new Style();
 
+  /** True if every attribute matches. */
   public equals(other: Style): boolean {
     return (
       this.color === other.color &&
@@ -67,6 +91,7 @@ export class Style {
     );
   }
 
+  /** Return a new Style with `other`'s defined attributes layered over this one. */
   public merge(other: StyleProps | Style): Style {
     return new Style({
       color: other.color !== undefined ? other.color : this.color,

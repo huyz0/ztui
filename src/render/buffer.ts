@@ -8,22 +8,32 @@ import { charWidth, isControlChar, splitGraphemes, stringWidth } from "./segment
 import { Style } from "./style.ts";
 
 /** Concrete RGB to substitute when a cell's colour is `default`/unset. */
+/** Concrete fallback colors a translucent blend composites against. */
 export interface BlendBase {
+  /** Background to blend toward. */
   bg: RGB;
+  /** Foreground to blend toward. */
   fg: RGB;
 }
 
+/** An inline image/SVG attached to a cell, rendered per the backend's graphics protocol. */
 export interface GraphicMetadata {
+  /** Discriminant — currently always `"image"`. */
   type: "image";
   /**
    * Rasterized RGBA pixels for the terminal graphics protocols. Absent for a
    * vector graphic that the web/canvas backend rasterizes natively from {@link svg}.
    */
   pixelBuffer?: Uint8Array;
+  /** Pixel width of the rasterized buffer. */
   pixelWidth?: number;
+  /** Pixel height of the rasterized buffer. */
   pixelHeight?: number;
+  /** Width of the image in cells. */
   cellWidth: number;
+  /** Height of the image in cells. */
   cellHeight: number;
+  /** Base64 PNG, used by protocols/backends that accept encoded images. */
   pngBase64?: string;
   /**
    * Raw SVG markup for native vector rendering on the canvas backend (`$theme`
@@ -31,29 +41,47 @@ export interface GraphicMetadata {
    * the device pixel ratio — and the terminal pixel fields can be omitted.
    */
   svg?: string;
+  /** Stacking order against other graphics. */
   zIndex?: number;
 }
 
+/** One grid cell: its glyph, style, and optional icon/graphic. */
 export interface Cell {
+  /** The character (may be a multi-code-point grapheme). */
   char: string;
+  /** Visual style. */
   style: Style;
+  /** True for the trailing half of a wide (2-cell) glyph. */
   wideContinuation: boolean;
+  /** Registered icon name drawn in this cell, if any. */
   icon?: string;
+  /** Inline graphic anchored at this cell, if any. */
   graphic?: GraphicMetadata;
 }
 
+/**
+ * The backend-neutral cell grid every widget paints into. A 2-D array of
+ * {@link Cell} (char + {@link Style} + optional icon/graphic). Drivers turn it
+ * into ANSI (terminal) or draw it (canvas). In a custom widget you mostly call
+ * {@link setCell} inside your region.
+ */
 export class ScreenBuffer {
+  /** The grid, indexed `cells[y][x]`. */
   public cells: Cell[][] = [];
   private clipStack: (Region | null)[] = [];
+  /** Active clip rectangle; writes outside it are dropped (null = unclipped). */
   public currentClip: Region | null = null;
 
   constructor(
+    /** Width in cells. */
     public width = 0,
+    /** Height in cells. */
     public height = 0,
   ) {
     this.resize(width, height);
   }
 
+  /** Resize the grid, reallocating cells to blanks. */
   public resize(width: number, height: number): void {
     this.width = width;
     this.height = height;
@@ -68,6 +96,7 @@ export class ScreenBuffer {
     );
   }
 
+  /** Reset every cell to a blank space with default style. */
   public clear(): void {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
@@ -81,6 +110,7 @@ export class ScreenBuffer {
     }
   }
 
+  /** Push a clip rectangle (intersected with the current one); writes outside are ignored until {@link popClip}. */
   public pushClip(region: Region): void {
     this.clipStack.push(this.currentClip);
     if (this.currentClip) {
@@ -91,12 +121,14 @@ export class ScreenBuffer {
     }
   }
 
+  /** Restore the clip rectangle saved by the matching {@link pushClip}. */
   public popClip(): void {
     if (this.clipStack.length > 0) {
       this.currentClip = this.clipStack.pop() || null;
     }
   }
 
+  /** Write one styled character at `(x, y)`. Out-of-bounds and clipped writes are ignored; wide glyphs occupy two cells. */
   public setCell(x: number, y: number, char: string, style: Style): void {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
       return;
@@ -161,6 +193,7 @@ export class ScreenBuffer {
     }
   }
 
+  /** Draw a styled {@link Segment} starting at `(startX, startY)`, advancing per grapheme width. */
   public drawSegment(startX: number, startY: number, segment: Segment, clipRegion?: Region): void {
     if (startY < 0 || startY >= this.height) return;
 
@@ -182,8 +215,7 @@ export class ScreenBuffer {
     }
   }
 
-  // Double buffering output: compare with old buffer and write changes to terminal
-  // Returns ANSI escape sequences to render the differences
+  /** Diff against `oldBuffer` and return the ANSI to update only the changed cells (terminal backend). */
   public renderDiff(
     oldBuffer: ScreenBuffer,
     formatChar?: (cell: Cell, oldCell?: Cell) => string,
@@ -334,7 +366,7 @@ export class ScreenBuffer {
     };
   }
 
-  // Copy current buffer content to another buffer
+  /** Copy this buffer's contents into `other` (resizing it to match). */
   public copyTo(other: ScreenBuffer): void {
     if (this.width !== other.width || this.height !== other.height) {
       other.resize(this.width, this.height);

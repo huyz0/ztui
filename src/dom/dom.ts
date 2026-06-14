@@ -1,14 +1,25 @@
+/**
+ * Base tree node: parent/children links and identity. {@link Widget} extends it
+ * with layout, styling, and rendering. Bindings build a tree of these and the
+ * engine walks it each frame.
+ */
 export class DOMNode {
+  /** Optional stable identifier (from the `id` prop). */
   public id = "";
+  /** Advisory class names (no CSS cascade today). */
   public classes: Set<string> = new Set();
+  /** Host element tag, lowercased (e.g. "ztui-button"). */
   public tagName = "";
+  /** Parent node, or null when detached / at the root. */
   public parent: DOMNode | null = null;
+  /** Child nodes in document order. */
   public children: DOMNode[] = [];
 
   constructor(tagName = "") {
     this.tagName = tagName.toLowerCase();
   }
 
+  /** Append `child`, detaching it from any previous parent. */
   public appendChild(child: DOMNode): void {
     if (child.parent) {
       child.parent.removeChild(child);
@@ -17,6 +28,7 @@ export class DOMNode {
     this.children.push(child);
   }
 
+  /** Remove `child` if it's a child of this node. */
   public removeChild(child: DOMNode): void {
     const idx = this.children.indexOf(child);
     if (idx !== -1) {
@@ -25,6 +37,7 @@ export class DOMNode {
     }
   }
 
+  /** Insert `child` before the `before` sibling (appends if `before` isn't found). */
   public insertBefore(child: DOMNode, before: DOMNode): void {
     if (child.parent) {
       child.parent.removeChild(child);
@@ -57,6 +70,7 @@ export class DOMNode {
     return sel;
   }
 
+  /** Depth-first visit of this node and its descendants, in z-index order. */
   public walk(callback: (node: DOMNode) => void): void {
     callback(this);
     const sorted = [...this.children].sort((a, b) => {
@@ -69,7 +83,7 @@ export class DOMNode {
     }
   }
 
-  // Compound selector matching: supports tags, IDs, and multiple classes combined (e.g. tag#id.class1.class2)
+  /** Match a compound selector against this node — tags, IDs, and classes (e.g. `tag#id.a.b`). */
   public matchesSelector(selector: string): boolean {
     const sel = selector.trim();
     if (!sel) return false;

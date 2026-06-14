@@ -40,40 +40,75 @@ export interface WidgetApp {
   };
 }
 
+/** Inline style properties for a widget — the `style` prop's shape. See the Styling and Layout guides. */
 export interface WidgetStyles {
+  /** Foreground/text color: hex, named, or `$token`. */
   color?: string;
+  /** Background color: hex, named, `$token`, or `"transparent"`. */
   background?: string;
-  width?: string | number; // "auto", "50%", "3fr", 10
+  /** Width: cells (`10`), `"50%"`, `"3fr"`, or `"auto"`. */
+  width?: string | number;
+  /** Height: cells, `"%"`, `"fr"`, or `"auto"`. */
   height?: string | number;
+  /** Minimum width in cells. */
   minWidth?: number;
+  /** Minimum height in cells. */
   minHeight?: number;
+  /** Maximum width in cells. */
   maxWidth?: number;
+  /** Maximum height in cells. */
   maxHeight?: number;
+  /** Space outside the border: number (all sides), per-side object, or {@link Spacing}. */
   margin?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
+  /** Space inside the border, before content. */
   padding?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
-  border?: string; // "rounded" (default), "solid", "double", "dashed", "none"
+  /** Border style: `"rounded"` (default), `"solid"`, `"double"`, `"dashed"`, or `"none"`. */
+  border?: string;
+  /** Border color: hex, named, or `$token`. */
   borderColor?: string;
+  /** Child flow direction / mode: vertical, horizontal, dock, or grid. */
   layout?: "vertical" | "horizontal" | "dock" | "grid";
+  /** Pin this child to an edge of a `dock` parent. */
   dock?: "top" | "right" | "bottom" | "left";
-  align?: "left" | "center" | "right"; // Horizontal alignment of children
-  verticalAlign?: "top" | "middle" | "bottom"; // Vertical alignment
+  /** Horizontal alignment of children on the cross axis. */
+  align?: "left" | "center" | "right";
+  /** Vertical alignment of children on the cross axis. */
+  verticalAlign?: "top" | "middle" | "bottom";
+  /** `"absolute"` takes the widget out of flow, positioned by left/top/right/bottom. */
   position?: "relative" | "absolute";
+  /** Offset from the parent's left edge when positioned. */
   left?: number | string;
+  /** Offset from the parent's top edge when positioned. */
   top?: number | string;
+  /** Offset from the parent's right edge when positioned. */
   right?: number | string;
+  /** Offset from the parent's bottom edge when positioned. */
   bottom?: number | string;
+  /** Stacking order among siblings (higher paints on top). */
   zIndex?: number;
+  /** Layout mode alias: `"flex"` (use `flexDirection`), `"grid"`, or `"dock"`. */
   display?: "flex" | "grid" | "dock";
+  /** Flex flow when `display: "flex"`: `"row"` (horizontal) or `"column"` (vertical). */
   flexDirection?: "row" | "column";
+  /** Share of leftover space along the flow axis (equivalent to `N fr`). */
   flexGrow?: number;
+  /** Bold/bright text. */
   bold?: boolean;
+  /** Italic text. */
   italic?: boolean;
+  /** Underlined text. */
   underline?: boolean;
+  /** Swap foreground and background. */
   reverse?: boolean;
+  /** Reduced-intensity text. */
   dim?: boolean;
+  /** Struck-through text. */
   strikethrough?: boolean;
+  /** Hyperlink target (OSC 8) where the terminal supports it. */
   link?: string;
+  /** Horizontal overflow: clip (`"hidden"`, default), `"scroll"`/`"auto"`, or `"visible"`. */
   overflowX?: "scroll" | "auto" | "hidden" | "visible";
+  /** Vertical overflow handling (see {@link overflowX}). */
   overflowY?: "scroll" | "auto" | "hidden" | "visible";
 }
 
@@ -99,15 +134,19 @@ export interface WidgetStyles {
  * Anything not documented as overridable is internal plumbing and may change.
  */
 export class Widget extends DOMNode {
+  /** Author-set inline styles; override the widget's `defaultStyle` key-by-key. */
   public style: WidgetStyles = {};
+  /** The widget's built-in look, overridden by `style`. Set by subclasses. */
   public defaultStyle: WidgetStyles = {};
   private _computedStyle: WidgetStyles | null = null;
   // One-shot flags so a persistently-failing widget logs once, not every frame.
   private _renderErrorLogged = false;
   private _measureErrorLogged = false;
+  /** Fully resolved styles for this frame ($tokens, hover/focus, defaults folded in). Read this in `render`, not `style`. */
   public get computedStyle(): WidgetStyles {
     return this._computedStyle || this.style;
   }
+  /** Set by the engine each frame after resolving styles; you rarely set this yourself. */
   public set computedStyle(val: WidgetStyles) {
     this._computedStyle = val;
   }
@@ -129,12 +168,19 @@ export class Widget extends DOMNode {
     }
     return null;
   }
+  /** This widget's rectangle in terminal cells, assigned by the layout engine. */
   public region: Region = Region.EMPTY;
+  /** Intrinsic width from the last `measure`, before layout distributes space. */
   public measuredWidth = 0;
+  /** Intrinsic height from the last `measure`. */
   public measuredHeight = 0;
+  /** Scroll position of this widget's content (see {@link Scrollable}). */
   public scrollOffset: Offset = Offset.ORIGIN;
+  /** Whether this widget can take keyboard focus. */
   public focusable = false;
+  /** True while this widget holds keyboard focus. */
   public focused = false;
+  /** Whether this widget renders and participates in layout. */
   public visible = true;
   /**
    * When true, this widget (and its descendants) are inert: not focusable, they
@@ -163,25 +209,36 @@ export class Widget extends DOMNode {
    * text, so copied markdown round-trips its formatting.
    */
   public selectionRaw: string | null = null;
+  /** Structural/accessible label; also the tab title inside `TabContainer`. */
   public label?: string;
   private _theme?: string;
+  /** Theme name applied to this subtree; descendants resolve `$tokens` against it. */
   public get theme(): string | undefined {
     return this._theme;
   }
+  /** Apply a theme name to this subtree (descendants resolve `$tokens` against it). */
   public set theme(val: string | undefined) {
     this._theme = val;
   }
 
+  /** Pointer click handler. */
   public onClick?: (ev: any) => void;
+  /** Key handler invoked while focused (the base {@link handleKey} forwards here). */
   public onKey?: (ev: any) => void;
+  /** Wheel/scroll handler (the base {@link handleScroll} forwards here). */
   public onScroll?: (ev: MouseEvent) => void;
+  /** Called when the pointer enters this widget's region. */
   public onMouseEnter?: (ev: any) => void;
+  /** Called when the pointer leaves this widget's region. */
   public onMouseLeave?: (ev: any) => void;
   // Pointer-drag lifecycle, emitted by the base handleMouse so any widget can be
   // a drag source (e.g. a panel rail icon dragged to re-dock). `onDragEnd`'s
   // `moved` flag distinguishes a drag from a plain tap (no pointer movement).
+  /** Drag began on this widget (pointer pressed). */
   public onDragStart?: (x: number, y: number) => void;
+  /** Pointer moved while dragging from this widget. */
   public onDragMove?: (x: number, y: number) => void;
+  /** Drag released; `moved` is false for a tap with no movement. */
   public onDragEnd?: (x: number, y: number, moved: boolean) => void;
   private _dragActive = false;
   private _dragMoved = false;
@@ -195,18 +252,18 @@ export class Widget extends DOMNode {
   // type-level: no instance field is emitted, so subclass fields and accessors
   // (e.g. InputWidget's `set onValidate`) are not shadowed at runtime. The base
   // class never invokes these — only subclasses that narrow the type do.
-  public declare onAction?: (...args: never[]) => void;
-  public declare onChange?: (...args: never[]) => void;
-  public declare onSelect?: (...args: never[]) => void;
-  public declare onActivate?: (...args: never[]) => void;
-  public declare onSortChange?: (...args: never[]) => void;
-  public declare onViewportChange?: (...args: never[]) => void;
-  public declare onViewChange?: (...args: never[]) => void;
-  public declare onToggle?: (...args: never[]) => void;
-  public declare onExpandedChange?: (...args: never[]) => void;
-  public declare onValidate?: (...args: never[]) => void;
-  public declare onSubmit?: (...args: never[]) => void;
-  public declare onResize?: (...args: never[]) => void;
+  /** @internal */ public declare onAction?: (...args: never[]) => void;
+  /** @internal */ public declare onChange?: (...args: never[]) => void;
+  /** @internal */ public declare onSelect?: (...args: never[]) => void;
+  /** @internal */ public declare onActivate?: (...args: never[]) => void;
+  /** @internal */ public declare onSortChange?: (...args: never[]) => void;
+  /** @internal */ public declare onViewportChange?: (...args: never[]) => void;
+  /** @internal */ public declare onViewChange?: (...args: never[]) => void;
+  /** @internal */ public declare onToggle?: (...args: never[]) => void;
+  /** @internal */ public declare onExpandedChange?: (...args: never[]) => void;
+  /** @internal */ public declare onValidate?: (...args: never[]) => void;
+  /** @internal */ public declare onSubmit?: (...args: never[]) => void;
+  /** @internal */ public declare onResize?: (...args: never[]) => void;
 
   /**
    * Handle a wheel/scroll event. Override to scroll your own content; set
@@ -266,6 +323,7 @@ export class Widget extends DOMNode {
     super(tagName);
   }
 
+  /** This widget's margin as a normalized {@link Spacing}. */
   public get margin(): Spacing {
     const m = this.computedStyle.margin;
     if (m instanceof Spacing) return m;
@@ -281,6 +339,7 @@ export class Widget extends DOMNode {
     return Spacing.ZERO;
   }
 
+  /** This widget's padding as a normalized {@link Spacing}. */
   public get padding(): Spacing {
     const p = this.computedStyle.padding;
     if (p instanceof Spacing) return p;
@@ -296,6 +355,7 @@ export class Widget extends DOMNode {
     return Spacing.ZERO;
   }
 
+  /** Border thickness as a {@link Spacing} — 1 on each side when a border is set, else zero. */
   public get borderSize(): Spacing {
     if (this.computedStyle.border && this.computedStyle.border !== "none") {
       return new Spacing(1, 1, 1, 1);
@@ -303,6 +363,7 @@ export class Widget extends DOMNode {
     return Spacing.ZERO;
   }
 
+  /** The region inside the margin (the widget's visible box, border included). */
   public getClientRect(): Region {
     const m = this.margin;
     const offset = new Offset(this.region.x + m.left, this.region.y + m.top);
@@ -313,6 +374,7 @@ export class Widget extends DOMNode {
     return new Region(offset, size);
   }
 
+  /** The drawable region inside margin + border + padding — paint custom content here. */
   public getContentRect(): Region {
     const client = this.getClientRect();
     const b = this.borderSize;
@@ -396,6 +458,7 @@ export class Widget extends DOMNode {
     return value;
   }
 
+  /** This widget's effective background, walking up to ancestors when unset — used to composite translucent fills. */
   public findResolvedBackground(): string {
     const bg = this.computedStyle?.background;
     if (bg && bg !== "default" && bg !== "transparent") {

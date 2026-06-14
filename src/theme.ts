@@ -4,41 +4,77 @@ import { logger } from "./utils/logger.ts";
 const BLEND_BLACK: RGB = { r: 0, g: 0, b: 0 };
 const BLEND_WHITE: RGB = { r: 255, g: 255, b: 255 };
 
+/** A named palette. Its `colors` back the `$token` style values — see the Theming guide. */
 export interface Theme {
+  /** Unique theme name passed to `ThemeManager.setTheme`. */
   name: string;
+  /** Semantic color tokens (referenced in styles as `$primary`, `$surface`, …). */
   colors: {
+    /** Primary accent / interactive color (`$primary`). */
     primary: string;
+    /** Secondary accent (`$secondary`). */
     secondary: string;
+    /** App backdrop (`$background`). */
     background: string;
+    /** Default text (`$foreground`). */
     foreground: string;
+    /** Raised surface — cards, panels (`$surface`). */
     surface: string;
+    /** A second elevation above surface (`$panel`). */
     panel: string;
+    /** Tertiary accent / highlights (`$accent`). */
     accent: string;
+    /** Positive state (`$success`). */
     success: string;
+    /** Caution state (`$warning`). */
     warning: string;
+    /** Error / destructive state (`$error`). */
     error: string;
+    /** Code comments (syntax). */
     comment?: string;
+    /** Input placeholder text. */
     placeholder?: string;
+    /** Editor gutter / line numbers. */
     gutter?: string;
+    /** De-emphasized text (`$dimmed`). */
     dimmed?: string;
+    /** Syntax: keywords. */
     keyword?: string;
+    /** Syntax: string literals. */
     string?: string;
+    /** Syntax: numeric literals. */
     number?: string;
+    /** Syntax: regular expressions. */
     regexp?: string;
+    /** Syntax: operators. */
     operator?: string;
+    /** Syntax: punctuation. */
     punctuation?: string;
+    /** Syntax: built-in identifiers. */
     builtin?: string;
+    /** Syntax: type names. */
     type?: string;
+    /** Syntax: boolean literals. */
     boolean?: string;
+    /** Syntax: function names. */
     function?: string;
+    /** Syntax: object properties. */
     property?: string;
+    /** Syntax: markup tags. */
     tag?: string;
+    /** Syntax: markup attribute names. */
     "attr-name"?: string;
+    /** Border lines (`$border`). */
     border?: string;
+    /** Focus-ring accent (`$focus`). */
     focus?: string;
+    /** Selection background (`$selectionBg`). */
     selectionBg?: string;
+    /** Selection foreground (`$selectionFg`). */
     selectionFg?: string;
+    /** Drop-shadow tint. */
     shadow?: string;
+    /** Any additional custom token. */
     [key: string]: string | undefined;
   };
 }
@@ -75,6 +111,7 @@ export function themeBlendBase(): { bg: RGB; fg: RGB } {
   };
 }
 
+/** Lighten (`percent > 0`) or darken (`percent < 0`) a hex color; non-hex inputs pass through. */
 export function adjustLightness(hexColor: string, percent: number): string {
   if (!hexColor?.startsWith("#")) return hexColor;
   let hex = hexColor.slice(1);
@@ -106,6 +143,7 @@ export function adjustLightness(hexColor: string, percent: number): string {
   return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
 }
 
+/** Build a new named theme from `baseTheme`, optionally shifting every color's lightness. */
 export function deriveTheme(
   baseTheme: Theme,
   newName: string,
@@ -125,12 +163,14 @@ export function deriveTheme(
   };
 }
 
+/** Registry of {@link Theme}s and the active selection; changing it re-renders the app. Use the shared {@link ThemeManager.getInstance}. */
 export class ThemeManager {
   private static instance: ThemeManager | null = null;
   private themes = new Map<string, Theme>();
   private activeThemeName = "default-dark";
   private listeners = new Set<() => void>();
 
+  /** The shared singleton (pre-seeded with the built-in themes). */
   public static getInstance(): ThemeManager {
     if (!ThemeManager.instance) {
       ThemeManager.instance = new ThemeManager();
@@ -142,18 +182,22 @@ export class ThemeManager {
     this.registerBuiltInThemes();
   }
 
+  /** Register (or replace) a theme by name. */
   public register(theme: Theme): void {
     this.themes.set(theme.name, theme);
   }
 
+  /** Look up a registered theme by name. */
   public getTheme(name: string): Theme | undefined {
     return this.themes.get(name);
   }
 
+  /** The currently active theme (falls back to `default-dark`). */
   public getActiveTheme(): Theme {
     return this.themes.get(this.activeThemeName) || this.themes.get("default-dark")!;
   }
 
+  /** The active theme's name. */
   public getActiveThemeName(): string {
     return this.activeThemeName;
   }
@@ -163,6 +207,7 @@ export class ThemeManager {
     return [...this.themes.values()];
   }
 
+  /** Switch the active theme (a no-op with a warning if `name` isn't registered). */
   public setTheme(name: string): void {
     if (this.themes.has(name)) {
       this.activeThemeName = name;
@@ -175,6 +220,7 @@ export class ThemeManager {
     }
   }
 
+  /** Subscribe to theme changes; returns an unsubscribe function. */
   public subscribe(cb: () => void): () => void {
     this.listeners.add(cb);
     return () => {

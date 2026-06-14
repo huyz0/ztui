@@ -16,8 +16,11 @@ export interface FieldValidationProps {
   onValidate?: (result: ValidationResult) => void;
 }
 
+/** Props shared by every ztui React component (plus each component's own props). */
 export interface ComponentProps {
+  /** Stable identifier, handy for tests and lookups. */
   id?: string;
+  /** Space-separated class names (currently advisory; no CSS cascade). */
   className?: string;
   /**
    * Captures the underlying widget instance (React 19 ref-as-prop). Defaults to
@@ -25,10 +28,15 @@ export interface ComponentProps {
    * e.g. `ref={inputRef as React.Ref<InputWidget>}`.
    */
   ref?: React.Ref<Widget>;
+  /** Inline styles for this widget — see the Styling guide. */
   style?: WidgetStyles;
+  /** Re-theme this subtree; descendants resolve `$tokens` against it. */
   theme?: string;
+  /** Structural/accessible label (also the tab title inside `TabContainer`). */
   label?: string;
+  /** Child elements. */
   children?: React.ReactNode;
+  /** Allow this widget to take keyboard focus. */
   focusable?: boolean;
   /**
    * Marks the widget (and its descendants) as inert: not focusable, ignores
@@ -36,13 +44,20 @@ export interface ComponentProps {
    * disabled container propagates to every control inside it.
    */
   disabled?: boolean;
+  /** Pointer click. */
   onClick?: (ev: any) => void;
+  /** Key event while focused; set `ev.handled` to consume it. */
   onKey?: (ev: any) => void;
+  /** Wheel / scroll event. */
   onScroll?: (ev: any) => void;
+  /** Pointer entered this widget's region. */
   onMouseEnter?: (ev: any) => void;
+  /** Pointer left this widget's region. */
   onMouseLeave?: (ev: any) => void;
   /** Pointer-drag lifecycle; `moved` is false for a tap with no movement. */
   onDragStart?: (x: number, y: number) => void;
+  /** Pointer moved while dragging from this widget. */
   onDragMove?: (x: number, y: number) => void;
+  /** Drag released; `moved` is false for a tap with no movement. */
   onDragEnd?: (x: number, y: number, moved: boolean) => void;
 }

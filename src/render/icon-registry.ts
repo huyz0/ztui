@@ -1,10 +1,14 @@
 import { renderSvgSync } from "../utils/sharp-sync.ts";
 import type { GlyfContour } from "./glyf-encode.ts";
 
+/** A registered icon: its name, SVG source, fallbacks, and optional vector outline. */
 export interface IconDefinition {
+  /** Unique icon name (referenced by `<Icon name>` / `iconRegistry.get`). */
   name: string;
-  svg: string; // Raw SVG string
-  textFallback: string; // Unicode emoji or string fallback
+  /** Raw SVG markup. */
+  svg: string;
+  /** Unicode/emoji shown when no graphics protocol is available. */
+  textFallback: string;
   /**
    * Vector outline for the terminal Glyph Protocol (`fmt=glyf`), in font units
    * (Y-up, baseline at y=0). Present only for icons sourced from a TrueType
@@ -23,11 +27,13 @@ export interface RasterizedIcon {
   superHeight: number;
 }
 
+/** Name → {@link IconDefinition} registry, assigning each icon a private-use codepoint. Use the shared {@link iconRegistry}. */
 export class IconRegistry {
   private icons = new Map<string, IconDefinition>();
   private codepoints = new Map<string, number>();
   private nextCodepoint = 0xe000;
 
+  /** Register (or replace) a single icon. */
   public registerIcon(icon: IconDefinition): void {
     this.icons.set(icon.name, icon);
     if (!this.codepoints.has(icon.name)) {
@@ -35,25 +41,30 @@ export class IconRegistry {
     }
   }
 
+  /** Register many icons at once. */
   public registerIcons(icons: IconDefinition[]): void {
     for (const icon of icons) {
       this.registerIcon(icon);
     }
   }
 
+  /** Look up an icon by name. */
   public get(name: string): IconDefinition | undefined {
     return this.icons.get(name);
   }
 
+  /** Every registered icon. */
   public getAll(): IconDefinition[] {
     return Array.from(this.icons.values());
   }
 
+  /** The private-use codepoint assigned to an icon, if registered. */
   public getCodepoint(name: string): number | undefined {
     return this.codepoints.get(name);
   }
 }
 
+/** The process-wide icon registry. */
 export const iconRegistry = new IconRegistry();
 
 function cleanSvg(svg: string): string {

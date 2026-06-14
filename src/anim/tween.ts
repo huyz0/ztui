@@ -126,6 +126,7 @@ export class ColorTween {
     this.progress = new Tween(1);
   }
 
+  /** Aim at a new target color, interpolating from the one shown now. */
   public to(target: string, opts: TweenOptions = {}): void {
     if (target === this.targetColor && !this.progress.animating) return;
     this.fromColor = this.value;
@@ -135,22 +136,26 @@ export class ColorTween {
     this.progress.to(1, opts);
   }
 
+  /** Jump straight to `value` with no motion. */
   public set(value: string): void {
     this.fromColor = value;
     this.targetColor = value;
     this.progress.set(1);
   }
 
+  /** The color this tween is moving toward. */
   public get goal(): string {
     return this.targetColor;
   }
 
+  /** The interpolated `rgb(...)` color at the present clock. */
   public get value(): string {
     const t = this.progress.value;
     if (t >= 1) return this.targetColor;
     return lerpColor(this.fromColor, this.targetColor, t);
   }
 
+  /** True while the color is still changing. */
   public get animating(): boolean {
     return this.progress.animating;
   }
