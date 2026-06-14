@@ -51,6 +51,9 @@ export type { TracebackProps } from "./components/data/traceback.tsx";
 export { Traceback } from "./components/data/traceback.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";
 export { Tree } from "./components/data/tree.tsx";
+// Custom-widget authoring: build a typed React component bound to a host tag
+// (registered via `registerElement` from `ztui`). See the "Extending ztui" guide.
+export { hostComponent, presetBox } from "./components/factory.tsx";
 export type {
   CompactProgressBarProps,
   ProgressBarProps,

@@ -77,6 +77,27 @@ export interface WidgetStyles {
   overflowY?: "scroll" | "auto" | "hidden" | "visible";
 }
 
+/**
+ * Base class for every visual node in the tree, and the extension point for
+ * custom widgets. Subclass it, override the methods below, then make it usable:
+ * `registerElement("ztui-mywidget", () => new MyWidget())` (from `ztui`) and, for
+ * JSX, `hostComponent("ztui-mywidget")` (from `ztui/react`). See the
+ * "Extending ztui" guide.
+ *
+ * The lifecycle each frame is **measure → layout → render**:
+ * - {@link measure} computes your intrinsic size from the offered space (called
+ *   bottom-up, so children are measured first).
+ * - The layout engine assigns your {@link region} from your styles.
+ * - {@link render} paints cells into the {@link ScreenBuffer} for your region.
+ *
+ * Input arrives through {@link handleKey} / {@link handleMouse} /
+ * {@link handleScroll} when the widget is focused or hit-tested; set
+ * {@link focusable} to take keyboard focus. {@link onMount} / {@link onUnmount}
+ * bracket the widget's time in the live tree.
+ *
+ * The override methods listed here form the **stable extension contract**.
+ * Anything not documented as overridable is internal plumbing and may change.
+ */
 export class Widget extends DOMNode {
   public style: WidgetStyles = {};
   public defaultStyle: WidgetStyles = {};
@@ -187,6 +208,10 @@ export class Widget extends DOMNode {
   public declare onSubmit?: (...args: never[]) => void;
   public declare onResize?: (...args: never[]) => void;
 
+  /**
+   * Handle a wheel/scroll event. Override to scroll your own content; set
+   * `ev.handled = true` to stop it bubbling. The base forwards to `onScroll`.
+   */
   public handleScroll(ev: MouseEvent): void {
     if (this.onScroll) {
       this.onScroll(ev);
@@ -194,6 +219,12 @@ export class Widget extends DOMNode {
     }
   }
 
+  /**
+   * Handle a key event while this widget is focused. Override to implement
+   * keyboard interaction; mark `ev.handled = true` for keys you consume so they
+   * don't fall through to global hotkeys. The base forwards to `onKey`. Requires
+   * {@link focusable} to be true to receive focus.
+   */
   public handleKey(ev: KeyEvent): void {
     if (this.onKey) {
       this.onKey(ev);
@@ -201,6 +232,12 @@ export class Widget extends DOMNode {
     }
   }
 
+  /**
+   * Handle a mouse event hit-tested to this widget (press/release/drag/move).
+   * Override for click/drag interaction; call `super.handleMouse(ev)` to keep
+   * the built-in drag-source lifecycle (`onDragStart`/`onDragMove`/`onDragEnd`).
+   * Set `ev.handled = true` to consume the event.
+   */
   public handleMouse(ev: MouseEvent): void {
     // Drag-source lifecycle. Only engages when a drag handler is attached, so
     // ordinary widgets are unaffected. Subclasses that override handleMouse get
@@ -387,6 +424,14 @@ export class Widget extends DOMNode {
     return text;
   }
 
+  /**
+   * Paint this widget into the cell `buffer`. The base draws the background,
+   * border, and children. **Custom-widget override point**: call
+   * `super.render(buffer)` to keep background/border, then paint your content
+   * within {@link getContentRect} using `buffer.setCell(...)`. Stay inside your
+   * region — the parent clips children to its content box by default. Keep
+   * `render` pure and fast: it runs every frame and must not mutate the tree.
+   */
   public render(buffer: ScreenBuffer): void {
     if (!this.visible) return;
 
@@ -478,6 +523,11 @@ export class Widget extends DOMNode {
     }
   }
 
+  /**
+   * Paint child widgets (z-index ordered, clipped to the content box). The base
+   * {@link render} already calls this; override only for unusual child handling
+   * (e.g. a custom scroll transform). Most custom widgets don't need to.
+   */
   public renderChildren(buffer: ScreenBuffer): void {
     // Clip children to the content box by default so an oversized or
     // mispositioned child can never paint over this widget's own border or its
@@ -525,9 +575,20 @@ export class Widget extends DOMNode {
     }
   }
 
+  /** Called once when the widget enters the live tree. Override to start timers,
+   * subscribe to stores, or kick off async loads; pair cleanup in {@link onUnmount}. */
   public onMount(): void {}
+  /** Called once when the widget leaves the tree. Override to release whatever
+   * {@link onMount} acquired (timers, subscriptions) so nothing leaks. */
   public onUnmount(): void {}
 
+  /**
+   * Compute this widget's intrinsic size into {@link measuredWidth} /
+   * {@link measuredHeight}, given the space the parent offers (`maxW`/`maxH`).
+   * Runs bottom-up (children first). **Override point** for content-sized custom
+   * widgets (e.g. measure your text); call `super.measure(maxW, maxH)` first if
+   * you also have children. Clamp to the offered space so you never overflow.
+   */
   public measure(maxW: number, maxH: number): void {
     // 1. Recursively measure children first (bottom-up). Isolate each child so a
     // broken measure() degrades that subtree instead of aborting layout.

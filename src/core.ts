@@ -39,6 +39,10 @@ export {
   toast,
 } from "./core/toast.ts";
 export { DOMNode } from "./dom/dom.ts";
+// Custom-widget registration: map a host tag name to a Widget subclass so it can
+// appear in the tree. Pair with `hostComponent` from `ztui/react` for JSX.
+// See the "Extending ztui" guide.
+export { createWidgetByTagName, registerElement } from "./dom/element-registry.ts";
 export { type OverlayPlacement, OverlayRootWidget } from "./dom/overlay.ts";
 export { Screen, type ScreenLayer } from "./dom/screen.ts";
 export { Scrollable } from "./dom/scrollable.ts";
@@ -46,7 +50,7 @@ export type { WidgetStyles } from "./dom/widget.ts";
 export { Widget } from "./dom/widget.ts";
 export { BunDriver } from "./driver/bun/index.ts";
 // Drivers
-export { Driver } from "./driver/driver.ts";
+export { Driver, type KeyEvent, type MouseEvent } from "./driver/driver.ts";
 export { MockDriver } from "./driver/mock/index.ts";
 export {
   type CanvasCell,
