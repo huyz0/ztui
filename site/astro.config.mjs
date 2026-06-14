@@ -21,6 +21,13 @@ export default defineConfig({
         "A declarative, React-based Text User Interface framework for TypeScript and Bun — terminal and browser-canvas backends from one widget tree.",
       logo: { src: "./src/assets/ztui-logo.svg", alt: "ztui" },
       favicon: "/favicon.svg",
+      head: [
+        { tag: "meta", attrs: { property: "og:image", content: "https://huyz0.github.io/ztui/og.png" } },
+        { tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
+        { tag: "meta", attrs: { property: "og:image:height", content: "630" } },
+        { tag: "meta", attrs: { name: "twitter:card", content: "summary_large_image" } },
+        { tag: "meta", attrs: { name: "twitter:image", content: "https://huyz0.github.io/ztui/og.png" } },
+      ],
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/huyz0/ztui" }],
       editLink: { baseUrl: "https://github.com/huyz0/ztui/edit/main/site/" },
       lastUpdated: true,
@@ -29,6 +36,7 @@ export default defineConfig({
           label: "Getting Started",
           items: [
             { label: "Introduction", slug: "" },
+            { label: "Why ztui", slug: "getting-started/why-ztui" },
             { label: "Installation", slug: "getting-started/installation" },
             { label: "Quick Start", slug: "getting-started/quick-start" },
           ],
@@ -44,6 +52,7 @@ export default defineConfig({
             { label: "Animation & graphics", slug: "guides/animation-graphics" },
             { label: "React binding", slug: "guides/react" },
             { label: "Extending ztui", slug: "guides/extending" },
+            { label: "Debugging & AI agents", slug: "guides/debugging" },
           ],
         },
         {

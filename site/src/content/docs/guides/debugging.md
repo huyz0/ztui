@@ -1,0 +1,112 @@
+---
+title: Debugging & AI agents
+description: ztui's UI serializes to text/HTML/JSON and runs headless, so humans, CI, and AI agents can see and assert on the interface without a real terminal.
+---
+
+A ztui UI is never a black box. The widget DOM and the rendered frame **serialize
+to plain text, HTML, and JSON**, the app runs **headless** with no TTY, and a
+**REST inspector** exposes the live screen over HTTP. That's what makes ztui
+practical to test in CI and to operate with an LLM agent — the thing a native
+byte-stream backend can't give you (see [Why ztui](/ztui/getting-started/why-ztui/)).
+
+## Serialize any frame
+
+The composed cell grid renders to text or styled HTML — no terminal required:
+
+```ts
+import { App, MockDriver, renderBufferToText, renderBufferToHTML } from "ztui";
+import { render } from "ztui/react";
+
+const app = new App(new MockDriver(40, 10)); // headless, fixed-size grid
+render(<MyUI />, app.activeScreen);
+app.run();
+
+renderBufferToText(app.buffer);  // the screen as plain text
+renderBufferToHTML(app.buffer);  // the screen as styled HTML (for snapshots)
+```
+
+`MockDriver` is a no-TTY backend built for this: it captures output and lets you
+inject input, so the same widget tree you ship runs in a test or a script.
+
+## Assert on the UI in a test
+
+Because the frame is text, assertions are ordinary string checks — no
+screenshots, no flaky pixel diffs:
+
+```ts
+import { App, MockDriver, renderBufferToText } from "ztui";
+import { render } from "ztui/react";
+
+test("counter increments", async () => {
+  const driver = new MockDriver(40, 5);
+  const app = new App(driver);
+  render(<Counter />, app.activeScreen);
+  app.run();
+  await new Promise((r) => setTimeout(r, 15)); // let React commit + render
+
+  driver.simulateKey({ key: "enter", name: "enter", ctrl: false, meta: false, shift: false });
+  await new Promise((r) => setTimeout(r, 15));
+
+  expect(renderBufferToText(app.buffer)).toContain("Count: 1");
+  app.stop();
+});
+```
+
+`MockDriver` exposes `simulateKey` / `simulateMouse` / `simulateResize` to drive
+the app, and `writtenData` to assert on raw output.
+
+## The live REST inspector
+
+For a *running* app, `startInspector(app)` serves the live screen over HTTP — so a
+human, a script, or an agent can watch and drive it from outside the process:
+
+```ts
+import { startInspector } from "ztui";
+const inspector = startInspector(app, 8000); // GET endpoints + POST /input
+```
+
+| Endpoint            | Returns                                                  |
+|---------------------|---------------------------------------------------------|
+| `GET /screenshot`   | the current screen as **plain text**                    |
+| `GET /render`       | the current screen as **styled HTML**                   |
+| `GET /dom`          | the widget tree as **JSON** (ids, classes, regions)     |
+| `GET /tree`         | the widget tree as an indented **text** outline         |
+| `GET /state`        | a high-level app snapshot (focus, size, capabilities)   |
+| `GET /log?lines=N`  | the last N log lines                                     |
+| `POST /input`       | inject a key or mouse event                             |
+
+```bash
+curl localhost:8000/screenshot                 # see the screen
+curl -XPOST localhost:8000/input -d '{"type":"key","key":"enter"}'   # press a key
+curl -XPOST localhost:8000/input -d '{"type":"mouse","x":4,"y":2,"action":"press"}'
+```
+
+## The agent loop
+
+These two facts — *read the screen as text*, *inject input over HTTP* — close the
+loop for an AI agent with no terminal at all:
+
+1. `GET /screenshot` → the agent reads the current UI as text.
+2. The agent decides what to do.
+3. `POST /input` → it presses a key or clicks.
+4. Repeat.
+
+The same loop works offline against `MockDriver` (`renderBufferToText` +
+`simulateKey`) for deterministic, fully-scripted runs in CI. An agent can build a
+feature, drive its own UI, read back the rendered result, and assert it's correct
+— without a human relaying screenshots.
+
+## The web backend, headless
+
+The browser/canvas backend is inspectable too. `bun run web:debug` renders a UI
+in headless Chromium, saves a screenshot, and prints a pixel-accurate report (row
+gaps, overflow, font-loaded, cell width) — the way to verify the web backend in
+CI without a person at a browser.
+
+## Why this is the selling point
+
+Every other guarantee in ztui flows from this: a [custom widget](/ztui/guides/extending/)
+is correct if its serialized output is correct; a regression shows up as a text
+diff; an agent can operate an interface it can't see. The UI is **data you can
+query**, not pixels you have to look at — which is exactly what testing and
+AI-assisted development need.

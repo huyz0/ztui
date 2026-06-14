@@ -29,8 +29,39 @@ app.run();
 
 Press `Tab` to focus the button, `Enter`/`Space` to increment, and `Ctrl+C` to quit.
 
+## Why ztui
+
+Most TUI toolkits sit at one of two extremes. Some are **too primitive** — raw
+ANSI or thin wrappers where you hand-roll layout, focus, scrolling, and every
+widget yourself. Others chase **maximal performance** with native render
+backends: fast, but hard to see into. The UI exists only as bytes on a terminal,
+so debugging is print-statements-and-squinting and there's nothing concrete to
+assert on in a test.
+
+ztui takes a different bet. On a modern machine a TUI paints a few thousand
+cells — raw render throughput is rarely the bottleneck; **iteration speed and
+debuggability are.** That matters more than ever now that so much code is written
+and maintained by LLMs and agents, which can't watch a terminal scroll by. So
+ztui optimizes for a model you *and an agent* can reason about, test, and operate:
+
+- One declarative **React** tree — a familiar mental model, hooks and all.
+- The widget DOM and the rendered frame **serialize to JSON / HTML / text**.
+- **Headless drivers and a REST inspector** let humans, CI, and agents *see* and
+  *assert* on the UI without a real terminal.
+
+This isn't "slow but debuggable." ztui stays performance-conscious — ANSI cell
+diffing, list/table virtualization, synchronized output, lazy graphics — it just
+**trades a sliver of raw native throughput for a framework that's legible
+end-to-end.** If you're rendering a 60fps fullscreen game in the terminal, reach
+for a native engine. If you're building tools, dashboards, agent UIs, and dev
+experiences — and want them testable and AI-operable — that's the gap ztui fills.
+
+See [Debugging & AI agents](https://huyz0.github.io/ztui/guides/debugging/) for
+how the inspectability works in practice.
+
 ## Contents
 
+- [Why ztui](#why-ztui)
 - [Features](#features)
 - [Installation](#installation) — slim core + opt-in entry points
 - [Layout and Styling System](#layout-and-styling-system)
