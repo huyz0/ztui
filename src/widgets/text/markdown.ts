@@ -11,8 +11,10 @@ import { Spacing } from "../../geometry/spacing.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { tokensToMarkup } from "../../render/rich/markdown.ts";
 import { getMarked } from "../../render/rich/marked-loader.ts";
+import { RichText } from "../../render/rich/text.ts";
 import { stringWidth } from "../../render/segment.ts";
 import { logger } from "../../utils/logger.ts";
+import { CopyButtonWidget } from "../copy-button.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 import { parsePartialJson } from "./json-ui.ts";
 import { RichTextWidget } from "./rich-text.ts";
@@ -51,6 +53,7 @@ function areTokensEqual(a: any, b: any): boolean {
 }
 
 export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
+  private readonly copyButton = new CopyButtonWidget();
   private _markdownTheme?: string = "theme";
   public override get theme(): string | undefined {
     return this._markdownTheme;
@@ -105,6 +108,19 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
     // A drag started on any rendered block (RichText/Syntax leaf) selects across
     // the whole document, not just that one block.
     this.selectionContainer = true;
+    this.copyButton.getText = () => this.getRawMarkdown();
+  }
+
+  /**
+   * The generated block children are rebuilt wholesale on every content change,
+   * so re-attach the copy button (an absolute, out-of-flow child) afterwards.
+   * Omitted when the document is empty — nothing to copy.
+   */
+  private attachCopyButton(): void {
+    if (!this.getRawMarkdown()) return;
+    this.copyButton.parent = this;
+    this.resolveStylesForGenerated(this.copyButton);
+    this.children.push(this.copyButton);
   }
 
   public override handleMouse(ev: MouseEvent): void {
@@ -244,6 +260,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
             widget.parent = this;
           }
           this.children = activeWidgets;
+          this.attachCopyButton();
           this.lastBlocks = nextBlocks;
           if (!this.disableStreamingCache) this.advanceCommit(tailRaw, tailAll);
         } catch (err) {
@@ -262,6 +279,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
           this.resolveStylesForGenerated(fallback);
           fallback.parent = this;
           this.children = [fallback];
+          this.attachCopyButton();
           this.lastBlocks = [];
           this.committedRaw = "";
           this.committedTokens = [];
@@ -480,7 +498,86 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       return syntax;
     }
 
+    // 7. Table (GFM) — borderless, color-delineated. Columns are whitespace
+    // aligned (no `│`/box chrome that eats width); the header is bold + accent
+    // with a thin underline, and body rows zebra-stripe via a background tint so
+    // color does the row separation instead of rule lines.
+    if (token.type === "table") {
+      return this.buildTableWidget(token as Tokens.Table);
+    }
+
     return null;
+  }
+
+  private buildTableWidget(token: Tokens.Table): Widget {
+    const container = new Widget("table");
+    container.style.layout = "vertical";
+    container.style.margin = new Spacing(0, 0, 1, 0);
+
+    const aligns = token.align ?? [];
+    const headerMarkup = token.header.map((c) => tokensToMarkup(c.tokens));
+    const bodyMarkup = token.rows.map((row) => row.map((c) => tokensToMarkup(c.tokens)));
+
+    const plainOf = (markup: string): string => {
+      try {
+        return RichText.fromMarkup(markup).plain;
+      } catch {
+        return markup;
+      }
+    };
+    const headerPlain = headerMarkup.map(plainOf);
+    const bodyPlain = bodyMarkup.map((row) => row.map(plainOf));
+
+    const ncol = headerMarkup.length;
+    const widths = new Array<number>(ncol).fill(0);
+    for (let c = 0; c < ncol; c++) {
+      widths[c] = stringWidth(headerPlain[c] ?? "");
+      for (const row of bodyPlain) {
+        widths[c] = Math.max(widths[c], stringWidth(row[c] ?? ""));
+      }
+    }
+
+    const GAP = "  ";
+    // Pad one cell to its column width, honoring the column alignment.
+    const padCell = (markup: string, plain: string, c: number): string => {
+      const padCount = Math.max(0, widths[c] - stringWidth(plain));
+      const align = aligns[c];
+      if (align === "right") return " ".repeat(padCount) + markup;
+      if (align === "center") {
+        const left = Math.floor(padCount / 2);
+        return " ".repeat(left) + markup + " ".repeat(padCount - left);
+      }
+      return markup + " ".repeat(padCount);
+    };
+    const rowLine = (cells: string[], plains: string[]): string =>
+      Array.from({ length: ncol }, (_, c) => padCell(cells[c] ?? "", plains[c] ?? "", c)).join(GAP);
+
+    // Header row: bold + accent.
+    const header = new RichTextWidget();
+    header.style.bold = true;
+    header.style.color = "$accent";
+    header.appendChild(new TextNode(`[bold]${rowLine(headerMarkup, headerPlain)}[/]`));
+    container.appendChild(header);
+
+    // Thin underline beneath the header — the one structural cue that survives on
+    // no-color terminals (zebra striping vanishes without color).
+    const rule = new RichTextWidget();
+    rule.selectable = false; // table chrome, not content
+    rule.style.color = "$dimmed";
+    rule.style.dim = true;
+    const ruleSegments = widths.map((w) => "─".repeat(w));
+    rule.appendChild(new TextNode(ruleSegments.join("──")));
+    container.appendChild(rule);
+
+    // Body rows: zebra-stripe odd rows with a surface tint.
+    bodyMarkup.forEach((cells, idx) => {
+      const row = new RichTextWidget();
+      if (idx % 2 === 1) row.style.background = "$panel";
+      row.appendChild(new TextNode(rowLine(cells, bodyPlain[idx])));
+      container.appendChild(row);
+    });
+
+    return container;
   }
 
   private buildListItemWidget(

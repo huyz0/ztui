@@ -4,6 +4,33 @@ All notable changes to ztui are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-06-14
+
+### Added
+
+- Markdown now renders GFM tables. They are borderless and color-delineated —
+  whitespace-aligned columns (honoring `:--`/`--:`/`:-:` alignment), a bold
+  accent header with a thin underline, and zebra-striped rows via a `$panel`
+  background tint — so they stay readable in narrow panes without box chrome
+  eating horizontal space.
+- A copy-to-clipboard button on code blocks (`Syntax`) and Markdown. It sits in
+  the content's top-right corner, copies the raw source on click, brightens with
+  a `$panel` background pill on hover, and shows a brief `✓` acknowledgement.
+
+### Changed
+
+- Scrollable widgets now reserve a one-cell gutter for a visible scrollbar
+  instead of painting the bar over the last row/column, so content (and overlay
+  chrome) is never hidden beneath the scrollbar. Absolute children can opt into
+  viewport-pinned (`position: fixed`-style) placement via `Widget.positionFixed`.
+
+### Fixed
+
+- The Markdown/Syntax copy button blends with its background on every terminal
+  (it samples the cell behind it rather than relying on a theme token), fixing a
+  stray dark square on terminals whose default background differs from the theme
+  (e.g. Windows Terminal).
+
 ## [1.0.0] - 2026-06-14
 
 First stable release.
@@ -38,4 +65,5 @@ First stable release.
 - `startInspector` binds to `127.0.0.1` by default (it has no auth and `POST
   /input` can drive the app); remote binding is an explicit opt-in.
 
+[1.0.1]: https://github.com/huyz0/ztui/releases/tag/v1.0.1
 [1.0.0]: https://github.com/huyz0/ztui/releases/tag/v1.0.0

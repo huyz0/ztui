@@ -25,6 +25,11 @@ import { JSONUIWidget } from "../widgets/text/json-ui.ts";
 import { MarkdownWidget } from "../widgets/text/markdown.ts";
 import { mountApp } from "./harness.tsx";
 
+/** Count of generated content blocks, excluding the markdown copy-button chrome. */
+function blockCount(w: Widget): number {
+  return w.children.filter((c) => (c as Widget).tagName !== "copy-button").length;
+}
+
 describe("Rich Components Integration Tests", () => {
   test("RichText renders styled markup and handles alignment", async () => {
     const { app } = await mountApp(
@@ -178,7 +183,7 @@ describe("Rich Components Integration Tests", () => {
     // 2. Blockquote container (HBox)
     // 3. Unordered list container (VBox)
     // 4. Button widget (constructed from fence)
-    expect(mdWidget.children.length).toBe(4);
+    expect(blockCount(mdWidget)).toBe(4);
 
     const heading = mdWidget.children[0];
     expect(heading.tagName).toBe("heading");
@@ -485,7 +490,7 @@ describe("Rich Components Integration Tests", () => {
     });
 
     const mdWidget = screen.children[0] as MarkdownWidget;
-    expect(mdWidget.children.length).toBe(2);
+    expect(blockCount(mdWidget)).toBe(2);
 
     const firstBlockWidget = mdWidget.children[0];
     const secondBlockWidget = mdWidget.children[1];
@@ -506,7 +511,7 @@ describe("Rich Components Integration Tests", () => {
     await settle();
 
     // Verify children count and tag names
-    expect(mdWidget.children.length).toBe(3);
+    expect(blockCount(mdWidget)).toBe(3);
     expect(mdWidget.children[0].tagName).toBe("heading");
     expect(mdWidget.children[1].tagName).toBe("paragraph");
     expect(mdWidget.children[2].tagName).toBe("bullet_list");
@@ -575,7 +580,7 @@ A --> B
     });
 
     const mdWidget = app.activeScreen.children[0] as MarkdownWidget;
-    expect(mdWidget.children.length).toBe(2);
+    expect(blockCount(mdWidget)).toBe(2);
     expect(mdWidget.children[0].tagName).toBe("heading");
     expect(mdWidget.children[1].tagName).toBe("syntax");
 

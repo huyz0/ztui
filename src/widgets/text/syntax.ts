@@ -9,14 +9,18 @@ import { RichText } from "../../render/rich/text.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { logger } from "../../utils/logger.ts";
+import { CopyButtonWidget } from "../copy-button.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
 export class SyntaxWidget extends Widget {
   public language = "text";
   public lineNumbers = true;
+  private readonly copyButton = new CopyButtonWidget();
 
   constructor() {
     super("syntax");
+    this.copyButton.getText = () => this.getTextContent();
+    this.appendChild(this.copyButton);
   }
 
   /** Width of the rendered line-number gutter (`"<n> │ "`), or 0 when hidden. */
@@ -68,6 +72,7 @@ export class SyntaxWidget extends Widget {
   }
 
   public render(buffer: ScreenBuffer): void {
+    this.copyButton.visible = !!this.getTextContent();
     super.render(buffer);
     const contentRect = this.getContentRect();
     const rawCode = this.getTextContent();
@@ -139,5 +144,9 @@ export class SyntaxWidget extends Widget {
 
       currentY++;
     }
+
+    // Redraw the copy button last so it sits on top of the code it overlays
+    // (super.render painted it before the code lines above).
+    this.copyButton.render(buffer);
   }
 }

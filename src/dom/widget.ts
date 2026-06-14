@@ -204,6 +204,13 @@ export class Widget extends DOMNode {
    */
   public selectable = true;
   /**
+   * When true, an absolutely-positioned child is pinned to its parent's viewport
+   * and is NOT shifted by the parent's scroll offset (CSS `position: fixed`
+   * semantics). Used by overlay chrome like the copy button so it stays in the
+   * top-right corner instead of scrolling away with the content.
+   */
+  public positionFixed = false;
+  /**
    * Original source text for this subtree (e.g. the raw markdown of the block a
    * Markdown widget rendered it from). When a read-only selection fully covers
    * the subtree's content, copy emits this verbatim instead of the rendered

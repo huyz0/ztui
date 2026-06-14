@@ -15,8 +15,13 @@ function md(text: string, w = new MarkdownWidget()): MarkdownWidget {
   return w;
 }
 
+/** Generated content blocks, excluding chrome like the copy button. */
+function blocks(w: Widget): Widget[] {
+  return w.children.filter((c: any) => c.tagName !== "copy-button") as Widget[];
+}
+
 function tags(w: Widget): string[] {
-  return w.children.map((c: any) => c.tagName);
+  return blocks(w).map((c: any) => c.tagName);
 }
 
 describe("Markdown block building", () => {
@@ -45,42 +50,42 @@ describe("Markdown block building", () => {
   test("unknown/blank blocks render nothing instead of crashing", () => {
     const w = md("<div>raw html block</div>");
     // marked emits an `html` token, which has no widget mapping -> skipped.
-    expect(w.children.length).toBe(0);
+    expect(blocks(w).length).toBe(0);
   });
 
   test("clearing the source removes all generated blocks", () => {
     const w = md("# hello\n\ntext");
-    expect(w.children.length).toBeGreaterThan(0);
+    expect(blocks(w).length).toBeGreaterThan(0);
     md("", w);
-    expect(w.children.length).toBe(0);
+    expect(blocks(w).length).toBe(0);
   });
 });
 
 describe("Markdown streaming reconciliation", () => {
   test("unchanged leading blocks are reused, appended blocks are added", () => {
     const w = md("# Title\n\nfirst paragraph.\n");
-    const [heading] = w.children;
+    const [heading] = blocks(w);
     md("# Title\n\nfirst paragraph.\n\nsecond paragraph.\n", w);
     // The heading token is byte-identical and its widget is reused; the last
     // paragraph's raw changes once content follows it, so it may be rebuilt.
-    expect(w.children[0]).toBe(heading);
-    expect(w.children.length).toBe(3);
+    expect(blocks(w)[0]).toBe(heading);
+    expect(blocks(w).length).toBe(3);
   });
 
   test("a mutated block is rebuilt while its siblings are kept", () => {
     const w = md("# Title\n\nalpha\n\nomega\n");
-    const [heading, , omega] = w.children;
+    const [heading, , omega] = blocks(w);
     md("# Title\n\nalpha CHANGED\n\nomega\n", w);
-    expect(w.children[0]).toBe(heading);
-    expect(w.children[1]).not.toBe(undefined);
-    expect(w.children[2]).toBe(omega);
+    expect(blocks(w)[0]).toBe(heading);
+    expect(blocks(w)[1]).not.toBe(undefined);
+    expect(blocks(w)[2]).toBe(omega);
   });
 
   test("removing trailing blocks shrinks the tree", () => {
     const w = md("one\n\ntwo\n\nthree\n");
-    expect(w.children.length).toBe(3);
+    expect(blocks(w).length).toBe(3);
     md("one\n", w);
-    expect(w.children.length).toBe(1);
+    expect(blocks(w).length).toBe(1);
   });
 });
 

@@ -1,4 +1,4 @@
-import type { Token } from "marked";
+import type { Token, Tokens } from "marked";
 import { stringWidth } from "../segment.ts";
 import { Style } from "../style.ts";
 import { getMarked } from "./marked-loader.ts";
@@ -231,6 +231,65 @@ export class Markdown {
           }
           bottomBorderLine = formatLine(bottomBorderLine, "  ", []);
           lines.push(bottomBorderLine);
+
+          lines.push(new RichText(""));
+        } else if (token.type === "table") {
+          // Borderless, color-delineated table (mirrors the MarkdownWidget): no
+          // box chrome eating width, header bold + accent with a thin underline,
+          // body rows zebra-striped via a background tint.
+          const aligns = (token.align ?? []) as Array<"center" | "left" | "right" | null>;
+          const headerCells = token.header.map((c: Tokens.TableCell) => tokensToMarkup(c.tokens));
+          const bodyCells = token.rows.map((row: Tokens.TableCell[]) =>
+            row.map((c) => tokensToMarkup(c.tokens)),
+          );
+          const richOf = (markup: string) => RichText.fromMarkup(markup);
+          const headerRich = headerCells.map(richOf);
+          const bodyRich = bodyCells.map((row: string[]) => row.map(richOf));
+
+          const ncol = headerCells.length;
+          const widths = new Array<number>(ncol).fill(0);
+          for (let c = 0; c < ncol; c++) {
+            widths[c] = stringWidth(headerRich[c]?.plain ?? "");
+            for (const row of bodyRich)
+              widths[c] = Math.max(widths[c], stringWidth(row[c]?.plain ?? ""));
+          }
+
+          const gap = "  ";
+          // Assemble one row into a single RichText, padding+aligning each cell
+          // and shifting the cell's inline spans to their column offset.
+          const buildRow = (cells: RichText[], extra?: Style): RichText => {
+            let plain = "";
+            const spans: Span[] = [];
+            for (let c = 0; c < ncol; c++) {
+              if (c > 0) plain += gap;
+              const cell = cells[c] ?? new RichText("");
+              const padCount = Math.max(0, widths[c] - stringWidth(cell.plain));
+              const align = aligns[c];
+              const left =
+                align === "right" ? padCount : align === "center" ? Math.floor(padCount / 2) : 0;
+              const offset = plain.length + left;
+              for (const s of cell.spans) {
+                spans.push({ start: s.start + offset, end: s.end + offset, style: s.style });
+              }
+              plain += " ".repeat(left) + cell.plain + " ".repeat(padCount - left);
+            }
+            if (extra) spans.unshift({ start: 0, end: plain.length, style: extra });
+            return new RichText(plain, spans);
+          };
+
+          lines.push(buildRow(headerRich, new Style({ color: "$accent", bold: true })));
+
+          const ruleText = widths.map((w) => "─".repeat(w)).join("──");
+          lines.push(
+            new RichText(ruleText, [
+              { start: 0, end: ruleText.length, style: new Style({ color: "$dimmed", dim: true }) },
+            ]),
+          );
+
+          const zebra = new Style({ background: "$panel" });
+          bodyRich.forEach((cells: RichText[], idx: number) => {
+            lines.push(buildRow(cells, idx % 2 === 1 ? zebra : undefined));
+          });
 
           lines.push(new RichText(""));
         } else if (token.type === "list") {

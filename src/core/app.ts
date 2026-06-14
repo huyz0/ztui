@@ -686,7 +686,9 @@ export class App extends DOMNode {
 
     if (parent.scrollOffset.x !== 0 || parent.scrollOffset.y !== 0) {
       for (const child of parent.children) {
-        if (child instanceof Widget) {
+        // Pinned (position: fixed) children stay put against scroll — e.g. the
+        // copy button anchored to the viewport's top-right corner.
+        if (child instanceof Widget && !child.positionFixed) {
           child.region = new Region(
             new Offset(
               child.region.x - parent.scrollOffset.x,
@@ -803,18 +805,21 @@ export class App extends DOMNode {
 
     const client = parent.getClientRect();
     const content = parent.getContentRect();
+    // The scrollbar is painted at the full viewport edge (outside the gutter it
+    // reserves), so hit-test against that, not the gutter-shrunk content rect.
+    const viewport = parent.getViewportRect ? parent.getViewportRect() : content;
     const contentSize = parent.getContentSize();
     const hasBorder = parent.computedStyle.border && parent.computedStyle.border !== "none";
 
     const overflowY = parent.computedStyle.overflowY || "auto";
     const showY =
-      overflowY === "scroll" || (overflowY === "auto" && contentSize.height > content.height);
+      overflowY === "scroll" || (overflowY === "auto" && contentSize.height > viewport.height);
     const overflowX = parent.computedStyle.overflowX || "auto";
     const showX =
-      overflowX === "scroll" || (overflowX === "auto" && contentSize.width > content.width);
+      overflowX === "scroll" || (overflowX === "auto" && contentSize.width > viewport.width);
 
     if (showY) {
-      const vScrollbarX = hasBorder ? client.right - 1 : content.right - 1;
+      const vScrollbarX = hasBorder ? client.right - 1 : viewport.right - 1;
       const startY = hasBorder ? client.y + 1 : content.y;
       const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
       if (x === vScrollbarX && y >= startY && y <= endY) {
@@ -823,7 +828,7 @@ export class App extends DOMNode {
     }
 
     if (showX) {
-      const hScrollbarY = hasBorder ? client.bottom - 1 : content.bottom - 1;
+      const hScrollbarY = hasBorder ? client.bottom - 1 : viewport.bottom - 1;
       const startX = hasBorder ? client.x + 1 : content.x;
       const endX = hasBorder ? client.right - 2 : content.right - 1;
       if (y === hScrollbarY && x >= startX && x <= endX) {

@@ -63,6 +63,27 @@ describe("Markdown Engine", () => {
     expect(lines[1].spans.length).toBeGreaterThan(0);
   });
 
+  test("Markdown.renderToLines renders borderless tables with alignment + zebra", () => {
+    const mdText =
+      "| Name | Status | Latency |\n|------|:------:|--------:|\n| alice | active | 12ms |\n| bob | idle | 4ms |";
+    const lines = Markdown.renderToLines(mdText);
+
+    // header, underline rule, two body rows, trailing blank is popped → 4 lines
+    expect(lines[0].plain).toContain("Name");
+    expect(lines[0].spans.some((s) => s.style.bold && s.style.color === "$accent")).toBe(true);
+
+    // header underline made only of box-drawing dashes
+    expect(/^─+$/.test(lines[1].plain)).toBe(true);
+
+    // right-aligned latency column: value hugs the right edge
+    const alice = lines.find((l) => l.plain.includes("alice"))!;
+    expect(alice.plain.trimEnd().endsWith("12ms")).toBe(true);
+
+    // zebra: the second body row (odd index) gets a panel background span
+    const bob = lines.find((l) => l.plain.includes("bob"))!;
+    expect(bob.spans.some((s) => s.style.background === "$panel")).toBe(true);
+  });
+
   test("Markdown.renderToLines additional inline/block coverages", () => {
     const mdText = `# Header 1
 > # Header 1 inside blockquote

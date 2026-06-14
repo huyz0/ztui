@@ -103,7 +103,9 @@ describe("Scrollable Mixin", () => {
       handled: false,
     };
     scrollBox.handleKey(pgDnEv);
-    expect(scrollBox.scrollOffset.y).toBe(4); // content.height = 5, scrolls down by height - 1 = 4
+    // content.height is 4 (one row reserved for the horizontal scrollbar gutter),
+    // so a page scrolls by height - 1 = 3.
+    expect(scrollBox.scrollOffset.y).toBe(3);
 
     // Page up event
     const pgUpEv = {
@@ -161,6 +163,29 @@ describe("Scrollable Mixin", () => {
     scrollBox.handleScroll(scrollUpEv);
     expect(scrollUpEv.handled).toBe(true);
     expect(scrollBox.scrollOffset.y).toBe(0);
+  });
+
+  test("a visible scrollbar reserves a content gutter and paints at the viewport edge", () => {
+    const scrollBox = new ScrollableBox();
+    scrollBox.style = { overflowY: "scroll", overflowX: "hidden" };
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(6, 4));
+
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(4, 20)); // tall, fits width
+    scrollBox.appendChild(child);
+
+    // Content reserves the rightmost column for the vertical bar; full viewport
+    // is unchanged. No horizontal bar, so height is untouched.
+    expect(scrollBox.getContentRect().width).toBe(5);
+    expect(scrollBox.getContentRect().height).toBe(4);
+    expect(scrollBox.getViewportRect().width).toBe(6);
+
+    const buffer = new ScreenBuffer(6, 4);
+    buffer.clear();
+    scrollBox.render(buffer);
+    // The bar is painted in the reserved column (x = 5), not over content.
+    const reservedCol = [0, 1, 2, 3].map((y) => buffer.cells[y][5].char).join("");
+    expect(reservedCol.trim().length).toBeGreaterThan(0);
   });
 
   test("clipping of children rendering", () => {
@@ -252,9 +277,10 @@ describe("Scrollable Mixin", () => {
     // Wait for event processing and rendering queue
     await new Promise((resolve) => setTimeout(resolve, 15));
 
-    // Key event should bubble up from child to scrollBox and scroll it down
-    // Since auto-scroll focus brought it to 5, down key scrolls it to 6.
-    expect(scrollBox.scrollOffset.y).toBe(6);
+    // Key event should bubble up from child to scrollBox and scroll it down.
+    // The scrollbar gutter shrinks the viewport by a row/column, so auto-scroll
+    // focus lands at 6 and the down key scrolls it to 7.
+    expect(scrollBox.scrollOffset.y).toBe(7);
 
     // Clean up
     app.stop();

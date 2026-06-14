@@ -28,6 +28,14 @@ function greet(name: string) {
 
 > Blockquotes, lists, and headings all stream the same way.
 
+## A table
+
+| Model      | Context |  Speed |
+|------------|--------:|:------:|
+| Opus 4.8   |    200k |  ★★★☆☆ |
+| Sonnet 4.6 |    200k |  ★★★★☆ |
+| Haiku 4.5  |    200k |  ★★★★★ |
+
 That's it — **done**.
 `;
 
@@ -93,7 +101,7 @@ export const markdownDemo: Demo = {
   id: "markdown",
   title: "Markdown",
   group: "Text",
-  description: "Streaming markdown rendering.",
+  description: "Streaming markdown rendering with headings, code, lists, and tables.",
   autoFocusTag: "markdown",
   Component: MarkdownStreamDemo,
 };

@@ -57,6 +57,13 @@ console.log(value);
 1. Ordered list item 1
 2. Ordered list item 2
 
+## Table
+| Model      | Context |  Speed |
+|------------|--------:|:------:|
+| Opus 4.8   |    200k |  ★★★☆☆ |
+| Sonnet 4.6 |    200k |  ★★★★☆ |
+| Haiku 4.5  |    200k |  ★★★★★ |
+
 ## Mermaid Diagram
 \`\`\`mermaid
 graph TD

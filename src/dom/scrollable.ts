@@ -1,5 +1,6 @@
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
@@ -17,6 +18,8 @@ export interface ScrollableMembers {
   readonly scrollableY: boolean;
   /** The size of the laid-out content, used to clamp the scroll offset. */
   getContentSize(): Size;
+  /** The full inner box ignoring the scrollbar gutter (where the bar is drawn). */
+  getViewportRect(): Region;
 }
 
 /** Mixin adding scroll behavior to a Widget subclass. */
@@ -54,10 +57,54 @@ export function Scrollable<TBase extends Constructor<Widget>>(
           if (bottom > maxB) maxB = bottom;
         }
       }
-      const contentRect = this.getContentRect();
-      const w = Math.max(0, maxR - contentRect.x);
-      const h = Math.max(0, maxB - contentRect.y);
+      // Use the full viewport (not the scrollbar-reserved content rect) for the
+      // origin, both to avoid recursion with getContentRect and because content
+      // extent is measured from the same origin regardless of the gutter.
+      const viewport = this.getViewportRect();
+      const w = Math.max(0, maxR - viewport.x);
+      const h = Math.max(0, maxB - viewport.y);
       return new Size(w, h);
+    }
+
+    /**
+     * The full inner box ignoring any scrollbar gutter — where the scrollbar
+     * itself is painted and hit-tested. {@link getContentRect} subtracts the
+     * gutter from this so content never renders under a visible scrollbar.
+     */
+    public getViewportRect(): Region {
+      return super.getContentRect();
+    }
+
+    /**
+     * Whether a scrollbar is currently shown on each axis, computed from the
+     * full viewport (so the result doesn't depend on the gutter it controls).
+     */
+    private scrollbarVisibility(): { showY: boolean; showX: boolean } {
+      const viewport = this.getViewportRect();
+      const size = this.getContentSize();
+      const overflowY = this.computedStyle.overflowY || "auto";
+      const overflowX = this.computedStyle.overflowX || "auto";
+      return {
+        showY: overflowY === "scroll" || (overflowY === "auto" && size.height > viewport.height),
+        showX: overflowX === "scroll" || (overflowX === "auto" && size.width > viewport.width),
+      };
+    }
+
+    // Reserve a one-column / one-row gutter for a visible scrollbar so content
+    // (and absolute children like a copy button) never renders beneath the bar.
+    // Bordered scrollables draw the bar on the border, outside content, so they
+    // need no gutter.
+    override getContentRect(): Region {
+      const full = super.getContentRect();
+      const hasBorder = !!this.computedStyle.border && this.computedStyle.border !== "none";
+      if (hasBorder) return full;
+      const { showY, showX } = this.scrollbarVisibility();
+      let w = full.width;
+      let h = full.height;
+      if (showY && w > 0) w -= 1;
+      if (showX && h > 0) h -= 1;
+      if (w === full.width && h === full.height) return full;
+      return new Region(full.offset, new Size(w, h));
     }
 
     override measure(maxW: number, maxH: number): void {
@@ -231,22 +278,18 @@ export function Scrollable<TBase extends Constructor<Widget>>(
 
       const client = this.getClientRect();
       const content = this.getContentRect();
+      const viewport = this.getViewportRect();
       const contentSize = this.getContentSize();
       const hasBorder = this.computedStyle.border && this.computedStyle.border !== "none";
 
-      const overflowY = this.computedStyle.overflowY || "auto";
-      const showY =
-        overflowY === "scroll" || (overflowY === "auto" && contentSize.height > content.height);
-      const overflowX = this.computedStyle.overflowX || "auto";
-      const showX =
-        overflowX === "scroll" || (overflowX === "auto" && contentSize.width > content.width);
+      const { showY, showX } = this.scrollbarVisibility();
 
-      const vScrollbarX = hasBorder ? client.right - 1 : content.right - 1;
+      const vScrollbarX = hasBorder ? client.right - 1 : viewport.right - 1;
       const startY = hasBorder ? client.y + 1 : content.y;
       const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
       const trackHeight = endY - startY + 1;
 
-      const hScrollbarY = hasBorder ? client.bottom - 1 : content.bottom - 1;
+      const hScrollbarY = hasBorder ? client.bottom - 1 : viewport.bottom - 1;
       const startX = hasBorder ? client.x + 1 : content.x;
       const endX = hasBorder ? client.right - 2 : content.right - 1;
       const trackWidth = endX - startX + 1;
@@ -337,6 +380,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
     private drawScrollbars(buffer: ScreenBuffer): void {
       const client = this.getClientRect();
       const content = this.getContentRect();
+      const viewport = this.getViewportRect();
       const contentSize = this.getContentSize();
       const hasBorder = this.computedStyle.border && this.computedStyle.border !== "none";
 
@@ -344,10 +388,9 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       const bg = this.computedStyle.background || "default";
       const style = new Style({ color: fg, background: bg });
 
+      const { showY, showX } = this.scrollbarVisibility();
+
       // Vertical Scrollbar
-      const overflowY = this.computedStyle.overflowY || "auto";
-      const showY =
-        overflowY === "scroll" || (overflowY === "auto" && contentSize.height > content.height);
       if (showY && content.height > 0) {
         const startY = hasBorder ? client.y + 1 : content.y;
         const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
@@ -362,7 +405,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
           const scrollRatio = maxScrollY > 0 ? this.scrollOffset.y / maxScrollY : 0;
           const thumbStart = startY + Math.round(scrollRatio * (trackHeight - thumbHeight));
 
-          const x = hasBorder ? client.right - 1 : content.right - 1;
+          const x = hasBorder ? client.right - 1 : viewport.right - 1;
 
           for (let y = startY; y <= endY; y++) {
             const isThumb = y >= thumbStart && y < thumbStart + thumbHeight;
@@ -373,9 +416,6 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       }
 
       // Horizontal Scrollbar
-      const overflowX = this.computedStyle.overflowX || "auto";
-      const showX =
-        overflowX === "scroll" || (overflowX === "auto" && contentSize.width > content.width);
       if (showX && content.width > 0) {
         const startX = hasBorder ? client.x + 1 : content.x;
         const endX = hasBorder ? client.right - 2 : content.right - 1;
@@ -390,7 +430,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
           const scrollRatio = maxScrollX > 0 ? this.scrollOffset.x / maxScrollX : 0;
           const thumbStart = startX + Math.round(scrollRatio * (trackWidth - thumbWidth));
 
-          const y = hasBorder ? client.bottom - 1 : content.bottom - 1;
+          const y = hasBorder ? client.bottom - 1 : viewport.bottom - 1;
 
           for (let x = startX; x <= endX; x++) {
             const isThumb = x >= thumbStart && x < thumbStart + thumbWidth;
