@@ -17,8 +17,11 @@ const TRACK_DIM = 0.22;
 const FALLBACK_RGB: RGB = { r: 0, g: 255, b: 255 };
 
 export class ProgressBarWidget extends Widget {
+  /** Current progress value. */
   public value = 0;
+  /** Minimum value (0% point). */
   public min = 0;
+  /** Maximum value (100% point). */
   public max = 100;
   /** When true, render `100%` after the bar. Off by default to stay compact. */
   public showPercent = false;

@@ -13,8 +13,11 @@ import { encodePNG } from "../../utils/png.ts";
 import { renderAnsiFallback, resizeImage } from "./image-renderers.ts";
 
 export class ImageWidget extends Widget {
+  /** Path or URL to the image. */
   public src?: string;
+  /** Raw encoded image bytes (alternative to {@link src}). */
   public buffer?: Uint8Array;
+  /** Force Unicode half-block rendering instead of a graphics protocol. */
   public ansi = false;
 
   private lastPixelWidth = 0;

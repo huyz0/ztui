@@ -14,9 +14,11 @@ import { fitCell } from "./table.ts";
 export interface TreeNode {
   /** Stable identifier (used for selection and expansion state). */
   id: string;
+  /** Text shown for the node. */
   label: string;
   /** Glyph rendered before the label (e.g. a file/folder icon). */
   icon?: string;
+  /** Child nodes (omit/empty for a leaf). */
   children?: TreeNode[];
   /**
    * Force the node to be treated as expandable even when `children` is not yet
@@ -47,9 +49,11 @@ const INDENT = 2; // cells per depth level
  * present the root's children as the top level.
  */
 export class TreeWidget extends Widget {
+  /** Root nodes of the tree. */
   public data: TreeNode[] = [];
   /** Render each root's children as the top level (hide the root nodes). */
   public hideRoot = false;
+  /** Height of each row in cells. */
   public rowHeight = 1;
   /** Expanded node ids. Controlled when `onExpandedChange` is set. */
   public expanded: string[] = [];
@@ -66,7 +70,9 @@ export class TreeWidget extends Widget {
   public declare onSelect?: (node: TreeNode) => void;
   /** Item activated — Enter, Space, or double-click (the "open it" intent). */
   public declare onActivate?: (node: TreeNode) => void;
+  /** A node was expanded/collapsed. */
   public declare onToggle?: (node: TreeNode, expanded: boolean) => void;
+  /** The set of expanded ids changed. */
   public declare onExpandedChange?: (expanded: string[]) => void;
 
   // Double-click detection (no driver support; measured here).
@@ -144,6 +150,7 @@ export class TreeWidget extends Widget {
 
   // ---- expansion ------------------------------------------------------------
 
+  /** Expand or collapse the node with `id`. */
   public setExpanded(id: string, expanded: boolean): void {
     const has = this.expanded.includes(id);
     if (expanded === has) return;
@@ -158,6 +165,7 @@ export class TreeWidget extends Widget {
     this.invalidate();
   }
 
+  /** Toggle the expanded state of the node with `id`. */
   public toggle(id: string): void {
     this.setExpanded(id, !this.expanded.includes(id));
   }

@@ -7,9 +7,13 @@ import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class SliderWidget extends Widget {
+  /** Current value. */
   public value = 0;
+  /** Minimum value. */
   public min = 0;
+  /** Maximum value. */
   public max = 100;
+  /** Increment per step. */
   public step = 1;
   public declare onChange?: (val: number) => void;
 

@@ -105,7 +105,9 @@ function resolveStateColor(widget: Widget, state: StatusState, override?: string
  * status line where there is no room for a label.
  */
 export class StatusDotWidget extends Widget {
+  /** The status to display. */
   public state: StatusState = "inactive";
+  /** Glyph vocabulary. */
   public glyphSet: GlyphSet = "unicode";
 
   constructor() {
@@ -156,7 +158,9 @@ export class StatusDotWidget extends Widget {
  * label colour only.
  */
 export class StatusBadgeWidget extends Widget {
+  /** The status to display. */
   public state: StatusState = "inactive";
+  /** Glyph vocabulary. */
   public glyphSet: GlyphSet = "unicode";
   /** Text shown after the glyph. Defaults to the state name when unset. */
   public label: string | undefined = undefined;
@@ -230,6 +234,7 @@ export class StatusBadgeWidget extends Widget {
 
 /** One row of a {@link StatusListWidget}. */
 export interface StatusListItem {
+  /** The row's status state. */
   state: StatusState;
   /** Primary text shown after the glyph. */
   label: string;
@@ -243,7 +248,9 @@ export interface StatusListItem {
  * several states are shown together.
  */
 export class StatusListWidget extends Widget {
+  /** Rows to render, top to bottom. */
   public items: StatusListItem[] = [];
+  /** Glyph vocabulary. */
   public glyphSet: GlyphSet = "unicode";
   /** Cells between the label column and the detail column. */
   public gap = 2;
