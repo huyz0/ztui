@@ -112,9 +112,18 @@ no heavy rendering engines.
 | `ztui/syntax` | Syntax highlighting engine + `SyntaxWidget` | `bun add prismjs` (without it, code renders as plain text) |
 | `ztui/mermaid` | Mermaid diagrams + `MermaidWidget` | `bun add beautiful-mermaid` (`sharp` enables the SVG render path) |
 
-These extras are declared as **optional `peerDependencies`** — they are never
-installed automatically, and the widgets that need them throw an actionable error
-(or degrade gracefully) when they are missing. SVG-icon rasterization (kitty/iTerm)
+`react` and `react-reconciler` are **required `peerDependencies`** — they are the
+engine behind `ztui/react`, the primary way to build a ztui app, so install them
+alongside the package:
+
+```bash
+bun add ztui react react-reconciler
+```
+
+The remaining extras (`marked`, `prismjs`, `beautiful-mermaid`, `sharp`,
+`opentype.js`) are **optional `peerDependencies`** — never installed
+automatically, and the widgets that need them throw an actionable error (or
+degrade gracefully) when they are missing. SVG-icon rasterization (kitty/iTerm)
 uses an optional `sharp`; seti file icons use an optional `opentype.js`; both fall
 back to unicode glyphs when absent.
 

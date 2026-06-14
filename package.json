@@ -123,12 +123,6 @@
     "prismjs": {
       "optional": true
     },
-    "react": {
-      "optional": true
-    },
-    "react-reconciler": {
-      "optional": true
-    },
     "sharp": {
       "optional": true
     }
