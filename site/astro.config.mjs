@@ -38,6 +38,8 @@ export default defineConfig({
             { label: "Layout", slug: "guides/layout" },
             { label: "Styling", slug: "guides/styling" },
             { label: "Theming", slug: "guides/theming" },
+            { label: "Focus, keys & hotkeys", slug: "guides/input" },
+            { label: "Animation & graphics", slug: "guides/animation-graphics" },
             { label: "React binding", slug: "guides/react" },
             { label: "Extending ztui", slug: "guides/extending" },
           ],
