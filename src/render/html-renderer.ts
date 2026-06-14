@@ -77,7 +77,6 @@ function safeHref(link: string): string | null {
   const trimmed = link.trim();
   // Strip control chars/whitespace that browsers ignore inside the scheme
   // (e.g. "java\tscript:") before testing the scheme.
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: deliberately matching control chars to defeat scheme-smuggling.
   const scheme = trimmed.replace(/[\u0000-\u0020]+/g, "").toLowerCase();
   if (/^(https?:|mailto:)/.test(scheme)) return escapeAttr(trimmed);
   // Protocol-relative or path/anchor links are safe (no executable scheme).
