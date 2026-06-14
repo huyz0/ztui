@@ -82,13 +82,15 @@ describe("Image & SVG Image Widgets", () => {
   });
 
   test("Renders SvgImage Widget with iTerm2 protocol when supported", async () => {
-    const { cellAt } = await mountApp(<SvgImage src={TINY_SVG} style={{ width: 5, height: 3 }} />, {
+    const r = await mountApp(<SvgImage src={TINY_SVG} style={{ width: 5, height: 3 }} />, {
       cols: 15,
       rows: 6,
       capabilities: { graphicsProtocol: "iterm2" },
     });
 
-    const cell = cellAt(0, 0);
+    // Rasterizes via the sharp subprocess — wait for the graphic to land.
+    await waitFor(() => r.cellAt(0, 0).graphic !== undefined, { poke: () => r.app.queueRender() });
+    const cell = r.cellAt(0, 0);
     expect(cell.graphic).toBeDefined();
     expect(cell.graphic?.cellWidth).toBe(80);
     expect(cell.graphic?.cellHeight).toBe(24);
@@ -131,6 +133,14 @@ describe("Image & SVG Image Widgets", () => {
   });
 
   test("Dynamically selects quadrant characters depending on image content", async () => {
+    // Each block rasterizes via the `sharp` subprocess, which can lose the race
+    // on a single render under parallel CI load — wait (re-rendering each poll)
+    // for one of the expected glyphs rather than asserting on one frame.
+    const waitGlyph = async (r: Awaited<ReturnType<typeof mountApp>>, chars: string[]) => {
+      await waitFor(() => chars.includes(r.cellAt(0, 0).char), { poke: () => r.app.queueRender() });
+      expect(chars).toContain(r.cellAt(0, 0).char);
+    };
+
     // A vertical division SVG should trigger left/right half-block characters.
     const vertSvg = `
       <svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
@@ -144,7 +154,7 @@ describe("Image & SVG Image Widgets", () => {
       capabilities: { graphicsProtocol: "none" },
       screenStyle: { layout: "vertical" },
     });
-    expect(["▌", "▐"]).toContain(vert.cellAt(0, 0).char);
+    await waitGlyph(vert, ["▌", "▐"]);
 
     // A horizontal gradient should also resolve to a left/right half-block.
     const gradSvg = `
@@ -164,7 +174,7 @@ describe("Image & SVG Image Widgets", () => {
       capabilities: { graphicsProtocol: "none" },
       screenStyle: { layout: "vertical" },
     });
-    expect(["▌", "▐"]).toContain(grad.cellAt(0, 0).char);
+    await waitGlyph(grad, ["▌", "▐"]);
 
     // A fine diagonal line should trigger a diagonal quadrant character.
     const lineSvg = `
@@ -178,7 +188,7 @@ describe("Image & SVG Image Widgets", () => {
       capabilities: { graphicsProtocol: "none" },
       screenStyle: { layout: "vertical" },
     });
-    expect(["▚", "▞"]).toContain(line.cellAt(0, 0).char);
+    await waitGlyph(line, ["▚", "▞"]);
   });
 
   test("resolves $theme variables inside SVG fills before rasterizing", async () => {
