@@ -4,7 +4,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 
-/** Disclosure-triangle glyphs per set (collapsed, expanded). */
+/** @internal Disclosure-triangle glyphs per set (collapsed, expanded). */
 const MARKERS = {
   unicode: { closed: "▸", open: "▾" },
   ascii: { closed: ">", open: "v" },

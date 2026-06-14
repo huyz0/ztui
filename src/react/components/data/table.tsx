@@ -2,11 +2,15 @@ import { createElement, type ReactElement, type ReactNode, useState } from "reac
 import type { SortState, TableColumn, TableTextStyle } from "../../../widgets/data/table.ts";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link Table}. */
 export interface TableProps<Row = any> extends Omit<ComponentProps, "children"> {
   /** Source rows. Only the visible window is ever rendered (virtualized). */
   data: Row[];
+  /** Column definitions (key, header, width, optional `render`). */
   columns: TableColumn<Row>[];
+  /** Height of each row in cells (default 1). */
   rowHeight?: number;
+  /** Show the header row (default true). */
   showHeader?: boolean;
   /** Header formatting. Bold by default; pass `{ bold: false }` for a plain header. */
   headerStyle?: TableTextStyle;
@@ -18,6 +22,7 @@ export interface TableProps<Row = any> extends Omit<ComponentProps, "children"> 
   onSelect?: (row: Row, viewIndex: number) => void;
   /** Row activated — Enter or double-click. */
   onActivate?: (row: Row, viewIndex: number) => void;
+  /** Sort changed (column header clicked); makes `sort` controlled. */
   onSortChange?: (sort: SortState | null) => void;
 }
 
@@ -51,6 +56,7 @@ function buildCells<Row>(columns: TableColumn<Row>[], data: Row[], vp: Viewport)
   return cells;
 }
 
+/** A virtualized, sortable data grid. Renders only on-screen rows. */
 export function Table<Row = any>(props: TableProps<Row>): ReactElement {
   const { data, columns } = props;
   const hasRich = columns.some((c) => typeof c.render === "function");

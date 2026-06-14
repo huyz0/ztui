@@ -43,6 +43,7 @@ function serialize(data: unknown): string {
   }
 }
 
+/** @internal Diagnostic logger; use the shared {@link logger} instance. */
 class Logger {
   private filePath = process.env.ZTUI_LOG_FILE || "ztui.log";
   private threshold = LEVEL_ORDER[parseEnvLevel()];

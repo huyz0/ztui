@@ -138,6 +138,7 @@ export function matchesFilter(hotkey: Hotkey, query: string): boolean {
   return q.split(/\s+/).every((term) => haystack.includes(term));
 }
 
+/** @internal Options for {@link HotkeyRegistry.list}. */
 export interface ListOptions {
   /** Include hotkeys not active in the current context. Defaults to `false`. */
   allContexts?: boolean;

@@ -6,8 +6,11 @@ import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/se
 import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
+/** A {@link Select} choice with a display label distinct from its value. */
 export interface SelectOption {
+  /** Text shown to the user. */
   label: string;
+  /** The value reported on selection. */
   value: string;
 }
 

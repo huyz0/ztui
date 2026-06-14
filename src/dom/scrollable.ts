@@ -6,6 +6,7 @@ import { Style } from "../render/style.ts";
 import { fadeScrollEdges } from "./scroll-fade.ts";
 import { Widget } from "./widget.ts";
 
+/** @internal Mixin base constructor type. */
 export type Constructor<T = object> = new (...args: any[]) => T;
 
 export function Scrollable<TBase extends Constructor<Widget>>(Base: TBase) {

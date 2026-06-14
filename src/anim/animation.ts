@@ -8,7 +8,7 @@ interface Repaintable {
   queueRender(): void;
 }
 
-/** Anything that can ask its owning app to repaint — every mounted widget. */
+/** @internal Anything that can ask its owning app to repaint — every mounted widget. */
 interface TickOwner {
   app?: Repaintable | null;
 }

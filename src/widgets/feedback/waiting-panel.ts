@@ -36,6 +36,7 @@ const FLOOR = 0.08;
 /** Terminal cells are ~2× taller than wide; scale rows so circles look round. */
 const CELL_ASPECT = 2;
 
+/** Animation style for a {@link WaitingPanelWidget}. */
 export type WaitingPanelVariant = "ripple" | "orbit" | "rain";
 
 /** Radii (fraction of panel) and relative speeds of the orbiting dots. */

@@ -19,8 +19,11 @@ export interface SetiTheme {
   languageIds: Record<string, string>;
 }
 
+/** The icon resolved for a filename: which glyph to draw and its theme color. */
 export interface ResolvedIcon {
+  /** Registered icon name. */
   name: string;
+  /** Theme color token or value for the icon. */
   color: string;
 }
 

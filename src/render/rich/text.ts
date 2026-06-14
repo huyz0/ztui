@@ -1,9 +1,13 @@
 import { Segment } from "../segment.ts";
 import { Style } from "../style.ts";
 
+/** A styled character range `[start, end)` within a {@link RichTextEngine}'s text. */
 export interface Span {
+  /** Inclusive start index. */
   start: number;
+  /** Exclusive end index. */
   end: number;
+  /** Style applied to the range. */
   style: Style;
 }
 

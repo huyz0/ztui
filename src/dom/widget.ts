@@ -16,6 +16,7 @@ import { DOMNode } from "./dom.ts";
 import { TextNode } from "./text-node.ts";
 
 /**
+ * @internal
  * The slice of the owning `App` that widgets reach through {@link Widget.app}:
  * render scheduling, the focus-bearing active screen, and the style resolver.
  * Declared structurally (dependency inversion) so the DOM layer carries no

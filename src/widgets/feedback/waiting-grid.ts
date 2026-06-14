@@ -33,6 +33,7 @@ const CREST = 0.4;
 const BAND = 0.35;
 
 export type WaitingGridCells = 4 | 9;
+/** Animation style for a {@link WaitingGridWidget}. */
 export type WaitingGridVariant = "ring" | "radar" | "shimmer";
 
 export class WaitingGridWidget extends Widget {

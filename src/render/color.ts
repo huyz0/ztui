@@ -1,5 +1,6 @@
 /** Small RGB helpers shared by colour-driven widgets (progress, spinners). */
 
+/** An 8-bit-per-channel RGB color (`0–255`). */
 export type RGB = { r: number; g: number; b: number };
 
 export const BLACK: RGB = { r: 0, g: 0, b: 0 };

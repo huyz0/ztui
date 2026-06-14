@@ -50,7 +50,13 @@ export type { WidgetStyles } from "./dom/widget.ts";
 export { Widget } from "./dom/widget.ts";
 export { BunDriver } from "./driver/bun/index.ts";
 // Drivers
-export { Driver, type KeyEvent, type MouseEvent } from "./driver/driver.ts";
+export {
+  type Clipboard,
+  Driver,
+  type KeyEvent,
+  type MouseEvent,
+  type TerminalCapabilities,
+} from "./driver/driver.ts";
 export { MockDriver } from "./driver/mock/index.ts";
 export {
   type CanvasCell,
@@ -74,7 +80,8 @@ export { Offset } from "./geometry/offset.ts";
 export { Region } from "./geometry/region.ts";
 export { Size } from "./geometry/size.ts";
 export { Spacing } from "./geometry/spacing.ts";
-export { ScreenBuffer } from "./render/buffer.ts";
+export { type BlendBase, type Cell, type GraphicMetadata, ScreenBuffer } from "./render/buffer.ts";
+export type { RGB } from "./render/color.ts";
 // Heroicons — lazy loading
 export { registerHeroIcon, resolveHeroIcon } from "./render/heroicons.ts";
 export {
@@ -88,10 +95,10 @@ export {
   renderBufferToText,
 } from "./render/html-renderer.ts";
 // Icon Registry
-export { IconRegistry, iconRegistry } from "./render/icon-registry.ts";
-export { RichText as RichTextEngine } from "./render/rich/text.ts";
+export { type IconDefinition, IconRegistry, iconRegistry } from "./render/icon-registry.ts";
+export { RichText as RichTextEngine, type Span } from "./render/rich/text.ts";
 export { Segment } from "./render/segment.ts";
-export type { StyleProps } from "./render/style.ts";
+export type { StyleProps, UnderlineStyle } from "./render/style.ts";
 // Rendering & Styling
 export { Style } from "./render/style.ts";
 export type { Theme } from "./theme.ts";
@@ -100,8 +107,8 @@ export { type LogLevel, logger } from "./utils/logger.ts";
 export { CheckboxWidget } from "./widgets/controls/checkbox.ts";
 export { FieldErrorWidget } from "./widgets/controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./widgets/controls/form.ts";
-export { RadioGroupWidget } from "./widgets/controls/radio-group.ts";
-export { SelectWidget } from "./widgets/controls/select.ts";
+export { RadioGroupWidget, type RadioOption } from "./widgets/controls/radio-group.ts";
+export { type SelectOption, SelectWidget } from "./widgets/controls/select.ts";
 export { SliderWidget } from "./widgets/controls/slider.ts";
 export { SwitchWidget } from "./widgets/controls/switch.ts";
 export { TextAreaWidget } from "./widgets/controls/textarea.ts";
@@ -141,9 +148,10 @@ export {
 } from "./widgets/feedback/status.ts";
 export {
   type WaitingGridCells as WaitingGridWidgetCells,
+  type WaitingGridVariant,
   WaitingGridWidget,
 } from "./widgets/feedback/waiting-grid.ts";
-export { WaitingPanelWidget } from "./widgets/feedback/waiting-panel.ts";
+export { type WaitingPanelVariant, WaitingPanelWidget } from "./widgets/feedback/waiting-panel.ts";
 export {
   type CollapsibleGlyphSet,
   CollapsibleWidget,
@@ -156,6 +164,7 @@ export { ImageWidget } from "./widgets/media/image.ts";
 export {
   loadSetiIcons,
   loadSetiTheme,
+  type ResolvedIcon,
   registerSetiIcon,
   resolveFileIcon,
 } from "./widgets/media/seti/seti-loader.ts";

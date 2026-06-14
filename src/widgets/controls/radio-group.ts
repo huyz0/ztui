@@ -6,8 +6,11 @@ import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
+/** A {@link RadioGroup} choice with a display label distinct from its value. */
 export interface RadioOption {
+  /** Text shown to the user. */
   label: string;
+  /** The value reported on selection. */
   value: string;
 }
 

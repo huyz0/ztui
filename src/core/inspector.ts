@@ -15,6 +15,7 @@ declare const Bun: any;
  * `App` satisfies it; only lower-layer types (Screen, ScreenBuffer, Driver) are
  * imported, all of which are below `core`.
  */
+/** @internal The app surface the inspector reads. */
 export interface InspectableApp {
   activeScreen: Screen;
   buffer: ScreenBuffer;
@@ -23,6 +24,7 @@ export interface InspectableApp {
   queueRender(): void;
 }
 
+/** @internal Handle to a running inspector server. */
 export interface InspectorServer {
   stop(): void;
 }

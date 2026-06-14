@@ -11,7 +11,7 @@ import { Style } from "../../render/style.ts";
 import type { ListItem } from "./list-view.ts";
 import { fitCell } from "./table.ts";
 
-/** Checkbox glyphs per set (unchecked, checked). */
+/** @internal Checkbox glyphs per set (unchecked, checked). */
 const BOXES = {
   unicode: { off: "☐", on: "☑" },
   ascii: { off: "[ ]", on: "[x]" },
