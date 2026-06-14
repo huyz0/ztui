@@ -50,6 +50,7 @@ export default defineConfig({
             { label: "Theming", slug: "guides/theming" },
             { label: "Focus, keys & hotkeys", slug: "guides/input" },
             { label: "Animation & graphics", slug: "guides/animation-graphics" },
+            { label: "Forms & validation", slug: "guides/forms" },
             { label: "React binding", slug: "guides/react" },
             { label: "Extending ztui", slug: "guides/extending" },
             { label: "Debugging & AI agents", slug: "guides/debugging" },
