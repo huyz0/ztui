@@ -12,12 +12,17 @@ export type StatusState =
 
 export type GlyphSet = "unicode" | "ascii" | "emoji";
 
+/** One row in a {@link StatusList}. */
 export interface StatusListItem {
+  /** The row's status state. */
   state: StatusState;
+  /** Primary label. */
   label: string;
+  /** Optional secondary text. */
   detail?: string;
 }
 
+/** Props for {@link StatusDot}. */
 export interface StatusDotProps extends ComponentProps {
   /** Which lifecycle state to show. Defaults to `inactive`. */
   state?: StatusState;
@@ -31,8 +36,11 @@ export interface StatusDotProps extends ComponentProps {
  */
 export const StatusDot = hostComponent<StatusDotProps>("ztui-status-dot");
 
+/** Props for {@link StatusBadge}. */
 export interface StatusBadgeProps extends ComponentProps {
+  /** Which lifecycle state to show. */
   state?: StatusState;
+  /** Glyph vocabulary. */
   glyphSet?: GlyphSet;
   /** Text after the glyph. Defaults to the state name. */
   label?: string;
@@ -41,9 +49,11 @@ export interface StatusBadgeProps extends ComponentProps {
 /** A status glyph plus a text label, e.g. `● active`. Auto-sizes to content. */
 export const StatusBadge = hostComponent<StatusBadgeProps>("ztui-status-badge");
 
+/** Props for {@link StatusList}. */
 export interface StatusListProps extends ComponentProps {
   /** Rows to render, top to bottom. */
   items?: StatusListItem[];
+  /** Glyph vocabulary. */
   glyphSet?: GlyphSet;
   /** Cells between the label and detail columns. Defaults to 2. */
   gap?: number;

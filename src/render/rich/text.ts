@@ -72,6 +72,7 @@ export function parseStyleString(styleStr: string): Style {
   return new Style(props);
 }
 
+/** Builds styled text from inline markup into {@link Span}s (the engine behind `RichText`; exported as `RichTextEngine`). */
 export class RichText {
   public readonly plain: string;
   public readonly spans: Span[];

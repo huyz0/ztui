@@ -145,13 +145,20 @@ export class DropdownOverlayWidget extends Widget {
 }
 
 export class SelectWidget extends Widget {
+  /** Choices — strings or `{ value, label }`. */
   public options: (string | SelectOption)[] = [];
+  /** Current selection (a value, or array when `multiple`). */
   public value: string | string[] = "";
+  /** Allow selecting multiple options. */
   public multiple = false;
+  /** Fired with the new selection. */
   public declare onChange?: (val: any) => void;
+  /** Text shown when nothing is selected. */
   public placeholder = "Select...";
 
+  /** Whether the dropdown is open. */
   public isOpen = false;
+  /** Index of the highlighted option while open. */
   public hoveredIndex = 0;
 
   /** Validation; the validated value is the current selection. */
@@ -173,6 +180,7 @@ export class SelectWidget extends Widget {
     };
   }
 
+  /** Normalize {@link options} to {@link SelectOption} objects. */
   public getResolvedOptions(): SelectOption[] {
     return this.options.map((opt) => {
       if (typeof opt === "string") {
@@ -182,6 +190,7 @@ export class SelectWidget extends Widget {
     });
   }
 
+  /** Whether `val` is currently selected. */
   public isOptionSelected(val: string): boolean {
     if (this.multiple) {
       return Array.isArray(this.value) && this.value.includes(val);
@@ -189,6 +198,7 @@ export class SelectWidget extends Widget {
     return this.value === val;
   }
 
+  /** Toggle `val` in the selection (single- or multi-select). */
   public toggleOption(val: string) {
     if (this.multiple) {
       const current = Array.isArray(this.value) ? [...this.value] : [];
@@ -207,6 +217,7 @@ export class SelectWidget extends Widget {
     this.validation.maybeValidate("change");
   }
 
+  /** Select (or toggle, when multiple) the option at `index` in the resolved list. */
   public selectOptionIndex(index: number) {
     const resolved = this.getResolvedOptions();
     if (index >= 0 && index < resolved.length) {
@@ -218,6 +229,7 @@ export class SelectWidget extends Widget {
     }
   }
 
+  /** Open the dropdown overlay. */
   public openDropdown() {
     if (this.isOpen) return;
     this.isOpen = true;
@@ -259,6 +271,7 @@ export class SelectWidget extends Widget {
     App.instance?.queueRender();
   }
 
+  /** Close the dropdown overlay. */
   public closeDropdown() {
     if (!this.isOpen) return;
     this.isOpen = false;
@@ -274,6 +287,8 @@ export class SelectWidget extends Widget {
     App.instance?.queueRender();
   }
 
+  /**  */
+  /** The owning {@link Screen}, or null when detached. */
   public getScreen(): Screen | null {
     let current: any = this.parent;
     while (current) {

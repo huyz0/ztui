@@ -6,7 +6,9 @@ export type WorkerStatus = "idle" | "running" | "success" | "error" | "cancelled
 /** A task to run: receives an {@link AbortSignal} that fires on cancel/supersede. */
 export type WorkerTask<T> = (signal: AbortSignal) => Promise<T>;
 
+/** Snapshot of a {@link useWorker} run. */
 export interface WorkerState<T> {
+  /** Current lifecycle status. */
   status: WorkerStatus;
   /** Result of the last successful run; preserved across later runs until one succeeds. */
   data: T | undefined;

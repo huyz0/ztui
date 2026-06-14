@@ -10,13 +10,18 @@ import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
+/** Sort direction for a {@link TableColumn}. */
 export type SortDirection = "asc" | "desc";
 
+/** Which column a {@link TableWidget} is sorted by, and in which direction. */
 export interface SortState {
+  /** The sorted column's `key`. */
   key: string;
+  /** Ascending or descending. */
   direction: SortDirection;
 }
 
+/** A {@link Table} column: how to read, size, render, and sort one field. */
 export interface TableColumn<Row = any> {
   /** Stable identifier; also the default data accessor (`row[key]`). */
   key: string;
@@ -29,8 +34,11 @@ export interface TableColumn<Row = any> {
    *  - `"auto"` (or omitted) — sized to the widest visible cell
    */
   width?: number | string;
+  /** Minimum column width in cells. */
   minWidth?: number;
+  /** Maximum column width in cells. */
   maxWidth?: number;
+  /** Cell text alignment. */
   align?: "left" | "center" | "right";
   /** Whether clicking the header toggles sorting on this column. */
   sortable?: boolean;
@@ -51,13 +59,21 @@ const GAP = 1; // cells between columns
 
 /** Text-formatting options for the header row (framework-neutral subset). */
 export interface TableTextStyle {
+  /** Text color. */
   color?: string;
+  /** Background color. */
   background?: string;
+  /** Bold. */
   bold?: boolean;
+  /** Italic. */
   italic?: boolean;
+  /** Underlined. */
   underline?: boolean;
+  /** Dim. */
   dim?: boolean;
+  /** Reverse video. */
   reverse?: boolean;
+  /** Struck-through. */
   strikethrough?: boolean;
 }
 
@@ -70,9 +86,13 @@ export interface TableTextStyle {
  * untouched source data rather than copying rows.
  */
 export class TableWidget<Row = any> extends Widget {
+  /** Source rows; only the visible window is rendered. */
   public data: Row[] = [];
+  /** Column definitions. */
   public columns: TableColumn<Row>[] = [];
+  /** Height of each row in cells. */
   public rowHeight = 1;
+  /** Whether the header row is shown. */
   public showHeader = true;
   /**
    * Formatting for the header row. Bold is applied by default; any field set
@@ -794,7 +814,9 @@ function padTo(text: string, width: number): string {
  * and selection highlight show through behind the rendered content.
  */
 export class TableCellWidget extends Widget {
+  /** Row index in display order this cell belongs to. */
   public viewRow = -1;
+  /** Key of the column this cell belongs to. */
   public colKey = "";
 
   constructor() {
