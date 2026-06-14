@@ -3,10 +3,13 @@ import type { Easing } from "../../../anim/easing.ts";
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link ProgressBar}. */
 export interface ProgressBarProps extends ComponentProps {
   /** Current progress, interpreted within [min, max]. */
   value?: number;
+  /** Minimum value (0% point, default 0). */
   min?: number;
+  /** Maximum value (100% point, default 100). */
   max?: number;
   /** Append a right-aligned `100%` readout after the bar. */
   showPercent?: boolean;

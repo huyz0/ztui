@@ -127,23 +127,30 @@ export interface ValidatableField extends Widget {
  * latest result, and reports the message for the shared/inline display layers.
  */
 export class FieldValidation {
+  /** Validators run against the field's value, in order. */
   public validators: Validator[] = [];
+  /** When the field re-validates itself. */
   public validateOn: ValidateTrigger = "blur";
+  /** The latest validation result. */
   public result: ValidationResult = VALID;
+  /** Called after each validation with the normalized result. */
   public onValidate?: (result: ValidationResult) => void;
   /** Becomes true after the field's first validation, gating eager display. */
   public touched = false;
 
   constructor(private readonly field: ValidatableField) {}
 
+  /** True when the field has been validated and is currently invalid. */
   public get invalid(): boolean {
     return this.touched && !this.result.valid;
   }
 
+  /** The current error message when invalid, else undefined. */
   public get message(): string | undefined {
     return this.invalid ? this.result.message : undefined;
   }
 
+  /** The current severity when invalid, else undefined. */
   public get severity(): Severity | undefined {
     return this.touched && !this.result.valid ? (this.result.severity ?? "error") : undefined;
   }

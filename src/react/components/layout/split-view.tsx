@@ -5,47 +5,62 @@ import { Box } from "./box.tsx";
 import { Panel } from "./panel.tsx";
 import { Splitter } from "./splitter.tsx";
 
+/** Split axis: `row` (side-by-side) or `column` (stacked). */
 export type SplitDirection = "row" | "column";
 
 /** A leaf pane holding arbitrary content. */
 export interface SplitLeaf {
+  /** Node kind discriminant. */
   type: "leaf";
   /** Stable id (useful for controlled trees / persistence). */
   id: string;
   /** Optional header title; shown in the pane's flat header bar. */
   title?: string;
+  /** The pane's content. */
   content: ReactNode;
 }
 
 /** An internal node splitting its area into children along one axis. */
 export interface SplitBranch {
+  /** Node kind discriminant. */
   type: "split";
+  /** Axis the children are arranged along. */
   direction: SplitDirection;
+  /** Child nodes (leaves or nested splits). */
   children: SplitNode[];
   /** Per-child weights (any positive units); defaults to equal. */
   sizes?: number[];
 }
 
+/** A node in a SplitView tree: a {@link SplitLeaf} or {@link SplitBranch}. */
 export type SplitNode = SplitLeaf | SplitBranch;
 
 /** A leaf with its ReactNode content stripped — JSON-serializable. */
 export interface SerializedLeaf {
+  /** Node kind discriminant. */
   type: "leaf";
+  /** The leaf's id (rehydrate content from it). */
   id: string;
+  /** Optional header title. */
   title?: string;
 }
 
 /** A split branch with serializable children — JSON-serializable. */
 export interface SerializedBranch {
+  /** Node kind discriminant. */
   type: "split";
+  /** Axis the children are arranged along. */
   direction: SplitDirection;
+  /** Serialized child nodes. */
   children: SerializedSplitNode[];
+  /** Per-child weights. */
   sizes?: number[];
 }
 
 /** A SplitView tree without content: only structure, ids, and sizes. */
 export type SerializedSplitNode = SerializedLeaf | SerializedBranch;
 
+/** Props for {@link SplitView}. */
 export interface SplitViewProps {
   /** Initial tree (uncontrolled). Resizing mutates internal state. */
   root: SplitNode;

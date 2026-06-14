@@ -10,8 +10,10 @@ import { Panel } from "./panel.tsx";
 import { Splitter } from "./splitter.tsx";
 import { VBox } from "./vbox.tsx";
 
+/** Which dock region a {@link Workbench} panel lives in. */
 export type WorkbenchAnchor = "left" | "right" | "bottom";
 
+/** A dockable panel in a {@link Workbench}. */
 export interface WorkbenchPanel {
   /** Stable id, unique across all panels. */
   id: string;
@@ -26,6 +28,7 @@ export interface WorkbenchPanel {
 }
 
 export interface WorkbenchProps extends ComponentProps {
+  /** The dockable panels. */
   panels: WorkbenchPanel[];
   /** Center/editor content. */
   children?: ReactNode;
@@ -60,8 +63,11 @@ export const DEFAULT_TOGGLE_KEYS: Record<WorkbenchAnchor, string> = {
 
 /** Per-region UI state for one anchor. JSON-serializable. */
 export interface RegionState {
+  /** Whether the region is expanded. */
   open: boolean;
+  /** Region size in cells (width for left/right, height for bottom). */
   size: number;
+  /** Id of the active panel in the region, or null. */
   active: string | null;
 }
 
@@ -71,7 +77,9 @@ export interface RegionState {
  * round-trips through {@link WorkbenchProps.onLayoutChange} / `initialLayout`.
  */
 export interface WorkbenchLayout {
+  /** Per-anchor region state. */
   regions: Record<WorkbenchAnchor, RegionState>;
+  /** Drag-move re-dock overrides: panel id → anchor. */
   overrides: Record<string, WorkbenchAnchor>;
 }
 

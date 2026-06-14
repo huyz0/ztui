@@ -4,7 +4,9 @@ import type { ComponentProps } from "../types.ts";
 
 /** Props for {@link ListView}. */
 export interface ListViewProps extends Omit<ComponentProps, "children"> {
+  /** Items to display. */
   items: ListItem[];
+  /** Height of each row in cells. */
   rowHeight?: number;
   /** Selected item id, or null. */
   selectedId?: string | null;

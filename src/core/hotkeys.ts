@@ -14,6 +14,7 @@
 
 import type { KeyEvent } from "../driver/driver.ts";
 
+/** Options to register a hotkey (via {@link useHotkey} or {@link HotkeyRegistry.register}). */
 export interface HotkeyOptions {
   /**
    * Key spec, e.g. `"ctrl+p"`, `"ctrl+shift+s"`, `"alt+enter"`, `"f5"`, `"?"`.
@@ -310,12 +311,19 @@ const reg = () => HotkeyRegistry.getInstance();
  * ```
  */
 export const hotkeys = {
+  /** Register a hotkey; returns a disposer. */
   register: (opts: HotkeyOptions): (() => void) => reg().register(opts),
+  /** Active hotkeys matching the options. */
   list: (opts?: ListOptions): Hotkey[] => reg().list(opts),
+  /** Active hotkeys grouped by section. */
   groups: (opts?: ListOptions): HotkeyGroup[] => reg().groups(opts),
+  /** Replace the context stack with one context (or none). */
   setContext: (context: string | null): void => reg().setContext(context),
+  /** Enter a nested context. */
   pushContext: (context: string): void => reg().pushContext(context),
+  /** Leave the innermost context. */
   popContext: (): void => reg().popContext(),
+  /** The active context, or null. */
   get context(): string | null {
     return reg().context;
   },
