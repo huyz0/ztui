@@ -12,7 +12,7 @@ caps retained history, and renders inline markup.
 ## Usage
 
 ```tsx
-import { RichLog } from "ztui/react";
+import { RichLog } from "@huyz0/ztui/react";
 
 <RichLog
   lines={[

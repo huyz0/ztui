@@ -13,7 +13,7 @@ safe to pipe arbitrary subprocess output into the UI.
 ## Usage
 
 ```tsx
-import { TerminalView } from "ztui/react";
+import { TerminalView } from "@huyz0/ztui/react";
 
 <TerminalView
   content={"\x1b[32m✓ build ok\x1b[0m\n\x1b[33m! 2 warnings\x1b[0m\n"}

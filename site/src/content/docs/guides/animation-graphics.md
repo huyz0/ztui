@@ -38,7 +38,7 @@ binding (React, Solid, none) gets smooth motion from the same call.
 and return the current value to render:
 
 ```tsx
-import { useAnimatedValue } from "ztui/react";
+import { useAnimatedValue } from "@huyz0/ztui/react";
 
 const w = useAnimatedValue(open ? 40 : 0, { duration: 200, easing: "out-cubic" });
 <VBox style={{ width: w }} />;
@@ -57,7 +57,7 @@ honored automatically under the test runner and reduced-motion / `NO_MOTION`
 environments, and settable at runtime for an app preference:
 
 ```ts
-import { motion } from "ztui";
+import { motion } from "@huyz0/ztui";
 motion.set(false); // tweens snap to their target; breathing accents go static
 ```
 

@@ -8,8 +8,8 @@ This walks through a complete, runnable app. Create `app.tsx`:
 ```tsx
 // app.tsx
 import { useState } from "react";
-import { App } from "ztui";
-import { Button, Label, render, VBox } from "ztui/react";
+import { App } from "@huyz0/ztui";
+import { Button, Label, render, VBox } from "@huyz0/ztui/react";
 
 function Counter() {
   const [count, setCount] = useState(0);

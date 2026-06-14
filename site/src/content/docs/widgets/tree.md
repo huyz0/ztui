@@ -12,7 +12,7 @@ trees. Input is a forest (`TreeNode[]`), so a flat top level needs no synthetic 
 ## Usage
 
 ```tsx
-import { Tree } from "ztui/react";
+import { Tree } from "@huyz0/ztui/react";
 
 const data = [
   {

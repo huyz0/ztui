@@ -12,7 +12,7 @@ layout you can persist and restore.
 ## Usage
 
 ```tsx
-import { Label, Workbench } from "ztui/react";
+import { Label, Workbench } from "@huyz0/ztui/react";
 
 <Workbench
   panels={[

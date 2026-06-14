@@ -11,7 +11,7 @@ The status family renders a small set of states (`ok`, `warn`, `error`, `info`,
 ## Usage
 
 ```tsx
-import { StatusBadge, StatusDot, StatusList } from "ztui/react";
+import { StatusBadge, StatusDot, StatusList } from "@huyz0/ztui/react";
 
 <StatusDot state="ok" />
 <StatusBadge state="warn" label="Degraded" />

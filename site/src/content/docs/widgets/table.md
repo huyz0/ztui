@@ -12,7 +12,7 @@ the header is pinned and sortable; cells can be plain text or nested widgets.
 ## Usage
 
 ```tsx
-import { Table } from "ztui/react";
+import { Table } from "@huyz0/ztui/react";
 
 const rows = [
   { id: 1, name: "srv-00027", region: "ap-south", cpu: 99, status: "ok" },

@@ -11,7 +11,7 @@ or split (side-by-side), with optional syntax highlighting and line numbers.
 ## Usage
 
 ```tsx
-import { Diff } from "ztui/react";
+import { Diff } from "@huyz0/ztui/react";
 
 <Diff
   oldText={"function add(a, b) {\n  return a - b;\n}"}
@@ -25,7 +25,7 @@ import { Diff } from "ztui/react";
 ## Key props
 
 - `oldText` / `newText` — the two sides to compare.
-- `language` — syntax-highlight the body (needs `ztui/syntax` + `prismjs`).
+- `language` — syntax-highlight the body (needs `@huyz0/ztui/syntax` + `prismjs`).
 - `view` / `defaultView` / `onViewChange` — `"unified"` or `"split"`.
 - `showToggle` · `lineNumbers` · `context` (lines of context around changes).
 

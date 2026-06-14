@@ -12,7 +12,7 @@ horizontally. Options are plain strings or `{ value, label }` objects.
 
 ```tsx
 import { useState } from "react";
-import { RadioGroup } from "ztui/react";
+import { RadioGroup } from "@huyz0/ztui/react";
 
 function Plan() {
   const [plan, setPlan] = useState("pro");

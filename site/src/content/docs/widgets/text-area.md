@@ -12,7 +12,7 @@ optional line-number gutter, optional syntax language, and form validation.
 
 ```tsx
 import { useState } from "react";
-import { TextArea } from "ztui/react";
+import { TextArea } from "@huyz0/ztui/react";
 
 function Editor() {
   const [value, setValue] = useState("line one\nline two");
@@ -34,7 +34,7 @@ function Editor() {
 - `value` / `onChange` — controlled text.
 - `placeholder` — shown when empty.
 - `lineNumbers` — toggle the gutter.
-- `language` — syntax highlight (needs `ztui/syntax`).
+- `language` — syntax highlight (needs `@huyz0/ztui/syntax`).
 - `validators` / `validateOn` / `onValidate` — form validation hooks.
 
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/textarea_demo.tsx)

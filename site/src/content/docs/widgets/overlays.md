@@ -13,7 +13,7 @@ anchored near other content.
 
 ```tsx
 import { useState } from "react";
-import { Button, Dialog, Label } from "ztui/react";
+import { Button, Dialog, Label } from "@huyz0/ztui/react";
 
 function Confirm() {
   const [open, setOpen] = useState(false);

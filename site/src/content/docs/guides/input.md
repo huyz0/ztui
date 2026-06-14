@@ -67,13 +67,13 @@ Register one with the `useHotkey` hook (React) — the handler is always read fr
 so it closes over current state without re-registering:
 
 ```tsx
-import { useHotkey } from "ztui/react";
+import { useHotkey } from "@huyz0/ztui/react";
 
 useHotkey({ key: "ctrl+s", name: "Save", group: "File", handler: save });
 ```
 
 Key specs are normalized: `"ctrl+shift+p"`, `"alt+enter"`, `"f5"`, `"?"`. Outside
-React, use the `hotkeys` facade or `HotkeyRegistry` from `ztui`.
+React, use the `hotkeys` facade or `HotkeyRegistry` from `@huyz0/ztui`.
 
 ### Contexts
 
@@ -82,7 +82,7 @@ editor or a modal flow. A hotkey with no `context` is always active; otherwise i
 fires only when its context matches:
 
 ```ts
-import { hotkeys } from "ztui";
+import { hotkeys } from "@huyz0/ztui";
 
 hotkeys.register({ key: "ctrl+]", name: "Indent", context: "editor", handler: indent });
 hotkeys.setContext("editor");   // or pushContext("modal") / popContext()
@@ -99,7 +99,7 @@ registry. Press its toggle key (default **Ctrl+Space**) to open it, type to
 filter, arrow to a command, Enter to run it:
 
 ```tsx
-import { HotkeyPalette } from "ztui/react";
+import { HotkeyPalette } from "@huyz0/ztui/react";
 
 <Dock>
   <HotkeyPalette toggleKey="ctrl+space" />   {/* or "f1", "ctrl+k", … */}

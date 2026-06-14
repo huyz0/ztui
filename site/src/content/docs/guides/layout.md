@@ -15,7 +15,7 @@ A container lays its children out in one direction. Pick it with `layout` (or
 the React shorthand components `<VBox>` / `<HBox>`):
 
 ```tsx
-import { VBox, HBox, Label } from "ztui/react";
+import { VBox, HBox, Label } from "@huyz0/ztui/react";
 
 <VBox>            {/* layout: "vertical" — top to bottom (the default) */}
   <Label>top</Label>
@@ -95,7 +95,7 @@ what's left — the classic header/footer/body shell. Each child opts into an ed
 with `dock`; an undocked child fills the remaining center:
 
 ```tsx
-import { Dock, Header, Footer, VBox } from "ztui/react";
+import { Dock, Header, Footer, VBox } from "@huyz0/ztui/react";
 
 <Dock>
   <Header>title bar</Header>                        {/* docks top */}

@@ -12,7 +12,7 @@ use the arrow keys when focused.
 
 ```tsx
 import { useState } from "react";
-import { Slider } from "ztui/react";
+import { Slider } from "@huyz0/ztui/react";
 
 function Volume() {
   const [v, setV] = useState(70);

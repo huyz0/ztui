@@ -42,7 +42,7 @@ default) and `default-light`, plus `catppuccin-mocha` / `-macchiato` / `-frappe`
 List them at runtime:
 
 ```ts
-import { ThemeManager } from "ztui";
+import { ThemeManager } from "@huyz0/ztui";
 
 const tm = ThemeManager.getInstance();
 tm.listThemes().map((t) => t.name);
@@ -51,7 +51,7 @@ tm.listThemes().map((t) => t.name);
 ## Switching the active theme
 
 ```ts
-import { ThemeManager } from "ztui";
+import { ThemeManager } from "@huyz0/ztui";
 
 ThemeManager.getInstance().setTheme("tokyo-night");
 ```
@@ -66,7 +66,7 @@ press **Ctrl+Alt+T** to open it, arrow through the palettes with a live preview,
 Enter to apply:
 
 ```tsx
-import { ThemePalette } from "ztui/react";
+import { ThemePalette } from "@huyz0/ztui/react";
 
 <Dock>
   <ThemePalette />        {/* Ctrl+Alt+T; override with toggleKey="…" */}
@@ -91,7 +91,7 @@ against the nearest ancestor `theme`:
 Register a `Theme` (just a `name` and a `colors` map) and switch to it:
 
 ```ts
-import { ThemeManager } from "ztui";
+import { ThemeManager } from "@huyz0/ztui";
 
 const tm = ThemeManager.getInstance();
 tm.register({
@@ -117,7 +117,7 @@ Only the core tokens are required; anything you omit falls back sensibly. To
 spin a variant off an existing palette, use `deriveTheme`:
 
 ```ts
-import { deriveTheme, ThemeManager } from "ztui";
+import { deriveTheme, ThemeManager } from "@huyz0/ztui";
 
 const tm = ThemeManager.getInstance();
 const dimmer = deriveTheme(tm.getTheme("nord")!, "nord-dim", { adjustLightness: -8 });

@@ -39,7 +39,7 @@ styles, registering the element, and a typed JSX component.
 ### 1. Subclass `Widget`
 
 ```ts
-import { Widget, Style, type ScreenBuffer } from "ztui";
+import { Widget, Style, type ScreenBuffer } from "@huyz0/ztui";
 
 export class GaugeWidget extends Widget {
   // A plain public field — the React binding forwards a matching prop onto it.
@@ -88,7 +88,7 @@ whose name matches a field on your widget (so `value` lands on
 shared props (`style`, `id`, `ref`, …) for free:
 
 ```tsx
-import { hostComponent, type ComponentProps } from "ztui/react";
+import { hostComponent, type ComponentProps } from "@huyz0/ztui/react";
 import { GaugeWidget } from "./gauge-widget";
 
 interface GaugeProps extends ComponentProps {
@@ -100,7 +100,7 @@ export const Gauge = hostComponent<GaugeProps>("ztui-gauge", () => new GaugeWidg
 
 That's the whole binding. Under the hood the factory is registered in the
 framework-neutral core registry via `registerElement` — which you can still call
-directly (`import { registerElement } from "ztui"`) when you're not using React.
+directly (`import { registerElement } from "@huyz0/ztui"`) when you're not using React.
 That separation is deliberate: the widget layer knows nothing about React, so a
 binding for another framework (Solid, Vue, …) wires the *same* `registerElement`
 into its own component factory. `hostComponent` is simply React's wrapper for it.
@@ -123,7 +123,7 @@ Mark events you consume with `ev.handled = true` so they don't fall through to
 global hotkeys or parent widgets.
 
 ```ts
-import { Widget, type KeyEvent, type MouseEvent } from "ztui";
+import { Widget, type KeyEvent, type MouseEvent } from "@huyz0/ztui";
 
 class Stepper extends Widget {
   public value = 0;
@@ -198,8 +198,8 @@ package's published entry points:
 
 | Import from        | Stable surface                                                            |
 |--------------------|---------------------------------------------------------------------------|
-| `ztui`             | `Widget`, `registerElement`, `Style`, `ScreenBuffer`, geometry (`Region`, `Offset`, `Size`, `Spacing`), `KeyEvent`/`MouseEvent`, `App`, theming, icon registry |
-| `ztui/react`       | `hostComponent`, `presetBox`, `ComponentProps`, all components and hooks   |
+| `@huyz0/ztui`             | `Widget`, `registerElement`, `Style`, `ScreenBuffer`, geometry (`Region`, `Offset`, `Size`, `Spacing`), `KeyEvent`/`MouseEvent`, `App`, theming, icon registry |
+| `@huyz0/ztui/react`       | `hostComponent`, `presetBox`, `ComponentProps`, all components and hooks   |
 
 Only import from these entry points. The reconciler, the layout engine, the
 host-config, and other deep modules are **not** part of the public API and aren't

@@ -11,7 +11,7 @@ description: A labelled boolean checkbox.
 
 ```tsx
 import { useState } from "react";
-import { Checkbox } from "ztui/react";
+import { Checkbox } from "@huyz0/ztui/react";
 
 function Toggle() {
   const [on, setOn] = useState(false);

@@ -12,7 +12,7 @@ Options are plain strings or `{ value, label }` objects.
 
 ```tsx
 import { useState } from "react";
-import { Select } from "ztui/react";
+import { Select } from "@huyz0/ztui/react";
 
 function LangPicker() {
   const [lang, setLang] = useState("TypeScript");

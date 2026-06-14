@@ -1,6 +1,9 @@
 {
-  "name": "ztui",
+  "name": "@huyz0/ztui",
   "version": "1.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Declarative, React-based TUI framework for TypeScript and Bun — one widget tree, terminal and browser-canvas backends.",
   "license": "MIT",
   "author": "Huy Nguyen",

@@ -12,7 +12,7 @@ and agent prompts.
 ## Usage
 
 ```tsx
-import { QuestionAnswer } from "ztui/react";
+import { QuestionAnswer } from "@huyz0/ztui/react";
 
 <QuestionAnswer
   question="Pick your stack"

@@ -11,7 +11,7 @@ Enter-to-activate, with each item optionally carrying an icon and a muted detail
 ## Usage
 
 ```tsx
-import { ListView } from "ztui/react";
+import { ListView } from "@huyz0/ztui/react";
 
 const items = [
   { id: "inbox", label: "Inbox", icon: "inbox" },

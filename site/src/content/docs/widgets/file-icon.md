@@ -13,7 +13,7 @@ rendered as a crisp vector (natively on the web/canvas backend).
 ## Usage
 
 ```tsx
-import { FileIcon, HBox, Label } from "ztui/react";
+import { FileIcon, HBox, Label } from "@huyz0/ztui/react";
 
 <HBox>
   <FileIcon filename="package.json" />

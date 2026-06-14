@@ -5,8 +5,8 @@ A premium, declarative, React-based Text User Interface (TUI) framework for Type
 ```tsx
 // app.tsx — run with: bun run app.tsx
 import { useState } from "react";
-import { App } from "ztui";
-import { Button, Label, render, VBox } from "ztui/react";
+import { App } from "@huyz0/ztui";
+import { Button, Label, render, VBox } from "@huyz0/ztui/react";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -97,27 +97,27 @@ how the inspectability works in practice.
 ## Installation
 
 ```bash
-bun add ztui
+bun add @huyz0/ztui
 ```
 
-`ztui` ships as a slim core with **opt-in entry points**, so you only install the
+`@huyz0/ztui` ships as a slim core with **opt-in entry points**, so you only install the
 dependencies for the features you actually use. The core entry pulls no React and
 no heavy rendering engines.
 
 | Import | What you get | Install alongside |
 |--------|--------------|-------------------|
-| `ztui` | Core: `App`, `Widget`, `Screen`, drivers, geometry, render, theme, animations, and all imperative widgets | — |
-| `ztui/react` | React reconciler `render` + all JSX components and hooks | `bun add react react-reconciler` |
-| `ztui/markdown` | Markdown engine + `MarkdownWidget` | `bun add marked` (code blocks highlight if `prismjs` is present; ` ```mermaid ` blocks render if `ztui/mermaid` is imported) |
-| `ztui/syntax` | Syntax highlighting engine + `SyntaxWidget` | `bun add prismjs` (without it, code renders as plain text) |
-| `ztui/mermaid` | Mermaid diagrams + `MermaidWidget` | `bun add beautiful-mermaid` (`sharp` enables the SVG render path) |
+| `@huyz0/ztui` | Core: `App`, `Widget`, `Screen`, drivers, geometry, render, theme, animations, and all imperative widgets | — |
+| `@huyz0/ztui/react` | React reconciler `render` + all JSX components and hooks | `bun add react react-reconciler` |
+| `@huyz0/ztui/markdown` | Markdown engine + `MarkdownWidget` | `bun add marked` (code blocks highlight if `prismjs` is present; ` ```mermaid ` blocks render if `@huyz0/ztui/mermaid` is imported) |
+| `@huyz0/ztui/syntax` | Syntax highlighting engine + `SyntaxWidget` | `bun add prismjs` (without it, code renders as plain text) |
+| `@huyz0/ztui/mermaid` | Mermaid diagrams + `MermaidWidget` | `bun add beautiful-mermaid` (`sharp` enables the SVG render path) |
 
 `react` and `react-reconciler` are **required `peerDependencies`** — they are the
-engine behind `ztui/react`, the primary way to build a ztui app, so install them
+engine behind `@huyz0/ztui/react`, the primary way to build a ztui app, so install them
 alongside the package:
 
 ```bash
-bun add ztui react react-reconciler
+bun add @huyz0/ztui react react-reconciler
 ```
 
 The remaining extras (`marked`, `prismjs`, `beautiful-mermaid`, `sharp`,
@@ -129,17 +129,17 @@ back to unicode glyphs when absent.
 
 ```tsx
 // A React app that renders markdown with highlighted code blocks:
-import { App } from "ztui";
-import { render, Markdown } from "ztui/react";
-import "ztui/markdown"; // registers the widget + pulls `marked`
-import "ztui/syntax";   // optional: highlight fenced code via `prismjs`
+import { App } from "@huyz0/ztui";
+import { render, Markdown } from "@huyz0/ztui/react";
+import "@huyz0/ztui/markdown"; // registers the widget + pulls `marked`
+import "@huyz0/ztui/syntax";   // optional: highlight fenced code via `prismjs`
 ```
 
 ---
 
 ## Layout and Styling System
 
-`ztui` implements standard CSS box model and Flexbox sizing properties, resolving styles dynamically across containers:
+`@huyz0/ztui` implements standard CSS box model and Flexbox sizing properties, resolving styles dynamically across containers:
 
 ### Layout Elements
 - `<Box>`: Base container element (`ztui-box`) that supports margin allocations, border calculations, and transparent background propagation.
@@ -202,11 +202,11 @@ sequenceDiagram
 
 ## Vector SVG Graphics & Heroicons
 
-`ztui` handles vector graphics natively through the `<Icon>` and `<HeroIcon>` components. 
+`@huyz0/ztui` handles vector graphics natively through the `<Icon>` and `<HeroIcon>` components. 
 
 ### Custom SVG Icon Registration
 ```typescript
-import { iconRegistry } from "ztui";
+import { iconRegistry } from "@huyz0/ztui";
 
 iconRegistry.register("my-icon", {
   svg: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/></svg>`,
@@ -218,7 +218,7 @@ iconRegistry.register("my-icon", {
 The `<HeroIcon>` wrapper automatically loads, sanitizes, and registers icons from the standard `heroicons` package:
 
 ```tsx
-import { HBox, HeroIcon } from "ztui/react";
+import { HBox, HeroIcon } from "@huyz0/ztui/react";
 
 function IconRow() {
   return (
@@ -242,8 +242,8 @@ colors/styles as inline-styled spans):
 
 ```tsx
 import { expect, test } from "vitest";
-import { App, MockDriver, renderBufferToText } from "ztui";
-import { Label, render } from "ztui/react";
+import { App, MockDriver, renderBufferToText } from "@huyz0/ztui";
+import { Label, render } from "@huyz0/ztui/react";
 
 test("renders to the cell grid", async () => {
   const app = new App(new MockDriver(80, 24));

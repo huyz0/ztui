@@ -12,7 +12,7 @@ optional leading/trailing icon, password masking, and form validation.
 
 ```tsx
 import { useState } from "react";
-import { Input } from "ztui/react";
+import { Input } from "@huyz0/ztui/react";
 
 function NameField() {
   const [name, setName] = useState("");

@@ -7,13 +7,13 @@ ztui *is* React — a custom reconciler commits your components into the widget 
 instead of the browser DOM. So you write ordinary function components with
 `useState`, `useEffect`, props, and children; only the host elements (`<VBox>`,
 `<Button>`, …) and a few hooks are ztui-specific. Import components from
-`ztui/react` and the runtime from `ztui`.
+`@huyz0/ztui/react` and the runtime from `@huyz0/ztui`.
 
 ## Mounting an app
 
 ```tsx
-import { App } from "ztui";
-import { render, VBox, Label } from "ztui/react";
+import { App } from "@huyz0/ztui";
+import { render, VBox, Label } from "@huyz0/ztui/react";
 
 function Hello() {
   return (
@@ -63,8 +63,8 @@ subclass's fields or methods:
 
 ```tsx
 import { useRef } from "react";
-import { Input } from "ztui/react";
-import type { InputWidget } from "ztui";
+import { Input } from "@huyz0/ztui/react";
+import type { InputWidget } from "@huyz0/ztui";
 
 const inputRef = useRef<InputWidget>(null);
 <Input ref={inputRef as React.Ref<InputWidget>} />;
@@ -73,7 +73,7 @@ const inputRef = useRef<InputWidget>(null);
 
 ## Hooks
 
-These ship from `ztui/react`:
+These ship from `@huyz0/ztui/react`:
 
 ### `useHotkey`
 
@@ -81,7 +81,7 @@ Register a global, named shortcut for the component's lifetime. Mounted
 `<HotkeyPalette>` lists every registered hotkey (press `?` by convention).
 
 ```tsx
-import { useHotkey } from "ztui/react";
+import { useHotkey } from "@huyz0/ztui/react";
 
 useHotkey({ key: "ctrl+s", name: "Save", group: "File", handler: save });
 ```
@@ -96,7 +96,7 @@ Returns the imperative `toast` façade for transient notifications. Mount
 `<ToastHost>` once near the root to display them.
 
 ```tsx
-import { useToast } from "ztui/react";
+import { useToast } from "@huyz0/ztui/react";
 
 const toast = useToast();
 toast.success("Saved");
@@ -116,7 +116,7 @@ superseded run can no longer change state ("latest wins"). The task receives an
 `AbortSignal`, and the run is aborted automatically on unmount.
 
 ```tsx
-import { useWorker } from "ztui/react";
+import { useWorker } from "@huyz0/ztui/react";
 
 const job = useWorker<string>();
 // job.status: "idle" | "running" | "success" | "error" | "cancelled"
@@ -131,7 +131,7 @@ Tween a number or color toward a target whenever it changes; the hook returns th
 current interpolated value to render. See the [Animation framework](/ztui/guides/architecture/).
 
 ```tsx
-import { useAnimatedValue } from "ztui/react";
+import { useAnimatedValue } from "@huyz0/ztui/react";
 
 const width = useAnimatedValue(open ? 40 : 0, { duration: 200, easing: "out-cubic" });
 <VBox style={{ width }} />;

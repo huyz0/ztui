@@ -12,7 +12,7 @@ submit — so individual controls stay simple.
 ## Usage
 
 ```tsx
-import { Button, Form, Input } from "ztui/react";
+import { Button, Form, Input } from "@huyz0/ztui/react";
 
 <Form
   onSubmit={(values) => console.log(values)}

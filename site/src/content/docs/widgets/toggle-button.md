@@ -12,7 +12,7 @@ toggles (bold, italic, …) where the control reflects whether it's engaged.
 
 ```tsx
 import { useState } from "react";
-import { ToggleButton } from "ztui/react";
+import { ToggleButton } from "@huyz0/ztui/react";
 
 function BoldToggle() {
   const [bold, setBold] = useState(false);

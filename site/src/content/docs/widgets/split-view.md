@@ -13,7 +13,7 @@ and resize with draggable splitters. The layout is a plain, **serializable**
 
 ```tsx
 import { useState } from "react";
-import { Label, SplitView, type SplitNode } from "ztui/react";
+import { Label, SplitView, type SplitNode } from "@huyz0/ztui/react";
 
 function Panes() {
   const [root, setRoot] = useState<SplitNode>({

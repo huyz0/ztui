@@ -19,14 +19,14 @@ return whatever is most convenient:
 - a `ValidationResult` (`{ valid, message?, severity? }`) → used as-is
 
 ```ts
-import type { Validator } from "ztui";
+import type { Validator } from "@huyz0/ztui";
 
 // the long form
 const notTaken: Validator<string> = (v) =>
   takenNames.has(v) ? { valid: false, message: "Already taken", severity: "warning" } : null;
 ```
 
-ztui bundles the common ones (all importable from `ztui`):
+ztui bundles the common ones (all importable from `@huyz0/ztui`):
 
 | Validator | Fails when |
 |-----------|------------|
@@ -44,8 +44,8 @@ Attach them to any control with the `validators` prop. They run in order;
 failed — so you can stack a hard rule and a soft hint on one field.
 
 ```tsx
-import { email, minLength, required } from "ztui";
-import { Form, Input } from "ztui/react";
+import { email, minLength, required } from "@huyz0/ztui";
+import { Form, Input } from "@huyz0/ztui/react";
 
 <Form onSubmit={(values) => save(values)}>
   <Input id="email" validators={[required("Email is required"), email()]} />

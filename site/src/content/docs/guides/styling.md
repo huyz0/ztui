@@ -9,7 +9,7 @@ There are no stylesheets to wire up for the common case — set properties and
 they apply.
 
 ```tsx
-import { Label } from "ztui/react";
+import { Label } from "@huyz0/ztui/react";
 
 <Label style={{ color: "$primary", bold: true, background: "$surface" }}>
   Hello

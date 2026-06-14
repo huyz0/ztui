@@ -14,8 +14,8 @@ byte-stream backend can't give you (see [Why ztui](/ztui/getting-started/why-ztu
 The composed cell grid renders to text or styled HTML — no terminal required:
 
 ```ts
-import { App, MockDriver, renderBufferToText, renderBufferToHTML } from "ztui";
-import { render } from "ztui/react";
+import { App, MockDriver, renderBufferToText, renderBufferToHTML } from "@huyz0/ztui";
+import { render } from "@huyz0/ztui/react";
 
 const app = new App(new MockDriver(40, 10)); // headless, fixed-size grid
 render(<MyUI />, app.activeScreen);
@@ -34,8 +34,8 @@ Because the frame is text, assertions are ordinary string checks — no
 screenshots, no flaky pixel diffs:
 
 ```ts
-import { App, MockDriver, renderBufferToText } from "ztui";
-import { render } from "ztui/react";
+import { App, MockDriver, renderBufferToText } from "@huyz0/ztui";
+import { render } from "@huyz0/ztui/react";
 
 test("counter increments", async () => {
   const driver = new MockDriver(40, 5);
@@ -61,7 +61,7 @@ For a *running* app, `startInspector(app)` serves the live screen over HTTP — 
 human, a script, or an agent can watch and drive it from outside the process:
 
 ```ts
-import { startInspector } from "ztui";
+import { startInspector } from "@huyz0/ztui";
 const inspector = startInspector(app, 8000); // GET endpoints + POST /input
 ```
 

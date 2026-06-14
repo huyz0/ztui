@@ -11,7 +11,7 @@ checked state, controlled or uncontrolled.
 ## Usage
 
 ```tsx
-import { SelectionList } from "ztui/react";
+import { SelectionList } from "@huyz0/ztui/react";
 
 const items = [
   { id: "ts", label: "TypeScript" },

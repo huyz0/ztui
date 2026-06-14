@@ -12,7 +12,7 @@ For work in flight, ztui offers a `Spinner` (indeterminate), a `ProgressBar`
 ## Usage
 
 ```tsx
-import { ProgressBar, Spinner, WaitingPanel } from "ztui/react";
+import { ProgressBar, Spinner, WaitingPanel } from "@huyz0/ztui/react";
 
 <Spinner mode="dots" />
 <ProgressBar value={0.62} showPercent animate />

@@ -12,7 +12,7 @@ mouse click. Style it like any widget; pair it with a `Form` via `formAction`.
 
 ```tsx
 import { useState } from "react";
-import { Button } from "ztui/react";
+import { Button } from "@huyz0/ztui/react";
 
 function Counter() {
   const [n, setN] = useState(0);

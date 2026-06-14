@@ -14,7 +14,7 @@ rasterizes it at the device pixel ratio). `currentColor` is tinted to the icon's
 ## Usage
 
 ```tsx
-import { HBox, HeroIcon } from "ztui/react";
+import { HBox, HeroIcon } from "@huyz0/ztui/react";
 
 <HBox>
   <HeroIcon name="home" variant="solid" style={{ color: "$primary" }} />

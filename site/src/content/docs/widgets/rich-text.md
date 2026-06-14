@@ -11,7 +11,7 @@ run without nesting widgets: `[bold]…[/]`, `[color]…[/]`, links, and more.
 ## Usage
 
 ```tsx
-import { RichText } from "ztui/react";
+import { RichText } from "@huyz0/ztui/react";
 
 <RichText>[bold]Status:[/] [green]ok[/] · latency [cyan]142ms[/]</RichText>
 <RichText style={{ align: "center", color: "$primary", bold: true }}>

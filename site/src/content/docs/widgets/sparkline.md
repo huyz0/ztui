@@ -11,7 +11,7 @@ using partial-block glyphs — ideal for dashboards and status bars.
 ## Usage
 
 ```tsx
-import { Sparkline } from "ztui/react";
+import { Sparkline } from "@huyz0/ztui/react";
 
 <Sparkline
   data={[3, 7, 4, 9, 12, 8, 15, 11, 6]}

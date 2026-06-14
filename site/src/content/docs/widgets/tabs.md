@@ -11,7 +11,7 @@ child supplies its tab title via its `label` prop.
 ## Usage
 
 ```tsx
-import { Label, TabContainer, VBox } from "ztui/react";
+import { Label, TabContainer, VBox } from "@huyz0/ztui/react";
 
 <TabContainer activeIndex={0} onChange={(i) => console.log("tab", i)}>
   <VBox label="Profile" style={{ padding: 1 }}>

@@ -12,7 +12,7 @@ description: An on/off toggle switch with a sliding knob.
 
 ```tsx
 import { useState } from "react";
-import { Switch } from "ztui/react";
+import { Switch } from "@huyz0/ztui/react";
 
 function WifiToggle() {
   const [on, setOn] = useState(true);

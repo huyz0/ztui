@@ -12,7 +12,7 @@ one widget tree run in a terminal or a browser.
 JSX  →  React reconciler  →  Widget DOM  →  layout  →  ScreenBuffer (cell grid)  →  Driver
 ```
 
-1. **JSX → reconciler.** A custom React reconciler (`ztui/react`) commits your
+1. **JSX → reconciler.** A custom React reconciler (`@huyz0/ztui/react`) commits your
    components into a tree of `Widget` nodes — the framework's own DOM.
 2. **Layout.** Each frame, the layout engine resolves every widget's region from
    its styles (sizing with `fr` / `%` / `auto`, docking, flex distribution).

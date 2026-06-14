@@ -11,7 +11,7 @@ shows or hides its children. Controlled or uncontrolled.
 ## Usage
 
 ```tsx
-import { Collapsible, Label } from "ztui/react";
+import { Collapsible, Label } from "@huyz0/ztui/react";
 
 <Collapsible title="Tool call" defaultOpen>
   <Label>The body is revealed when the section is open.</Label>

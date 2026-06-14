@@ -13,7 +13,7 @@ paints straight to the canvas.
 ## Usage
 
 ```tsx
-import { Image } from "ztui/react";
+import { Image } from "@huyz0/ztui/react";
 
 // From a file path…
 <Image src="./logo.png" style={{ width: 20, height: 10 }} />
