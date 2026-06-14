@@ -51,6 +51,14 @@ describe("custom widget extension surface (public API)", () => {
     expect(w).toBeInstanceOf(BarWidget);
   });
 
+  test("hostComponent(tag, factory) registers in one call (no separate registerElement)", () => {
+    // The ergonomic path: defining the component also registers the tag in the
+    // core registry, so a SolidJS-style binding could do the same from its own
+    // factory while the widget layer stays framework-agnostic.
+    hostComponent<BarProps>("ztui-bar-oneshot", () => new BarWidget());
+    expect(createWidgetByTagName("ztui-bar-oneshot")).toBeInstanceOf(BarWidget);
+  });
+
   test("a custom widget renders through App + the React binding", async () => {
     registerElement("ztui-bar", () => new BarWidget());
     const driver = new MockDriver(10, 3);

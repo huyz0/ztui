@@ -1,5 +1,6 @@
 import { createElement, type ReactElement } from "react";
-import type { WidgetStyles } from "../../dom/widget.ts";
+import { registerElement } from "../../dom/element-registry.ts";
+import type { Widget, WidgetStyles } from "../../dom/widget.ts";
 import type { ComponentProps } from "./types.ts";
 
 /**
@@ -11,11 +12,27 @@ import type { ComponentProps } from "./types.ts";
  * lets callers declare a `FooProps` interface and get prop-type checking at the
  * call site without hand-writing a destructure-and-respread wrapper per widget.
  *
- * @param tag The host element tag, e.g. "ztui-button".
+ * Pass `factory` to also register the tag in one step — the common case for a
+ * custom widget, so you don't call {@link registerElement} separately:
+ *
+ * ```tsx
+ * export const Gauge = hostComponent("ztui-gauge", () => new GaugeWidget());
+ * ```
+ *
+ * Registration still lives in the framework-neutral core registry
+ * ({@link registerElement} from `ztui`); this is just the React binding wiring
+ * it up for you. A binding for another framework (Solid, Vue, …) would call
+ * `registerElement` from its own component factory the same way, so the
+ * widget layer never depends on any particular UI framework.
+ *
+ * @param tag The host element tag, e.g. "ztui-gauge".
+ * @param factory Optional Widget constructor; when given, the tag is registered.
  */
 export function hostComponent<P extends ComponentProps = ComponentProps>(
   tag: string,
+  factory?: () => Widget,
 ): (props: P) => ReactElement {
+  if (factory) registerElement(tag, factory);
   const Component = ({ children, ...props }: P): ReactElement =>
     createElement(tag, props, children);
   Component.displayName = tag;

@@ -78,36 +78,34 @@ Notes that matter:
 - **Keep `render` pure and fast.** It runs every frame. Don't mutate the tree or
   start work there — use `onMount` for that.
 
-### 2. Register the element
+### 2. Bind it to JSX (and register in one step)
 
-A host tag name maps to a constructor so the tree (and the React reconciler) can
-create your widget:
-
-```ts
-import { registerElement } from "ztui";
-
-registerElement("ztui-gauge", () => new GaugeWidget());
-```
-
-### 3. Bind it to JSX
-
-`hostComponent` builds a React component for the tag. Every prop is forwarded to
-the host element; the reconciler assigns any prop whose name matches a field on
-your widget (so `value` lands on `GaugeWidget.value`). Type the props by
-extending `ComponentProps` to get the shared props (`style`, `id`, `ref`, …) for
-free:
+`hostComponent` builds a React component for a host tag. Pass your widget factory
+as the second argument and it **registers the tag for you** — no separate call.
+Every prop is forwarded to the host element; the reconciler assigns any prop
+whose name matches a field on your widget (so `value` lands on
+`GaugeWidget.value`). Type the props by extending `ComponentProps` to get the
+shared props (`style`, `id`, `ref`, …) for free:
 
 ```tsx
 import { hostComponent, type ComponentProps } from "ztui/react";
+import { GaugeWidget } from "./gauge-widget";
 
 interface GaugeProps extends ComponentProps {
   value?: number;
 }
 
-export const Gauge = hostComponent<GaugeProps>("ztui-gauge");
+export const Gauge = hostComponent<GaugeProps>("ztui-gauge", () => new GaugeWidget());
 ```
 
-### 4. Use it
+That's the whole binding. Under the hood the factory is registered in the
+framework-neutral core registry via `registerElement` — which you can still call
+directly (`import { registerElement } from "ztui"`) when you're not using React.
+That separation is deliberate: the widget layer knows nothing about React, so a
+binding for another framework (Solid, Vue, …) wires the *same* `registerElement`
+into its own component factory. `hostComponent` is simply React's wrapper for it.
+
+### 3. Use it
 
 ```tsx
 import { Gauge } from "./gauge";
