@@ -9,7 +9,7 @@ import {
   type WorkbenchLayout,
   type WorkbenchPanel,
 } from "../../../react.ts";
-import { mountApp } from "../../../test/harness.tsx";
+import { mountApp, waitFor } from "../../../test/harness.tsx";
 
 const panels: WorkbenchPanel[] = [
   {
@@ -213,12 +213,14 @@ describe("Workbench", () => {
     // Restored: left closed, right open on Outline.
     expect(t.text()).not.toContain("FILES");
     expect(t.text()).toContain("OUTLINEBODY");
-    // onLayoutChange fired at least the initial snapshot.
-    expect(snapshots.length).toBeGreaterThan(0);
+    // onLayoutChange fires the initial snapshot from a mount effect — wait for
+    // it rather than racing the fixed mount settle under CI load.
+    await waitFor(() => snapshots.length > 0);
 
     // A click produces a new snapshot reflecting the mutation.
     snapshots.length = 0;
     await tapRail(t, "explorer"); // open left on Explorer
+    await waitFor(() => snapshots.at(-1)?.regions.left.open === true);
     expect(snapshots.at(-1)?.regions.left.open).toBe(true);
     expect(snapshots.at(-1)?.regions.left.active).toBe("explorer");
   });

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { describe, expect, test } from "vitest";
 import { fullColorRgbaToSixel } from "../../driver/bun/graphics.ts";
 import { Image, SvgImage } from "../../react.ts";
-import { mountApp } from "../../test/harness.tsx";
+import { mountApp, waitFor } from "../../test/harness.tsx";
 import { decodeImage, resizeImage } from "./image.ts";
 
 const TINY_PNG_BASE64 =
@@ -196,6 +196,12 @@ describe("Image & SVG Image Widgets", () => {
       capabilities: { graphicsProtocol: "none" },
       screenStyle: { layout: "vertical" },
     });
+    // Rasterizing shells out to `sharp` in a subprocess; under parallel CI load
+    // a single render can lose that race, so wait (re-rendering each poll) for a
+    // concrete colour to land instead of asserting on one frame.
+    const concrete = () =>
+      /^#[0-9a-f]{6}$/.test((r.cellAt(0, 0).style.background || "").toLowerCase());
+    await waitFor(concrete, { poke: () => r.app.queueRender() });
     const hex = (r.cellAt(0, 0).style.background || "").toLowerCase();
     expect(hex).toMatch(/^#[0-9a-f]{6}$/); // a concrete colour was rasterized…
     expect(hex).not.toBe("#000000"); // …not the black of an unresolved `$success`.

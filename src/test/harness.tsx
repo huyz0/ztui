@@ -46,6 +46,29 @@ export async function flush(ms = 5): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Polls `check` until it returns true, or throws after `timeout`. Prefer this
+ * over a single fixed `flush`/`settle` for anything that settles on its own
+ * schedule — a React effect firing, an async rasterize completing — so the test
+ * isn't a flaky race against one short timer under CI load. `poke` runs before
+ * each wait (e.g. `queueRender` to force a re-render and retry).
+ */
+export async function waitFor(
+  check: () => boolean,
+  opts: { timeout?: number; interval?: number; poke?: () => void } = {},
+): Promise<void> {
+  const { timeout = 1000, interval = 10, poke } = opts;
+  const start = Date.now();
+  for (;;) {
+    if (check()) return;
+    if (Date.now() - start > timeout) {
+      throw new Error(`waitFor: condition not met within ${timeout}ms`);
+    }
+    poke?.();
+    await flush(interval);
+  }
+}
+
 export interface MountOptions {
   cols?: number;
   rows?: number;
