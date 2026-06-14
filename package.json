@@ -1,20 +1,81 @@
 {
   "name": "ztui",
-  "version": "0.2.0",
-  "description": "Textual-like TUI framework for TypeScript and Bun with React JSX support",
+  "version": "1.0.0",
+  "description": "Declarative, React-based TUI framework for TypeScript and Bun — one widget tree, terminal and browser-canvas backends.",
   "license": "MIT",
   "author": "Huy Nguyen",
   "type": "module",
-  "main": "src/core.ts",
-  "module": "src/core.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huyz0/ztui.git"
+  },
+  "homepage": "https://huyz0.github.io/ztui",
+  "bugs": {
+    "url": "https://github.com/huyz0/ztui/issues"
+  },
+  "keywords": [
+    "tui",
+    "terminal",
+    "cli",
+    "react",
+    "react-reconciler",
+    "ink",
+    "textual",
+    "ansi",
+    "canvas",
+    "bun",
+    "widgets"
+  ],
+  "engines": {
+    "bun": ">=1.0.0",
+    "node": ">=20"
+  },
+  "main": "./dist/core.js",
+  "module": "./dist/core.js",
+  "types": "./dist/core.d.ts",
   "exports": {
-    ".": "./src/core.ts",
-    "./react": "./src/react.ts",
-    "./markdown": "./src/markdown.ts",
-    "./syntax": "./src/syntax.ts",
-    "./mermaid": "./src/mermaid.ts",
+    ".": {
+      "types": "./dist/core.d.ts",
+      "bun": "./src/core.ts",
+      "import": "./dist/core.js",
+      "default": "./dist/core.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "bun": "./src/react.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "bun": "./src/markdown.ts",
+      "import": "./dist/markdown.js",
+      "default": "./dist/markdown.js"
+    },
+    "./syntax": {
+      "types": "./dist/syntax.d.ts",
+      "bun": "./src/syntax.ts",
+      "import": "./dist/syntax.js",
+      "default": "./dist/syntax.js"
+    },
+    "./mermaid": {
+      "types": "./dist/mermaid.d.ts",
+      "bun": "./src/mermaid.ts",
+      "import": "./dist/mermaid.js",
+      "default": "./dist/mermaid.js"
+    },
     "./package.json": "./package.json"
   },
+  "files": [
+    "dist",
+    "src",
+    "resources",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/test",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "bun run examples/gallery/run.tsx",
     "demo": "bun run examples/gallery/run.tsx",
@@ -22,12 +83,14 @@
     "demo:list": "bun run examples/gallery/run.tsx --list",
     "web:debug": "bun run scripts/web-debug.ts",
     "docs:screenshots": "bun run scripts/docs-screenshots.ts",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "postinstall": "git config core.hooksPath .githooks || true",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "prepublishOnly": "bun run build",
     "review": "bun run scripts/code-review.ts"
   },
   "dependencies": {

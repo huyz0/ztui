@@ -10,7 +10,8 @@
       "!**/.claude",
       "!**/bun.lock",
       "!**/ztui.log",
-      "!**/coverage"
+      "!**/coverage",
+      "!**/dist"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },

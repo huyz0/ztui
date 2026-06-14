@@ -9,9 +9,21 @@ import { Widget } from "./widget.ts";
 /** @internal Mixin base constructor type. */
 export type Constructor<T = object> = new (...args: any[]) => T;
 
+/** The members {@link Scrollable} adds to a Widget subclass. */
+export interface ScrollableMembers {
+  /** Whether horizontal overflow scrolls (overflowX is `scroll`/`auto`). */
+  readonly scrollableX: boolean;
+  /** Whether vertical overflow scrolls (overflowY is `scroll`/`auto`). */
+  readonly scrollableY: boolean;
+  /** The size of the laid-out content, used to clamp the scroll offset. */
+  getContentSize(): Size;
+}
+
 /** Mixin adding scroll behavior to a Widget subclass. */
-export function Scrollable<TBase extends Constructor<Widget>>(Base: TBase) {
-  return class extends Base {
+export function Scrollable<TBase extends Constructor<Widget>>(
+  Base: TBase,
+): TBase & Constructor<ScrollableMembers> {
+  return class ScrollableMixin extends Base {
     public get scrollableX(): boolean {
       const overflow = this.computedStyle.overflowX || "auto";
       return overflow === "scroll" || overflow === "auto";
