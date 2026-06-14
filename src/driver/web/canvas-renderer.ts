@@ -18,19 +18,25 @@
  */
 
 /** A cell flattened to the data a canvas needs — JSON-serializable for the wire. */
+/** A single cell serialized for the canvas backend (see {@link serializeForCanvas}). */
 export interface CanvasCell {
+  /** The character to draw. */
   c: string;
   /** Foreground CSS color (already normalized), or undefined for the default. */
   fg?: string;
   /** Background CSS color (already normalized), or undefined for the default. */
   bg?: string;
+  /** Bold. */
   bold?: boolean;
+  /** Italic. */
   italic?: boolean;
+  /** Underlined. */
   underline?: boolean;
   /** Underline shape; absent means single. */
   uStyle?: "double" | "curly" | "dotted" | "dashed";
   /** Underline CSS color, independent of fg. */
   uColor?: string;
+  /** Struck-through. */
   strike?: boolean;
   /** Continuation cell of a wide glyph to its left — skipped when drawing. */
   cont?: boolean;
@@ -49,13 +55,17 @@ export interface CanvasCell {
    * span {@link gw}×{@link gh}. The lead cell of a multi-cell graphic.
    */
   img?: string;
-  /** Graphic cell span in cells (width / height), for {@link img}. */
+  /** Graphic width span in cells, for {@link img}. */
   gw?: number;
+  /** Graphic height span in cells, for {@link img}. */
   gh?: number;
 }
 
+/** Pixel geometry of one cell, derived by measuring the font. */
 export interface CanvasMetrics {
+  /** Cell width in px. */
   cellWidth: number;
+  /** Cell height in px. */
   cellHeight: number;
   /**
    * Baseline offset from the cell top, in px. Measured from the full-block glyph
@@ -86,13 +96,15 @@ export function measureCellFromBlock(
   };
 }
 
+/** Options for {@link renderBufferToCanvas}. */
 export interface CanvasRenderOptions {
   /** Font size in px (glyphs are drawn at this size, centered in the cell). */
   fontSize: number;
   /** CSS font-family stack. */
   fontFamily: string;
-  /** Default foreground/background when a cell doesn't override them. */
+  /** Default foreground when a cell doesn't override it. */
   defaultFg?: string;
+  /** Default background when a cell doesn't override it. */
   defaultBg?: string;
   /** Device pixel ratio the context is already scaled by (for crisp strokes). */
   dpr?: number;

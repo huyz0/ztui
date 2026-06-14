@@ -2,6 +2,7 @@ import { createElement, type ReactElement } from "react";
 import type { ComponentProps } from "../types.ts";
 
 export interface DividerProps extends ComponentProps {
+  /** Divider direction. */
   orientation?: "vertical" | "horizontal";
 }
 

@@ -1,7 +1,9 @@
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** Grid size: 4 (2x2) or 9 (3x3) cells. */
 export type WaitingGridCells = 4 | 9;
+/** Grid animation style. */
 export type WaitingGridVariant = "ring" | "radar" | "shimmer";
 
 export interface WaitingGridProps extends ComponentProps {

@@ -21,6 +21,7 @@ function isField(w: Widget): w is ValidatableField {
  * nearest ancestor `<Form>`, or to `formId` when set.
  */
 export class ValidationSummaryWidget extends Widget {
+  /** Id of the form whose errors are summarized. */
   public formId?: string;
   /** Optional heading row shown above the messages when there are errors. */
   public title = "";

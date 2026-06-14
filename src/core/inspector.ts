@@ -29,6 +29,7 @@ export interface InspectorServer {
   stop(): void;
 }
 
+/** Start the REST inspector HTTP server for an app (debugging / agents / CI). */
 export function startInspector(app: InspectableApp, port = 8000): InspectorServer {
   if (typeof Bun !== "undefined") {
     const server = Bun.serve({

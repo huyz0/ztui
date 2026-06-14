@@ -5,6 +5,7 @@ import { Style } from "../../render/style.ts";
 import { ThemeManager } from "../../theme.ts";
 
 export class IconWidget extends Widget {
+  /** Registered icon name to draw. */
   public name = "";
 
   constructor() {

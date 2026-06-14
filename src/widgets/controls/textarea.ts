@@ -17,9 +17,11 @@ import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class TextAreaWidget extends Widget {
   private _value = "";
+  /** The current multi-line text. */
   public get value(): string {
     return this._value;
   }
+  /** Replace the text (resets derived line state). */
   public set value(val: string) {
     const oldLines = this._value.split(/\r?\n/);
     this._value = val;
@@ -64,6 +66,7 @@ export class TextAreaWidget extends Widget {
   public get smoothCaret(): boolean {
     return this.caret.smooth;
   }
+  /** Toggle eased fade-blink vs. hard on/off caret blink. */
   public set smoothCaret(v: boolean) {
     this.caret.smooth = v;
   }

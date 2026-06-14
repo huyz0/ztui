@@ -74,7 +74,9 @@ export function parseStyleString(styleStr: string): Style {
 
 /** Builds styled text from inline markup into {@link Span}s (the engine behind `RichText`; exported as `RichTextEngine`). */
 export class RichText {
+  /** The text with markup stripped. */
   public readonly plain: string;
+  /** Styled ranges over {@link plain}. */
   public readonly spans: Span[];
 
   constructor(plain: string, spans: Span[] = []) {

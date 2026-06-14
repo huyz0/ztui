@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { logger } from "../utils/logger.ts";
 import { iconRegistry } from "./icon-registry.ts";
 
+/** Heroicon style: solid, outline, mini (20px), or micro (16px). */
 export type HeroIconVariant = "solid" | "outline" | "mini" | "micro";
 
 const fallbackMap: Record<string, string> = {

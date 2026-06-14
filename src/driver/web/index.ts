@@ -30,6 +30,7 @@ export class WebDriver extends Driver {
    * host page can size its grid to at least this.
    */
   public readonly minWidth: number;
+  /** Minimum reported grid height in cells. */
   public readonly minHeight: number;
   private width: number;
   private height: number;
@@ -115,6 +116,7 @@ export class WebDriver extends Driver {
 
   // ---- input injection (host -> app) ---------------------------------------
 
+  /** Feed a key event to the app (from a DOM listener). */
   public dispatchKey(ev: KeyEvent): void {
     this.emit("key", ev);
   }
@@ -124,10 +126,12 @@ export class WebDriver extends Driver {
     this.emit("mouse", ev);
   }
 
+  /** Feed pasted text to the app. */
   public dispatchPaste(text: string): void {
     this.emit("paste", text);
   }
 
+  /** Resize the grid (clamped to the minimums). */
   public resize(width: number, height: number): void {
     const w = Math.max(this.minWidth, Math.floor(width));
     const h = Math.max(this.minHeight, Math.floor(height));

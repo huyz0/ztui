@@ -7,6 +7,14 @@ import { hostConfig } from "./host-config.ts";
 
 export const reconciler = ReactReconciler(hostConfig);
 
+/**
+ * Mount a React element onto a ztui node (typically `app.activeScreen`) — the
+ * analogue of `createRoot().render`. Call once, then start the loop with
+ * {@link App.run}.
+ *
+ * @param element The root React element to render.
+ * @param rootNode The host node to mount into (e.g. `app.activeScreen`).
+ */
 export function render(element: React.ReactNode, rootNode: DOMNode): any {
   const container = reconciler.createContainer(
     rootNode,

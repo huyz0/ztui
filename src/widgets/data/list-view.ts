@@ -14,6 +14,7 @@ import { fitCell } from "./table.ts";
 export interface ListItem {
   /** Stable identifier (used for selection state). */
   id: string;
+  /** Primary text. */
   label: string;
   /** Glyph rendered before the label. */
   icon?: string;

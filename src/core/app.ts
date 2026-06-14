@@ -73,6 +73,11 @@ export class App extends DOMNode {
   /** Unsubscribe from the global theme manager; called on {@link stop}. */
   private themeUnsubscribe: (() => void) | null = null;
 
+  /**
+   * @param driver Backend to render through. Defaults to {@link BunDriver} (the
+   * terminal); pass {@link WebDriver} for the browser canvas or {@link MockDriver}
+   * for tests.
+   */
   constructor(driver?: Driver) {
     super("app");
     App.instance = this;

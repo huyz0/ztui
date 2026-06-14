@@ -2,6 +2,7 @@ import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
 export interface JSONUIProps extends ComponentProps {
+  /** Called when an action-bearing generated widget is activated. */
   onAction?: (actionName: string, eventData: any) => void;
 }
 

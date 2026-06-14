@@ -2,6 +2,7 @@ import { Size } from "../../geometry/size.ts";
 import { type Clipboard, Driver, type MouseEvent, type TerminalCapabilities } from "../driver.ts";
 
 export class MockDriver extends Driver {
+  /** Everything written to the driver, for assertions. */
   public writtenData = "";
   public override readonly capabilities: TerminalCapabilities;
   public override readonly clipboard: Clipboard;
@@ -51,6 +52,7 @@ export class MockDriver extends Driver {
     this.writtenData += data;
   }
 
+  /** Reset captured output. */
   public clearWrittenData(): void {
     this.writtenData = "";
   }
@@ -60,6 +62,7 @@ export class MockDriver extends Driver {
     this.write(`\x1b]777;notify;${title};${body}\x07`);
   }
 
+  /** Inject a key event as if typed. */
   public simulateKey(
     key: string,
     name: string = key,
@@ -70,6 +73,7 @@ export class MockDriver extends Driver {
     this.emit("key", { key, name, ctrl, shift, meta });
   }
 
+  /** Inject a mouse event. */
   public simulateMouse(
     x: number,
     y: number,
@@ -79,6 +83,7 @@ export class MockDriver extends Driver {
     this.emit("mouse", { x, y, type, button });
   }
 
+  /** Inject a resize. */
   public simulateResize(width: number, height: number): void {
     this.width = width;
     this.height = height;

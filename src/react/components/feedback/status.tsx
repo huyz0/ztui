@@ -1,6 +1,7 @@
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** A status indicator state. */
 export type StatusState =
   | "active"
   | "inactive"
@@ -10,6 +11,7 @@ export type StatusState =
   | "warning"
   | "failed";
 
+/** Glyph vocabulary: single-cell unicode/ascii, or double-wide emoji. */
 export type GlyphSet = "unicode" | "ascii" | "emoji";
 
 /** One row in a {@link StatusList}. */

@@ -38,6 +38,7 @@ export interface HotkeyOptions {
   enabled?: () => boolean;
   /** Keep the hotkey functional but omit it from the palette listing. */
   hidden?: boolean;
+  /** Called when the key is pressed. */
   handler: (ev: KeyEvent) => void;
 }
 

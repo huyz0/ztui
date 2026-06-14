@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Easing } from "../anim/easing.ts";
 import { ColorTween, Tween, type TweenOptions } from "../anim/tween.ts";
 
+/** Options for the animation hooks/tweens: duration, easing, onComplete. */
 export type AnimationOptions = TweenOptions;
 
 // One tick ≈ 60fps. The hook re-renders the owning component each tick, so the

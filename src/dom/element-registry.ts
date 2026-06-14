@@ -15,10 +15,19 @@ const elementRegistry: Record<string, () => Widget> = {
   "ztui-footer": () => new Widget("footer"),
 };
 
+/**
+ * Map a host tag name to a {@link Widget} constructor so it can appear in the
+ * tree. The extension point for custom widgets — pair with `hostComponent` from
+ * `ztui/react` for JSX. See the "Extending ztui" guide.
+ *
+ * @param tagName Host tag, e.g. `"ztui-gauge"` (case-insensitive).
+ * @param ctor Factory returning a fresh widget instance.
+ */
 export function registerElement(tagName: string, ctor: () => Widget) {
   elementRegistry[tagName.toLowerCase()] = ctor;
 }
 
+/** Construct a widget for a registered tag name, or `null` if the tag is unknown. */
 export function createWidgetByTagName(tagName: string): Widget | null {
   const ctor = elementRegistry[tagName.toLowerCase()];
   return ctor ? ctor() : null;

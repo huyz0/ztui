@@ -7,6 +7,7 @@ import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class SwitchWidget extends Widget {
+  /** On/off state. */
   public active = false;
   public label = "";
   public declare onChange?: (val: boolean) => void;

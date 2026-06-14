@@ -2,6 +2,7 @@ import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
 export interface MarkdownProps extends ComponentProps {
+  /** Called when an embedded action widget is activated. */
   onAction?: (actionName: string, eventData: any) => void;
 }
 

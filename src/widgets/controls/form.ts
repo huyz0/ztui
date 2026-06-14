@@ -99,6 +99,7 @@ export class FormWidget extends BoxWidget {
     App.instance?.queueRender();
   }
 
+  /** Paints the form container (background/border); fields render themselves. */
   public override render(buffer: ScreenBuffer): void {
     super.render(buffer);
     if (this.messageMode !== "auto" && this.messageMode !== "shared") return;

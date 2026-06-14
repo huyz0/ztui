@@ -50,6 +50,7 @@ const INTERVAL_SCALE: Record<SpinnerMode, number> = {
 };
 
 export class SpinnerWidget extends Widget {
+  /** Animation style. */
   public mode: SpinnerMode = "rotate";
   /** Milliseconds each frame (or, for `blink`, each pulse step) is shown. */
   public interval = 80;

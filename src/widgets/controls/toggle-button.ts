@@ -7,6 +7,7 @@ import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 
 export class ToggleButtonWidget extends Widget {
+  /** Pressed/active state. */
   public active = false;
   public label = "";
   public declare onChange?: (active: boolean) => void;

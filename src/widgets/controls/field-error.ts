@@ -18,6 +18,7 @@ function isField(w: Widget): w is ValidatableField {
  * to bind to a specific field by id.
  */
 export class FieldErrorWidget extends Widget {
+  /** Id of the field this message is bound to. */
   public targetId?: string;
 
   constructor() {

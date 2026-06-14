@@ -15,4 +15,5 @@ export interface FormProps extends ComponentProps {
   onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
 }
 
+/** A validating container that aggregates its child fields. */
 export const Form = hostComponent<FormProps>("ztui-form");

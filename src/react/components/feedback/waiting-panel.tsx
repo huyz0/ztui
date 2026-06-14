@@ -1,6 +1,7 @@
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** Panel animation style. */
 export type WaitingPanelVariant = "ripple" | "orbit" | "rain";
 
 export interface WaitingPanelProps extends ComponentProps {

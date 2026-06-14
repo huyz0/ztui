@@ -63,11 +63,15 @@ export function translateKeyboardEvent(ev: {
   return null;
 }
 
+/** Pixel size of a cell (plus host padding), used to map mouse pixels to cells. */
 export interface CellMetrics {
+  /** Cell width in px. */
   cellWidth: number;
+  /** Cell height in px. */
   cellHeight: number;
-  /** Host padding in pixels, subtracted before the cell division. */
+  /** Host left padding in px, subtracted before the cell division. */
   offsetX?: number;
+  /** Host top padding in px, subtracted before the cell division. */
   offsetY?: number;
 }
 
@@ -113,6 +117,7 @@ export function measureCell(): CellMetrics {
   };
 }
 
+/** Options for {@link attachToDOM}. */
 export interface AttachOptions {
   /** Fixed cell pixel size; measured from a probe glyph when omitted. */
   metrics?: CellMetrics;

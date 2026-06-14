@@ -35,6 +35,7 @@ export class SelectionListWidget extends Widget {
   public items: ListItem[] = [];
   /** Checked item ids. */
   public value: string[] = [];
+  /** Checkbox glyph set. */
   public glyphSet: SelectionGlyphSet = "unicode";
   /** Background painted across the cursor (focused) row. */
   public cursorBackground = "$selectionBg";

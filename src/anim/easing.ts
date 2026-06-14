@@ -45,6 +45,7 @@ const outBounce: EasingFn = (t) => {
   return n1 * u * u + 0.984375;
 };
 
+/** Built-in easing curves by name (see { Easing}). */
 export const EASINGS: Record<Easing, EasingFn> = {
   linear: (t) => t,
   "in-quad": (t) => t * t,

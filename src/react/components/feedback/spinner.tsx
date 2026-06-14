@@ -1,6 +1,7 @@
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** Spinner animation style. */
 export type SpinnerMode = "rotate" | "bounce" | "blink" | "hex" | "quadrant" | "arc";
 
 export interface SpinnerProps extends ComponentProps {

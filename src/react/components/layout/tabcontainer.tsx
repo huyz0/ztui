@@ -2,7 +2,9 @@ import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
 export interface TabContainerProps extends ComponentProps {
+  /** Index of the active tab. */
   activeIndex?: number;
+  /** Called with the new index when the tab changes. */
   onChange?: (index: number) => void;
 }
 

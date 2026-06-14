@@ -9,6 +9,7 @@ import { Widget } from "./widget.ts";
 /** @internal Mixin base constructor type. */
 export type Constructor<T = object> = new (...args: any[]) => T;
 
+/** Mixin adding scroll behavior to a Widget subclass. */
 export function Scrollable<TBase extends Constructor<Widget>>(Base: TBase) {
   return class extends Base {
     public get scrollableX(): boolean {

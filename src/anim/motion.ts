@@ -20,6 +20,7 @@ function defaultEnabled(): boolean {
 
 let enabled = defaultEnabled();
 
+/** Global motion toggle/config — disable to make animations snap (respects reduced-motion). */
 export const motion = {
   /** Whether continuous ambient animations should run. */
   get enabled(): boolean {

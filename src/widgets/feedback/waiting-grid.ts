@@ -32,6 +32,7 @@ const CREST = 0.4;
 /** Width of the shimmer band as a fraction of the diagonal. */
 const BAND = 0.35;
 
+/** Grid size: 4 (2x2) or 9 (3x3) cells. */
 export type WaitingGridCells = 4 | 9;
 /** Animation style for a {@link WaitingGridWidget}. */
 export type WaitingGridVariant = "ring" | "radar" | "shimmer";

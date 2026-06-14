@@ -2,6 +2,7 @@ import { createElement, type ReactElement } from "react";
 import type { ComponentProps } from "../types.ts";
 
 export interface SplitterProps extends ComponentProps {
+  /** Splitter direction. */
   orientation?: "vertical" | "horizontal";
   /** Pointer delta (cells) along the splitter's axis, emitted per drag step. */
   onResize?: (delta: number) => void;

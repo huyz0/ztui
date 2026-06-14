@@ -39,6 +39,7 @@ export class TerminalViewWidget extends Widget {
   public set maxLines(n: number) {
     this.term.maxLines = n;
   }
+  /** Maximum retained lines. */
   public get maxLines(): number {
     return this.term.maxLines;
   }
@@ -71,6 +72,7 @@ export class TerminalViewWidget extends Widget {
     this.consumed = value;
     (this.app ?? App.instance)?.queueRender();
   }
+  /** The current terminal text/output. */
   public get content(): string {
     return this.consumed;
   }

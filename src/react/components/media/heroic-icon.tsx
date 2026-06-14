@@ -10,7 +10,9 @@ export type { HeroIconVariant };
 export { registerHeroIcon, resolveHeroIcon };
 
 export interface HeroIconProps extends ComponentProps {
+  /** Heroicon name. */
   name: string;
+  /** Icon variant (solid, outline, mini, micro). */
   variant?: HeroIconVariant;
 }
 
