@@ -334,4 +334,46 @@ describe("rendering system", () => {
     expect(fg).toContain("█");
     expect(fg).toContain("╭");
   });
+
+  test("HTML renders a safe hyperlink with escaped href and rel hardening", () => {
+    const buffer = new ScreenBuffer(4, 1);
+    buffer.drawSegment(
+      0,
+      0,
+      new Segment("go", new Style({ link: "https://example.com/?a=1&b=2" })),
+    );
+    const html = renderBufferToHTML(buffer);
+    expect(html).toContain('href="https://example.com/?a=1&amp;b=2"');
+    expect(html).toContain('rel="noopener noreferrer nofollow"');
+  });
+
+  test("HTML drops javascript:/data: hrefs (XSS from untrusted markdown links)", () => {
+    for (const evil of [
+      "javascript:alert(1)",
+      "JaVaScRiPt:alert(1)",
+      "java\tscript:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      '" onmouseover="alert(1)',
+    ]) {
+      const buffer = new ScreenBuffer(4, 1);
+      buffer.drawSegment(0, 0, new Segment("x", new Style({ link: evil })));
+      const html = renderBufferToHTML(buffer);
+      // No anchor is emitted at all for an unsafe link, and nothing breaks out
+      // of the attribute.
+      expect(html).not.toContain("<a ");
+      expect(html.toLowerCase()).not.toContain("javascript:");
+      expect(html.toLowerCase()).not.toContain("onmouseover");
+      expect(html).not.toContain("<script>");
+    }
+  });
+
+  test("HTML rejects color values that try to break out of the style attribute", () => {
+    const buffer = new ScreenBuffer(4, 1);
+    buffer.drawSegment(0, 0, new Segment("x", new Style({ color: '"><script>alert(1)</script>' })));
+    const html = renderBufferToHTML(buffer);
+    expect(html).not.toContain("<script>");
+    // The malicious color is dropped to a safe keyword, not interpolated raw.
+    expect(html).toContain("color: inherit");
+    expect(html).not.toContain("alert(1)");
+  });
 });

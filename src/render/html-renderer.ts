@@ -57,6 +57,34 @@ function escapeHTML(char: string): string {
     .replace(/'/g, "&#039;");
 }
 
+/** HTML-escape an arbitrary attribute value (no single-char fast path). */
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Make a cell's hyperlink (from untrusted markdown/markup) safe to put in an
+ * `href`. Only http/https/mailto survive; anything else — notably `javascript:`
+ * and `data:` — is dropped so the rendered HTML can't execute script when viewed
+ * in a browser (e.g. via the inspector's `/render` endpoint).
+ */
+function safeHref(link: string): string | null {
+  const trimmed = link.trim();
+  // Strip control chars/whitespace that browsers ignore inside the scheme
+  // (e.g. "java\tscript:") before testing the scheme.
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: deliberately matching control chars to defeat scheme-smuggling.
+  const scheme = trimmed.replace(/[\u0000-\u0020]+/g, "").toLowerCase();
+  if (/^(https?:|mailto:)/.test(scheme)) return escapeAttr(trimmed);
+  // Protocol-relative or path/anchor links are safe (no executable scheme).
+  if (/^(\/|#|\.)/.test(trimmed)) return escapeAttr(trimmed);
+  return null;
+}
+
 /** Effective background color (after reverse), or "" for the default. */
 function effectiveBg(style: any): string {
   const bg = style.reverse ? style.color : style.background;
@@ -136,7 +164,10 @@ export function renderBufferToHTML(buffer: ScreenBuffer): string {
       const styleAttr = css ? ` style="${css}"` : "";
       let runHtml = `<span${styleAttr}>${currentText}</span>`;
       if (currentStyle.link) {
-        runHtml = `<a href="${currentStyle.link}" target="_blank" style="text-decoration: underline; color: inherit;">${runHtml}</a>`;
+        const href = safeHref(String(currentStyle.link));
+        if (href) {
+          runHtml = `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow" style="text-decoration: underline; color: inherit;">${runHtml}</a>`;
+        }
       }
       fgRow += runHtml;
       currentText = "";
@@ -220,5 +251,12 @@ export function normalizeColorForCSS(color: string): string {
   if (standardANSI[norm]) {
     return standardANSI[norm];
   }
-  return color;
+  // The result is interpolated into an inline `style="..."` attribute, so a
+  // color string coming from untrusted markup (e.g. `[color=...]`) must not be
+  // able to break out of the CSS value. Allow only hex and rgb()/rgba() /
+  // hsl()/hsla() literals; drop anything else to a safe default.
+  if (/^#[0-9a-f]{3,8}$/.test(norm) || /^(rgb|hsl)a?\([0-9.,%\s/]*\)$/.test(norm)) {
+    return norm;
+  }
+  return "inherit";
 }

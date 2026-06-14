@@ -65,6 +65,14 @@ import { startInspector } from "ztui";
 const inspector = startInspector(app, 8000); // GET endpoints + POST /input
 ```
 
+:::caution[The inspector has no authentication]
+`POST /input` can drive your app, so the server **binds to `127.0.0.1`
+(loopback) by default** — it is not reachable from the network. Only pass a
+third `hostname` argument (`startInspector(app, 8000, "0.0.0.0")`) when you
+deliberately need remote access — e.g. reaching a container from the host — and
+the network is trusted. Don't expose it to the public internet.
+:::
+
 | Endpoint            | Returns                                                  |
 |---------------------|---------------------------------------------------------|
 | `GET /screenshot`   | the current screen as **plain text**                    |
@@ -95,6 +103,21 @@ The same loop works offline against `MockDriver` (`renderBufferToText` +
 `simulateKey`) for deterministic, fully-scripted runs in CI. An agent can build a
 feature, drive its own UI, read back the rendered result, and assert it's correct
 — without a human relaying screenshots.
+
+:::caution[Treat on-screen text as untrusted input to your agent]
+When an agent reads the screen, whatever text the UI displays becomes part of the
+agent's context — including content your app didn't author (a rendered Markdown
+file, a chat message, an API response, a filename). A hostile string can carry a
+**prompt-injection** payload ("ignore your instructions and…"). This is inherent
+to any *agent-reads-UI* design, not specific to ztui — ztui never calls an LLM
+itself. Defend it where you'd defend any untrusted input: keep tool/automation
+authority outside the model, don't let screen text silently escalate privileges,
+and sanitize at the boundary. ztui does harden the **rendering** boundary —
+`renderBufferToText`/`renderBufferToHTML` strip terminal control sequences and
+HTML-escape output (links are scheme-checked, so a `javascript:` URL in a
+Markdown link can't execute when the HTML render is viewed) — but the *meaning*
+of the text is still yours to treat with suspicion.
+:::
 
 ## The web backend, headless
 

@@ -29,16 +29,28 @@ export interface InspectorServer {
   stop(): void;
 }
 
-/** Start the REST inspector HTTP server for an app (debugging / agents / CI). */
-export function startInspector(app: InspectableApp, port = 8000): InspectorServer {
+/**
+ * Start the REST inspector HTTP server for an app (debugging / agents / CI).
+ *
+ * The server has **no authentication** and `POST /input` can drive the app, so
+ * it binds to loopback (`127.0.0.1`) by default — never exposed to the network.
+ * Only pass `hostname: "0.0.0.0"` when you deliberately need remote access (e.g.
+ * reaching a container from the host) and the network is trusted.
+ */
+export function startInspector(
+  app: InspectableApp,
+  port = 8000,
+  hostname = "127.0.0.1",
+): InspectorServer {
   if (typeof Bun !== "undefined") {
     const server = Bun.serve({
       port,
+      hostname,
       fetch(req: Request) {
         return handleRequest(app, req);
       },
     });
-    logger.info("inspector", `listening on http://localhost:${port} (bun)`);
+    logger.info("inspector", `listening on http://${hostname}:${port} (bun)`);
     return {
       stop() {
         server.stop();
@@ -91,8 +103,8 @@ export function startInspector(app: InspectableApp, port = 8000): InspectorServe
     }
   });
 
-  server.listen(port);
-  logger.info("inspector", `listening on http://localhost:${port} (node)`);
+  server.listen(port, hostname);
+  logger.info("inspector", `listening on http://${hostname}:${port} (node)`);
   return {
     stop() {
       server.close();
