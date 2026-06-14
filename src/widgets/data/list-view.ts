@@ -10,6 +10,7 @@ import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { fitCell } from "./table.ts";
 
+/** An item in a {@link ListViewWidget} / {@link SelectionListWidget}. */
 export interface ListItem {
   /** Stable identifier (used for selection state). */
   id: string;

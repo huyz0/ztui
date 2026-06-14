@@ -1,6 +1,7 @@
 import { createElement, type ReactElement } from "react";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link RichLog}. */
 export interface RichLogProps extends Omit<ComponentProps, "children"> {
   /** Log entries as markup strings (same syntax as RichText); each may contain `\n`. */
   lines: string[];

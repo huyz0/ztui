@@ -1,6 +1,7 @@
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link Sparkline}. */
 export interface SparklineProps extends Omit<ComponentProps, "children"> {
   /** The series to plot; each value becomes one bar. */
   data: number[];

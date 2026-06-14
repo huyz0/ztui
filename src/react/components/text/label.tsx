@@ -10,4 +10,5 @@ export interface LabelProps extends ComponentProps {
   markup?: boolean;
 }
 
+/** Styled inline text. */
 export const Label = hostComponent<LabelProps>("ztui-label");

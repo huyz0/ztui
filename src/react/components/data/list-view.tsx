@@ -2,6 +2,7 @@ import { createElement, type ReactElement } from "react";
 import type { ListItem } from "../../../widgets/data/list-view.ts";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link ListView}. */
 export interface ListViewProps extends Omit<ComponentProps, "children"> {
   items: ListItem[];
   rowHeight?: number;

@@ -10,4 +10,5 @@ export interface BoxProps extends ComponentProps {
   title?: string;
 }
 
+/** A bordered, styleable container. */
 export const Box = hostComponent<BoxProps>("ztui-box");

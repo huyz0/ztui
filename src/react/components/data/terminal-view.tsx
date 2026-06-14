@@ -1,6 +1,7 @@
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link TerminalView}. */
 export interface TerminalViewProps extends Omit<ComponentProps, "children"> {
   /** Full accumulated command output (ANSI allowed). Appended text streams in. */
   content?: string;

@@ -9,4 +9,5 @@ export interface FieldErrorProps extends ComponentProps {
   targetId?: string;
 }
 
+/** Inline error message for a single field. */
 export const FieldError = hostComponent<FieldErrorProps>("ztui-field-error");

@@ -9,6 +9,7 @@ const MARKERS = {
   unicode: { closed: "▸", open: "▾" },
   ascii: { closed: ">", open: "v" },
 } as const;
+/** Disclosure-marker glyph set for {@link CollapsibleWidget}. */
 export type CollapsibleGlyphSet = keyof typeof MARKERS;
 
 /**

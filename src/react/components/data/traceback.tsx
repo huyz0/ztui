@@ -1,6 +1,7 @@
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link Traceback}. */
 export interface TracebackProps extends Omit<ComponentProps, "children"> {
   /** The error to render. Sets name/message/stack in one shot. */
   error?: Error;

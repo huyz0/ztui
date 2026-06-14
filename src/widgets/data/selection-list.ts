@@ -16,6 +16,7 @@ const BOXES = {
   unicode: { off: "☐", on: "☑" },
   ascii: { off: "[ ]", on: "[x]" },
 } as const;
+/** Checkbox glyph set for {@link SelectionListWidget}. */
 export type SelectionGlyphSet = keyof typeof BOXES;
 
 /**

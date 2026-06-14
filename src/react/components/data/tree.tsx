@@ -2,6 +2,7 @@ import { createElement, type ReactElement } from "react";
 import type { TreeNode } from "../../../widgets/data/tree.ts";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link Tree}. */
 export interface TreeProps extends Omit<ComponentProps, "children"> {
   /** Forest of top-level nodes. A flat list needs no synthetic root. */
   data: TreeNode[];

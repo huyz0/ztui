@@ -2,6 +2,7 @@ import { createElement, type ReactElement, useState } from "react";
 import type { DiffView } from "../../../widgets/data/diff.ts";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link Diff}. */
 export interface DiffProps extends Omit<ComponentProps, "children"> {
   /** The original ("before") text. */
   oldText: string;

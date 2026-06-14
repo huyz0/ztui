@@ -10,4 +10,5 @@ export interface ValidationSummaryProps extends ComponentProps {
   bullet?: string;
 }
 
+/** Lists the current validation errors for a form. */
 export const ValidationSummary = hostComponent<ValidationSummaryProps>("ztui-validation-summary");

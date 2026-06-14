@@ -10,6 +10,7 @@ import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { fitCell } from "./table.ts";
 
+/** A node in a {@link TreeWidget}: id, label, optional children and metadata. */
 export interface TreeNode {
   /** Stable identifier (used for selection and expansion state). */
   id: string;

@@ -4,8 +4,10 @@
  * Penner-style curves used by Textual and CSS; pick one by name via {@link EASINGS}
  * so animation specs can pass a string rather than a function reference.
  */
+/** Name of a built-in easing curve. */
 export type EasingFn = (t: number) => number;
 
+/** Name of a built-in easing curve. */
 export type Easing =
   | "linear"
   | "in-quad"

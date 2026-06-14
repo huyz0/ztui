@@ -6,4 +6,5 @@ export interface TabContainerProps extends ComponentProps {
   onChange?: (index: number) => void;
 }
 
+/** Tabbed container showing one panel at a time. */
 export const TabContainer = hostComponent<TabContainerProps>("ztui-tabcontainer");

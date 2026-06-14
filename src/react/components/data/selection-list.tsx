@@ -3,6 +3,7 @@ import type { ListItem } from "../../../widgets/data/list-view.ts";
 import type { SelectionGlyphSet } from "../../../widgets/data/selection-list.ts";
 import type { ComponentProps } from "../types.ts";
 
+/** Props for {@link SelectionList}. */
 export interface SelectionListProps extends Omit<ComponentProps, "children"> {
   /** The rows to choose from. */
   items: ListItem[];

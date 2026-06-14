@@ -18,6 +18,7 @@ import { Style } from "../../render/style.ts";
  * - `warning`   — finished or running but with issues to note.
  * - `failed`    — errored.
  */
+/** A status indicator state (e.g. ok/warn/error/idle). */
 export type StatusState =
   | "active"
   | "inactive"

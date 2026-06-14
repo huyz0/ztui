@@ -40,18 +40,23 @@ export interface HotkeyOptions {
   handler: (ev: KeyEvent) => void;
 }
 
+/** A registered hotkey (the {@link HotkeyOptions} plus assigned id and resolved key). */
 export interface Hotkey extends HotkeyOptions {
+  /** Unique registration id. */
   readonly id: number;
   /** Canonical normalized key, e.g. `"ctrl+shift+p"`. */
   readonly key: string;
   /** Display form of the key, e.g. `"Ctrl+Shift+P"`. */
   readonly keyLabel: string;
+  /** Resolved group name (defaults to "General"). */
   readonly group: string;
 }
 
 /** A palette section: one group name and its hotkeys in registration order. */
 export interface HotkeyGroup {
+  /** Group name. */
   group: string;
+  /** Hotkeys in the group, in registration order. */
   hotkeys: Hotkey[];
 }
 
@@ -148,8 +153,10 @@ export interface ListOptions {
   query?: string;
 }
 
+/** Process-wide registry of named, grouped, context-scoped hotkeys. Use {@link getInstance} or the {@link useHotkey} React hook. */
 export class HotkeyRegistry {
   private static _instance: HotkeyRegistry | null = null;
+  /** The shared singleton. */
   public static getInstance(): HotkeyRegistry {
     if (!HotkeyRegistry._instance) HotkeyRegistry._instance = new HotkeyRegistry();
     return HotkeyRegistry._instance;
@@ -187,6 +194,7 @@ export class HotkeyRegistry {
     this.emit();
   }
 
+  /** Leave the innermost context entered with {@link pushContext}. */
   public popContext(): void {
     if (this.contextStack.length > 0) {
       this.contextStack.pop();
@@ -194,6 +202,7 @@ export class HotkeyRegistry {
     }
   }
 
+  /** Subscribe to registry changes; returns an unsubscribe function. */
   public subscribe(cb: () => void): () => void {
     this.listeners.add(cb);
     return () => {

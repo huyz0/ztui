@@ -6,4 +6,5 @@ export interface SvgImageProps extends ComponentProps {
   ansi?: boolean;
 }
 
+/** Render an inline SVG image. */
 export const SvgImage = hostComponent<SvgImageProps>("ztui-svgimage");

@@ -6,4 +6,5 @@ export interface SyntaxProps extends ComponentProps {
   lineNumbers?: boolean;
 }
 
+/** Syntax-highlighted code block. */
 export const Syntax = hostComponent<SyntaxProps>("ztui-syntax");
