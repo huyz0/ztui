@@ -35,6 +35,7 @@ export class TerminalViewWidget extends Widget {
   /** Pin to the bottom as output arrives (until the user scrolls up). */
   public autoScroll = true;
   /** Lines retained in scrollback. */
+  /** Maximum retained lines. */
   public set maxLines(n: number) {
     this.term.maxLines = n;
   }
@@ -57,6 +58,7 @@ export class TerminalViewWidget extends Widget {
   }
 
   /** Full accumulated output. Appended text is parsed incrementally. */
+  /** The terminal text/output (ANSI is parsed). */
   public set content(value: string) {
     if (value === this.consumed) return;
     if (value.startsWith(this.consumed)) {

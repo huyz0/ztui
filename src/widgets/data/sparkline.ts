@@ -24,10 +24,13 @@ const BARS = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
  * the bars.
  */
 export class SparklineWidget extends Widget {
+  /** Series values to chart. */
   public data: number[] = [];
   /** Low end of the value scale; defaults to the data minimum. */
+  /** Lower bound (auto-ranged when unset). */
   public min?: number;
   /** High end of the value scale; defaults to the data maximum. */
+  /** Upper bound (auto-ranged when unset). */
   public max?: number;
   /** Print the latest value after the bars. */
   public showValue = false;

@@ -14,7 +14,9 @@ export interface TabMetric {
 }
 
 export class TabContainerWidget extends Widget {
+  /** Index of the visible tab. */
   public activeIndex = 0;
+  /** Index of the highlighted tab. */
   public hoveredIndex = 0;
   public declare onChange?: (index: number) => void;
   private tabMetrics: TabMetric[] = [];

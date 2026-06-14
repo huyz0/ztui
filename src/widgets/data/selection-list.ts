@@ -31,6 +31,7 @@ export type SelectionGlyphSet = keyof typeof BOXES;
  * ListViewWidget} the body is virtualized, so it scales to large lists.
  */
 export class SelectionListWidget extends Widget {
+  /** Items to display. */
   public items: ListItem[] = [];
   /** Checked item ids. */
   public value: string[] = [];

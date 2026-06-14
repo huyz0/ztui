@@ -15,11 +15,15 @@ export interface RadioOption {
 }
 
 export class RadioGroupWidget extends Widget {
+  /** Choices (strings or {value,label}). */
   public options: (string | RadioOption)[] = [];
+  /** Selected value. */
   public value = "";
+  /** Layout direction. */
   public orientation: "horizontal" | "vertical" = "vertical";
   public declare onChange?: (val: string) => void;
 
+  /** Index of the highlighted option. */
   public hoveredIndex = 0;
 
   /** Validation; the validated value is the selected option's value. */
@@ -43,6 +47,7 @@ export class RadioGroupWidget extends Widget {
     this.validation.maybeValidate("change");
   }
 
+  /** Normalize options to RadioOption objects. */
   public getResolvedOptions(): RadioOption[] {
     return this.options.map((opt) => {
       if (typeof opt === "string") {

@@ -39,8 +39,11 @@ export class TextAreaWidget extends Widget {
     }
   }
   public declare onChange?: (val: string) => void;
+  /** Hint text shown when empty. */
   public placeholder = "";
+  /** Show a line-number gutter. */
   public lineNumbers = true;
+  /** Language id for syntax highlighting. */
   public language = "text";
 
   /** Validation; see {@link attachFieldValidation}. */

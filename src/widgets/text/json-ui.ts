@@ -88,6 +88,7 @@ export function parsePartialJson(jsonStr: string): any {
 
 /** Renders a widget tree described by JSON (tolerant of partial/streamed input). */
 export class JSONUIWidget extends TextSource(Widget) {
+  /** Fired when an action-bearing generated widget is clicked. */
   public declare onAction?: (actionName: string, eventData: any) => void;
 
   private lastRawJson = "";
@@ -97,6 +98,7 @@ export class JSONUIWidget extends TextSource(Widget) {
     this.style.layout = "vertical";
   }
 
+  /** The accumulated raw JSON text. */
   public getRawJson(): string {
     return this.rawText();
   }

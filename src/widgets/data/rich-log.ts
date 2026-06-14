@@ -120,6 +120,7 @@ function wrapEntry(markup: string, baseStyle: Style, width: number, wrap: boolea
  */
 export class RichLogWidget extends Widget {
   /** Max entries retained for layout; older entries scroll off and are dropped. */
+  /** Maximum retained lines (older ones drop). */
   public maxLines = 10_000;
   /** Word-wrap entries to the content width. When false, long lines are clipped. */
   public wrap = true;
@@ -155,6 +156,7 @@ export class RichLogWidget extends Widget {
     this.displayDirty = true;
     App.instance?.queueRender();
   }
+  /** Current log lines. */
   public get lines(): string[] {
     return this.entries;
   }

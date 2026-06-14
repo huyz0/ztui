@@ -11,7 +11,9 @@ import { renderSvgSync } from "../../utils/sharp-sync.ts";
 import { renderAnsiFallback } from "./image-renderers.ts";
 
 export class SvgImageWidget extends Widget {
+  /** SVG markup or path. */
   public src?: string;
+  /** Force Unicode half-block rendering. */
   public ansi = false;
 
   private lastPixelWidth = 0;

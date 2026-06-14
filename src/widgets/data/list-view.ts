@@ -31,7 +31,9 @@ export interface ListItem {
  * hierarchical data use Tree; for columnar data use Table.
  */
 export class ListViewWidget extends Widget {
+  /** Items to display. */
   public items: ListItem[] = [];
+  /** Height of each row in cells. */
   public rowHeight = 1;
   /** Selected item id, or null. */
   public selectedId: string | null = null;

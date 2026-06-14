@@ -23,8 +23,11 @@ export type CollapsibleGlyphSet = keyof typeof MARKERS;
  * title row toggles. `open` is driven by the prop; toggling fires `onToggle`.
  */
 export class CollapsibleWidget extends Widget {
+  /** Title row text. */
   public title = "";
+  /** Whether the section is expanded. */
   public open = false;
+  /** Disclosure-marker glyph set. */
   public glyphSet: CollapsibleGlyphSet = "unicode";
   /** Fired with the requested next open state on Enter/Space/arrow/click. */
   public declare onToggle?: (open: boolean) => void;

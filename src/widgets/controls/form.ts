@@ -29,6 +29,7 @@ function isField(w: Widget): w is ValidatableField {
 export class FormWidget extends BoxWidget {
   /** Duck-typed marker so a Button can find its form without importing it. */
   public readonly isForm = true;
+  /** How validation messages are surfaced. */
   public messageMode: FormMessageMode = "auto";
   public declare onSubmit?: (values: Record<string, unknown>) => void;
   public declare onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
