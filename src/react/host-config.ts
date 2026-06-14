@@ -37,6 +37,10 @@ const KNOWN_HANDLER_PROPS = [
   "onValidate",
   "onSubmit",
   "onResize",
+  "onInterrupt",
+  "onCommand",
+  "onAttach",
+  "onAttachRemove",
 ] as const satisfies readonly (keyof Widget)[];
 
 function applyProps(instance: DOMNode, props: Record<string, any>, oldProps?: Record<string, any>) {

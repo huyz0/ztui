@@ -271,9 +271,17 @@ export function parseInput(
         shift: false,
       });
     }
-    // Enter
-    else if (code === 13 || code === 10) {
+    // Enter (CR). The real Enter key sends carriage return (13) in raw mode.
+    else if (code === 13) {
       onKey({ key: "enter", name: "enter", ctrl: false, meta: false, shift: false });
+    }
+    // Ctrl+J sends a line feed (10) — a *distinct* byte from Enter's CR. Tag it
+    // as Ctrl+modified enter (keeping name "enter" so multiline editors still
+    // treat it as a newline) so a composer can map it to "insert newline"
+    // without colliding with "send on Enter". This is the one newline chord that
+    // works on every terminal, with or without the Kitty keyboard protocol.
+    else if (code === 10) {
+      onKey({ key: "ctrl+j", name: "enter", ctrl: true, meta: false, shift: false });
     }
     // Tab
     else if (code === 9) {

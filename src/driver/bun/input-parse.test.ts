@@ -181,3 +181,21 @@ describe("Ctrl+Space", () => {
     expect(ev?.ctrl).toBe(false);
   });
 });
+
+describe("parseInput — Enter vs. Ctrl+J (CR vs. LF)", () => {
+  test("CR (\\r) is a plain Enter that sends", () => {
+    const ev = firstKey("\r");
+    expect(ev?.name).toBe("enter");
+    expect(ev?.ctrl).toBe(false);
+  });
+
+  test("LF (\\n, Ctrl+J) is a distinct ctrl-tagged newline, not a plain Enter", () => {
+    const ev = firstKey("\n");
+    // name stays "enter" so multiline editors treat it as a newline, but it is
+    // ctrl-tagged + keyed "ctrl+j" so a composer can map it to insert-newline
+    // without it colliding with send-on-Enter.
+    expect(ev?.name).toBe("enter");
+    expect(ev?.key).toBe("ctrl+j");
+    expect(ev?.ctrl).toBe(true);
+  });
+});

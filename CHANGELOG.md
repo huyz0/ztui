@@ -4,6 +4,24 @@ All notable changes to ztui are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `ChatInput` — a framework-agnostic chat composer for AI-agent UIs. It owns its
+  own edit buffer (works with any state system, not just React), grows with
+  content, and sends on Enter (Shift+Enter for a newline). Features: atomic
+  inline **chips** (`fill`/`bracket` styles) with whole-unit selection, deletion,
+  caret-skip, click-to-copy, and undoable accept-only auto-pilling; a generic
+  **trigger registry** (a character → completion popup → text/chip/command, so
+  slash-commands and @mentions are just data, not hardcoded paths); a
+  keybinding/palette **command registry**; app-provided inline **ghost-text
+  autocomplete** (dim suffix with a `→` marker, Right-at-EOL accept, Tab opt-in);
+  edge-aware **history recall** (Up/Down at the first/last row); snapshot-based
+  **undo/redo**; an **attachment strip** with removable pills; and an in-border
+  **send/stop** affordance driven by a `busy` flag (purely an affordance —
+  Enter/Esc always work). See `docs/chat-input-design.md`.
+
 ## [1.0.1] - 2026-06-14
 
 ### Added

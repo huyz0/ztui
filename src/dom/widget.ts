@@ -272,6 +272,10 @@ export class Widget extends DOMNode {
   /** @internal */ public declare onValidate?: (...args: never[]) => void;
   /** @internal */ public declare onSubmit?: (...args: never[]) => void;
   /** @internal */ public declare onResize?: (...args: never[]) => void;
+  /** @internal */ public declare onInterrupt?: (...args: never[]) => void;
+  /** @internal */ public declare onCommand?: (...args: never[]) => void;
+  /** @internal */ public declare onAttach?: (...args: never[]) => void;
+  /** @internal */ public declare onAttachRemove?: (...args: never[]) => void;
 
   /**
    * Handle a wheel/scroll event. Override to scroll your own content; set

@@ -4,6 +4,7 @@ import { blendDemo } from "../blend_demo.tsx";
 import { borderDemo } from "../border_demo.tsx";
 import { boxTitleDemo } from "../box_title_demo.tsx";
 import { buttonDemo } from "../button_demo.tsx";
+import { chatDemo } from "../chat_demo.tsx";
 import { checkboxDemo } from "../checkbox_demo.tsx";
 import { clipboardDemo } from "../clipboard_demo.tsx";
 import { collapsibleDemo } from "../collapsible_demo.tsx";
@@ -68,6 +69,7 @@ export const demos: Demo[] = [
   richDemo,
   markdownDemo,
   textareaDemo,
+  chatDemo,
   clipboardDemo,
   borderDemo,
   boxTitleDemo,

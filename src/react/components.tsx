@@ -1,5 +1,15 @@
+export type { ChipSerializer, ChipToken } from "../widgets/controls/chat/model.ts";
+export type {
+  Attachment,
+  Command,
+  Completion,
+  Trigger,
+  TriggerResult,
+} from "../widgets/controls/chat/types.ts";
 export type { ButtonProps } from "./components/controls/button.tsx";
 export { Button } from "./components/controls/button.tsx";
+export type { ChatInputProps } from "./components/controls/chat-input.tsx";
+export { ChatInput } from "./components/controls/chat-input.tsx";
 export type { CheckboxProps } from "./components/controls/checkbox.tsx";
 export { Checkbox } from "./components/controls/checkbox.tsx";
 export type { FieldErrorProps } from "./components/controls/field-error.tsx";

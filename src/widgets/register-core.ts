@@ -5,6 +5,7 @@
 import { registerElement } from "../dom/element-registry.ts";
 import { OverlayRootWidget } from "../dom/overlay.ts";
 import { ButtonWidget } from "./controls/button.ts";
+import { ChatInputWidget } from "./controls/chat-input.ts";
 import { CheckboxWidget } from "./controls/checkbox.ts";
 import { FieldErrorWidget } from "./controls/field-error.ts";
 import { FormWidget } from "./controls/form.ts";
@@ -61,6 +62,7 @@ registerElement("ztui-form", () => new FormWidget());
 registerElement("ztui-field-error", () => new FieldErrorWidget());
 registerElement("ztui-validation-summary", () => new ValidationSummaryWidget());
 registerElement("ztui-textarea", () => new TextAreaWidget());
+registerElement("ztui-chat-input", () => new ChatInputWidget());
 registerElement("ztui-header", () => new HeaderWidget());
 registerElement("ztui-footer", () => new FooterWidget());
 registerElement("ztui-vbox", () => new VBoxWidget());
