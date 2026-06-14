@@ -2,6 +2,8 @@
   "name": "ztui",
   "version": "0.2.0",
   "description": "Textual-like TUI framework for TypeScript and Bun with React JSX support",
+  "license": "MIT",
+  "author": "Huy Nguyen",
   "type": "module",
   "main": "src/core.ts",
   "module": "src/core.ts",

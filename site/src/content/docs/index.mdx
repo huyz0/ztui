@@ -15,7 +15,7 @@ hero:
       variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
 
 ## Why ztui
 
@@ -28,9 +28,19 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
     The same widgets render to a terminal (ANSI diff) or a browser
     `<canvas>` (hardware-accelerated). The cell grid is the portable hand-off.
   </Card>
+  <Card title="Batteries included" icon="rocket">
+    Dozens of built-in widgets — tables, trees, inputs, forms, markdown, diffs,
+    sparklines, terminals — built on modern terminal features: mouse capture,
+    the system clipboard, hyperlinks, and desktop notifications.
+  </Card>
   <Card title="Graphics with graceful fallback" icon="star">
     Inline images via Kitty / iTerm2 / Sixel, degrading to Unicode block art —
     chosen automatically from probed terminal capabilities.
+  </Card>
+  <Card title="Extensible" icon="puzzle">
+    Subclass `Widget` to build your own, registered in one call. The widget
+    layer is framework-agnostic — use the React binding, or write your own for
+    Solid, Vue, or anything else.
   </Card>
   <Card title="AI-native & testable" icon="open-book">
     The DOM and rendered buffer serialize to JSON / HTML / text; headless
@@ -60,3 +70,44 @@ const app = new App();
 render(<Counter />, app.activeScreen);
 app.run();
 ```
+
+## Featured widgets
+
+A few of the built-ins — see the [full gallery](/ztui/widgets/) for ~60 more.
+
+<CardGrid>
+  <LinkCard
+    title="Table"
+    href="/ztui/widgets/table/"
+    description="Virtualized, sortable data grid that scales to huge row sets."
+  />
+  <LinkCard
+    title="Markdown"
+    href="/ztui/widgets/markdown/"
+    description="Render — and stream — Markdown with syntax-highlighted code."
+  />
+  <LinkCard
+    title="Diff"
+    href="/ztui/widgets/diff/"
+    description="Unified or split text diff with highlighting and collapsible context."
+  />
+  <LinkCard
+    title="Tree"
+    href="/ztui/widgets/tree/"
+    description="Virtualized file/navigation tree with guides and lazy expansion."
+  />
+  <LinkCard
+    title="Terminal View"
+    href="/ztui/widgets/terminal-view/"
+    description="A sandboxed ANSI terminal pane — colors, progress bars, the lot."
+  />
+  <LinkCard
+    title="Workbench"
+    href="/ztui/widgets/workbench/"
+    description="VS Code-style dockable panels you can drag to re-dock and resize."
+  />
+</CardGrid>
+
+## License
+
+ztui is [MIT licensed](https://github.com/huyz0/ztui/blob/main/LICENSE) — free for personal and commercial use.
