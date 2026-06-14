@@ -19,6 +19,8 @@ export default defineConfig({
       title: "ztui",
       description:
         "A declarative, React-based Text User Interface framework for TypeScript and Bun — terminal and browser-canvas backends from one widget tree.",
+      logo: { src: "./src/assets/ztui-logo.svg", alt: "ztui" },
+      favicon: "/favicon.svg",
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/huyz0/ztui" }],
       editLink: { baseUrl: "https://github.com/huyz0/ztui/edit/main/site/" },
       lastUpdated: true,

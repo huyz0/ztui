@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ztui">
+  <defs>
+    <linearGradient id="ztui-z" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4daafc"/>
+      <stop offset="1" stop-color="#56b6c2"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#16161c" stroke="#33333d" stroke-width="1.5"/>
+  <polyline points="20,21 44,21 20,43 44,43" fill="none" stroke="url(#ztui-z)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="47.5" y="39.5" width="6" height="6" rx="1.4" fill="#56b6c2"/>
+</svg>
