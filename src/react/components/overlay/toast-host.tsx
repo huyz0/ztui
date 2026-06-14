@@ -13,6 +13,7 @@ export type ToastPosition = "top-right" | "top-left" | "bottom-right" | "bottom-
 /** Glyph style for the close/clear affordances, matching the status widgets' sets. */
 export type ToastGlyphSet = "unicode" | "ascii" | "emoji";
 
+/** Props for the ToastHost overlay that renders active toasts. */
 export interface ToastHostProps {
   /** Corner to stack toasts in. Defaults to `top-right`. */
   position?: ToastPosition;

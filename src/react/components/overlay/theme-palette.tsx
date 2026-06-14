@@ -9,6 +9,7 @@ import { Label } from "../text/label.tsx";
 import { useHotkey } from "./hotkey-palette.tsx";
 import { useLayer } from "./use-layer.ts";
 
+/** Props for the ThemePalette picker. */
 export interface ThemePaletteProps {
   /**
    * Key that toggles the picker. Defaults to `"ctrl+alt+t"`. The binding is

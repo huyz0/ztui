@@ -48,6 +48,7 @@ export function useHotkey(opts: HotkeyOptions): void {
   }, [opts.key, opts.name, opts.description, opts.group, contextKey, opts.hidden]);
 }
 
+/** Props for the HotkeyPalette overlay. */
 export interface HotkeyPaletteProps {
   /**
    * Key that toggles the palette. Defaults to `"ctrl+space"` — recognized on

@@ -8,6 +8,7 @@ export interface TreeProps extends Omit<ComponentProps, "children"> {
   data: TreeNode[];
   /** Present each root's children as the top level (hide the root nodes). */
   hideRoot?: boolean;
+  /** Height of each row in cells. */
   rowHeight?: number;
   /** Expanded node ids. Controlled when `onExpandedChange` is provided. */
   expanded?: string[];
@@ -21,7 +22,9 @@ export interface TreeProps extends Omit<ComponentProps, "children"> {
   onSelect?: (node: TreeNode) => void;
   /** Item activated — Enter, Space, or double-click. */
   onActivate?: (node: TreeNode) => void;
+  /** A node was expanded/collapsed. */
   onToggle?: (node: TreeNode, expanded: boolean) => void;
+  /** The set of expanded ids changed. */
   onExpandedChange?: (expanded: string[]) => void;
 }
 
