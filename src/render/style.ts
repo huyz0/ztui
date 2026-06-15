@@ -76,6 +76,10 @@ export class Style {
 
   /** True if every attribute matches. */
   public equals(other: Style): boolean {
+    // Identity fast path: callers that reuse a cached Style instance (e.g. an
+    // animated panel painting the same colour) hit this and skip the field-by-
+    // field compare — the dominant cost in the render diff for such frames.
+    if (this === other) return true;
     return (
       this.color === other.color &&
       this.background === other.background &&
