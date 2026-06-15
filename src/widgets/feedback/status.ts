@@ -112,7 +112,11 @@ export class StatusDotWidget extends Widget {
 
   constructor() {
     super("status-dot");
-    this.defaultStyle = { width: 1, height: 1 };
+    // Height is fixed at one row, but width must follow the glyph: emoji are
+    // two cells wide, so pinning width to 1 clipped them to a blank. Leaving
+    // width unset lets `measure` size to `charWidth(glyph)` (1 for unicode/ascii,
+    // 2 for emoji); an explicit style width still overrides.
+    this.defaultStyle = { height: 1 };
   }
 
   private get glyph(): string {

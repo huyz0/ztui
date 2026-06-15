@@ -26,6 +26,22 @@ describe("ZTUI Status Widget Suite", () => {
     expect(cellAt(0, 0).char).toBe("x");
   });
 
+  test("StatusDot sizes to a two-cell emoji glyph (not clipped to one)", async () => {
+    const { findById, cellAt } = await mountApp(
+      <HBox>
+        <StatusDot id="a" state="active" glyphSet="emoji" />
+        <StatusDot id="b" state="failed" glyphSet="emoji" />
+      </HBox>,
+      { cols: 10, rows: 3 },
+    );
+    // First emoji occupies two cells: glyph then a wide-continuation.
+    expect(cellAt(0, 0).char).toBe("🟢");
+    expect(cellAt(1, 0).wideContinuation).toBe(true);
+    // The second dot starts at column 2, not overlapping the first.
+    expect(findById("b")?.region.x).toBe(2);
+    expect(cellAt(2, 0).char).toBe("❌");
+  });
+
   test("StatusBadge draws glyph then label, defaulting the label to the state", async () => {
     const { text } = await mountApp(
       <HBox>
