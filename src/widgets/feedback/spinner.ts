@@ -117,6 +117,11 @@ export class SpinnerWidget extends Widget {
       }),
     );
 
-    requestAnimationTick(this, this.mode === "blink" && !this.frames ? this.interval : frameMs);
+    // Paint-only: the spinner just cycles a glyph/colour in its fixed cell.
+    requestAnimationTick(
+      this,
+      this.mode === "blink" && !this.frames ? this.interval : frameMs,
+      true,
+    );
   }
 }

@@ -73,7 +73,9 @@ export class ReadonlySelectionManager {
 
   /** Reset the per-frame run registry; called before the render walk. */
   public beginFrame(): void {
-    this.runs = [];
+    // Reuse the array (length reset) instead of allocating a new one each frame —
+    // every selectable widget pushes its visible runs here on every render.
+    this.runs.length = 0;
   }
 
   /** Register a content run; called by selectable widgets during `render`. */

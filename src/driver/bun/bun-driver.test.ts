@@ -171,6 +171,26 @@ describe("BunDriver bracketed paste", () => {
     expect(pastes).toEqual(["X"]);
     expect(keys).toEqual(["a", "b"]);
   });
+
+  test("capability replies are still detected through the cheap pre-check gate", () => {
+    // Cell-size response (CSI 6 ; height ; width t).
+    stdin.emit("data", "\x1b[6;30;15t");
+    expect(driver.capabilities.cellSize).toEqual({ width: 15, height: 30 });
+    // DA1 with attribute 4 → sixel graphics.
+    stdin.emit("data", "\x1b[?62;4c");
+    expect(driver.capabilities.graphicsProtocol).toBe("sixel");
+  });
+
+  test("a mouse-move chunk skips the capability block and routes as a mouse event", () => {
+    // A move carries none of the capability-reply prefixes, so the regex block is
+    // bypassed and it decodes normally (regression guard for the perf gate).
+    let mouseType: string | undefined;
+    driver.on("mouse", (ev) => {
+      mouseType = ev.type;
+    });
+    stdin.emit("data", "\x1b[<35;10;5M");
+    expect(mouseType).toBeDefined();
+  });
 });
 
 describe("BunDriver clipboard", () => {

@@ -89,6 +89,16 @@ class Logger {
     }
   }
 
+  /**
+   * Whether `level` would actually be written. Lets hot callers skip building an
+   * expensive message (e.g. a widget `describe()` per input event) when the log
+   * would be dropped anyway — the message string is otherwise computed eagerly
+   * before `write` discards it.
+   */
+  public isEnabled(level: LogLevel): boolean {
+    return LEVEL_ORDER[level] >= this.threshold;
+  }
+
   public debug(scope: string, message: string, data?: unknown): void {
     this.write("debug", scope, message, data);
   }

@@ -4,7 +4,7 @@ import { DOMNode } from "../dom/dom.ts";
 import { Screen } from "../dom/screen.ts";
 import { Widget } from "../dom/widget.ts";
 import { BunDriver } from "../driver/bun/index.ts";
-import type { Driver, KeyEvent } from "../driver/driver.ts";
+import type { Driver, KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
@@ -51,8 +51,24 @@ export class App extends DOMNode {
   private currentBuffer: ScreenBuffer = new ScreenBuffer();
   private prevBuffer: ScreenBuffer = new ScreenBuffer();
   private renderQueued = false;
+  // Whether the next scheduled frame must recompute layout (measure + regions).
+  // Set by queueRender; cleared after a full frame. queueRepaint leaves it as-is,
+  // so a paint-only frame reuses the prior layout unless a real change is pending.
+  private needsLayout = true;
+  // Damage tracking for partial repaint. `repaintFull` forces a whole-screen
+  // frame; otherwise [damageTop, damageBottom) is the band of rows a repaint
+  // touched (a widget's region), so only those rows are re-cleared, re-rendered,
+  // diffed, and copied.
+  private repaintFull = true;
+  private damageTop = Number.POSITIVE_INFINITY;
+  private damageBottom = Number.NEGATIVE_INFINITY;
   private hoveredWidget: Widget | null = null;
   private activeDragWidget: Widget | null = null;
+  // Last pointer cell, so a stream of same-cell `move` events (terminals emit one
+  // per pixel under any-motion tracking, but report cell coords) is collapsed to
+  // a single hit-test — the dominant cost of hovering.
+  private lastMouseX = -1;
+  private lastMouseY = -1;
   /**
    * @internal
    * Read-only text selection over display widgets (`Syntax`, `RichText`,
@@ -134,7 +150,13 @@ export class App extends DOMNode {
   /** Start the event loop: bind the driver, probe capabilities, and render frames. */
   public run(options?: { inspectorPort?: number }): void {
     logger.init("App started");
-    const log = (msg: string) => logger.debug("app", msg);
+    // Lazy + level-gated: skip building the (often `describe()`-bearing) message
+    // entirely when debug logging is off, which is the default. Called per input
+    // event, so eager string building dominated under a Ghostty move flood.
+    const log = (msg: string | (() => string)) => {
+      if (!logger.isEnabled("debug")) return;
+      logger.debug("app", typeof msg === "function" ? msg() : msg);
+    };
 
     if (options?.inspectorPort) {
       this.inspectorServer = startInspector(this, options.inspectorPort);
@@ -284,7 +306,7 @@ export class App extends DOMNode {
 
       if (ev.key === "tab") {
         screen.focusNext(ev.shift);
-        log(`Focus moved to: ${screen.focusedWidget?.describe() ?? "(none)"}`);
+        log(() => `Focus moved to: ${screen.focusedWidget?.describe() ?? "(none)"}`);
         this.queueRender();
         return;
       }
@@ -299,7 +321,10 @@ export class App extends DOMNode {
         if (current instanceof Widget) {
           const w = current;
           if (w.handleKey) {
-            this.safeInvoke(`handleKey on ${w.describe()}`, () => w.handleKey(ev));
+            this.safeInvoke(
+              () => `handleKey on ${w.describe()}`,
+              () => w.handleKey(ev),
+            );
             if (ev.handled) {
               handledBy = w;
               break;
@@ -309,7 +334,7 @@ export class App extends DOMNode {
         current = current.parent;
       }
       if (handledBy) {
-        log(`Key "${ev.key}" handled by ${handledBy.describe()}`);
+        log(() => `Key "${ev.key}" handled by ${handledBy.describe()}`);
         this.queueRender();
         return;
       }
@@ -325,7 +350,17 @@ export class App extends DOMNode {
       log(`Key "${ev.key}" ignored (no widget in the focused chain handled it)`);
     });
 
-    this.driver.on("mouse", (ev) => {
+    const processMouse = (ev: MouseEvent) => {
+      // Collapse redundant same-cell motion. Under any-motion tracking (1003) a
+      // hover sends a move per pixel; without a button down, a move that stays in
+      // the same cell can't change the hovered widget or a drag, so it is pure
+      // overhead (a full tree hit-test) — skip it.
+      if (ev.type === "move" && ev.x === this.lastMouseX && ev.y === this.lastMouseY) {
+        return;
+      }
+      this.lastMouseX = ev.x;
+      this.lastMouseY = ev.y;
+
       let hit = this.hitTest(this.activeScreen, ev.x, ev.y);
 
       if (this.activeDragWidget && (ev.type === "drag" || ev.type === "release")) {
@@ -342,7 +377,8 @@ export class App extends DOMNode {
       }
 
       log(
-        `Mouse ${ev.type} @ (${ev.x},${ev.y}) btn=${ev.button} -> hit: ${hit?.describe() ?? "none"}`,
+        () =>
+          `Mouse ${ev.type} @ (${ev.x},${ev.y}) btn=${ev.button} -> hit: ${hit?.describe() ?? "none"}`,
       );
 
       if (ev.type === "release") {
@@ -354,16 +390,27 @@ export class App extends DOMNode {
         this.hoveredWidget = hit;
 
         if (oldHovered?.onMouseLeave) {
-          log(`onMouseLeave -> ${oldHovered.describe()}`);
-          this.safeInvoke(`onMouseLeave on ${oldHovered.describe()}`, () =>
-            oldHovered.onMouseLeave?.(ev),
+          log(() => `onMouseLeave -> ${oldHovered.describe()}`);
+          this.safeInvoke(
+            () => `onMouseLeave on ${oldHovered.describe()}`,
+            () => oldHovered.onMouseLeave?.(ev),
           );
         }
         if (hit?.onMouseEnter) {
-          log(`onMouseEnter -> ${hit.describe()}`);
-          this.safeInvoke(`onMouseEnter on ${hit.describe()}`, () => hit.onMouseEnter?.(ev));
+          log(() => `onMouseEnter -> ${hit.describe()}`);
+          this.safeInvoke(
+            () => `onMouseEnter on ${hit.describe()}`,
+            () => hit.onMouseEnter?.(ev),
+          );
         }
-        this.queueRender();
+        // Only repaint for the hover change itself when a `:hover` stylesheet rule
+        // could actually change the frame. Widgets that react to hover via their
+        // own state (e.g. the copy button) queue their own render from the
+        // enter/leave handlers above, so we don't relayout the whole tree on every
+        // pointer boundary crossing when nothing visual depends on it.
+        if (this.cssResolver.hasHoverRules()) {
+          this.queueRender();
+        }
       }
 
       // Modal outside-click: a press that resolves to the bare backdrop (i.e.
@@ -390,8 +437,9 @@ export class App extends DOMNode {
           return;
         }
         if (hitWidget.handleMouse) {
-          this.safeInvoke(`handleMouse on ${hitWidget.describe()}`, () =>
-            hitWidget.handleMouse(ev),
+          this.safeInvoke(
+            () => `handleMouse on ${hitWidget.describe()}`,
+            () => hitWidget.handleMouse(ev),
           );
         }
 
@@ -399,12 +447,15 @@ export class App extends DOMNode {
           if (ev.type === "press" && ev.button === "left") {
             if (hitWidget.focusable) {
               this.activeScreen.focusWidget(hitWidget);
-              log(`Focused via click -> ${hitWidget.describe()}`);
+              log(() => `Focused via click -> ${hitWidget.describe()}`);
               this.queueRender();
             }
             if (hitWidget.onClick) {
-              log(`onClick -> ${hitWidget.describe()}`);
-              this.safeInvoke(`onClick on ${hitWidget.describe()}`, () => hitWidget.onClick?.(ev));
+              log(() => `onClick -> ${hitWidget.describe()}`);
+              this.safeInvoke(
+                () => `onClick on ${hitWidget.describe()}`,
+                () => hitWidget.onClick?.(ev),
+              );
               this.queueRender();
             }
           } else if (ev.type === "scroll_up" || ev.type === "scroll_down") {
@@ -413,8 +464,11 @@ export class App extends DOMNode {
               if (current instanceof Widget) {
                 const w = current;
                 if (w.handleScroll) {
-                  log(`Scroll forwarded to ${w.describe()}`);
-                  this.safeInvoke(`handleScroll on ${w.describe()}`, () => w.handleScroll(ev));
+                  log(() => `Scroll forwarded to ${w.describe()}`);
+                  this.safeInvoke(
+                    () => `handleScroll on ${w.describe()}`,
+                    () => w.handleScroll(ev),
+                  );
                   if (ev.handled) {
                     this.queueRender();
                     break;
@@ -428,6 +482,55 @@ export class App extends DOMNode {
           this.queueRender();
         }
       }
+    };
+
+    // Throttle pointer *motion* to ~60 Hz. Hover-capable terminals (e.g. Ghostty
+    // via 1003 any-motion) stream a move event per pixel; processing each one
+    // hit-tests the tree and burns CPU during a fast drag of the mouse. We handle
+    // the first move immediately (responsive hover) then coalesce a burst to the
+    // latest position on a trailing tick. Non-motion events (press/release/drag/
+    // scroll) are never delayed; a pending move is flushed first so ordering is
+    // preserved. Terminals without hover (e.g. Windows Terminal) send no moves
+    // and pay nothing here regardless.
+    let pendingMove: MouseEvent | null = null;
+    let moveScheduled = false;
+    let lastMoveAt = 0;
+    // ~30 Hz. Hover only needs to feel responsive, not match the terminal's
+    // pixel-rate motion stream, so a coarser window further cuts work on
+    // high-frequency terminals (Ghostty) at no perceptible cost.
+    const MOVE_MIN_MS = 33;
+    this.driver.on("mouse", (ev) => {
+      if (ev.type === "move" && !this.activeDragWidget) {
+        const now = Date.now();
+        if (now - lastMoveAt >= MOVE_MIN_MS) {
+          lastMoveAt = now;
+          processMouse(ev);
+          return;
+        }
+        pendingMove = ev;
+        if (!moveScheduled) {
+          moveScheduled = true;
+          const timer = setTimeout(
+            () => {
+              moveScheduled = false;
+              lastMoveAt = Date.now();
+              const m = pendingMove;
+              pendingMove = null;
+              if (m) processMouse(m);
+            },
+            Math.max(1, MOVE_MIN_MS - (now - lastMoveAt)),
+          );
+          (timer as { unref?: () => void }).unref?.();
+        }
+        return;
+      }
+      // A real event: flush any coalesced move first so hover/position is current.
+      if (pendingMove) {
+        const m = pendingMove;
+        pendingMove = null;
+        processMouse(m);
+      }
+      processMouse(ev);
     });
 
     // Native terminal paste (bracketed paste) arrives as one event; route the
@@ -498,8 +601,38 @@ export class App extends DOMNode {
     this.driver.stop();
   }
 
-  /** Schedule a re-render on the next microtask (coalesced — call freely after state changes). */
+  /**
+   * Schedule a full re-render — restyle + measure + layout + paint — on the next
+   * microtask (coalesced). This is the safe default: call it after any state
+   * change that might affect sizes or structure.
+   */
   public queueRender(): void {
+    this.needsLayout = true;
+    this.repaintFull = true;
+    this.scheduleRender();
+  }
+
+  /**
+   * Schedule a **paint-only** re-render: restyle + paint, reusing the previous
+   * frame's layout (regions/sizes). For high-frequency animations that change
+   * appearance but never geometry — the blinking caret above all — so an idle
+   * focused editor doesn't relayout the whole tree ~17×/second. If anything calls
+   * {@link queueRender} in the same frame, the full path runs instead, so a
+   * repaint can never mask a real layout change.
+   */
+  public queueRepaint(region?: { y: number; bottom: number } | null): void {
+    // A region scopes the repaint to that band of rows (damage tracking). No
+    // region means "repaint the whole screen" — the safe default.
+    if (region && region.bottom > region.y) {
+      this.damageTop = Math.min(this.damageTop, region.y);
+      this.damageBottom = Math.max(this.damageBottom, region.bottom);
+    } else {
+      this.repaintFull = true;
+    }
+    this.scheduleRender();
+  }
+
+  private scheduleRender(): void {
     if (this.renderQueued) return;
     this.renderQueued = true;
     queueMicrotask(() => {
@@ -521,11 +654,14 @@ export class App extends DOMNode {
   }
 
   /** Invoke user/widget event code without letting a throw kill the event loop. */
-  private safeInvoke(what: string, fn: () => void): void {
+  private safeInvoke(what: string | (() => string), fn: () => void): void {
     try {
       fn();
     } catch (err) {
-      logger.error("event", `handler threw during ${what}`, err);
+      // `what` may be a thunk so callers can avoid building a `describe()` label
+      // on every (hot) invocation — it's only needed on the rare throw.
+      const label = typeof what === "function" ? what() : what;
+      logger.error("event", `handler threw during ${label}`, err);
     }
   }
 
@@ -545,27 +681,82 @@ export class App extends DOMNode {
   private layoutAndRenderUnsafe(): void {
     const screen = this.activeScreen;
 
-    this.resolveAllStyles(screen);
+    // Capture and clear the layout-dirty flag up front: a re-entrant queueRender
+    // during this frame must re-dirty for the *next* frame, not be swallowed.
+    const doLayout = this.needsLayout;
+    this.needsLayout = false;
+
+    // Decide full vs. partial (damage-tracked) repaint, capturing and clearing the
+    // dirty state up front so a re-entrant request re-dirties for the next frame.
+    let full = doLayout || this.repaintFull;
+    const damageTop = this.damageTop;
+    const damageBottom = this.damageBottom;
+    this.repaintFull = false;
+    this.damageTop = Number.POSITIVE_INFINITY;
+    this.damageBottom = Number.NEGATIVE_INFINITY;
+    // Be conservative: a partial frame composites over the retained buffer, which
+    // is only valid when nothing outside the damaged rows changed. Overlays
+    // (dropdowns/dialogs) and an active text selection can both touch arbitrary
+    // rows, so fall back to a full frame whenever either is present.
+    if (this.activeScreen.overlays.length > 0 || this.selection.active) full = true;
+    if (!full && (damageTop === Number.POSITIVE_INFINITY || damageBottom <= damageTop)) {
+      full = true;
+    }
+
+    // Styles: a full frame always re-resolves. On a paint-only frame we can reuse
+    // the previous frame's computedStyle, because nothing that the central pass
+    // resolves has changed — real style/focus/hover/theme changes all go through
+    // queueRender (a full frame), and time-varying colors (focus/attention
+    // breathing, the caret) are re-resolved by each widget in its own render().
+    // The one exception is a loaded stylesheet, whose `:focus`/`:hover` rules
+    // *could* carry a time-varying token resolved by this pass — so when rules
+    // exist we keep re-resolving every frame (correctness over speed).
+    const restyle = doLayout || this.cssResolver.hasRules();
+    if (restyle) this.resolveAllStyles(screen);
     const size = this.driver.getSize();
-    screen.measure(screen.region.width, size.height);
-    this.resolveAllLayouts(screen);
+    if (doLayout) {
+      screen.measure(screen.region.width, size.height);
+      this.resolveAllLayouts(screen);
+    }
 
     // Resolve styles and absolute layouts for screen overlays. Overlays fill the
     // screen and must be measured (so layer content can size/center itself)
     // before their subtree is laid out.
     for (const overlay of screen.overlays) {
-      this.resolveAllStyles(overlay);
-      overlay.measure(screen.region.width, screen.region.height);
-      overlay.region = screen.region.clone();
-      this.resolveAllLayouts(overlay);
+      if (restyle) this.resolveAllStyles(overlay);
+      if (doLayout) {
+        overlay.measure(screen.region.width, screen.region.height);
+        overlay.region = screen.region.clone();
+        this.resolveAllLayouts(overlay);
+      }
     }
 
-    this.currentBuffer.clear();
+    // Damage band for a partial frame: clamp to the screen and clip rendering to
+    // those rows. renderChildren prunes subtrees that don't intersect the clip and
+    // setCell drops writes outside it, so only the changed band is rebuilt; every
+    // other row is retained from the previous frame (and therefore matches
+    // prevBuffer, so the diff finds nothing there).
+    const dmgY0 = full ? 0 : Math.max(0, Math.floor(damageTop));
+    const dmgY1 = full ? size.height : Math.min(size.height, Math.ceil(damageBottom));
+
+    if (full) {
+      this.currentBuffer.clear();
+    } else {
+      this.currentBuffer.clear(dmgY0, dmgY1);
+    }
     // Selectable widgets register their content runs during render; reset the
     // registry first, then highlight the active selection as a post-pass over
     // the composed frame (only real content cells are painted).
     this.selection.beginFrame();
-    screen.render(this.currentBuffer);
+    if (full) {
+      screen.render(this.currentBuffer);
+    } else {
+      this.currentBuffer.pushClip(
+        new Region(new Offset(0, dmgY0), new Size(size.width, dmgY1 - dmgY0)),
+      );
+      screen.render(this.currentBuffer);
+      this.currentBuffer.popClip();
+    }
     this.selection.paint(this.currentBuffer, (w, v) => this.cssResolver.resolveVariable(w, v));
 
     const ansiDiff = this.currentBuffer.renderDiff(
@@ -605,12 +796,13 @@ export class App extends DOMNode {
         return prefix + cell.char;
       },
       size.width,
-      size.height,
+      dmgY1,
+      dmgY0,
     );
     if (ansiDiff) {
       this.driver.writeFrame(ansiDiff);
       this.driver.presentBuffer(this.currentBuffer);
-      this.currentBuffer.copyTo(this.prevBuffer);
+      this.currentBuffer.copyTo(this.prevBuffer, dmgY0, dmgY1);
       this.frameCount++;
       logger.debug(
         "render",
@@ -755,11 +947,26 @@ export class App extends DOMNode {
 
     // Hit-test overlays first if this node is a Screen
     if (node instanceof Screen) {
-      const sortedOverlays = [...node.overlays].sort((a, b) => {
-        const az = (a as any).computedStyle?.zIndex ?? 0;
-        const bz = (b as any).computedStyle?.zIndex ?? 0;
-        return bz - az;
-      });
+      // Topmost-first: only allocate a sorted copy when overlays actually carry
+      // differing z-indices (rare); otherwise walk newest-first in place.
+      const overlays = node.overlays;
+      let needsSort = false;
+      for (let i = 1; i < overlays.length; i++) {
+        if (
+          ((overlays[i] as any).computedStyle?.zIndex ?? 0) !==
+          ((overlays[0] as any).computedStyle?.zIndex ?? 0)
+        ) {
+          needsSort = true;
+          break;
+        }
+      }
+      const sortedOverlays = needsSort
+        ? [...overlays].sort((a, b) => {
+            const az = (a as any).computedStyle?.zIndex ?? 0;
+            const bz = (b as any).computedStyle?.zIndex ?? 0;
+            return bz - az;
+          })
+        : overlays;
       for (const overlay of sortedOverlays) {
         const match = this.hitTest(overlay, x, y);
         if (match) {
@@ -782,7 +989,26 @@ export class App extends DOMNode {
       return node;
     }
 
-    const sorted = [...node.children].sort((a, b) => {
+    // Fast path: when no child sets a z-index (the overwhelming common case),
+    // the stable z-sort is a no-op, so hit-test in document order without
+    // allocating + sorting a copy at every node on every mouse event.
+    const children = node.children;
+    let hasZ = false;
+    for (let i = 0; i < children.length; i++) {
+      if (((children[i] as any).computedStyle?.zIndex ?? 0) !== 0) {
+        hasZ = true;
+        break;
+      }
+    }
+    if (!hasZ) {
+      for (let i = 0; i < children.length; i++) {
+        const match = this.hitTest(children[i], x, y);
+        if (match) return match;
+      }
+      return node;
+    }
+
+    const sorted = [...children].sort((a, b) => {
       const az = (a as any).computedStyle?.zIndex ?? 0;
       const bz = (b as any).computedStyle?.zIndex ?? 0;
       return bz - az;

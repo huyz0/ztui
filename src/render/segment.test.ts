@@ -22,6 +22,36 @@ describe("splitGraphemes", () => {
   it("returns an empty array for an empty string", () => {
     expect(splitGraphemes("")).toEqual([]);
   });
+
+  it("ASCII fast path matches one-entry-per-char (and equals the segmenter)", () => {
+    const ascii = "Hello, World! 0123 (a=b)";
+    expect(splitGraphemes(ascii)).toEqual(ascii.split(""));
+    // A string that is ASCII except for one non-ASCII char must NOT take the
+    // fast path — it still clusters correctly.
+    expect(splitGraphemes(`ab${ACCENT}c`)).toEqual(["a", "b", ACCENT, "c"]);
+  });
+});
+
+describe("charWidth (cached for non-ASCII)", () => {
+  it("returns 1 for printable ASCII, 0 for control chars", () => {
+    expect(charWidth("A")).toBe(1);
+    expect(charWidth(" ")).toBe(1);
+    expect(charWidth("\n")).toBe(0);
+  });
+
+  it("widths box-drawing glyphs as 1 and CJK as 2, consistently across calls", () => {
+    for (const g of ["─", "│", "╭", "╯"]) {
+      expect(charWidth(g)).toBe(1);
+      expect(charWidth(g)).toBe(1); // cache hit returns the same value
+    }
+    expect(charWidth("世")).toBe(2);
+    expect(charWidth("世")).toBe(2);
+  });
+
+  it("widths emoji clusters as a single wide glyph (cache-safe)", () => {
+    expect(charWidth(FAMILY)).toBe(2);
+    expect(charWidth(FAMILY)).toBe(2);
+  });
 });
 
 describe("stringWidth", () => {

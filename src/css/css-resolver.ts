@@ -52,6 +52,13 @@ export function blendColors(color1: string, color2: string, weight = 0.5): strin
 export class CSSResolver {
   private rules: CSSRule[] = [];
   private stylesheetVariables: Record<string, string> = {};
+  // Parsed-selector cache: `parseSelector` runs once per rule per widget per
+  // frame, so memoizing the split keeps re-styling from re-parsing the same
+  // strings thousands of times.
+  private selectorCache = new Map<string, { base: string; pseudo?: string }>();
+  // Whether any rule carries a `:hover` pseudo — lets the app skip a full
+  // relayout on pointer hover changes when nothing visual depends on hover.
+  private _hasHoverRules: boolean | null = null;
 
   constructor(rules: CSSRule[] = []) {
     this.rules = rules;
@@ -62,9 +69,25 @@ export class CSSResolver {
 
   public addRules(rules: CSSRule[]): void {
     this.rules.push(...rules);
+    this._hasHoverRules = null;
     if (rules && "variables" in rules && rules.variables) {
       this.addVariables(rules.variables as Record<string, string>);
     }
+  }
+
+  /** True when any TCSS rule is loaded (a stylesheet was applied via `loadStyles`). */
+  public hasRules(): boolean {
+    return this.rules.length > 0;
+  }
+
+  /** True when any loaded rule uses `:hover` (cached; recomputed when rules change). */
+  public hasHoverRules(): boolean {
+    if (this._hasHoverRules === null) {
+      this._hasHoverRules = this.rules.some(
+        (r) => this.parseSelector(r.selector).pseudo === "hover",
+      );
+    }
+    return this._hasHoverRules;
   }
 
   public addVariables(variables: Record<string, string>): void {
@@ -84,6 +107,12 @@ export class CSSResolver {
   }
 
   public resolveVariable(widget: Widget, value: string): string {
+    // Fast path: the vast majority of style values are concrete colors/dimensions
+    // (`#1e1e2e`, `10`, `rounded`, …) with no token to expand. Skip the two
+    // global regex passes entirely unless a `$name` or `var(--name)` is present —
+    // this runs for every style value of every widget on every frame.
+    if (!value.includes("$") && !value.includes("var(")) return value;
+
     let resolved = value;
     let depth = 0;
     const maxDepth = 10;
@@ -482,11 +511,12 @@ export class CSSResolver {
   }
 
   private parseSelector(sel: string): { base: string; pseudo?: string } {
+    const cached = this.selectorCache.get(sel);
+    if (cached) return cached;
     const parts = sel.split(":");
-    return {
-      base: parts[0].trim(),
-      pseudo: parts[1]?.trim(),
-    };
+    const parsed = { base: parts[0].trim(), pseudo: parts[1]?.trim() };
+    this.selectorCache.set(sel, parsed);
+    return parsed;
   }
 
   private coerceValue(key: string, val: string): any {

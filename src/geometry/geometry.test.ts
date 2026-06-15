@@ -29,6 +29,12 @@ describe("geometry", () => {
     const r3 = new Region(new Offset(20, 20), new Size(5, 5));
     expect(r1.intersection(r3)).toBeNull();
 
+    // overlaps mirrors intersection's null/non-null result without allocating.
+    expect(r1.overlaps(r2)).toBe(true);
+    expect(r1.overlaps(r3)).toBe(false);
+    // Edge adjacency (touching but not overlapping) is not an overlap.
+    expect(r1.overlaps(new Region(new Offset(10, 0), new Size(5, 5)))).toBe(false);
+
     expect(r1.contains(new Offset(3, 3))).toBe(true);
     expect(r1.contains(new Offset(12, 12))).toBe(false);
     expect((r1 as any).contains("invalid")).toBe(false);

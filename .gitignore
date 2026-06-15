@@ -8,3 +8,9 @@ coverage/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 dist/
+
+# CPU/heap profiles
+*.cpuprofile
+*.heapsnapshot
+CPU.*.md
+ghostty*.md

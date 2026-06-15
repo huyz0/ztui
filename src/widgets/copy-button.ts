@@ -36,13 +36,17 @@ export class CopyButtonWidget extends Widget {
     this.positionFixed = true;
     this.style = { position: "absolute", top: 0, right: 0, width: 2, height: 1, zIndex: 50 };
     this.onClick = () => this.copy();
+    // Hover only changes this button's own colors — a paint-only change. Use
+    // queueRepaint so sweeping the pointer across content on a hover-capable
+    // terminal (e.g. Ghostty) doesn't relayout the whole tree each time the
+    // cursor crosses the button.
     this.onMouseEnter = () => {
       this.hovered = true;
-      App.instance?.queueRender();
+      App.instance?.queueRepaint();
     };
     this.onMouseLeave = () => {
       this.hovered = false;
-      App.instance?.queueRender();
+      App.instance?.queueRepaint();
     };
   }
 

@@ -133,37 +133,62 @@ function getClosestBasicColor(r: number, g: number, b: number): number {
   return closestIndex;
 }
 
+// Named 16-color table (module-level so it isn't rebuilt on every call).
+const basicColors: Record<string, number> = {
+  black: 0,
+  red: 1,
+  green: 2,
+  yellow: 3,
+  blue: 4,
+  magenta: 5,
+  cyan: 6,
+  white: 7,
+  gray: 8,
+  grey: 8,
+  "bright-black": 8,
+  "bright-red": 9,
+  "bright-green": 10,
+  "bright-yellow": 11,
+  "bright-blue": 12,
+  "bright-magenta": 13,
+  "bright-cyan": 14,
+  "bright-white": 15,
+};
+
+// Memoize color → SGR escape. The conversion is pure given the color depth, and
+// a frame typically reuses a small palette (e.g. a gradient), so this turns a
+// per-changed-cell parse into a Map hit. The cache resets if the terminal's
+// color depth changes (it flips at most once, when capabilities resolve).
+const ansiColorCache = new Map<string, string | null>();
+let cachedTruecolor = renderCapabilities.truecolor;
+let cachedColor256 = renderCapabilities.color256;
+
 // Parse a color name, hex, or rgb() into an SGR colour escape, honouring the
 // terminal's colour depth (truecolor → 256 → basic 16).
 function parseColorToAnsi(color: string, isBackground: boolean): string | null {
+  if (
+    cachedTruecolor !== renderCapabilities.truecolor ||
+    cachedColor256 !== renderCapabilities.color256
+  ) {
+    ansiColorCache.clear();
+    cachedTruecolor = renderCapabilities.truecolor;
+    cachedColor256 = renderCapabilities.color256;
+  }
+  const cacheKey = isBackground ? `b${color}` : `f${color}`;
+  const cached = ansiColorCache.get(cacheKey);
+  if (cached !== undefined || ansiColorCache.has(cacheKey)) return cached ?? null;
+  const result = computeColorToAnsi(color, isBackground);
+  if (ansiColorCache.size < 4096) ansiColorCache.set(cacheKey, result);
+  return result;
+}
+
+function computeColorToAnsi(color: string, isBackground: boolean): string | null {
   const norm = color.trim().toLowerCase();
   const prefix = isBackground ? 48 : 38;
 
   if (norm === "default") {
     return `\x1b[${isBackground ? 49 : 39}m`;
   }
-
-  // Basic colors (16 colors)
-  const basicColors: Record<string, number> = {
-    black: 0,
-    red: 1,
-    green: 2,
-    yellow: 3,
-    blue: 4,
-    magenta: 5,
-    cyan: 6,
-    white: 7,
-    gray: 8,
-    grey: 8,
-    "bright-black": 8,
-    "bright-red": 9,
-    "bright-green": 10,
-    "bright-yellow": 11,
-    "bright-blue": 12,
-    "bright-magenta": 13,
-    "bright-cyan": 14,
-    "bright-white": 15,
-  };
 
   if (basicColors[norm] !== undefined) {
     const code = basicColors[norm];

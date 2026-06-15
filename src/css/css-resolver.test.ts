@@ -218,3 +218,26 @@ describe("CSSResolver Theming and Variables", () => {
     themeManager.setTheme("default-dark"); // restore
   });
 });
+
+describe("CSSResolver performance helpers", () => {
+  test("hasHoverRules reflects whether any :hover rule is loaded, and recomputes on addRules", () => {
+    const plain = new CSSResolver(parseTCSS("button { color: red; }"));
+    expect(plain.hasHoverRules()).toBe(false);
+    plain.addRules(parseTCSS("button:hover { color: blue; }"));
+    expect(plain.hasHoverRules()).toBe(true);
+
+    const withHover = new CSSResolver(parseTCSS("a:hover { color: green; }"));
+    expect(withHover.hasHoverRules()).toBe(true);
+  });
+
+  test(":hover rules only apply when hovered (selector parsing is cached, not stale)", () => {
+    const resolver = new CSSResolver(
+      parseTCSS("button { color: #111111; } button:hover { color: #222222; }"),
+    );
+    const w = new Widget("button");
+    // Resolve repeatedly to exercise the parsed-selector cache.
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111");
+    expect(resolver.resolveStyles(w, true).color).toBe("#222222");
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111");
+  });
+});

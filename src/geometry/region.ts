@@ -62,6 +62,18 @@ export class Region {
     );
   }
 
+  /**
+   * True when the two regions overlap. A non-allocating predicate for hot paths
+   * (e.g. per-child clip culling each frame) that only need a yes/no, not the
+   * intersection rectangle itself.
+   */
+  public overlaps(other: Region): boolean {
+    return (
+      Math.max(this.x, other.x) < Math.min(this.right, other.right) &&
+      Math.max(this.y, other.y) < Math.min(this.bottom, other.bottom)
+    );
+  }
+
   /** The overlapping region, or `null` if they don't overlap. */
   public intersection(other: Region): Region | null {
     const x1 = Math.max(this.x, other.x);

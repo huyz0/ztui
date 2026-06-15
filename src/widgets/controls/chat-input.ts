@@ -97,7 +97,9 @@ export class ChatInputWidget extends Widget {
   private attachments: Attachment[] = [];
   private scrollRow = 0;
   private _focused = false;
-  private caret = new CaretBlink(() => this.app?.queueRender());
+  // Blink ticks change only the caret cell's appearance, never layout, so they
+  // repaint without relaying out the tree.
+  private caret = new CaretBlink(() => this.app?.queueRepaint(this.region));
 
   private popup: CompletionPopupWidget | null = null;
   private popupScreen: Screen | null = null;
@@ -831,7 +833,7 @@ export class ChatInputWidget extends Widget {
     }
 
     // Send/stop glyph: bottom-right, inside the content on the message's last line.
-    if (this.showActionGlyph) this.drawActionGlyph(buffer, resolve);
+    if (this.showActionGlyph) this.drawActionGlyph(buffer, resolve, rows.length);
   }
 
   private isSelected(index: number): boolean {
@@ -915,22 +917,28 @@ export class ChatInputWidget extends Widget {
    * on the message's last visible line. With auto-grow that coincides with the
    * box bottom; with a fixed taller height it still hugs the last text row.
    */
-  private actionGlyphCell(): { x: number; y: number } {
+  private actionGlyphCell(rowCount = this.layoutRows(this.innerWidth()).length): {
+    x: number;
+    y: number;
+  } {
     const content = this.getContentRect();
     const strip = this.stripRows();
     const textTop = content.y + strip;
     const visibleRows = Math.max(1, content.height - strip);
-    const rowCount = this.layoutRows(this.innerWidth()).length;
     const lastVisible = Math.max(0, Math.min(rowCount - 1 - this.scrollRow, visibleRows - 1));
     return { x: content.right - 1, y: textTop + lastVisible };
   }
 
-  private drawActionGlyph(buffer: ScreenBuffer, resolve: (v: string) => string): void {
+  private drawActionGlyph(
+    buffer: ScreenBuffer,
+    resolve: (v: string) => string,
+    rowCount: number,
+  ): void {
     const content = this.getContentRect();
     if (content.width < 1 || content.height < 1) return;
     const empty = this.buffer.isEmpty && this.attachments.length === 0;
     if (empty && !this.busy) return; // nothing to send, nothing running
-    const { x: gx, y: gy } = this.actionGlyphCell();
+    const { x: gx, y: gy } = this.actionGlyphCell(rowCount);
     // Blend with whatever the content painted behind it (so it sits on the input
     // background, not the border), like the copy button.
     const underBg = buffer.cells[gy]?.[gx]?.style.background ?? this.findResolvedBackground();

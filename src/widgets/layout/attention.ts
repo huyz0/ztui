@@ -37,8 +37,9 @@ export class AttentionWidget extends BoxWidget {
         if (resolved) this.computedStyle = { ...this.computedStyle, borderColor: resolved };
       }
       super.render(buffer);
-      // Keep the pulse advancing while motion is enabled.
-      if (motion.enabled) requestAnimationTick(this, ATTENTION_TICK_MS);
+      // Keep the pulse advancing while motion is enabled. Paint-only (a glow
+      // colour), so repaint rather than relayout each tick.
+      if (motion.enabled) requestAnimationTick(this, ATTENTION_TICK_MS, true);
     } else {
       super.render(buffer);
     }

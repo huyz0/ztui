@@ -169,6 +169,6 @@ export class ProgressBarWidget extends Widget {
       const color = mix(trackRgb, fillRgb, intensity);
       buffer.setCell(x + i, y, BLOCK, new Style({ color: rgbStr(color), background: bg }));
     }
-    requestAnimationTick(this, 33);
+    requestAnimationTick(this, 33, true); // paint-only shimmer within a fixed bar
   }
 }

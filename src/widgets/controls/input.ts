@@ -73,7 +73,9 @@ export class InputWidget extends Widget implements ValidatableField {
   private selectionAnchor: number | null = null;
 
   private _focused = false;
-  private caret = new CaretBlink(() => App.instance?.queueRender());
+  // Target this widget's own app (not the global singleton) so a blink that
+  // outlives the widget can't repaint a different app's screen.
+  private caret = new CaretBlink(() => this.app?.queueRepaint(this.region));
   /** Eased fade-blink (default) instead of a hard on/off toggle. Set false for
    * the classic square-wave blink. */
   public get smoothCaret(): boolean {

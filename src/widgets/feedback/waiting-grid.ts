@@ -41,7 +41,7 @@ export class WaitingGridWidget extends Widget {
   /** Total dots: 4 (2×2) or 9 (3×3). */
   public cells: WaitingGridCells = 9;
   /** Milliseconds for one full animation cycle. */
-  public period = 1000;
+  public period = 1500;
   /** Motion style: rotating crest, radar sweep, or diagonal shimmer. */
   public variant: WaitingGridVariant = "ring";
 
@@ -110,8 +110,8 @@ export class WaitingGridWidget extends Widget {
       }
     }
 
-    // ~30fps is plenty for a colour crest; the period stays time-accurate.
-    requestAnimationTick(this, 33);
+    // ~20fps for a slow colour crest; the period stays time-accurate.
+    requestAnimationTick(this, 50, true); // paint-only colour animation
   }
 
   /** Brightness 0..1 of the dot at (col, row) for the current phase `head`. */

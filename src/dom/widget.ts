@@ -26,6 +26,8 @@ import { TextNode } from "./text-node.ts";
  */
 export interface WidgetApp {
   queueRender(): void;
+  /** Paint-only re-render that reuses the current layout; an optional region scopes the damage. */
+  queueRepaint(region?: { y: number; bottom: number } | null): void;
   activeScreen: { focusWidget(widget: Widget): void };
   cssResolver: {
     resolveVariable(widget: Widget, value: string): string;
@@ -466,7 +468,8 @@ export class Widget extends DOMNode {
     }
     tween.to(target, opts);
     const value = tween.value;
-    if (tween.animating) requestAnimationTick(this, 16);
+    // A colour tween changes only appearance — repaint, don't relayout.
+    if (tween.animating) requestAnimationTick(this, 16, true);
     return value;
   }
 
@@ -616,18 +619,30 @@ export class Widget extends DOMNode {
       buffer.pushClip(this.getContentRect());
     }
 
-    const sorted = [...this.children].sort((a, b) => {
-      const az = (a as any).computedStyle?.zIndex ?? 0;
-      const bz = (b as any).computedStyle?.zIndex ?? 0;
-      return az - bz;
-    });
+    // Fast path: with no z-index in play (the common case) the sort is a no-op,
+    // so paint in document order without copying + sorting the children array on
+    // every node, every frame.
+    let hasZ = false;
+    for (let i = 0; i < this.children.length; i++) {
+      if (((this.children[i] as any).computedStyle?.zIndex ?? 0) !== 0) {
+        hasZ = true;
+        break;
+      }
+    }
+    const sorted = hasZ
+      ? [...this.children].sort((a, b) => {
+          const az = (a as any).computedStyle?.zIndex ?? 0;
+          const bz = (b as any).computedStyle?.zIndex ?? 0;
+          return az - bz;
+        })
+      : this.children;
     for (const child of sorted) {
       if (child instanceof Widget) {
         // Skip hidden children here rather than relying on each child's render to
         // bail: leaf widgets (Label, RichText, …) call super.render() but then
         // draw their own content unconditionally, so gating must happen here.
         if (!child.visible) continue;
-        if (buffer.currentClip && !buffer.currentClip.intersection(child.region)) {
+        if (buffer.currentClip && !buffer.currentClip.overlaps(child.region)) {
           continue;
         }
         // Isolate each child's render: a single broken widget must not blank the

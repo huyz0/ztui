@@ -34,14 +34,16 @@ export class SplitterWidget extends Widget {
 
   constructor() {
     super("splitter");
+    // Hover highlight is paint-only (the grip recolors, the layout is unchanged),
+    // so repaint rather than relayout the whole tree on every enter/leave.
     this.onMouseEnter = () => {
       this.hovered = true;
-      App.instance?.queueRender();
+      App.instance?.queueRepaint();
     };
     this.onMouseLeave = () => {
       if (this.dragging) return;
       this.hovered = false;
-      App.instance?.queueRender();
+      App.instance?.queueRepaint();
     };
   }
 

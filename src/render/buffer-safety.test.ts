@@ -50,3 +50,36 @@ describe("wide characters never spill past a boundary", () => {
     expect(buf.cells[0][2].wideContinuation).toBe(true);
   });
 });
+
+describe("buffer cell reuse (allocation-free)", () => {
+  test("setCell mutates the existing cell object in place", () => {
+    const buf = new ScreenBuffer(3, 1);
+    const ref = buf.cells[0][0];
+    buf.setCell(0, 0, "a", new Style({ color: "#ff0000" }));
+    expect(ref.char).toBe("a"); // same object, updated in place
+    expect(buf.cells[0][0]).toBe(ref);
+    buf.setCell(0, 0, "b", new Style({ color: "#00ff00" }));
+    expect(ref.char).toBe("b");
+    expect(buf.cells[0][0]).toBe(ref);
+  });
+
+  test("setCell clears a stale icon/graphic when overwriting a cell", () => {
+    const buf = new ScreenBuffer(2, 1);
+    buf.cells[0][0].icon = "star";
+    buf.setCell(0, 0, "x", Style.DEFAULT);
+    expect(buf.cells[0][0].icon).toBeUndefined();
+  });
+
+  test("copyTo reproduces contents into a reused destination grid", () => {
+    const a = new ScreenBuffer(3, 1);
+    a.setCell(0, 0, "h", new Style({ color: "#abcdef" }));
+    a.setCell(1, 0, "i", Style.DEFAULT);
+    const b = new ScreenBuffer(3, 1);
+    const dstRef = b.cells[0][0];
+    a.copyTo(b);
+    expect(b.cells[0][0].char).toBe("h");
+    expect(b.cells[0][1].char).toBe("i");
+    expect(b.cells[0][0].style.color).toBe("#abcdef");
+    expect(b.cells[0][0]).toBe(dstRef); // destination cell objects reused
+  });
+});

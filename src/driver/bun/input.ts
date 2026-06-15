@@ -2,9 +2,36 @@ import type { KeyEvent, MouseEvent } from "../driver.ts";
 
 export function parseInput(
   data: string,
-  onKey: (ev: KeyEvent) => void,
-  onMouse: (ev: MouseEvent) => void,
+  onKeyRaw: (ev: KeyEvent) => void,
+  onMouseRaw: (ev: MouseEvent) => void,
 ): void {
+  // Coalesce pointer motion within a single chunk: hover-capable terminals
+  // (Ghostty) stream a move per pixel, and a fast sweep packs many into one read.
+  // Only the latest position matters, so buffer moves and emit just the last —
+  // collapsing the dominant per-event `emit` + downstream dispatch cost. A
+  // non-move event (or end of chunk) flushes the pending move first, preserving
+  // order. `move` here means buttonless motion; a drag carries a button and is
+  // emitted immediately so selection stays smooth.
+  let pendingMove: MouseEvent | null = null;
+  const flushMove = () => {
+    if (pendingMove) {
+      onMouseRaw(pendingMove);
+      pendingMove = null;
+    }
+  };
+  const onKey = (ev: KeyEvent) => {
+    flushMove();
+    onKeyRaw(ev);
+  };
+  const onMouse = (ev: MouseEvent) => {
+    if (ev.type === "move" && ev.button === "none") {
+      pendingMove = ev;
+      return;
+    }
+    flushMove();
+    onMouseRaw(ev);
+  };
+
   let i = 0;
   while (i < data.length) {
     if (data.charCodeAt(i) === 27) {
@@ -322,4 +349,6 @@ export function parseInput(
 
     i++;
   }
+  // Emit any trailing coalesced move at the end of the chunk.
+  flushMove();
 }

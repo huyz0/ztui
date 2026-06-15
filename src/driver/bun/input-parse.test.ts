@@ -199,3 +199,41 @@ describe("parseInput — Enter vs. Ctrl+J (CR vs. LF)", () => {
     expect(ev?.ctrl).toBe(true);
   });
 });
+
+describe("parseInput — move coalescing", () => {
+  function collect(seq: string): { keys: KeyEvent[]; mice: MouseEvent[] } {
+    const keys: KeyEvent[] = [];
+    const mice: MouseEvent[] = [];
+    parseInput(
+      seq,
+      (k) => keys.push(k),
+      (m) => mice.push(m),
+    );
+    return { keys, mice };
+  }
+
+  test("a run of moves in one chunk emits only the last position", () => {
+    const moves = "\x1b[<35;1;1M\x1b[<35;5;5M\x1b[<35;9;9M"; // three buttonless moves
+    const { mice } = collect(moves);
+    expect(mice.length).toBe(1);
+    expect(mice[0]).toMatchObject({ type: "move", x: 8, y: 8 }); // 0-based
+  });
+
+  test("a non-move event flushes the pending move first, preserving order", () => {
+    // move, move, press → emits the 2nd move (latest), then the press.
+    const seq = "\x1b[<35;2;2M\x1b[<35;4;4M\x1b[<0;4;4M";
+    const { mice } = collect(seq);
+    expect(mice.length).toBe(2);
+    expect(mice[0]).toMatchObject({ type: "move", x: 3, y: 3 }); // latest, 0-based
+    expect(mice[1].type).not.toBe("move"); // the press
+  });
+
+  test("a key between moves flushes the move", () => {
+    const seq = "\x1b[<35;2;2Ma\x1b[<35;6;6M";
+    const { keys, mice } = collect(seq);
+    expect(keys.map((k) => k.key)).toEqual(["a"]);
+    expect(mice.length).toBe(2);
+    expect(mice[0]).toMatchObject({ x: 1, y: 1 }); // 0-based
+    expect(mice[1]).toMatchObject({ x: 5, y: 5 });
+  });
+});

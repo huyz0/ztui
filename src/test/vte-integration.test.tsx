@@ -57,9 +57,10 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
       expect(cell.isStrikethrough()).toBeTruthy();
     }
 
-    // Mouse leaves
+    // Mouse leaves. Pointer-move processing is throttled (~30 Hz), so wait past
+    // the coalescing window for the trailing move to be applied.
     driver.simulateMouse(39, 9, "move", "none");
-    await settle();
+    await settle(50);
     expect(line(driver, 0)).toContain("Normal Text");
   });
 

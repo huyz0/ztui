@@ -24,7 +24,7 @@ const BLOCK = "█";
 const RAIN_GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 /** How often a trail glyph mutates into a different one, in ms. */
-const RAIN_MUTATE_MS = 150;
+const RAIN_MUTATE_MS = 225;
 
 const WHITE: RGB = { r: 255, g: 255, b: 255 };
 
@@ -59,7 +59,7 @@ export class WaitingPanelWidget extends Widget {
   /** Motion style: expanding ripple, orbiting dots, or matrix rain. */
   public variant: WaitingPanelVariant = "ripple";
   /** Milliseconds for one full animation cycle. */
-  public period = 1400;
+  public period = 2100;
 
   constructor() {
     super("waiting-panel");
@@ -144,7 +144,7 @@ export class WaitingPanelWidget extends Widget {
       }
     }
 
-    requestAnimationTick(this, 33);
+    requestAnimationTick(this, 50, true); // paint-only animated cells (~20fps)
   }
 
   /**

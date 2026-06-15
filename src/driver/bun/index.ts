@@ -216,8 +216,13 @@ export class BunDriver extends Driver {
   private handleInputInternal = (chunk: string | Buffer): void => {
     let data = chunk.toString();
 
-    // Intercept OSC 52 clipboard responses
-    const clipboardMatch = data.match(/\x1b\]52;[cp]?;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/);
+    // Intercept OSC 52 clipboard responses. Gate the regex on a cheap substring
+    // check — clipboard replies are rare, but this runs on every input chunk
+    // (including every high-frequency mouse-move burst on hover-capable
+    // terminals like Ghostty), so the scan must be skipped for ordinary input.
+    const clipboardMatch = data.includes("\x1b]52")
+      ? data.match(/\x1b\]52;[cp]?;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/)
+      : null;
     if (clipboardMatch) {
       const base64 = clipboardMatch[1];
       const text = Buffer.from(base64, "base64").toString("utf8");
@@ -234,8 +239,21 @@ export class BunDriver extends Driver {
 
     if (data.length === 0) return;
 
-    // Intercept late-arriving capability responses when not probing
-    if (!this.isProbing) {
+    // Intercept late-arriving capability responses when not probing. These are
+    // one-time replies to our startup probes (DA1/DA2, kitty keyboard/graphics,
+    // hover, sync, glyph, pixel/cell size) — they never recur in ordinary input.
+    // The block below runs ~9 whole-string regex scans + replaces, so gate it on
+    // a cheap substring pre-check: every capability reply begins with one of
+    // these CSI/APC prefixes, none of which appear in mouse motion (`\x1b[<…`) or
+    // key input. This keeps a Ghostty pixel-rate move stream from paying for ten
+    // regex passes per event.
+    const mayBeCapabilityReply =
+      data.includes("\x1b[?") ||
+      data.includes("\x1b[>") ||
+      data.includes("\x1b_") ||
+      data.includes("\x1b[4;") ||
+      data.includes("\x1b[6;");
+    if (!this.isProbing && mayBeCapabilityReply) {
       let matchedAny = false;
 
       // 1. DA1 Match

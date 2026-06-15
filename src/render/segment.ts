@@ -17,15 +17,55 @@ const _segmenter =
     ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
     : null;
 
+// Memoized grapheme splits for non-ASCII strings. Segmentation is pure, and
+// non-ASCII content (box-drawing, CJK, animated block/braille glyphs) tends to
+// recur frame-to-frame, so this turns a repeated `Intl.Segmenter` run into a Map
+// hit. ASCII never enters the cache — its split is already a trivial fast path.
+const graphemeCache = new Map<string, string[]>();
+const GRAPHEME_CACHE_CAP = 4096;
+
 export function splitGraphemes(str: string): string[] {
   if (str === "") return [];
+  // Fast path: pure-ASCII text has no combining marks, surrogate pairs, or ZWJ
+  // sequences, so every code unit is its own grapheme. `str.split("")` is far
+  // cheaper than spinning up `Intl.Segmenter`, and text rendering/measuring runs
+  // this on essentially every string every frame.
+  if (isAscii(str)) return str.split("");
+
+  // Return a fresh copy each call: the historical contract is a mutable array
+  // (callers `splice` it), and a `slice` is still far cheaper than re-running the
+  // segmenter on the same string.
+  const cached = graphemeCache.get(str);
+  if (cached) return cached.slice();
+  let out: string[];
   if (_segmenter) {
-    const out: string[] = [];
+    out = [];
     for (const { segment } of _segmenter.segment(str)) out.push(segment);
-    return out;
+  } else {
+    out = [...str];
   }
-  return [...str];
+  if (graphemeCache.size >= GRAPHEME_CACHE_CAP) graphemeCache.clear();
+  graphemeCache.set(str, out.slice());
+  return out;
 }
+
+/** True when every code unit is printable/simple ASCII (≤ 0x7f). */
+function isAscii(str: string): boolean {
+  for (let i = 0; i < str.length; i++) {
+    if (str.charCodeAt(i) > 0x7f) return false;
+  }
+  return true;
+}
+
+// Memoized widths for non-ASCII graphemes. The expensive `string-width`
+// measurement is pure (a glyph's cell width never changes), and the same few
+// non-ASCII glyphs recur constantly — box-drawing for every border/table/
+// scrollbar cell, plus repeated CJK/emoji in content — so caching turns a
+// per-cell-per-frame library call into a Map hit. ASCII and PUA are handled by
+// the arithmetic fast paths below and never enter the cache. The soft cap keeps
+// an adversarial stream of distinct glyphs from growing the map without bound.
+const widthCache = new Map<string, number>();
+const WIDTH_CACHE_CAP = 8192;
 
 /**
  * Cell width of a single grapheme cluster (0, 1, or 2). The control/PUA checks
@@ -38,10 +78,20 @@ export function charWidth(char: string): number {
   // ASCII Control characters
   if (code < 32 || (code >= 127 && code < 160)) return 0;
 
+  // Printable ASCII is always one column — skip the (comparatively expensive)
+  // string-width measurement for the overwhelmingly common case. The arithmetic
+  // is faster than a Map lookup, so ASCII deliberately bypasses the cache.
+  if (code < 127) return 1;
+
   // Custom SVG icon PUA characters span 2 columns
   if (code >= 0xe000 && code <= 0xefff) return 2;
 
-  return stringWidthLib(char);
+  const cached = widthCache.get(char);
+  if (cached !== undefined) return cached;
+  const w = stringWidthLib(char);
+  if (widthCache.size >= WIDTH_CACHE_CAP) widthCache.clear();
+  widthCache.set(char, w);
+  return w;
 }
 
 export function stringWidth(str: string): number {

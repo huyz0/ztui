@@ -96,9 +96,11 @@ export class ScreenBuffer {
     );
   }
 
-  /** Reset every cell to a blank space with default style. */
-  public clear(): void {
-    for (let y = 0; y < this.height; y++) {
+  /** Reset cells in rows `[yStart, yEnd)` to a blank space with default style (whole grid by default). */
+  public clear(yStart = 0, yEnd = this.height): void {
+    const y0 = Math.max(0, yStart);
+    const y1 = Math.min(this.height, yEnd);
+    for (let y = y0; y < y1; y++) {
       for (let x = 0; x < this.width; x++) {
         const cell = this.cells[y][x];
         cell.char = " ";
@@ -141,6 +143,11 @@ export class ScreenBuffer {
     const safeChar = isControlChar(char) ? " " : char;
     const w = charWidth(safeChar);
 
+    // Mutate cells in place rather than replacing the object. A full frame calls
+    // setCell once per painted cell; allocating a fresh cell each time churned
+    // the GC every frame. `clear()` already resets in place, so this is
+    // consistent — and the diff/copyTo paths read fields, never object identity.
+    const row = this.cells[y];
     if (w === 2) {
       // A wide glyph occupies two columns. If the second column is off-buffer or
       // outside the active clip, drawing the glyph would spill past the boundary
@@ -148,15 +155,35 @@ export class ScreenBuffer {
       const continuationFits =
         x + 1 < this.width && (!this.currentClip || this.currentClip.contains(x + 1, y));
       if (!continuationFits) {
-        this.cells[y][x] = { char: " ", style, wideContinuation: false };
+        const cell = row[x];
+        cell.char = " ";
+        cell.style = style;
+        cell.wideContinuation = false;
+        cell.icon = undefined;
+        cell.graphic = undefined;
         return;
       }
-      this.cells[y][x] = { char: safeChar, style, wideContinuation: false };
-      this.cells[y][x + 1] = { char: "", style, wideContinuation: true };
+      const main = row[x];
+      main.char = safeChar;
+      main.style = style;
+      main.wideContinuation = false;
+      main.icon = undefined;
+      main.graphic = undefined;
+      const cont = row[x + 1];
+      cont.char = "";
+      cont.style = style;
+      cont.wideContinuation = true;
+      cont.icon = undefined;
+      cont.graphic = undefined;
       return;
     }
 
-    this.cells[y][x] = { char: safeChar, style, wideContinuation: false };
+    const cell = row[x];
+    cell.char = safeChar;
+    cell.style = style;
+    cell.wideContinuation = false;
+    cell.icon = undefined;
+    cell.graphic = undefined;
   }
 
   /**
@@ -221,10 +248,14 @@ export class ScreenBuffer {
     formatChar?: (cell: Cell, oldCell?: Cell) => string,
     clipW?: number,
     clipH?: number,
+    // First row to scan. With damage-tracked partial repaint, only the changed
+    // band of rows is diffed; rows above `yStart` are known unchanged this frame.
+    yStart = 0,
   ): string {
     let output = "";
     const limitW = clipW !== undefined ? Math.min(clipW, this.width) : this.width;
     const limitH = clipH !== undefined ? Math.min(clipH, this.height) : this.height;
+    const y0 = Math.max(0, yStart);
 
     // Ensure they are the same size
     if (this.width !== oldBuffer.width || this.height !== oldBuffer.height) {
@@ -241,7 +272,7 @@ export class ScreenBuffer {
 
     // Invalidation pass: if a cell becomes wideContinuation but was previously text,
     // force redraw of its main cell to clear the old text and restore the graphic/wide char.
-    for (let y = 0; y < limitH; y++) {
+    for (let y = y0; y < limitH; y++) {
       for (let x = 0; x < limitW; x++) {
         const newCell = this.cells[y][x];
         const oldCell = oldBuffer.cells[y][x];
@@ -258,7 +289,7 @@ export class ScreenBuffer {
     }
 
     // Standard diff mode
-    for (let y = 0; y < limitH; y++) {
+    for (let y = y0; y < limitH; y++) {
       let runStartX: number | null = null;
       let runContent = "";
 
@@ -366,21 +397,33 @@ export class ScreenBuffer {
     };
   }
 
-  /** Copy this buffer's contents into `other` (resizing it to match). */
-  public copyTo(other: ScreenBuffer): void {
+  /**
+   * Copy this buffer's contents into `other` (resizing it to match). Restrict to
+   * rows `[yStart, yEnd)` for a partial-repaint frame — rows outside the damaged
+   * band are already identical in `other`, so copying them is wasted work.
+   */
+  public copyTo(other: ScreenBuffer, yStart = 0, yEnd = this.height): void {
     if (this.width !== other.width || this.height !== other.height) {
       other.resize(this.width, this.height);
+      yStart = 0;
+      yEnd = this.height;
     }
-    for (let y = 0; y < this.height; y++) {
+    const y0 = Math.max(0, yStart);
+    const y1 = Math.min(this.height, yEnd);
+    for (let y = y0; y < y1; y++) {
+      const src = this.cells[y];
+      const dst = other.cells[y];
       for (let x = 0; x < this.width; x++) {
-        const cell = this.cells[y][x];
-        other.cells[y][x] = {
-          char: cell.char,
-          style: cell.style,
-          wideContinuation: cell.wideContinuation,
-          icon: cell.icon,
-          graphic: cell.graphic,
-        };
+        const cell = src[x];
+        // Copy fields into the destination cell in place — `other` is the
+        // persistent prev-frame buffer, so reusing its cell objects avoids
+        // reallocating the whole grid on every painted frame.
+        const out = dst[x];
+        out.char = cell.char;
+        out.style = cell.style;
+        out.wideContinuation = cell.wideContinuation;
+        out.icon = cell.icon;
+        out.graphic = cell.graphic;
       }
     }
   }
