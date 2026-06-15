@@ -44,8 +44,9 @@ Full mental model: [`docs/architecture.md`](docs/architecture.md).
 
 ## Commands
 
-`.githooks/pre-commit` (auto-registered) runs these in order and blocks on
-failure — run them before calling a task done:
+`.githooks/pre-commit` (auto-registered) runs the gate rows below in order and
+blocks on failure; CI (`.github/workflows/ci.yml`) runs the same gates plus a
+`build`. Run them before calling a task done:
 
 | Step | Command | Notes |
 |------|---------|-------|
@@ -54,8 +55,8 @@ failure — run them before calling a task done:
 | Tests + coverage | `bun run test` | Vitest. **Use `vitest run`, never `bun test`** (shared process → false flakes). |
 | E2E | `bun run test:e2e` | Spawns the real binary. |
 | Arch | `bunx madge --circular --extensions ts,tsx src` | Stay at 0 cycles. |
-| Leak guard | `bun run review` | Scans for driver/ANSI leaks. |
-| Demos | `bun run demo` / `demo:web` | One gallery for all examples. |
+| Leak guard | `bun run review` | Static guard: no driver/ANSI leak into `widgets`/`core`. |
+| Demos | `bun run demo` / `demo:web` | One gallery for all examples (manual — not a gate). |
 
 **Commits**: the `commit-msg` hook allows only `feat|fix|docs|test|chore` + optional
 `(scope)` + lowercase description (e.g. `feat(layout): add grid gap`).

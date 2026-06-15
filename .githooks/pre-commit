@@ -22,5 +22,26 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+echo "4. Running end-to-end tests (real binary)..."
+bun run test:e2e
+if [ $? -ne 0 ]; then
+  echo "❌ E2E tests failed!"
+  exit 1
+fi
+
+echo "5. Checking for circular dependencies (madge)..."
+bunx madge --circular --extensions ts,tsx src
+if [ $? -ne 0 ]; then
+  echo "❌ Circular dependency detected! Keep the import graph acyclic."
+  exit 1
+fi
+
+echo "6. Layer-leak guard (no driver/ANSI in widgets/core)..."
+bun run review
+if [ $? -ne 0 ]; then
+  echo "❌ Layer-leak guard failed! Move terminal/protocol specifics into a Driver method."
+  exit 1
+fi
+
 echo "✅ Pre-commit checks passed successfully."
 exit 0
