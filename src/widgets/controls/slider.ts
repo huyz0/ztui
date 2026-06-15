@@ -20,6 +20,14 @@ export class SliderWidget extends Widget {
   /** Validation; the validated value is the numeric `value`. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
 
+  /**
+   * Whether a drag is in progress, started by a press on the track. A drag only
+   * scrubs the value once it begins with a press here — otherwise hover motion on
+   * terminals that stream all-motion events (e.g. Ghostty via mode 1003) would be
+   * mistaken for a scrub and change the value without a click.
+   */
+  private dragging = false;
+
   constructor() {
     super("slider");
     this.focusable = true;
@@ -55,20 +63,31 @@ export class SliderWidget extends Widget {
     super.handleMouse(ev);
     if (ev.handled) return;
 
-    if (ev.type === "press" || ev.type === "drag") {
-      const contentRect = this.getContentRect();
-      const pctWidth = 7; // room for " [100%]"
-      const trackWidth = Math.max(5, contentRect.width - pctWidth);
-
-      const clickCol = ev.x - contentRect.x;
-      const pct = Math.max(0, Math.min(1, clickCol / (trackWidth - 1)));
-      const rawVal = this.min + pct * (this.max - this.min);
-      const steppedVal = Math.round(rawVal / this.step) * this.step;
-      const finalVal = Math.max(this.min, Math.min(this.max, steppedVal));
-
-      this.commit(finalVal);
-      ev.handled = true;
+    // A press on the track starts a drag; a drag only scrubs while that press is
+    // held. Hover motion (a buttonless "move", or an all-motion event some
+    // terminals misreport) never starts a drag, so it can't change the value.
+    if (ev.type === "release") {
+      this.dragging = false;
+      return;
     }
+    if (ev.type === "press") {
+      this.dragging = true;
+    } else if (ev.type !== "drag" || !this.dragging) {
+      return;
+    }
+
+    const contentRect = this.getContentRect();
+    const pctWidth = 7; // room for " [100%]"
+    const trackWidth = Math.max(5, contentRect.width - pctWidth);
+
+    const clickCol = ev.x - contentRect.x;
+    const pct = Math.max(0, Math.min(1, clickCol / (trackWidth - 1)));
+    const rawVal = this.min + pct * (this.max - this.min);
+    const steppedVal = Math.round(rawVal / this.step) * this.step;
+    const finalVal = Math.max(this.min, Math.min(this.max, steppedVal));
+
+    this.commit(finalVal);
+    ev.handled = true;
   }
 
   public override measure(maxW: number, maxH: number): void {

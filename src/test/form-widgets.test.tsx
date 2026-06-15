@@ -101,6 +101,45 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(sldWidget.value).toBe(100);
   });
 
+  test("Slider scrubs only on press/drag, not on hover motion", async () => {
+    let sliderVal = 50;
+    const { findById } = await mountApp(
+      <Slider
+        id="s2"
+        value={sliderVal}
+        min={0}
+        max={100}
+        step={1}
+        onChange={(v) => {
+          sliderVal = v;
+        }}
+      />,
+      { cols: 30, rows: 5 },
+    );
+    const s = findById("s2");
+    const rect = s.getContentRect();
+    const farX = rect.x + rect.width - 1;
+
+    // Hover motion across the track must not change the value (Ghostty 1003).
+    s.handleMouse({ type: "move", button: "none", x: farX, y: rect.y });
+    expect(sliderVal).toBe(50);
+
+    // A drag with no preceding press (e.g. a misclassified hover) is ignored too.
+    s.handleMouse({ type: "drag", button: "left", x: farX, y: rect.y });
+    expect(sliderVal).toBe(50);
+
+    // A real press starts the scrub; a subsequent drag continues it.
+    s.handleMouse({ type: "press", button: "left", x: rect.x, y: rect.y });
+    expect(sliderVal).toBe(0);
+    s.handleMouse({ type: "drag", button: "left", x: farX, y: rect.y });
+    expect(sliderVal).toBe(100);
+
+    // After release, hover/drag motion is inert again.
+    s.handleMouse({ type: "release", button: "left", x: farX, y: rect.y });
+    s.handleMouse({ type: "drag", button: "left", x: rect.x, y: rect.y });
+    expect(sliderVal).toBe(100);
+  });
+
   test("Select dropdown open/close and keyboard choices", async () => {
     let selectVal = "";
     const { screen, findById } = await mountApp(
