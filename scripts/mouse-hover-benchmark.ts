@@ -1,4 +1,5 @@
 import { createElement, isValidElement, type ReactNode } from "react";
+import { Gallery } from "../examples/gallery/gallery.tsx";
 import { findDemo } from "../examples/gallery/registry.ts";
 import {
   formatMouseHoverBenchmark,
@@ -40,7 +41,9 @@ const repeats = Number(arg("repeats") ?? 3);
 const settleMs = Number(arg("settle-ms") ?? 40);
 const scenarioName = arg("scenario");
 
-const scenario = scenarioName ? getNamedHoverScenario(scenarioName, { cols, rows }) : null;
+const scenario = scenarioName
+  ? getNamedHoverScenario(scenarioName, { cols, rows, ui: createElement(Gallery) })
+  : null;
 if (scenarioName && !scenario) {
   throw new Error(`Unknown hover scenario: ${scenarioName}`);
 }

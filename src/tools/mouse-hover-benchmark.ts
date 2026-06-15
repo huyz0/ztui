@@ -1,5 +1,4 @@
-import { createElement, type ReactNode } from "react";
-import { Gallery } from "../../examples/gallery/gallery.tsx";
+import type { ReactNode } from "react";
 import type { TerminalCapabilities } from "../driver/driver.ts";
 import { mountTestApp } from "./app-mount.tsx";
 
@@ -42,9 +41,11 @@ export interface MouseHoverBenchmarkResult {
 
 export function getNamedHoverScenario(
   name: string,
-  opts: { cols?: number; rows?: number } = {},
+  // `ui` is injected by the caller (a benchmark script/test) rather than imported
+  // here, so this library file under src/ never pulls examples/ into the build.
+  opts: { cols?: number; rows?: number; ui?: ReactNode } = {},
 ): NamedHoverScenario | null {
-  const { cols = 100, rows = 30 } = opts;
+  const { cols = 100, rows = 30, ui } = opts;
   if (name === "gallery-sidebar-boundary") {
     const sidebarInside = 24;
     const sidebarOutside = 28;
@@ -55,7 +56,7 @@ export function getNamedHoverScenario(
       path.push({ x: sidebarInside, y }, { x: sidebarOutside, y }, { x: sidebarInside, y });
     }
     return {
-      ui: createElement(Gallery),
+      ui,
       cols,
       rows,
       settleMs: 80,
