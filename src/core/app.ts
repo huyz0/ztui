@@ -12,7 +12,7 @@ import { BoxLayout } from "../layout/box-layout.ts";
 import { DockLayout } from "../layout/dock-layout.ts";
 import { GridLayout } from "../layout/grid-layout.ts";
 import { parseDimension } from "../layout/layout.ts";
-import { ScreenBuffer } from "../render/buffer.ts";
+import { graphicsEqual, ScreenBuffer } from "../render/buffer.ts";
 import { ThemeManager } from "../theme.ts";
 import { logger } from "../utils/logger.ts";
 import { HotkeyRegistry } from "./hotkeys.ts";
@@ -62,6 +62,10 @@ export class App extends DOMNode {
   private repaintFull = true;
   private damageTop = Number.POSITIVE_INFINITY;
   private damageBottom = Number.NEGATIVE_INFINITY;
+  // Last full frame's graphic-position signature; a change means a graphic was
+  // added/moved/removed, triggering a full graphics wipe + re-emit to clear
+  // orphaned placements (see ScreenBuffer.graphicSignature).
+  private lastGraphicSignature = 0;
   private hoveredWidget: Widget | null = null;
   private activeDragWidget: Widget | null = null;
   // Last pointer cell, so a stream of same-cell `move` events (terminals emit one
@@ -699,6 +703,11 @@ export class App extends DOMNode {
     // (dropdowns/dialogs) and an active text selection can both touch arbitrary
     // rows, so fall back to a full frame whenever either is present.
     if (this.activeScreen.overlays.length > 0 || this.selection.active) full = true;
+    // Inline graphics (icons/images) are a separate terminal layer that only the
+    // full-buffer diff clears and redraws correctly; a damage-scoped partial
+    // frame would leave stale images behind. If the last frame drew any, stay
+    // full until they're gone.
+    if (this.currentBuffer.containsGraphics) full = true;
     if (!full && (damageTop === Number.POSITIVE_INFINITY || damageBottom <= damageTop)) {
       full = true;
     }
@@ -740,6 +749,11 @@ export class App extends DOMNode {
     const dmgY1 = full ? size.height : Math.min(size.height, Math.ceil(damageBottom));
 
     if (full) {
+      // Recompute graphics presence/signature from scratch this frame; a full
+      // render visits every widget, so they end accurate. (Partial frames leave
+      // them as-is — they only run when no graphics were present.)
+      this.currentBuffer.containsGraphics = false;
+      this.currentBuffer.graphicSignature = 0;
       this.currentBuffer.clear();
     } else {
       this.currentBuffer.clear(dmgY0, dmgY1);
@@ -759,6 +773,40 @@ export class App extends DOMNode {
     }
     this.selection.paint(this.currentBuffer, (w, v) => this.cssResolver.resolveVariable(w, v));
 
+    // When the set of inline graphics changed across full frames (one appeared,
+    // moved, or vanished), erase the whole terminal — text *and* graphics — and
+    // force a full redraw. Two problems the per-cell diff can't solve on its own:
+    // an orphaned placement (scrolled, or left by a swapped screen) is never
+    // deleted, and stale text from a previous screen survives in any cell the new
+    // frame doesn't overwrite. A clean wipe + full re-emit fixes both. Images now
+    // render at z=0 (above text), so the erase's opaque background can no longer
+    // hide them — that was the empty-square bug behind-text (z<0) images had. The
+    // signature is unchanged across steady-state frames, so static graphics never
+    // flicker.
+    let graphicsResetSeq = "";
+    if (full && this.currentBuffer.graphicSignature !== this.lastGraphicSignature) {
+      const resetSeq = this.driver.getGraphicResetSequence();
+      if (resetSeq) {
+        // `\x1b[m` resets SGR so the erase clears to the default background.
+        graphicsResetSeq = `${resetSeq}\x1b[m\x1b[H\x1b[2J`;
+        // After the wipe, every current cell must be re-emitted, so invalidate
+        // the prev buffer to force a full redraw over the just-erased terminal.
+        // Also drop any stale icon/graphic on the prev cells: the global delete
+        // above already cleared every placement, so the per-cell diff must NOT
+        // emit its own delete-at-cursor (`d=c`) prefix — doing so right before
+        // re-placing an image makes the terminal drop the fresh placement,
+        // leaving only the cell background (an empty square).
+        for (const row of this.prevBuffer.cells) {
+          for (const c of row) {
+            c.char = "";
+            c.icon = undefined;
+            c.graphic = undefined;
+          }
+        }
+      }
+      this.lastGraphicSignature = this.currentBuffer.graphicSignature;
+    }
+
     const ansiDiff = this.currentBuffer.renderDiff(
       this.prevBuffer,
       (cell, oldCell) => {
@@ -767,7 +815,10 @@ export class App extends DOMNode {
         // is now different or gone. Text/spaces don't clear a terminal's graphics
         // layer (esp. sixel), so without this an old icon lingers after a swap.
         const oldHadImage = !!(oldCell && (oldCell.icon || oldCell.graphic));
-        if (oldHadImage && (oldCell.icon !== cell.icon || oldCell.graphic !== cell.graphic)) {
+        if (
+          oldHadImage &&
+          (oldCell.icon !== cell.icon || !graphicsEqual(oldCell.graphic, cell.graphic))
+        ) {
           prefix = this.driver.getGraphicClearSequence(cell.style.background);
         }
 
@@ -799,8 +850,8 @@ export class App extends DOMNode {
       dmgY1,
       dmgY0,
     );
-    if (ansiDiff) {
-      this.driver.writeFrame(ansiDiff);
+    if (ansiDiff || graphicsResetSeq) {
+      this.driver.writeFrame(graphicsResetSeq + ansiDiff);
       this.driver.presentBuffer(this.currentBuffer);
       this.currentBuffer.copyTo(this.prevBuffer, dmgY0, dmgY1);
       this.frameCount++;

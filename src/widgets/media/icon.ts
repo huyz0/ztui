@@ -54,6 +54,7 @@ export class IconWidget extends Widget {
       wideContinuation: false,
       icon: this.name,
     };
+    buffer.noteGraphic(client.x, client.y);
 
     if (client.x + 1 < buffer.width) {
       buffer.cells[client.y][client.x + 1] = {

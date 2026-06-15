@@ -159,6 +159,7 @@ export class ImageWidget extends Widget {
           zIndex: this.computedStyle.zIndex,
         },
       };
+      buffer.noteGraphic(client.x, client.y);
 
       // Mark other cells as wideContinuation so they are skipped by the terminal text renderer
       for (let dy = 0; dy < client.height; dy++) {

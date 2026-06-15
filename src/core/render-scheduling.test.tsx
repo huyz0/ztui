@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { Label, VBox } from "../react.ts";
+import { Icon, Label, VBox } from "../react.ts";
 import { flush, mountApp } from "../test/harness.tsx";
 
 describe("render scheduling: queueRepaint reuses layout", () => {
@@ -76,6 +76,37 @@ describe("render scheduling: queueRepaint reuses layout", () => {
     expect(clearSpy).toHaveBeenLastCalledWith(); // whole-grid clear
 
     clearSpy.mockRestore();
+  });
+
+  test("inline graphics force a full frame (no damage-scoped partial repaint)", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Label>a</Label>
+        <Label>b</Label>
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await t.settle();
+    // Simulate the previous frame having drawn an icon/image.
+    t.app.buffer.containsGraphics = true;
+    const clearSpy = vi.spyOn(t.app.buffer, "clear");
+    t.app.queueRepaint({ y: 1, bottom: 2 }); // would be partial, but graphics force full
+    await flush();
+    expect(clearSpy).toHaveBeenLastCalledWith(); // whole-grid clear, not (1, 2)
+    clearSpy.mockRestore();
+  });
+
+  test("a steady-state re-render of a static graphic does not erase/flicker", async () => {
+    const t = await mountApp(<Icon name="cog" />, { cols: 20, rows: 6 });
+    await t.settle();
+    // The icon is already on screen; re-rendering with the same graphic set must
+    // not wipe the terminal (no \x1b[2J), or static graphics would flicker.
+    const writeSpy = vi.spyOn(t.driver, "writeFrame");
+    t.app.queueRender();
+    await flush();
+    const written = writeSpy.mock.calls.map((c) => String(c[0])).join("");
+    expect(written).not.toContain("\x1b[2J");
+    writeSpy.mockRestore();
   });
 
   test("a damage-scoped repaint retains content outside the damaged rows", async () => {

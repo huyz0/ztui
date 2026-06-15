@@ -83,3 +83,34 @@ describe("buffer cell reuse (allocation-free)", () => {
     expect(b.cells[0][0]).toBe(dstRef); // destination cell objects reused
   });
 });
+
+describe("graphics tracking", () => {
+  test("noteGraphic sets containsGraphics and a position-dependent signature", () => {
+    const a = new ScreenBuffer(10, 5);
+    expect(a.containsGraphics).toBe(false);
+    expect(a.graphicSignature).toBe(0);
+    a.noteGraphic(2, 1);
+    expect(a.containsGraphics).toBe(true);
+    const sigA = a.graphicSignature;
+    expect(sigA).not.toBe(0);
+
+    // Same position → same signature (commutative, order-independent).
+    const b = new ScreenBuffer(10, 5);
+    b.noteGraphic(2, 1);
+    expect(b.graphicSignature).toBe(sigA);
+
+    // A different position → different signature (so a moved graphic is detected).
+    const c = new ScreenBuffer(10, 5);
+    c.noteGraphic(3, 1);
+    expect(c.graphicSignature).not.toBe(sigA);
+
+    // Order independence: {(2,1),(5,3)} hashes the same regardless of visit order.
+    const d = new ScreenBuffer(10, 5);
+    d.noteGraphic(2, 1);
+    d.noteGraphic(5, 3);
+    const e = new ScreenBuffer(10, 5);
+    e.noteGraphic(5, 3);
+    e.noteGraphic(2, 1);
+    expect(d.graphicSignature).toBe(e.graphicSignature);
+  });
+});

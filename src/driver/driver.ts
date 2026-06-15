@@ -165,6 +165,16 @@ export abstract class Driver extends EventEmitter {
     return "";
   }
   /**
+   * Sequence that deletes *all* inline graphics from the terminal at once. Used
+   * on a full redraw after a transition (resize, screen change, invalidated
+   * frame) to wipe any placements that were orphaned — e.g. a Kitty image that
+   * scrolled or whose owning screen was replaced — before the frame re-places
+   * the current graphics. Returns "" where not applicable.
+   */
+  public getGraphicResetSequence(): string {
+    return "";
+  }
+  /**
    * Hand the composed cell grid to the backend after each changed frame. The
    * portable alternative to consuming the ANSI diff: non-terminal backends
    * (web DOM/canvas) override this and may ignore `write`/`writeFrame`

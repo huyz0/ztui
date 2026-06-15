@@ -183,6 +183,7 @@ export class SvgImageWidget extends Widget {
         zIndex: this.computedStyle.zIndex,
       },
     };
+    buffer.noteGraphic(client.x, client.y);
     this.fillContinuation(buffer, client, style);
   }
 
@@ -203,6 +204,7 @@ export class SvgImageWidget extends Widget {
         zIndex: this.computedStyle.zIndex,
       },
     };
+    buffer.noteGraphic(client.x, client.y);
     this.fillContinuation(buffer, client, style);
   }
 

@@ -147,7 +147,11 @@ export class TerminalGraphicsManager {
   ): string {
     if (capabilities.graphicsProtocol === "kitty") {
       const base64 = pngBase64 || encodePNG(pixelBuffer, pixelWidth, pixelHeight);
-      const zValue = -10000 + (zIndex ?? 0);
+      // z >= 0 draws the image *above* text (Kitty's rule), matching icons. A
+      // behind-text image (z<0) bleeds stale text through it and is hidden by any
+      // opaque cell background, so default to z=0 (in front) and honor an
+      // explicit zIndex for deliberate layering.
+      const zValue = zIndex ?? 0;
       return `\x1b_Gf=100,a=T,t=d,s=${pixelWidth},v=${pixelHeight},c=${cellWidth},r=${cellHeight},z=${zValue};${base64}\x1b\\`;
     }
 

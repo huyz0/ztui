@@ -89,6 +89,7 @@ export class FileIconWidget extends Widget {
       wideContinuation: false,
       icon: resolved.name,
     };
+    buffer.noteGraphic(client.x, client.y);
 
     if (client.x + 1 < buffer.width) {
       buffer.cells[client.y][client.x + 1] = {

@@ -496,4 +496,13 @@ export class BunDriver extends Driver {
     // sixel: paint an opaque bg rectangle, since text doesn't clear images).
     return this.graphicsManager.getIconClearSequence(this.capabilities, bgColor);
   }
+
+  public override getGraphicResetSequence(): string {
+    // Wipe every placement (kitty) so orphaned images — scrolled out, or left by
+    // a swapped screen — are removed before the frame re-emits current graphics.
+    if (this.capabilities.graphicsProtocol === "kitty") {
+      return "\x1b_Ga=d\x1b\\\x1b_Ga=d,d=A\x1b\\";
+    }
+    return "";
+  }
 }

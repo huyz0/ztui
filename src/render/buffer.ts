@@ -45,6 +45,29 @@ export interface GraphicMetadata {
   zIndex?: number;
 }
 
+/**
+ * Value-equality for two cell graphics. The widget layer rebuilds the
+ * {@link GraphicMetadata} object every render even when the picture is identical
+ * (the heavy `pngBase64`/pixel data is cached and reused), so a reference check
+ * would report a change on every frame and needlessly delete + re-transmit the
+ * image — which can drop it on a terminal's stateful graphics layer. Comparing by
+ * value lets an unchanged image be left in place across full frames (e.g. while
+ * scrolling an unrelated panel).
+ */
+export function graphicsEqual(a?: GraphicMetadata, b?: GraphicMetadata): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.pngBase64 === b.pngBase64 &&
+    a.cellWidth === b.cellWidth &&
+    a.cellHeight === b.cellHeight &&
+    a.pixelWidth === b.pixelWidth &&
+    a.pixelHeight === b.pixelHeight &&
+    a.zIndex === b.zIndex &&
+    a.svg === b.svg
+  );
+}
+
 /** One grid cell: its glyph, style, and optional icon/graphic. */
 export interface Cell {
   /** The character (may be a multi-code-point grapheme). */
@@ -71,6 +94,29 @@ export class ScreenBuffer {
   private clipStack: (Region | null)[] = [];
   /** Active clip rectangle; writes outside it are dropped (null = unclipped). */
   public currentClip: Region | null = null;
+  /**
+   * Set true by widgets that place an inline icon/graphic this frame. Terminal
+   * graphics are a separate, stateful layer (Kitty/iTerm/Sixel) that only the
+   * full-buffer diff clears/redraws correctly, so the app forces a full frame
+   * (not a damage-scoped partial repaint) whenever this is set.
+   */
+  public containsGraphics = false;
+  /**
+   * Order-independent hash of the cells that hold an inline graphic this frame.
+   * When it changes between full frames a graphic was added/moved/removed, so the
+   * app wipes all terminal graphics and re-emits — clearing any placement that
+   * was orphaned (scrolled, screen swapped) and that the per-cell diff alone
+   * can't catch. Unchanged across frames → no wipe, so static graphics (and a
+   * breathing focus ring over them) never flicker.
+   */
+  public graphicSignature = 0;
+
+  /** Record an inline graphic at `(x, y)` for damage/orphan tracking. */
+  public noteGraphic(x: number, y: number): void {
+    this.containsGraphics = true;
+    // Commutative accumulation so cell visit order doesn't matter.
+    this.graphicSignature = (this.graphicSignature + (y * 9973 + x) * 31 + 1) | 0;
+  }
 
   constructor(
     /** Width in cells. */
@@ -302,7 +348,7 @@ export class ScreenBuffer {
           !newCell.style.equals(oldCell.style) ||
           newCell.wideContinuation !== oldCell.wideContinuation ||
           newCell.icon !== oldCell.icon ||
-          newCell.graphic !== oldCell.graphic;
+          !graphicsEqual(newCell.graphic, oldCell.graphic);
 
         const isSpecial =
           newCell.graphic !== undefined || newCell.icon !== undefined || newCell.wideContinuation;
