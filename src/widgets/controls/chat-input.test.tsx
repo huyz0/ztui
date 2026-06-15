@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ChatInput } from "../../react.ts";
+import { ChatInput, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { Trigger } from "./chat/types.ts";
 import type { ChatInputWidget } from "./chat-input.ts";
@@ -455,5 +455,119 @@ describe("ChatInput contextual hints", () => {
     await t.settle();
     expect(sets.length).toBe(1);
     expect(sets[0]).toEqual(expect.arrayContaining(["copy", "cut"]));
+  });
+});
+
+describe("ChatInput async completion/suggestion races", () => {
+  test("a stale completion result is dropped when a newer query supersedes it", async () => {
+    // Hand back manually-controlled promises so we can resolve the *older*
+    // query after the newer one and prove the req-id guard ignores it.
+    const resolvers: Array<(items: Array<{ label: string }>) => void> = [];
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => new Promise((res) => resolvers.push(res)),
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@ab"); // three keystrokes → three in-flight completion requests
+    const latest = resolvers.length - 1;
+    resolvers[latest]([{ label: "newer.ts" }]); // newest resolves first
+    await t.settle();
+    expect(t.text()).toContain("newer.ts");
+    resolvers[0]([{ label: "stale.ts" }]); // an older request lands late
+    await t.settle();
+    expect(t.text()).toContain("newer.ts");
+    expect(t.text()).not.toContain("stale.ts");
+  });
+
+  test("a stale ghost suggestion is dropped when a newer keystroke supersedes it", async () => {
+    const resolvers: Array<(s: string | null) => void> = [];
+    const { t, w } = await mountChat({
+      suggestionProvider: () => new Promise((res) => resolvers.push(res)),
+    });
+    type(w, "ab"); // two requests; caret stays at the buffer end
+    resolvers[resolvers.length - 1]("-newer"); // newest first
+    await t.settle();
+    expect(t.text()).toContain("-newer");
+    resolvers[0]("-stale"); // older request resolves late → must be ignored
+    await t.settle();
+    expect(t.text()).not.toContain("-stale");
+  });
+});
+
+describe("ChatInput wrapping, scrolling, history-edge", () => {
+  const layout = (w: ChatInputWidget) => {
+    const ww = w as unknown as { layoutRows: (n: number) => unknown[]; innerWidth: () => number };
+    return ww.layoutRows(ww.innerWidth());
+  };
+
+  // The test screen stretches a *root* widget to full size, which would defeat a
+  // fixed-width/height box; wrap in a VBox so the composer's own dimensions hold.
+  async function mountBoxed(props: Record<string, unknown>) {
+    const t = (await mountApp(
+      <VBox>
+        <ChatInput id="chat" {...props} />
+      </VBox>,
+    )) as Mounted;
+    await t.settle();
+    const w = t.findById("chat") as unknown as ChatInputWidget;
+    t.screen.focusWidget(w as any);
+    return { t, w };
+  }
+
+  test("soft-wraps a long line into multiple visual rows", async () => {
+    // inner ≈ 20 − 2 border − 1 gutter = 17, so a 36-char run must wrap.
+    const { t, w } = await mountBoxed({ softWrap: true, style: { width: 20 } });
+    type(w, "abcdefghijklmnopqrstuvwxyz0123456789");
+    await t.settle();
+    expect(layout(w).length).toBeGreaterThan(1);
+  });
+
+  test("scrolls vertically once content exceeds the visible height, keeping the caret in view", async () => {
+    // height 5 → 2 border + 3 visible text rows.
+    const { t, w } = await mountBoxed({ style: { width: 30, height: 5 } });
+    for (let i = 0; i < 6; i++) {
+      type(w, `line${i}`);
+      key(w, "ctrl+j");
+    }
+    await t.settle();
+    // Caret is on the last row, well past the 3 visible rows → the view scrolled.
+    expect((w as unknown as { scrollRow: number }).scrollRow).toBeGreaterThan(0);
+  });
+
+  test('historyEdge "row" recalls from anywhere on the first row (not just the buffer start)', async () => {
+    let value = "";
+    const { w } = await mountChat({
+      historyEdge: "row",
+      getHistory: () => ["past"],
+      onChange: (v: string) => (value = v),
+    });
+    type(w, "ab");
+    key(w, "left"); // caret mid-line on the first (and last) row — not at index 0
+    key(w, "up"); // "row" mode recalls here; "bump" would only move the caret
+    expect(value).toBe("past");
+  });
+});
+
+describe("ChatInput selected-chip rendering", () => {
+  test("a selected chip tints its chrome with the selection background", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "auth.ts" }],
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@au");
+    await t.settle();
+    key(w, "enter"); // accept → chip "auth.ts" (1 pad + 7 label + 1 pad = 9 cells)
+    await t.settle();
+    type(w, "x"); // a plain text atom right after the chip
+    key(w, "ctrl+a"); // select everything
+    await t.settle();
+    const c = content(w);
+    const chipLabelBg = t.cellAt(c.x + 1, c.y).style.background; // inside the pill
+    const textBg = t.cellAt(c.x + 9, c.y).style.background; // the selected "x"
+    // The selected chip now shares the selection background with selected text.
+    expect(chipLabelBg).toBe(textBg);
   });
 });

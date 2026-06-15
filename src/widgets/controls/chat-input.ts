@@ -942,7 +942,7 @@ export class ChatInputWidget extends Widget {
       let x = content.x;
       for (const pa of vr.atoms) {
         if (isChip(pa.atom)) {
-          x = this.drawChip(buffer, x, y, pa.atom, resolve, bg, content);
+          x = this.drawChip(buffer, x, y, pa.atom, resolve, bg, content, this.isSelected(pa.index));
         } else {
           const sel = this.isSelected(pa.index);
           const style = sel
@@ -991,12 +991,16 @@ export class ChatInputWidget extends Widget {
     resolve: (v: string) => string,
     bg: string,
     content: { right: number },
+    selected = false,
   ): number {
     const accent = resolve("$accent");
     const dim = resolve("$dimmed");
+    // A selected chip tints its chrome with the selection background so it reads
+    // as part of the selection (matching how text atoms highlight).
+    const chipBg = selected ? resolve("$selectionBg") : bg;
     if (this.chipStyle === "bracket") {
-      const style = new Style({ color: accent, background: bg });
-      const delim = new Style({ color: dim, background: bg });
+      const style = new Style({ color: accent, background: chipBg });
+      const delim = new Style({ color: dim, background: chipBg });
       if (x < content.right) buffer.setCell(x, y, "‹", delim);
       buffer.drawSegment(x + 1, y, new Segment(chip.label, style), content as any);
       const endX = x + 1 + stringWidth(chip.label);
@@ -1004,7 +1008,7 @@ export class ChatInputWidget extends Widget {
       return endX + 1;
     }
     // fill: a tinted pill with one render-only space of padding each side.
-    const pill = new Style({ color: accent, background: resolve("$panel") });
+    const pill = new Style({ color: accent, background: selected ? chipBg : resolve("$panel") });
     if (x < content.right) buffer.setCell(x, y, " ", pill);
     buffer.drawSegment(x + 1, y, new Segment(chip.label, pill), content as any);
     const endX = x + 1 + stringWidth(chip.label);
