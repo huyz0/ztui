@@ -181,6 +181,16 @@ export abstract class Driver extends EventEmitter {
     return "";
   }
   /**
+   * The screen-blanking sequence (SGR reset + cursor home + erase display) as a
+   * *string*, so the App can prepend it to a frame and write both atomically.
+   * Pairs with {@link getGraphicResetSequence} on a post-graphics-change full
+   * wipe. The leading SGR reset makes the erase clear to the default background.
+   * Returns "" on backends that don't consume ANSI (e.g. the web canvas).
+   */
+  public getScreenClearSequence(): string {
+    return "\x1b[m\x1b[H\x1b[2J";
+  }
+  /**
    * Hand the composed cell grid to the backend after each changed frame. The
    * portable alternative to consuming the ANSI diff: non-terminal backends
    * (web DOM/canvas) override this and may ignore `write`/`writeFrame`

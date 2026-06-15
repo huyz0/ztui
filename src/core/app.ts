@@ -860,8 +860,9 @@ export class App extends DOMNode {
     if (full && this.currentBuffer.graphicSignature !== this.lastGraphicSignature) {
       const resetSeq = this.driver.getGraphicResetSequence();
       if (resetSeq) {
-        // `\x1b[m` resets SGR so the erase clears to the default background.
-        graphicsResetSeq = `${resetSeq}\x1b[m\x1b[H\x1b[2J`;
+        // Graphics reset + screen blank; the clear sequence (SGR reset + home +
+        // erase) lives behind a Driver method so no raw escape leaks into core.
+        graphicsResetSeq = `${resetSeq}${this.driver.getScreenClearSequence()}`;
         // After the wipe, every current cell must be re-emitted, so invalidate
         // the prev buffer to force a full redraw over the just-erased terminal.
         // Also drop any stale icon/graphic on the prev cells: the global delete
