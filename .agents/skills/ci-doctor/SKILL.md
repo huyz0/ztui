@@ -1,16 +1,6 @@
 ---
 name: ci-doctor
-description: >-
-  Diagnose and fix failing GitHub Actions CI/CD runs autonomously, and keep
-  action versions current against live GitHub (not training-time memory). Use
-  this whenever a workflow/build/deploy is red or you just pushed and want to
-  confirm CI passed — phrases like "the build is failing", "CI is red", "why did
-  the workflow fail", "the deploy didn't work", "check the GitHub Actions run",
-  "did my push pass CI", or "are we using the latest actions". Use it BEFORE
-  guessing at a CI failure from the YAML alone: it pulls the real failed-step
-  logs so you fix the actual error. Also use before adding or bumping any
-  `uses: owner/repo@vN` action, since the latest major is often newer than you
-  remember.
+description: 'WHAT: GitHub Actions CI triage from real failed-step logs plus action-version auditing against live GitHub, via scripts/check-run.ts and scripts/audit-actions.ts (need authenticated gh CLI). USE WHEN: a workflow/build/deploy under .github/workflows/ is red, after a push to confirm CI passed, or before adding/bumping any uses: owner/repo@vN action.'
 ---
 
 # CI Doctor

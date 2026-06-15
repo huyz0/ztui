@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: WHAT: TDD Red-Green cycle and Vitest 90% coverage gates. USE WHEN: Implementing features, fixing bugs, running tests via vitest, or writing src/**/*.test.ts.
+description: 'WHAT: TDD Red-Green cycle and Vitest 90% coverage gates. USE WHEN: Implementing features, fixing bugs, running tests via vitest, or writing src/**/*.test.ts.'
 ---
 
 # Test-Driven Development (TDD) & Testing Standards

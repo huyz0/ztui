@@ -1,6 +1,6 @@
 ---
 name: manage-skills
-description: WHAT: Governance rules for Agent Skill System. USE WHEN: Modifying files under .agents/skills/ or creating/updating skills.
+description: 'WHAT: Governance rules for Agent Skill System. USE WHEN: Modifying files under .agents/skills/ or creating/updating skills.'
 ---
 
 # Ztui Skill Management

@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: WHAT: Layer boundaries and circular import constraints. USE WHEN: Modifying folders, changing imports in src/react/host-config.ts, or adding architectural layers.
+description: 'WHAT: Layer boundaries and circular import constraints. USE WHEN: Modifying folders, changing imports in src/react/host-config.ts, or adding architectural layers.'
 ---
 
 # Ztui Architecture Rules & Boundaries

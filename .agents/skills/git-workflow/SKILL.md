@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: WHAT: Conventional Commits regex validation and git hooks (.githooks/). USE WHEN: Creating commits, running git commands, or editing .gitignore.
+description: 'WHAT: Conventional Commits regex validation and git hooks (.githooks/). USE WHEN: Creating commits, running git commands, or editing .gitignore.'
 ---
 
 # Ztui Git Workflow

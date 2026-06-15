@@ -1,6 +1,6 @@
 ---
 name: debug
-description: WHAT: REST HTTP Inspector API, simulated inputs, and Raw-Mode terminal cleanup. USE WHEN: Troubleshooting process signals, using inspector.ts, or debugging height collapsing crashes.
+description: 'WHAT: REST HTTP Inspector API, simulated inputs, and Raw-Mode terminal cleanup. USE WHEN: Troubleshooting process signals, using inspector.ts, or debugging height collapsing crashes.'
 ---
 
 # Ztui Debug & Diagnostic Guidelines

@@ -1,6 +1,6 @@
 ---
 name: design
-description: WHAT: Layout wrapper primitives (<Box>, VBox, HBox, Grid, Dock) and defaultStyle priority. USE WHEN: Creating custom widgets under src/widgets/ or applying React styling layouts.
+description: 'WHAT: Layout wrapper primitives (<Box>, VBox, HBox, Grid, Dock) and defaultStyle priority. USE WHEN: Creating custom widgets under src/widgets/ or applying React styling layouts.'
 ---
 
 # Ztui Design and Styling Guidelines

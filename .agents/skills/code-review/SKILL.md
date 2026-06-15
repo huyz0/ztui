@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: WHAT: Static architectural check script (bun run review) and cognitive review report (scratch/code_review.md). USE WHEN: Declaring a task done, preparing walkthrough.md, or running final validations.
+description: 'WHAT: Static architectural check script (bun run review) and cognitive review report (scratch/code_review.md). USE WHEN: Declaring a task done, preparing walkthrough.md, or running final validations.'
 ---
 
 # Ztui Agent Self-Review Protocol
