@@ -51,9 +51,17 @@ describe("parseInput — SGR mouse decoding", () => {
     expect(release?.type).toBe("release");
     expect(release?.button).toBe("left");
 
-    const drag = firstMouse("\x1b[<32;10;5M");
-    expect(drag?.type).toBe("drag");
-    expect(drag?.button).toBe("left");
+    // A drag is only a drag while a button is actually held, so it must follow a
+    // press in the same stream (state persists across input chunks in the driver).
+    const mice: MouseEvent[] = [];
+    parseInput(
+      "\x1b[<0;10;5M\x1b[<32;12;5M",
+      () => {},
+      (m) => mice.push(m),
+    );
+    expect(mice[0]?.type).toBe("press");
+    expect(mice[1]?.type).toBe("drag");
+    expect(mice[1]?.button).toBe("left");
 
     const rightPress = firstMouse("\x1b[<2;10;5M");
     expect(rightPress?.button).toBe("right");
@@ -63,6 +71,27 @@ describe("parseInput — SGR mouse decoding", () => {
     const move = firstMouse("\x1b[<35;10;5M");
     expect(move?.type).toBe("move");
     expect(move?.button).toBe("none");
+  });
+
+  test("Ghostty hover quirk: a 'drag' with no button held is corrected to a move", () => {
+    // Ghostty encodes buttonless hover motion as b=34 (motion + button bits 2,
+    // i.e. a right-button drag) rather than the spec's b=35 (no button). With no
+    // real press preceding it, this must be treated as a hover move — otherwise it
+    // scrubs sliders / extends selections on plain hover.
+    const hover = firstMouse("\x1b[<34;10;5M");
+    expect(hover?.type).toBe("move");
+    expect(hover?.button).toBe("none");
+
+    // But a genuine right-drag (real right press first) stays a drag.
+    const mice: MouseEvent[] = [];
+    parseInput(
+      "\x1b[<2;10;5M\x1b[<34;12;5M",
+      () => {},
+      (m) => mice.push(m),
+    );
+    expect(mice[0]?.type).toBe("press");
+    expect(mice[1]?.type).toBe("drag");
+    expect(mice[1]?.button).toBe("right");
   });
 
   test("decodes 1-based coordinates to 0-based", () => {

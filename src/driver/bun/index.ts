@@ -5,7 +5,7 @@ import { logger } from "../../utils/logger.ts";
 import { type Clipboard, Driver, type KeyEvent, type TerminalCapabilities } from "../driver.ts";
 import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
-import { parseInput } from "./input.ts";
+import { type MouseParseState, parseInput } from "./input.ts";
 
 export class BunDriver extends Driver {
   private graphicsManager = new TerminalGraphicsManager();
@@ -50,6 +50,8 @@ export class BunDriver extends Driver {
   private isProbing = false;
   private probeBuffer = "";
   private probeTimeout: any = null;
+  /** Persisted across input chunks so motion can be classified against held buttons. */
+  private mouseParseState: MouseParseState = { buttonDown: false };
   private pendingClipboardResolvers: ((text: string) => void)[] = [];
   /** Accumulates a bracketed-paste payload that spans multiple stdin chunks. */
   private pasteBuffer: string | null = null;
@@ -450,6 +452,7 @@ export class BunDriver extends Driver {
         data,
         (ev) => this.emit("key", ev),
         (ev) => this.emit("mouse", ev),
+        this.mouseParseState,
       );
     } catch (err) {
       // Malformed input bytes (or a throwing event listener) must not kill the

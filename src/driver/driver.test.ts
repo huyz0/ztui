@@ -260,10 +260,20 @@ describe("BunDriver Capability Probing", () => {
       button: "left",
     });
 
-    // SGR Mouse Drag Right (button 2 + drag bit 32 = 34)
+    // b=34 (motion + button bits 2) with no button actually held is Ghostty's
+    // buttonless-hover encoding, not a right-drag — it must decode as a move.
     stdin.emit("data", "\x1b[<34;11;21M");
     expect(emittedMouse[emittedMouse.length - 1]).toEqual({
       x: 10,
+      y: 20,
+      type: "move",
+      button: "none",
+    });
+
+    // A genuine right-drag (real right press first) still decodes as a drag.
+    stdin.emit("data", "\x1b[<2;11;21M\x1b[<34;12;21M");
+    expect(emittedMouse[emittedMouse.length - 1]).toEqual({
+      x: 11,
       y: 20,
       type: "drag",
       button: "right",

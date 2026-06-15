@@ -1,9 +1,16 @@
 import type { KeyEvent, MouseEvent } from "../driver.ts";
 
+/** Cross-chunk pointer state, owned by the driver and threaded through each parse. */
+export interface MouseParseState {
+  /** Whether a mouse button is currently held (set by press, cleared by release). */
+  buttonDown: boolean;
+}
+
 export function parseInput(
   data: string,
   onKeyRaw: (ev: KeyEvent) => void,
   onMouseRaw: (ev: MouseEvent) => void,
+  mouseState: MouseParseState = { buttonDown: false },
 ): void {
   // Coalesce pointer motion within a single chunk: hover-capable terminals
   // (Ghostty) stream a move per pixel, and a fast sweep packs many into one read.
@@ -142,6 +149,21 @@ export function parseInput(
             type = "move";
           } else {
             type = "press";
+          }
+
+          // Track real button state and correct a terminal quirk: Ghostty
+          // reports buttonless hover motion with button bits = 2 (looks like a
+          // right-button drag, b=34) instead of the spec's 3 (no button, b=35
+          // as Windows Terminal sends). A "drag" with no button actually held is
+          // really hover — downgrade it to a buttonless move so it can't scrub
+          // sliders/selection and is coalesced like other hover motion.
+          if (type === "press") {
+            mouseState.buttonDown = true;
+          } else if (type === "release") {
+            mouseState.buttonDown = false;
+          } else if (type === "drag" && !mouseState.buttonDown) {
+            type = "move";
+            button = "none";
           }
         }
 
