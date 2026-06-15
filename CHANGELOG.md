@@ -6,6 +6,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-06-15
+
+### Changed
+
+- Reduced terminal idle CPU by batching caret and other paint-only cosmetic repaints onto a shared 10fps cadence, while keeping static focus styling and switching smooth caret to a hard blink by default.
+- Reduced hover CPU in terminal sessions by adding visible-only hover-interest detection, runtime passive-hover mode switching, a 15Hz admitted move throttle, and hard dropping passive move events when hover tracking is disabled.
+- Added live render/input/mouse diagnostics to the inspector state plus a reusable mouse-hover benchmark script for profiling Ghostty-style hover workloads.
+
+### Fixed
+
+- Hover behavior in debug/VTE coverage paths remains correct under the new runtime hover optimizations, and driver capability tests are now deterministic under the current terminal environment.
+
 ### Added
 
 - `ChatInput` — a framework-agnostic chat composer for AI-agent UIs. It owns its
