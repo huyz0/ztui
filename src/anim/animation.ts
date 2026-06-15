@@ -18,13 +18,65 @@ interface TickOwner {
 }
 
 /**
- * Owners (widgets) with an animation frame already booked, mapped to whether the
- * pending frame is paint-only. Keyed by identity so each animated widget drives
- * at most one pending timer regardless of how many times it renders per frame.
- * If any booking in a frame needs layout, the frame is upgraded to a full
- * render (paint-only can never mask a real layout change).
+ * Owners (widgets) with an animation frame booked, to the absolute time it is due
+ * and whether it is paint-only. Keyed by identity so each animated widget drives
+ * at most one pending tick regardless of how many times it renders per frame. If
+ * any booking in a frame needs layout, it is upgraded to a full render (paint-
+ * only can never mask a real layout change).
+ *
+ * A single shared timer fires every owner that is due in the *same* macrotask, so
+ * their repaint requests coalesce into one frame (App.scheduleRender dedups
+ * within a macrotask). Without this, N animated widgets on independent timers
+ * drift out of phase and emit up to N frames per tick — which makes a
+ * software-rendering terminal (e.g. Ghostty with no GPU under WSL2) repaint many
+ * times per tick and peg the CPU. Same-cadence widgets re-book together inside
+ * that single coalesced frame, so they stay phase-aligned thereafter.
  */
-const pending = new Map<object, boolean>();
+const pending = new Map<TickOwner, { at: number; paintOnly: boolean }>();
+/** The one shared timer and the absolute time it is set to fire. */
+let timer: ReturnType<typeof setTimeout> | null = null;
+let timerAt = Number.POSITIVE_INFINITY;
+/** Owners due within this many ms of each other fire together (phase tolerance). */
+const BATCH_SLOP_MS = 4;
+
+/** (Re)arm the shared timer for the earliest pending due time. */
+function reschedule(): void {
+  let earliest = Number.POSITIVE_INFINITY;
+  for (const v of pending.values()) if (v.at < earliest) earliest = v.at;
+  if (earliest === Number.POSITIVE_INFINITY) {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    timerAt = Number.POSITIVE_INFINITY;
+    return;
+  }
+  if (timer && timerAt <= earliest) return; // already firing soon enough
+  if (timer) clearTimeout(timer);
+  timerAt = earliest;
+  const t = setTimeout(fireDue, Math.max(0, earliest - Date.now()));
+  (t as { unref?: () => void }).unref?.();
+  timer = t;
+}
+
+/** Fire every owner due now, synchronously, so their repaints coalesce to one frame. */
+function fireDue(): void {
+  timer = null;
+  timerAt = Number.POSITIVE_INFINITY;
+  const cutoff = Date.now() + BATCH_SLOP_MS;
+  const ready: { owner: TickOwner; paintOnly: boolean }[] = [];
+  for (const [owner, v] of pending) {
+    if (v.at <= cutoff) {
+      ready.push({ owner, paintOnly: v.paintOnly });
+      pending.delete(owner);
+    }
+  }
+  for (const { owner, paintOnly } of ready) {
+    const app = owner.app;
+    if (!app) continue;
+    if (paintOnly && app.queueRepaint) app.queueRepaint(owner.region ?? null);
+    else app.queueRender();
+  }
+  reschedule();
+}
 
 /**
  * Ask for a re-render roughly `ms` from now, on a macrotask. Animated widgets
@@ -45,27 +97,16 @@ const pending = new Map<object, boolean>();
  * paint.
  */
 export function requestAnimationTick(owner: TickOwner, ms: number, paintOnly = false): void {
+  const at = Date.now() + Math.max(16, ms);
   const existing = pending.get(owner);
-  if (existing !== undefined) {
-    // A frame is already booked; upgrade it to a full render if this caller
-    // needs layout, so a coincident paint-only request can't suppress it.
-    if (!paintOnly && existing) pending.set(owner, false);
+  if (existing) {
+    // A tick is already booked; keep the soonest due time and never let a
+    // coincident paint-only request downgrade a full render that's needed.
+    if (at < existing.at) existing.at = at;
+    if (!paintOnly) existing.paintOnly = false;
+    reschedule();
     return;
   }
-  pending.set(owner, paintOnly);
-  const timer = setTimeout(
-    () => {
-      const wasPaintOnly = pending.get(owner) ?? false;
-      pending.delete(owner);
-      const app = owner.app;
-      if (!app) return;
-      // Scope a paint-only tick's damage to the animating widget's own rows, so
-      // a single spinner/glow doesn't repaint the whole screen each frame.
-      if (wasPaintOnly && app.queueRepaint) app.queueRepaint(owner.region ?? null);
-      else app.queueRender();
-    },
-    Math.max(16, ms),
-  );
-  // Don't let a pending animation frame hold the process open (Node/Bun).
-  (timer as { unref?: () => void }).unref?.();
+  pending.set(owner, { at, paintOnly });
+  reschedule();
 }

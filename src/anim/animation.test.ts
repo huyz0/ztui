@@ -48,6 +48,31 @@ describe("requestAnimationTick", () => {
     expect(calls.repaint).toBe(1);
   });
 
+  test("owners due together fire in one macrotask, coalescing into a single frame", async () => {
+    // Mirror App.scheduleRender's within-a-macrotask dedup: repaints requested in
+    // the same macrotask collapse to one frame; ones in separate macrotasks don't.
+    let frames = 0;
+    let queued = false;
+    const app = {
+      queueRender: () => {},
+      queueRepaint: () => {
+        if (queued) return;
+        queued = true;
+        queueMicrotask(() => {
+          queued = false;
+          frames++;
+        });
+      },
+    };
+    requestAnimationTick({ app }, 16, true);
+    requestAnimationTick({ app }, 16, true);
+    requestAnimationTick({ app }, 16, true);
+    await sleep(40);
+    // All three are due together, so the shared clock fires them in one macrotask
+    // → a single coalesced frame (not three).
+    expect(frames).toBe(1);
+  });
+
   test("falls back to queueRender when the app lacks queueRepaint", async () => {
     const calls = { render: 0 };
     const owner = { app: { queueRender: () => calls.render++ } };
