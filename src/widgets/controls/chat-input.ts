@@ -37,6 +37,21 @@ const GHOST_MARKER = "→";
 let chipSeq = 0;
 
 /**
+ * One contextual help entry for the hint line below the composer: a key glyph
+ * and what it does. Hosts render these however they like (see {@link
+ * ChatInputWidget.getHints}); the widget recomputes them as the editing mode
+ * changes (popup open, browsing history, a suggestion offered, busy, …).
+ */
+export interface ChatHint {
+  /** The key(s) to press, already glyph-formatted (e.g. "⏎", "↑↓", "esc"). */
+  keys: string;
+  /** What pressing them does (e.g. "send", "accept", "history"). */
+  label: string;
+  /** Coarse bucket so hosts can group/colour or drop the lowest priority first. */
+  group?: "nav" | "edit" | "action";
+}
+
+/**
  * A framework-agnostic chat composer for AI-agent UIs. It owns its own edit
  * buffer (so it works with any state system — React, a store, or none), grows
  * with content, sends on Enter, and supports atomic chips, character-triggered
@@ -55,7 +70,15 @@ export class ChatInputWidget extends Widget {
   /** Hint shown when empty. */
   public placeholder = "Message…";
   /** App flips this true while the agent is generating (shows the stop affordance). */
-  public busy = false;
+  private _busy = false;
+  public get busy(): boolean {
+    return this._busy;
+  }
+  public set busy(v: boolean) {
+    if (v === this._busy) return;
+    this._busy = v;
+    this.refreshHints();
+  }
   /** "enter" → Enter sends, Shift+Enter newline. "modifier-enter" → inverted. */
   public submitMode: "enter" | "modifier-enter" = "enter";
   /** Minimum visible text rows. */
@@ -89,6 +112,18 @@ export class ChatInputWidget extends Widget {
   }) => string | null | Promise<string | null>;
   /** App-provided history (pulled lazily for Up/Down recall). */
   public getHistory?: () => string[];
+  /**
+   * Extra host-supplied hints always appended to {@link getHints} (e.g. a quit
+   * hint, "drag a file to attach", or any custom contextual message). Setting it
+   * re-emits {@link onHintsChange}.
+   */
+  public get extraHints(): ChatHint[] {
+    return this._extraHints;
+  }
+  public set extraHints(v: ChatHint[]) {
+    this._extraHints = v ?? [];
+    this.refreshHints();
+  }
 
   // ── host callbacks (declared as the universal supertype on the base) ─────────
   public declare onChange?: (value: string) => void;
@@ -97,6 +132,11 @@ export class ChatInputWidget extends Widget {
   public declare onCommand?: (name: string, args?: unknown) => void;
   public declare onAttach?: (item: Attachment) => void;
   public declare onAttachRemove?: (id: string) => void;
+  /**
+   * Fires whenever the active contextual hint set changes (mode transitions, not
+   * every keystroke). The host renders these as a help line below the composer.
+   */
+  public declare onHintsChange?: (hints: ChatHint[]) => void;
 
   // ── internal state ──────────────────────────────────────────────────────────
   private attachments: Attachment[] = [];
@@ -117,6 +157,10 @@ export class ChatInputWidget extends Widget {
 
   private historyIndex: number | null = null;
   private draftStash = "";
+
+  private _extraHints: ChatHint[] = [];
+  /** Signature of the last-emitted hint set, to suppress no-op re-emits. */
+  private lastHintSig = "";
 
   constructor() {
     super("chat-input");
@@ -192,6 +236,78 @@ export class ChatInputWidget extends Widget {
 
   private emitChange(): void {
     this.onChange?.(this.buffer.value);
+  }
+
+  // ── contextual hints ──────────────────────────────────────────────────────
+  /** The glyph the host should press to accept ghost text. */
+  private acceptKeyGlyph(): string {
+    switch (this.acceptSuggestionKey) {
+      case "tab":
+        return "⇥";
+      case "ctrl-e":
+        return "^e";
+      default:
+        return "→";
+    }
+  }
+
+  /**
+   * The contextual help entries for the current editing mode — the most specific
+   * mode wins, then the host's {@link extraHints} are appended. Hosts render
+   * these as a help line below the composer; {@link onHintsChange} fires when the
+   * set changes so a line can repaint only on real transitions.
+   */
+  public getHints(): ChatHint[] {
+    const hints: ChatHint[] = [];
+    if (this.popup) {
+      hints.push(
+        { keys: "↑↓", label: "navigate", group: "nav" },
+        { keys: "⏎", label: "select", group: "action" },
+        { keys: "esc", label: "dismiss", group: "action" },
+      );
+    } else if (this.historyIndex !== null) {
+      hints.push(
+        { keys: "↑↓", label: "history", group: "nav" },
+        { keys: "esc", label: "draft", group: "action" },
+      );
+    } else if (this.busy) {
+      hints.push({ keys: "esc", label: "interrupt", group: "action" });
+    } else if (this.suggestion) {
+      hints.push(
+        { keys: this.acceptKeyGlyph(), label: "accept", group: "action" },
+        { keys: "⏎", label: "send", group: "action" },
+      );
+    } else if (this.buffer.hasSelection()) {
+      hints.push(
+        { keys: "^c", label: "copy", group: "edit" },
+        { keys: "^x", label: "cut", group: "edit" },
+        { keys: "⏎", label: "send", group: "action" },
+      );
+    } else {
+      const sendKey = this.submitMode === "enter" ? "⏎" : "^⏎";
+      const nlKey = this.submitMode === "enter" ? "^j" : "⏎";
+      hints.push(
+        { keys: sendKey, label: "send", group: "action" },
+        { keys: nlKey, label: "newline", group: "edit" },
+      );
+      if (this.getHistory) hints.push({ keys: "↑", label: "history", group: "nav" });
+      const chars = this.triggers.map((t) => t.char).join(" ");
+      if (chars) hints.push({ keys: chars, label: "completions", group: "nav" });
+      for (const cmd of this.commands) {
+        if (cmd.key && cmd.label) hints.push({ keys: cmd.key, label: cmd.label, group: "action" });
+      }
+    }
+    return hints.concat(this._extraHints);
+  }
+
+  /** Recompute hints and emit {@link onHintsChange} only when the set changed. */
+  private refreshHints(): void {
+    if (!this.onHintsChange) return;
+    const hints = this.getHints();
+    const sig = hints.map((h) => `${h.keys} ${h.label}`).join("");
+    if (sig === this.lastHintSig) return;
+    this.lastHintSig = sig;
+    this.onHintsChange(hints);
   }
 
   /** After any buffer mutation: re-query triggers/suggestion, repaint, notify. */
@@ -782,6 +898,11 @@ export class ChatInputWidget extends Widget {
       if (this.focused) this.caret.start();
       else this.caret.stop();
     }
+
+    // Hints derive purely from current state; emitting here (deduped by
+    // signature) catches every transition — selection, popup, history, busy —
+    // without sprinkling refresh calls through each key handler.
+    this.refreshHints();
 
     super.render(buffer);
 

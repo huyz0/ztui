@@ -1,5 +1,6 @@
 import type { ChipSerializer } from "../../../widgets/controls/chat/model.ts";
 import type { Attachment, Command, Trigger } from "../../../widgets/controls/chat/types.ts";
+import type { ChatHint } from "../../../widgets/controls/chat-input.ts";
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
@@ -34,6 +35,8 @@ export interface ChatInputProps extends ComponentProps {
   triggers?: Trigger[];
   /** Keybinding/palette commands. */
   commands?: Command[];
+  /** Extra host hints always appended to the contextual help line. */
+  extraHints?: ChatHint[];
   /** App-provided inline ghost-text autocomplete. */
   suggestionProvider?: (ctx: {
     value: string;
@@ -51,7 +54,11 @@ export interface ChatInputProps extends ComponentProps {
   onInterrupt?: () => void;
   /** Called when a trigger/command resolves to an action. */
   onCommand?: (name: string, args?: unknown) => void;
+  /** Called when the contextual hint set changes (render a help line). */
+  onHintsChange?: (hints: ChatHint[]) => void;
 }
+
+export type { ChatHint } from "../../../widgets/controls/chat-input.ts";
 
 /**
  * A feature-rich chat composer: auto-grow, send-on-Enter, atomic chips,

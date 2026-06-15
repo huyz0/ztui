@@ -405,3 +405,55 @@ describe("ChatInput", () => {
     expect(value).toBe("");
   });
 });
+
+describe("ChatInput contextual hints", () => {
+  const labels = (w: ChatInputWidget) =>
+    (w as unknown as { getHints: () => Array<{ label: string }> }).getHints().map((h) => h.label);
+
+  test("default set advertises send/newline/history/completions and keyed commands", async () => {
+    const trig: Trigger = {
+      char: "@",
+      getCompletions: () => [],
+      onAccept: () => ({ kind: "dismiss" }),
+    };
+    const { w } = await mountChat({
+      getHistory: () => ["a"],
+      triggers: [trig],
+      commands: [{ name: "palette", label: "palette", key: "ctrl+k" }],
+    });
+    expect(labels(w)).toEqual(["send", "newline", "history", "completions", "palette"]);
+  });
+
+  test("busy shows interrupt", async () => {
+    const { w } = await mountChat({ busy: true });
+    expect(labels(w)).toContain("interrupt");
+    expect(labels(w)).not.toContain("send");
+  });
+
+  test("a selection swaps in copy/cut", async () => {
+    const { w } = await mountChat({});
+    type(w, "hello");
+    key(w, "home", { shift: true });
+    expect(labels(w)).toEqual(expect.arrayContaining(["copy", "cut"]));
+  });
+
+  test("extraHints are appended", async () => {
+    const { w } = await mountChat({ extraHints: [{ keys: "^q", label: "quit" }] });
+    expect(labels(w)).toContain("quit");
+  });
+
+  test("onHintsChange fires once per transition, not per keystroke", async () => {
+    const sets: string[][] = [];
+    const { t, w } = await mountChat({
+      onHintsChange: (h: Array<{ label: string }>) => sets.push(h.map((x) => x.label)),
+    });
+    sets.length = 0;
+    type(w, "hi"); // both keystrokes keep the same (default) hint set
+    await t.settle();
+    expect(sets.length).toBe(0);
+    key(w, "home", { shift: true }); // now there's a selection → one emit
+    await t.settle();
+    expect(sets.length).toBe(1);
+    expect(sets[0]).toEqual(expect.arrayContaining(["copy", "cut"]));
+  });
+});

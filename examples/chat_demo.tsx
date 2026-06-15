@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import {
+  type ChatHint,
   ChatInput,
   type Completion,
   Dock,
@@ -33,6 +34,7 @@ function ChatDemoApp() {
     { role: "agent", text: "Hi! Try @ to mention a file, / for a command, or just type." },
   ]);
   const [busy, setBusy] = useState(false);
+  const [hints, setHints] = useState<ChatHint[]>([]);
   const history = useRef<string[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,8 +67,8 @@ function ChatDemoApp() {
     <Dock style={{ background: "$background" }}>
       <Header>💬 ZTUI Chat Composer</Header>
       <Footer>
-        Enter: send │ Ctrl+J or \↵: newline │ ↑/↓: history │ @ / : completions
-        {quitHint(" │ ")}
+        {hints.map((h) => `${h.keys} ${h.label}`).join("  │  ")}
+        {quitHint("  │  ")}
       </Footer>
 
       <VBox style={{ padding: 1, height: "1fr" }}>
@@ -93,6 +95,7 @@ function ChatDemoApp() {
           busy={busy}
           triggers={[mention, slash]}
           getHistory={() => history.current}
+          onHintsChange={setHints}
           serialize={(tok) => `@${tok.label}`}
           suggestionProvider={({ value }) => {
             const key = value.toLowerCase();
