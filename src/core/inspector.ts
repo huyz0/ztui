@@ -244,6 +244,18 @@ function dumpAppState(app: InspectableApp): any {
     hoveredWidget: hovered ? hovered.describe() : null,
     activeTheme: ThemeManager.getInstance().getActiveTheme().name,
     capabilities: driver.capabilities,
+    mouseDiagnostics:
+      typeof (app as any).getMouseDiagnostics === "function"
+        ? (app as any).getMouseDiagnostics()
+        : null,
+    inputDiagnostics:
+      typeof (driver as any).getInputDiagnostics === "function"
+        ? (driver as any).getInputDiagnostics()
+        : null,
+    renderReasons:
+      typeof (app as any).getRenderReasonStats === "function"
+        ? (app as any).getRenderReasonStats()
+        : null,
     log: { file: logger.getFilePath(), level: logger.getLevel() },
   };
 }

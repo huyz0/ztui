@@ -20,6 +20,7 @@ export type SplitterOrientation = "vertical" | "horizontal";
  * (`┃`/`━`) while hovered or dragging to signal it's grabbable.
  */
 export class SplitterWidget extends Widget {
+  public override hoverInterest = true;
   public orientation: SplitterOrientation = "vertical";
   /**
    * Fired on each drag step with the pointer delta (cells) along the axis.
@@ -38,12 +39,12 @@ export class SplitterWidget extends Widget {
     // so repaint rather than relayout the whole tree on every enter/leave.
     this.onMouseEnter = () => {
       this.hovered = true;
-      App.instance?.queueRepaint();
+      App.instance?.queueRepaint(null, "splitter:hover-enter");
     };
     this.onMouseLeave = () => {
       if (this.dragging) return;
       this.hovered = false;
-      App.instance?.queueRepaint();
+      App.instance?.queueRepaint(null, "splitter:hover-leave");
     };
   }
 

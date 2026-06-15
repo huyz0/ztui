@@ -132,6 +132,12 @@ export abstract class Driver extends EventEmitter {
   abstract getSize(): Size;
   /** Show a desktop notification, where supported. */
   public abstract showNotification(title: string, body: string): void;
+  /** Enable/disable passive hover (any-motion) reporting at runtime. */
+  public setMouseHover(_enabled: boolean): void {}
+  /** Whether passive hover move suppression should be enforced by the app. */
+  public get enforcesRuntimeHoverMode(): boolean {
+    return false;
+  }
   /** Escape sequence drawing a registered icon by name (text fallback by default; protocol drivers override). */
   public getIconSequence(name: string, _color?: string, _bgColor?: string): string {
     const icon = iconRegistry.get(name);

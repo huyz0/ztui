@@ -5,16 +5,26 @@
  * keeping the animation primitive at the bottom of the dependency graph.
  */
 interface Repaintable {
-  queueRender(): void;
+  queueRender(reason?: string): void;
   /** Paint-only re-render that reuses the current layout, when available. */
-  queueRepaint?(region?: { y: number; bottom: number } | null): void;
+  queueRepaint?(region?: { y: number; bottom: number } | null, reason?: string): void;
 }
 
 /** @internal Anything that can ask its owning app to repaint — every mounted widget. */
 interface TickOwner {
   app?: Repaintable | null;
+  /** Human-readable owner label for diagnostics (widget tag, component kind, etc.). */
+  tagName?: string;
   /** The widget's laid-out region, used to scope a paint-only repaint's damage. */
   region?: { y: number; bottom: number };
+}
+
+/** Shared cosmetic repaint cadence (10fps by default) for terminal-friendly batching. */
+export const COSMETIC_REPAINT_MS = 100;
+
+interface CosmeticEntry {
+  owner: TickOwner;
+  reasons: Set<string>;
 }
 
 /**
@@ -33,9 +43,11 @@ interface TickOwner {
  * that single coalesced frame, so they stay phase-aligned thereafter.
  */
 const pending = new Map<TickOwner, { at: number; paintOnly: boolean }>();
+const cosmeticPending = new Map<Repaintable, CosmeticEntry[]>();
 /** The one shared timer and the absolute time it is set to fire. */
 let timer: ReturnType<typeof setTimeout> | null = null;
 let timerAt = Number.POSITIVE_INFINITY;
+let cosmeticTimer: ReturnType<typeof setTimeout> | null = null;
 /** Owners due within this many ms of each other fire together (phase tolerance). */
 const BATCH_SLOP_MS = 4;
 
@@ -58,6 +70,48 @@ function reschedule(): void {
 }
 
 /** Fire every owner due now, synchronously, so their repaints coalesce to one frame. */
+function flushCosmeticRepaints(): void {
+  cosmeticTimer = null;
+  for (const [app, entries] of cosmeticPending) {
+    if (!app.queueRepaint) continue;
+    let top = Number.POSITIVE_INFINITY;
+    let bottom = Number.NEGATIVE_INFINITY;
+    const parts: string[] = [];
+    for (const entry of entries) {
+      const region = entry.owner.region;
+      if (region) {
+        top = Math.min(top, region.y);
+        bottom = Math.max(bottom, region.bottom);
+      }
+      for (const reason of entry.reasons) parts.push(reason);
+    }
+    const merged = [...new Set(parts)].join(",");
+    app.queueRepaint(
+      Number.isFinite(top) && bottom > top ? { y: top, bottom } : null,
+      `cosmetic-batch:${merged}`,
+    );
+  }
+  cosmeticPending.clear();
+}
+
+export function requestCosmeticRepaint(owner: TickOwner, reason: string): void {
+  const app = owner.app;
+  if (!app) return;
+  if (!app.queueRepaint) {
+    app.queueRender(`cosmetic-batch:${reason}`);
+    return;
+  }
+  const list = cosmeticPending.get(app) ?? [];
+  const existing = list.find((entry) => entry.owner === owner);
+  if (existing) existing.reasons.add(reason);
+  else list.push({ owner, reasons: new Set([reason]) });
+  cosmeticPending.set(app, list);
+  if (cosmeticTimer) return;
+  const t = setTimeout(flushCosmeticRepaints, COSMETIC_REPAINT_MS);
+  (t as { unref?: () => void }).unref?.();
+  cosmeticTimer = t;
+}
+
 function fireDue(): void {
   timer = null;
   timerAt = Number.POSITIVE_INFINITY;
@@ -72,8 +126,12 @@ function fireDue(): void {
   for (const { owner, paintOnly } of ready) {
     const app = owner.app;
     if (!app) continue;
-    if (paintOnly && app.queueRepaint) app.queueRepaint(owner.region ?? null);
-    else app.queueRender();
+    const ownerLabel = owner.tagName ? `:${owner.tagName}` : "";
+    if (paintOnly) {
+      requestCosmeticRepaint(owner, `animation:paint-only${ownerLabel}`);
+    } else {
+      app.queueRender(`animation:layout${ownerLabel}`);
+    }
   }
   reschedule();
 }

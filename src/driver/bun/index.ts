@@ -5,9 +5,12 @@ import { logger } from "../../utils/logger.ts";
 import { type Clipboard, Driver, type KeyEvent, type TerminalCapabilities } from "../driver.ts";
 import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
-import { type MouseParseState, parseInput } from "./input.ts";
+import { type InputDiagnostics, type MouseParseState, parseInput } from "./input.ts";
 
 export class BunDriver extends Driver {
+  public override get enforcesRuntimeHoverMode(): boolean {
+    return true;
+  }
   private graphicsManager = new TerminalGraphicsManager();
   public override readonly capabilities!: TerminalCapabilities;
   /**
@@ -52,9 +55,18 @@ export class BunDriver extends Driver {
   private probeTimeout: any = null;
   /** Persisted across input chunks so motion can be classified against held buttons. */
   private mouseParseState: MouseParseState = { buttonDown: false };
+  private inputDiagnostics: InputDiagnostics = {
+    chunks: 0,
+    keyEvents: 0,
+    mouseEvents: 0,
+    moveEventsBuffered: 0,
+    moveEventsFlushed: 0,
+    moveEventsDroppedInChunk: 0,
+  };
   private pendingClipboardResolvers: ((text: string) => void)[] = [];
   /** Accumulates a bracketed-paste payload that spans multiple stdin chunks. */
   private pasteBuffer: string | null = null;
+  private hoverEnabled = false;
 
   private resizeListener = () => {
     this.emit("resize", this.getSize());
@@ -173,6 +185,23 @@ export class BunDriver extends Driver {
   public showNotification(title: string, body: string): void {
     this.write(`\x1b]9;${title}: ${body}\x07`);
     this.write(`\x1b]777;notify;${title};${body}\x07`);
+  }
+
+  public getInputDiagnostics(): InputDiagnostics {
+    return { ...this.inputDiagnostics };
+  }
+
+  public override setMouseHover(enabled: boolean): void {
+    if (this.hoverEnabled === enabled) return;
+    this.hoverEnabled = enabled;
+    if (!this.isRunning) return;
+    if (enabled) {
+      this.write("\x1b[?1000h\x1b[?1003h\x1b[?1006h");
+      this.capabilities.mouseHover = true;
+    } else {
+      this.write("\x1b[?1000h\x1b[?1002h\x1b[?1006h");
+      this.capabilities.mouseHover = false;
+    }
   }
 
   /**
@@ -390,6 +419,7 @@ export class BunDriver extends Driver {
       this.write("\x1b[>1u"); // Activate advanced keyboard mode
     }
 
+    this.hoverEnabled = this.capabilities.mouseHover;
     if (this.capabilities.mouseHover) {
       this.write("\x1b[?1000h\x1b[?1003h\x1b[?1006h");
     } else {
@@ -453,6 +483,7 @@ export class BunDriver extends Driver {
         (ev) => this.emit("key", ev),
         (ev) => this.emit("mouse", ev),
         this.mouseParseState,
+        this.inputDiagnostics,
       );
     } catch (err) {
       // Malformed input bytes (or a throwing event listener) must not kill the

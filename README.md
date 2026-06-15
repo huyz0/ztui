@@ -295,8 +295,10 @@ Adding a demo is one export plus one registry line; no new npm script needed.
 
 ```bash
 # Headless-debug the web backend: screenshot + pixel-accurate grid report
-bun run web:debug                       # screenshots examples/web_demo_ui
-bun run web:debug --module ./my-ui.tsx  # any module default-exporting a UI
+bun run web:debug                               # screenshots examples/web_demo_ui
+bun run web:debug --module ./my-ui.tsx          # any module default-exporting a UI
+bun run mouse:hover:benchmark --demo table      # Ghostty-style hover benchmark
+bun --cpu-prof --cpu-prof-dir=./profiles scripts/mouse-hover-benchmark.ts --demo table
 ```
 
 The web backend renders the same widget tree to a browser instead of a terminal.

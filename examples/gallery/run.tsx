@@ -20,7 +20,12 @@ import type { Demo } from "./types.ts";
 
 const argv = process.argv.slice(2);
 const web = argv.includes("--web");
-const id = argv.find((a) => !a.startsWith("-"));
+const arg = (name: string): string | undefined => {
+  const i = argv.indexOf(`--${name}`);
+  return i >= 0 ? argv[i + 1] : undefined;
+};
+const inspectorPort = arg("inspector-port");
+const id = argv.find((a, i) => !a.startsWith("-") && (i === 0 || !argv[i - 1]?.startsWith("--")));
 
 // `--list`: print the registry (grouped) and exit — the discoverable source of
 // demo ids, so package.json needs no per-demo script.
@@ -52,7 +57,7 @@ if (id) {
 const driver = web ? new WebDriver() : new BunDriver();
 const app = new App(driver);
 render(root, app.activeScreen);
-app.run();
+app.run({ inspectorPort: inspectorPort ? Number(inspectorPort) : undefined });
 
 // The gallery focuses per selection; a single demo focuses once after mount.
 if (single?.autoFocusTag) autoFocus(app, single.autoFocusTag);

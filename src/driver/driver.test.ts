@@ -51,7 +51,7 @@ describe("BunDriver Capability Probing", () => {
     expect(driver.capabilities.truecolor).toBe(true);
     expect(driver.capabilities.color256).toBe(true);
     expect(driver.capabilities.hyperlinks).toBe(true);
-    expect(driver.capabilities.graphicsProtocol).toBe("kitty");
+    expect(driver.capabilities.graphicsProtocol).toBe("iterm2");
   });
 
   test("Bypasses active probing if stdin/stdout are not TTYs", () => {
@@ -393,7 +393,7 @@ describe("BunDriver Capability Probing", () => {
 
     vi.advanceTimersByTime(100);
 
-    expect(driver.capabilities.graphicsProtocol).toBe("sixel");
+    expect(driver.capabilities.graphicsProtocol).toBe("iterm2");
 
     driver.stop();
   });

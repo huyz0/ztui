@@ -20,8 +20,8 @@ export class CaretBlink {
   public visible = true;
   /** Timestamp the caret last reset to solid; phase origin for the smooth fade. */
   public solidAt = 0;
-  /** Eased fade-blink (default) instead of a hard on/off toggle. */
-  public smooth = true;
+  /** Eased fade-blink instead of a hard on/off toggle. Disabled by default. */
+  public smooth = false;
   private interval: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly repaint: () => void) {}

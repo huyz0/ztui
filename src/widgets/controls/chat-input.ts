@@ -104,7 +104,7 @@ export class ChatInputWidget extends Widget {
   private _focused = false;
   // Blink ticks change only the caret cell's appearance, never layout, so they
   // repaint without relaying out the tree.
-  private caret = new CaretBlink(() => this.app?.queueRepaint(this.region));
+  private caret = new CaretBlink(() => this.app?.queueRepaint(this.region, "caret:chat-input"));
 
   private popup: CompletionPopupWidget | null = null;
   private popupScreen: Screen | null = null;

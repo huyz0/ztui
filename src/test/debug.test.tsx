@@ -300,6 +300,7 @@ describe("first-class isolated debugging", () => {
       <View style={{ layout: "vertical", width: 40, height: 10 }}>
         <Button
           id="btn-hover"
+          hoverInterest
           onMouseEnter={() => {
             enterCount++;
           }}

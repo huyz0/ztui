@@ -1,4 +1,4 @@
-import { requestAnimationTick } from "../anim/animation.ts";
+import { requestAnimationTick, requestCosmeticRepaint } from "../anim/animation.ts";
 import { ColorTween, Tween, type TweenOptions } from "../anim/tween.ts";
 import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
@@ -25,9 +25,9 @@ import { TextNode } from "./text-node.ts";
  * upward `dom → css` dependency).
  */
 export interface WidgetApp {
-  queueRender(): void;
+  queueRender(reason?: string): void;
   /** Paint-only re-render that reuses the current layout; an optional region scopes the damage. */
-  queueRepaint(region?: { y: number; bottom: number } | null): void;
+  queueRepaint(region?: { y: number; bottom: number } | null, reason?: string): void;
   activeScreen: { focusWidget(widget: Widget): void };
   cssResolver: {
     resolveVariable(widget: Widget, value: string): string;
@@ -137,6 +137,8 @@ export interface WidgetStyles {
  * Anything not documented as overridable is internal plumbing and may change.
  */
 export class Widget extends DOMNode {
+  /** Opt-in hint: this widget visually or behaviorally cares about passive hover motion. */
+  public hoverInterest = false;
   /** Author-set inline styles; override the widget's `defaultStyle` key-by-key. */
   public style: WidgetStyles = {};
   /** The widget's built-in look, overridden by `style`. Set by subclasses. */
@@ -468,8 +470,9 @@ export class Widget extends DOMNode {
     }
     tween.to(target, opts);
     const value = tween.value;
-    // A colour tween changes only appearance — repaint, don't relayout.
-    if (tween.animating) requestAnimationTick(this, 16, true);
+    // A colour tween changes only appearance — batch cosmetic repaints onto the
+    // shared low-frequency repaint clock instead of scheduling per-widget ticks.
+    if (tween.animating) requestCosmeticRepaint(this, `animation:paint-only:${this.tagName}`);
     return value;
   }
 

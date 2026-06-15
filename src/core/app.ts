@@ -66,8 +66,18 @@ export class App extends DOMNode {
   // added/moved/removed, triggering a full graphics wipe + re-emit to clear
   // orphaned placements (see ScreenBuffer.graphicSignature).
   private lastGraphicSignature = 0;
+  private renderReasonStats: Record<string, number> = Object.create(null);
+  private pendingRenderReasons = new Set<string>();
   private hoveredWidget: Widget | null = null;
   private activeDragWidget: Widget | null = null;
+  private mouseDiagnostics = {
+    rawMovesSeen: 0,
+    receivedMoves: 0,
+    movesDroppedNoHover: 0,
+    throttledImmediate: 0,
+    throttledDeferred: 0,
+    sameCellSkipped: 0,
+  };
   // Last pointer cell, so a stream of same-cell `move` events (terminals emit one
   // per pixel under any-motion tracking, but report cell coords) is collapsed to
   // a single hit-test — the dominant cost of hovering.
@@ -107,7 +117,7 @@ export class App extends DOMNode {
     this.pushScreen(defaultScreen);
 
     this.themeUnsubscribe = ThemeManager.getInstance().subscribe(() => {
-      this.queueRender();
+      this.queueRender("theme:change");
     });
   }
 
@@ -148,7 +158,7 @@ export class App extends DOMNode {
   public loadStyles(tcssContent: string): void {
     const rules = parseTCSS(tcssContent);
     this.cssResolver.addRules(rules);
-    this.queueRender();
+    this.queueRender("styles:load");
   }
 
   /** Start the event loop: bind the driver, probe capabilities, and render frames. */
@@ -194,7 +204,7 @@ export class App extends DOMNode {
         this.prevBuffer.resize(0, 0); // Force full redraw
 
         this.driver.clearScreen();
-        this.queueRender();
+        this.queueRender("driver:resize");
       }, 30);
     });
 
@@ -202,7 +212,7 @@ export class App extends DOMNode {
       log(
         `Capabilities resolved event received from driver. Cell size: ${JSON.stringify(this.driver.capabilities.cellSize)}, Graphics: ${this.driver.capabilities.graphicsProtocol}`,
       );
-      this.queueRender();
+      this.queueRender("driver:capabilities-resolved");
     });
 
     this.driver.on("key", (ev) => {
@@ -218,13 +228,13 @@ export class App extends DOMNode {
         const copied = focused?.copySelection?.();
         if (copied != null) {
           ev.handled = true;
-          this.queueRender();
+          this.queueRender("clipboard:copy-focused-selection");
           return;
         }
         // Read-only (mouse) selection over a display widget copies too.
         if (this.selection.active && this.copyActiveSelection() != null) {
           ev.handled = true;
-          this.queueRender();
+          this.queueRender("clipboard:copy-readonly-selection");
           return;
         }
         // On a backend that doesn't own its host process (the web canvas, served
@@ -245,7 +255,7 @@ export class App extends DOMNode {
       // Ctrl+A, which reach the app on every terminal. Each is guarded by a
       // capability check so non-text widgets are unaffected.
       if (this.routeClipboardKey(ev)) {
-        this.queueRender();
+        this.queueRender("clipboard:shortcut");
         return;
       }
 
@@ -261,7 +271,7 @@ export class App extends DOMNode {
           this.safeInvoke(`keyInterceptor on layer ${i}`, () => interceptor(ev));
           if (ev.handled) {
             log(`Key "${ev.key}" intercepted by layer ${i}`);
-            this.queueRender();
+            this.queueRender("key:layer-interceptor");
             return;
           }
         }
@@ -273,7 +283,7 @@ export class App extends DOMNode {
       // interceptors above keep precedence (a dialog's nav keys win), but a
       // modal does NOT block hotkeys — the palette toggle must work everywhere.
       if (this.hotkeys.dispatch(ev, "priority")) {
-        this.queueRender();
+        this.queueRender("key:hotkey-priority");
         return;
       }
 
@@ -284,12 +294,12 @@ export class App extends DOMNode {
         const focused = screen.focusedWidget as ClipboardWidget | null;
         if (focused?.hasSelection?.()) {
           this.safeInvoke("clearSelection (escape)", () => focused.clearSelection?.());
-          this.queueRender();
+          this.queueRender("selection:clear-focused-escape");
           return;
         }
         if (this.selection.active) {
           this.selection.active = null;
-          this.queueRender();
+          this.queueRender("selection:clear-readonly-escape");
           return;
         }
       }
@@ -303,7 +313,7 @@ export class App extends DOMNode {
         if (top?.closeOnEscape) {
           log("Escape closing top layer");
           this.safeInvoke("layer onClose (escape)", () => top.onClose?.());
-          this.queueRender();
+          this.queueRender("layer:close-escape");
           return;
         }
       }
@@ -311,7 +321,7 @@ export class App extends DOMNode {
       if (ev.key === "tab") {
         screen.focusNext(ev.shift);
         log(() => `Focus moved to: ${screen.focusedWidget?.describe() ?? "(none)"}`);
-        this.queueRender();
+        this.queueRender("focus:tab-navigation");
         return;
       }
 
@@ -339,7 +349,7 @@ export class App extends DOMNode {
       }
       if (handledBy) {
         log(() => `Key "${ev.key}" handled by ${handledBy.describe()}`);
-        this.queueRender();
+        this.queueRender("key:widget-handled");
         return;
       }
 
@@ -347,7 +357,7 @@ export class App extends DOMNode {
       // once the focus chain declined the event, so hotkeys never eat typing.
       if (this.hotkeys.dispatch(ev, "fallback")) {
         log(`Key "${ev.key}" handled by global hotkey`);
-        this.queueRender();
+        this.queueRender("key:hotkey-fallback");
         return;
       }
 
@@ -360,10 +370,20 @@ export class App extends DOMNode {
       // the same cell can't change the hovered widget or a drag, so it is pure
       // overhead (a full tree hit-test) — skip it.
       if (ev.type === "move" && ev.x === this.lastMouseX && ev.y === this.lastMouseY) {
+        this.mouseDiagnostics.sameCellSkipped += 1;
         return;
       }
       this.lastMouseX = ev.x;
       this.lastMouseY = ev.y;
+
+      if (
+        ev.type === "move" &&
+        !this.activeDragWidget &&
+        !this.cssResolver.hasHoverRules() &&
+        !this.screenHasHoverInterest(this.activeScreen)
+      ) {
+        return;
+      }
 
       let hit = this.hitTest(this.activeScreen, ev.x, ev.y);
 
@@ -376,7 +396,7 @@ export class App extends DOMNode {
         // handleMouse re-establishes one if it is selectable.
         if (ev.button === "left" && this.selection.active) {
           this.selection.active = null;
-          this.queueRender();
+          this.queueRender("selection:clear-readonly-press");
         }
       }
 
@@ -413,7 +433,7 @@ export class App extends DOMNode {
         // enter/leave handlers above, so we don't relayout the whole tree on every
         // pointer boundary crossing when nothing visual depends on it.
         if (this.cssResolver.hasHoverRules()) {
-          this.queueRender();
+          this.queueRender("mouse:hover-css");
         }
       }
 
@@ -427,7 +447,7 @@ export class App extends DOMNode {
             log("Outside click closing top modal layer");
             this.safeInvoke("modal onClose (outside click)", () => modal.onClose?.());
           }
-          this.queueRender();
+          this.queueRender("layer:close-outside-click");
           return;
         }
       }
@@ -452,7 +472,7 @@ export class App extends DOMNode {
             if (hitWidget.focusable) {
               this.activeScreen.focusWidget(hitWidget);
               log(() => `Focused via click -> ${hitWidget.describe()}`);
-              this.queueRender();
+              this.queueRender("focus:mouse-press");
             }
             if (hitWidget.onClick) {
               log(() => `onClick -> ${hitWidget.describe()}`);
@@ -460,7 +480,7 @@ export class App extends DOMNode {
                 () => `onClick on ${hitWidget.describe()}`,
                 () => hitWidget.onClick?.(ev),
               );
-              this.queueRender();
+              this.queueRender("mouse:click");
             }
           } else if (ev.type === "scroll_up" || ev.type === "scroll_down") {
             let current: DOMNode | null = hitWidget;
@@ -474,7 +494,7 @@ export class App extends DOMNode {
                     () => w.handleScroll(ev),
                   );
                   if (ev.handled) {
-                    this.queueRender();
+                    this.queueRender("mouse:scroll-handled");
                     break;
                   }
                 }
@@ -483,7 +503,7 @@ export class App extends DOMNode {
             }
           }
         } else {
-          this.queueRender();
+          this.queueRender("mouse:handled");
         }
       }
     };
@@ -499,15 +519,27 @@ export class App extends DOMNode {
     let pendingMove: MouseEvent | null = null;
     let moveScheduled = false;
     let lastMoveAt = 0;
-    // ~30 Hz. Hover only needs to feel responsive, not match the terminal's
+    // ~15 Hz. Hover only needs to feel responsive, not match the terminal's
     // pixel-rate motion stream, so a coarser window further cuts work on
     // high-frequency terminals (Ghostty) at no perceptible cost.
-    const MOVE_MIN_MS = 33;
+    const MOVE_MIN_MS = 66;
     this.driver.on("mouse", (ev) => {
+      if (ev.type === "move") this.mouseDiagnostics.rawMovesSeen += 1;
+      if (
+        ev.type === "move" &&
+        !this.activeDragWidget &&
+        this.driver.enforcesRuntimeHoverMode &&
+        this.driver.capabilities.mouseHover === false
+      ) {
+        this.mouseDiagnostics.movesDroppedNoHover += 1;
+        return;
+      }
+      if (ev.type === "move") this.mouseDiagnostics.receivedMoves += 1;
       if (ev.type === "move" && !this.activeDragWidget) {
         const now = Date.now();
         if (now - lastMoveAt >= MOVE_MIN_MS) {
           lastMoveAt = now;
+          this.mouseDiagnostics.throttledImmediate += 1;
           processMouse(ev);
           return;
         }
@@ -520,7 +552,10 @@ export class App extends DOMNode {
               lastMoveAt = Date.now();
               const m = pendingMove;
               pendingMove = null;
-              if (m) processMouse(m);
+              if (m) {
+                this.mouseDiagnostics.throttledDeferred += 1;
+                processMouse(m);
+              }
             },
             Math.max(1, MOVE_MIN_MS - (now - lastMoveAt)),
           );
@@ -543,7 +578,7 @@ export class App extends DOMNode {
       const focused = this.activeScreen.focusedWidget as ClipboardWidget | null;
       if (focused && typeof focused.insertText === "function") {
         this.safeInvoke("paste (bracketed)", () => focused.insertText?.(text));
-        this.queueRender();
+        this.queueRender("clipboard:paste-bracketed");
       }
     });
   }
@@ -574,7 +609,7 @@ export class App extends DOMNode {
         Promise.resolve(this.driver.clipboard.get()).then((text) => {
           if (text) {
             this.safeInvoke("insertText (paste)", () => focused.insertText?.(text));
-            this.queueRender();
+            this.queueRender("clipboard:paste-shortcut");
           }
         });
       });
@@ -610,7 +645,8 @@ export class App extends DOMNode {
    * microtask (coalesced). This is the safe default: call it after any state
    * change that might affect sizes or structure.
    */
-  public queueRender(): void {
+  public queueRender(reason = "unknown"): void {
+    this.noteRenderReason(reason);
     this.needsLayout = true;
     this.repaintFull = true;
     this.scheduleRender();
@@ -624,7 +660,8 @@ export class App extends DOMNode {
    * {@link queueRender} in the same frame, the full path runs instead, so a
    * repaint can never mask a real layout change.
    */
-  public queueRepaint(region?: { y: number; bottom: number } | null): void {
+  public queueRepaint(region?: { y: number; bottom: number } | null, reason = "unknown"): void {
+    this.noteRenderReason(`repaint:${reason}`);
     // A region scopes the repaint to that band of rows (damage tracking). No
     // region means "repaint the whole screen" — the safe default.
     if (region && region.bottom > region.y) {
@@ -657,6 +694,28 @@ export class App extends DOMNode {
     return text;
   }
 
+  public getRenderReasonStats(): Record<string, number> {
+    return { ...this.renderReasonStats };
+  }
+
+  public getMouseDiagnostics(): Record<string, number> {
+    return { ...this.mouseDiagnostics };
+  }
+
+  private noteRenderReason(reason: string): void {
+    this.pendingRenderReasons.add(reason);
+  }
+
+  private flushRenderReasons(): void {
+    if (this.pendingRenderReasons.size === 0) {
+      this.pendingRenderReasons.add("unspecified");
+    }
+    for (const reason of this.pendingRenderReasons) {
+      this.renderReasonStats[reason] = (this.renderReasonStats[reason] ?? 0) + 1;
+    }
+    this.pendingRenderReasons.clear();
+  }
+
   /** Invoke user/widget event code without letting a throw kill the event loop. */
   private safeInvoke(what: string | (() => string), fn: () => void): void {
     try {
@@ -673,8 +732,10 @@ export class App extends DOMNode {
     if (!this.driver.capabilitiesResolved) {
       return;
     }
+    this.flushRenderReasons();
     try {
       this.layoutAndRenderUnsafe();
+      this.syncMouseHoverMode();
     } catch (err) {
       // Last-resort guard: a render exception must never crash the app or leave
       // the terminal wedged. Log it and keep the previous frame on screen.
@@ -989,6 +1050,37 @@ export class App extends DOMNode {
         child.region = new Region(new Offset(x, y), new Size(childWidth, childHeight));
       }
     }
+  }
+
+  /**
+   * Conservative heuristic: returns true when a visible on-screen widget may
+   * care about passive hover. This is intentionally cheaper than exact clipped
+   * hit-testing; it filters obviously irrelevant off-screen/zero-sized widgets
+   * before deciding whether to keep terminal any-motion hover enabled.
+   */
+  private screenHasHoverInterest(screen: Screen): boolean {
+    const screenRegion = screen.region;
+    let interested = false;
+    screen.walk((node) => {
+      if (interested) return;
+      if (
+        node instanceof Widget &&
+        node.visible &&
+        node.hoverInterest &&
+        node.region.width > 0 &&
+        node.region.height > 0 &&
+        node.region.overlaps(screenRegion)
+      ) {
+        interested = true;
+      }
+    });
+    return interested;
+  }
+
+  private syncMouseHoverMode(): void {
+    const enabled =
+      this.cssResolver.hasHoverRules() || this.screenHasHoverInterest(this.activeScreen);
+    this.driver.setMouseHover(enabled);
   }
 
   private hitTest(node: DOMNode, x: number, y: number): Widget | null {

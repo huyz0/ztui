@@ -18,6 +18,7 @@ function InteractiveApp() {
         onClick={() => setClicks(clicks + 1)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        hoverInterest
       >
         Clicks: {clicks}
       </Button>
@@ -57,10 +58,10 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
       expect(cell.isStrikethrough()).toBeTruthy();
     }
 
-    // Mouse leaves. Pointer-move processing is throttled (~30 Hz), so wait past
+    // Mouse leaves. Pointer-move processing is throttled (~15 Hz), so wait past
     // the coalescing window for the trailing move to be applied.
     driver.simulateMouse(39, 9, "move", "none");
-    await settle(50);
+    await settle(90);
     expect(line(driver, 0)).toContain("Normal Text");
   });
 

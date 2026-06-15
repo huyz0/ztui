@@ -62,7 +62,7 @@ export class TextAreaWidget extends Widget {
   private _focused = false;
   // Target this widget's own app (not the global singleton) so a blink that
   // outlives the widget can't repaint a different app's screen.
-  private caret = new CaretBlink(() => this.app?.queueRepaint(this.region));
+  private caret = new CaretBlink(() => this.app?.queueRepaint(this.region, "caret:textarea"));
   /** Eased fade-blink (default) instead of a hard on/off toggle. Set false for
    * the classic square-wave blink. */
   public get smoothCaret(): boolean {

@@ -6,12 +6,23 @@ export interface MouseParseState {
   buttonDown: boolean;
 }
 
+export interface InputDiagnostics {
+  chunks: number;
+  keyEvents: number;
+  mouseEvents: number;
+  moveEventsBuffered: number;
+  moveEventsFlushed: number;
+  moveEventsDroppedInChunk: number;
+}
+
 export function parseInput(
   data: string,
   onKeyRaw: (ev: KeyEvent) => void,
   onMouseRaw: (ev: MouseEvent) => void,
   mouseState: MouseParseState = { buttonDown: false },
+  diagnostics?: InputDiagnostics,
 ): void {
+  if (diagnostics) diagnostics.chunks += 1;
   // Coalesce pointer motion within a single chunk: hover-capable terminals
   // (Ghostty) stream a move per pixel, and a fast sweep packs many into one read.
   // Only the latest position matters, so buffer moves and emit just the last —
@@ -22,20 +33,26 @@ export function parseInput(
   let pendingMove: MouseEvent | null = null;
   const flushMove = () => {
     if (pendingMove) {
+      if (diagnostics) diagnostics.moveEventsFlushed += 1;
+      if (diagnostics) diagnostics.mouseEvents += 1;
       onMouseRaw(pendingMove);
       pendingMove = null;
     }
   };
   const onKey = (ev: KeyEvent) => {
     flushMove();
+    if (diagnostics) diagnostics.keyEvents += 1;
     onKeyRaw(ev);
   };
   const onMouse = (ev: MouseEvent) => {
     if (ev.type === "move" && ev.button === "none") {
+      if (pendingMove && diagnostics) diagnostics.moveEventsDroppedInChunk += 1;
+      if (diagnostics) diagnostics.moveEventsBuffered += 1;
       pendingMove = ev;
       return;
     }
     flushMove();
+    if (diagnostics) diagnostics.mouseEvents += 1;
     onMouseRaw(ev);
   };
 

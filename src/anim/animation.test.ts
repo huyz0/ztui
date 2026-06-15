@@ -19,10 +19,10 @@ function fakeOwner() {
 }
 
 describe("requestAnimationTick", () => {
-  test("paint-only ticks request a repaint, not a full render", async () => {
+  test("paint-only ticks request a batched repaint, not a full render", async () => {
     const { owner, calls } = fakeOwner();
     requestAnimationTick(owner, 16, true);
-    await sleep(40);
+    await sleep(130);
     expect(calls).toEqual({ render: 0, repaint: 1 });
   });
 
@@ -44,7 +44,7 @@ describe("requestAnimationTick", () => {
   test("coalesces to a single frame per owner", async () => {
     const { owner, calls } = fakeOwner();
     for (let i = 0; i < 10; i++) requestAnimationTick(owner, 16, true);
-    await sleep(40);
+    await sleep(130);
     expect(calls.repaint).toBe(1);
   });
 
@@ -67,7 +67,7 @@ describe("requestAnimationTick", () => {
     requestAnimationTick({ app }, 16, true);
     requestAnimationTick({ app }, 16, true);
     requestAnimationTick({ app }, 16, true);
-    await sleep(40);
+    await sleep(130);
     // All three are due together, so the shared clock fires them in one macrotask
     // → a single coalesced frame (not three).
     expect(frames).toBe(1);
@@ -77,7 +77,7 @@ describe("requestAnimationTick", () => {
     const calls = { render: 0 };
     const owner = { app: { queueRender: () => calls.render++ } };
     requestAnimationTick(owner, 16, true);
-    await sleep(40);
+    await sleep(130);
     expect(calls.render).toBe(1);
   });
 });

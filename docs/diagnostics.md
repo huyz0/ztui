@@ -61,6 +61,10 @@ curl 'localhost:8000/log?lines=50' # tail the run log
 curl localhost:8000/tree           # indented ASCII widget tree (quick scan)
 curl localhost:8000/screenshot     # plain-text grid of what's on screen now
 curl localhost:8000/dom            # full widget tree with regions + text (JSON)
+# Real-terminal mouse diagnostics: /state now includes inputDiagnostics,
+# mouseDiagnostics, and renderReasons for comparing Ghostty vs synthetic runs.
+bun run mouse:hover:benchmark --demo table
+bun --cpu-prof --cpu-prof-dir=./profiles scripts/mouse-hover-benchmark.ts --demo table
 ```
 
 ### Inspector Endpoint Payloads

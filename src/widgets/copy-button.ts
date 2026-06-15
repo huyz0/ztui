@@ -21,6 +21,7 @@ const ACK_MS = 1200;
  * `$panel` background; a click copies and briefly shows `✓`.
  */
 export class CopyButtonWidget extends Widget {
+  public override hoverInterest = true;
   /** Supplies the text to copy. Set by the host widget. */
   public getText: () => string = () => "";
   private hovered = false;
@@ -42,11 +43,11 @@ export class CopyButtonWidget extends Widget {
     // cursor crosses the button.
     this.onMouseEnter = () => {
       this.hovered = true;
-      App.instance?.queueRepaint();
+      App.instance?.queueRepaint(null, "copy-button:hover-enter");
     };
     this.onMouseLeave = () => {
       this.hovered = false;
-      App.instance?.queueRepaint();
+      App.instance?.queueRepaint(null, "copy-button:hover-leave");
     };
   }
 

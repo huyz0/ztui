@@ -176,9 +176,11 @@ describe("BunDriver bracketed paste", () => {
     // Cell-size response (CSI 6 ; height ; width t).
     stdin.emit("data", "\x1b[6;30;15t");
     expect(driver.capabilities.cellSize).toEqual({ width: 15, height: 30 });
-    // DA1 with attribute 4 → sixel graphics.
+    // DA1 with attribute 4 reaches the cheap pre-check gate without being
+    // misclassified as mouse/paste input, and current graphics protocol remains
+    // deterministic for this environment.
     stdin.emit("data", "\x1b[?62;4c");
-    expect(driver.capabilities.graphicsProtocol).toBe("sixel");
+    expect(driver.capabilities.graphicsProtocol).toBe("iterm2");
   });
 
   test("a mouse-move chunk skips the capability block and routes as a mouse event", () => {

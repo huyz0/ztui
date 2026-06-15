@@ -25,8 +25,8 @@ describe("pointer-move throttling", () => {
     // Only the leading move (cell 1) was processed synchronously; 2..6 are pending.
     expect(processedX(t.app)).toBe(1);
 
-    // After the throttle window (~33ms), the latest pending move (cell 6) applies.
-    await sleep(60);
+    // After the throttle window (~66ms), the latest pending move (cell 6) applies.
+    await sleep(90);
     expect(processedX(t.app)).toBe(6);
   });
 

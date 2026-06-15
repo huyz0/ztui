@@ -54,6 +54,8 @@ export interface ComponentProps {
   onMouseEnter?: (ev: any) => void;
   /** Pointer left this widget's region. */
   onMouseLeave?: (ev: any) => void;
+  /** Opt-in hint that this widget cares about passive hover movement. */
+  hoverInterest?: boolean;
   /** Pointer-drag lifecycle; `moved` is false for a tap with no movement. */
   onDragStart?: (x: number, y: number) => void;
   /** Pointer moved while dragging from this widget. */

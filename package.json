@@ -85,6 +85,7 @@
     "demo:web": "bun run examples/gallery/run.tsx --web",
     "demo:list": "bun run examples/gallery/run.tsx --list",
     "web:debug": "bun run scripts/web-debug.ts",
+    "mouse:hover:benchmark": "bun run scripts/mouse-hover-benchmark.ts",
     "docs:screenshots": "bun run scripts/docs-screenshots.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
