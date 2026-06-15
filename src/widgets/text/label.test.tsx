@@ -82,6 +82,31 @@ describe("Label markup", () => {
     expect(c.underlineColor).toBe("red");
   });
 
+  test("resolves $theme variables in markup span colors", async () => {
+    const { cellAt } = await mountApp(
+      <HBox>
+        <Label markup>{"[$accent]K[/] x"}</Label>
+      </HBox>,
+      { cols: 20, rows: 1 },
+    );
+    const color = cellAt(0, 0).style.color;
+    // $accent is resolved to a concrete theme color, not left as the literal.
+    expect(color).not.toBe("$accent");
+    expect(color).not.toBe("default");
+    expect(color).toMatch(/^#|rgb|[a-z]/i);
+  });
+
+  test("leaves a bracketed dollar literal alone ($ only leads a theme var)", async () => {
+    const { text } = await mountApp(
+      <HBox>
+        <Label markup>{"price [$5.00] today"}</Label>
+      </HBox>,
+      { cols: 30, rows: 1 },
+    );
+    // `$5.00` isn't `$`+letter, so it's not a style tag and survives verbatim.
+    expect(text()).toContain("price [$5.00] today");
+  });
+
   test("falls back to raw text on malformed markup instead of blanking", async () => {
     const { text } = await mountApp(
       <HBox>

@@ -51,6 +51,38 @@ export interface ChatHint {
   group?: "nav" | "edit" | "action";
 }
 
+/** Styling for {@link formatChatHints}; values are console-markup style strings. */
+export interface ChatHintMarkupOptions {
+  /** Style applied to each hint's `keys` (default `"$accent"`). */
+  keyStyle?: string;
+  /** Style applied to each hint's `label` (default none → inherits the line). */
+  labelStyle?: string;
+  /** Style applied to the separator between hints (default `"$dimmed"`). */
+  sepStyle?: string;
+  /** Separator text between hints (default `" │ "`). */
+  sep?: string;
+}
+
+/** Escape the console-markup metacharacters so literal `[`/`]`/`\` survive. */
+function escapeMarkup(s: string): string {
+  return s.replace(/([[\]\\])/g, "\\$1");
+}
+
+/**
+ * Render {@link ChatHint}s as a console-markup string for a markup-capable
+ * `Label` (or `Footer`), colouring the keys distinctly from their labels. The
+ * defaults use theme variables (`$accent` keys, `$dimmed` separators), so the
+ * hint line stays theme-aware. Example output:
+ * `"[$accent]⏎[/] send[$dimmed] │ [/][$accent]^j[/] newline"`.
+ */
+export function formatChatHints(hints: ChatHint[], opts: ChatHintMarkupOptions = {}): string {
+  const { keyStyle = "$accent", labelStyle, sepStyle = "$dimmed", sep = " │ " } = opts;
+  const wrap = (style: string | undefined, text: string) =>
+    style ? `[${style}]${escapeMarkup(text)}[/]` : escapeMarkup(text);
+  const sepMarkup = wrap(sepStyle, sep);
+  return hints.map((h) => `${wrap(keyStyle, h.keys)} ${wrap(labelStyle, h.label)}`).join(sepMarkup);
+}
+
 /**
  * A framework-agnostic chat composer for AI-agent UIs. It owns its own edit
  * buffer (so it works with any state system — React, a store, or none), grows
@@ -157,6 +189,14 @@ export class ChatInputWidget extends Widget {
 
   private historyIndex: number | null = null;
   private draftStash = "";
+  /**
+   * True once the user has actually put content into the composer this turn
+   * (tracked by the first non-empty buffer, not the live length — so deleting
+   * back to empty keeps it dirty). Reset when the composer is emptied via
+   * submit/clear/controlled-set. Gates the history hint: history is only offered
+   * on a pristine composer.
+   */
+  private hasInput = false;
 
   private _extraHints: ChatHint[] = [];
   /** Signature of the last-emitted hint set, to suppress no-op re-emits. */
@@ -178,6 +218,7 @@ export class ChatInputWidget extends Widget {
   public set value(text: string) {
     if (text === this.buffer.value) return;
     this.buffer.setValue(text);
+    this.hasInput = text.length > 0;
     this.app?.queueRender();
   }
   /** Set how chips serialize into {@link value}. */
@@ -190,6 +231,7 @@ export class ChatInputWidget extends Widget {
   public clear(): void {
     this.buffer.setValue("");
     this.attachments = [];
+    this.hasInput = false;
     this.resetHistory();
     this.closePopup();
     this.emitChange();
@@ -226,6 +268,19 @@ export class ChatInputWidget extends Widget {
   }
   public redo(): void {
     if (this.buffer.redo()) this.afterEdit();
+  }
+
+  /**
+   * Claim Tab only when there's something to accept in-widget: an open
+   * completion popup, or an inline suggestion when Tab is the accept key. In
+   * every other state Tab falls through to focus traversal, so a second Tab
+   * (after accepting) moves to the next widget.
+   */
+  public override wantsTab(ev: KeyEvent): boolean {
+    // Shift+Tab always navigates focus backward — only claim a forward Tab.
+    if (ev.shift) return false;
+    if (this.popup) return true;
+    return this.suggestion !== null && this.acceptSuggestionKey === "tab";
   }
 
   public override onUnmount(): void {
@@ -290,7 +345,10 @@ export class ChatInputWidget extends Widget {
         { keys: sendKey, label: "send", group: "action" },
         { keys: nlKey, label: "newline", group: "edit" },
       );
-      if (this.getHistory) hints.push({ keys: "↑", label: "history", group: "nav" });
+      // Only advertise history on a pristine composer — once the user has
+      // entered anything this turn, ↑ moves the caret rather than recalling.
+      if (this.getHistory && !this.hasInput)
+        hints.push({ keys: "↑", label: "history", group: "nav" });
       const chars = this.triggers.map((t) => t.char).join(" ");
       if (chars) hints.push({ keys: chars, label: "completions", group: "nav" });
       for (const cmd of this.commands) {
@@ -312,6 +370,9 @@ export class ChatInputWidget extends Widget {
 
   /** After any buffer mutation: re-query triggers/suggestion, repaint, notify. */
   private afterEdit(): void {
+    // Once anything lands in the buffer the composer is "dirty" for this turn,
+    // and stays dirty even if the user deletes back to empty.
+    if (!this.buffer.isEmpty) this.hasInput = true;
     this.emitChange();
     this.refreshTrigger();
     this.requestSuggestion();
@@ -573,7 +634,9 @@ export class ChatInputWidget extends Widget {
         ev.handled = true;
         return;
       case "tab":
-        // Not consumed (no suggestion accept) → let focus traversal handle it.
+        // Reached only when the app dispatched Tab here (see wantsTab) but the
+        // popup/suggestion accept above didn't consume it — nothing to do; the
+        // app moves focus when wantsTab() is false.
         return;
     }
 
@@ -666,6 +729,7 @@ export class ChatInputWidget extends Widget {
     this.onSubmit?.(value, sent);
     this.buffer.setValue("");
     this.attachments = [];
+    this.hasInput = false;
     this.resetHistory();
     this.closePopup();
     this.suggestion = null;

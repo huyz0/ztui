@@ -72,9 +72,28 @@ export class LabelWidget extends Widget {
       plain = rich.plain;
       x = this.alignedX(contentRect, stringWidth(plain));
       let currentX = x;
+      // Resolve any `$theme` variables a span declares (e.g. `[$accent]…[/]`),
+      // which the markup parser carries through verbatim — so markup colors are
+      // theme-aware, not just literal names/hex.
+      const resolve = (v?: string): string | undefined =>
+        v?.startsWith("$") ? App.instance?.cssResolver.resolveVariable(this, v) || v : v;
       for (const segment of rich.toSegments(style)) {
-        buffer.drawSegment(currentX, contentRect.y, segment, contentRect);
-        currentX += stringWidth(segment.text);
+        const s = segment.style;
+        const themed =
+          s.color?.startsWith("$") ||
+          s.background?.startsWith("$") ||
+          s.underlineColor?.startsWith("$")
+            ? new Segment(
+                segment.text,
+                s.merge({
+                  color: resolve(s.color),
+                  background: resolve(s.background),
+                  underlineColor: resolve(s.underlineColor),
+                }),
+              )
+            : segment;
+        buffer.drawSegment(currentX, contentRect.y, themed, contentRect);
+        currentX += stringWidth(themed.text);
       }
     } else {
       x = this.alignedX(contentRect, stringWidth(text));

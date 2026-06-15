@@ -319,6 +319,18 @@ export class App extends DOMNode {
       }
 
       if (ev.key === "tab") {
+        // Give the focused widget first refusal: if it has in-widget Tab work
+        // (e.g. accept an open completion or inline suggestion) it claims the
+        // key; otherwise Tab navigates focus as usual.
+        const focused = screen.focusedWidget;
+        if (focused instanceof Widget && !focused.isDisabled() && focused.wantsTab(ev)) {
+          this.safeInvoke(
+            () => `handleKey (tab) on ${focused.describe()}`,
+            () => focused.handleKey(ev),
+          );
+          this.queueRender("key:widget-handled");
+          return;
+        }
         screen.focusNext(ev.shift);
         log(() => `Focus moved to: ${screen.focusedWidget?.describe() ?? "(none)"}`);
         this.queueRender("focus:tab-navigation");

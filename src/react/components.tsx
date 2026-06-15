@@ -8,8 +8,12 @@ export type {
 } from "../widgets/controls/chat/types.ts";
 export type { ButtonProps } from "./components/controls/button.tsx";
 export { Button } from "./components/controls/button.tsx";
-export type { ChatHint, ChatInputProps } from "./components/controls/chat-input.tsx";
-export { ChatInput } from "./components/controls/chat-input.tsx";
+export type {
+  ChatHint,
+  ChatHintMarkupOptions,
+  ChatInputProps,
+} from "./components/controls/chat-input.tsx";
+export { ChatInput, formatChatHints } from "./components/controls/chat-input.tsx";
 export type { CheckboxProps } from "./components/controls/checkbox.tsx";
 export { Checkbox } from "./components/controls/checkbox.tsx";
 export type { FieldErrorProps } from "./components/controls/field-error.tsx";

@@ -58,7 +58,8 @@ export interface ChatInputProps extends ComponentProps {
   onHintsChange?: (hints: ChatHint[]) => void;
 }
 
-export type { ChatHint } from "../../../widgets/controls/chat-input.ts";
+export type { ChatHint, ChatHintMarkupOptions } from "../../../widgets/controls/chat-input.ts";
+export { formatChatHints } from "../../../widgets/controls/chat-input.ts";
 
 /**
  * A feature-rich chat composer: auto-grow, send-on-Enter, atomic chips,

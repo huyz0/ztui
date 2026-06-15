@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ChatInput, VBox } from "../../react.ts";
+import { Button, ChatInput, formatChatHints, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { Trigger } from "./chat/types.ts";
 import type { ChatInputWidget } from "./chat-input.ts";
@@ -24,6 +24,7 @@ function key(
 function type(w: ChatInputWidget, text: string): void {
   for (const ch of text) key(w, ch);
 }
+const tabEv = (shift = false) => ({ key: "tab", name: "tab", ctrl: false, meta: false, shift });
 function mouse(w: ChatInputWidget, x: number, y: number, type = "press"): void {
   (w as unknown as { handleMouse: (e: unknown) => void }).handleMouse({
     x,
@@ -218,6 +219,43 @@ describe("ChatInput", () => {
     key(w, "right");
     await t.settle();
     expect(value).toBe("complete");
+  });
+
+  test('acceptSuggestionKey="tab": Tab accepts the ghost text, then a second Tab moves focus', async () => {
+    let value = "";
+    const { t, w } = await mountChat({
+      acceptSuggestionKey: "tab",
+      suggestionProvider: ({ value }: { value: string }) => (value === "co" ? "mplete" : null),
+      onChange: (v: string) => (value = v),
+    });
+    type(w, "co");
+    await t.settle();
+    // A suggestion is showing → the widget claims Tab (the app dispatches it here
+    // instead of moving focus) and accepts the ghost text. Shift+Tab, however,
+    // always navigates backward, so the widget must not claim it.
+    expect(w.wantsTab(tabEv())).toBe(true);
+    expect(w.wantsTab(tabEv(true))).toBe(false);
+    key(w, "tab");
+    expect(value).toBe("complete");
+    // Nothing left to accept → the widget no longer claims Tab, so the app's
+    // focus traversal handles the next Tab.
+    expect(w.wantsTab(tabEv())).toBe(false);
+  });
+
+  test("with an open completion popup the widget claims Tab (to accept), not focus", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "auth.ts" }],
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@au");
+    await t.settle();
+    expect(w.wantsTab(tabEv())).toBe(true); // popup open
+    key(w, "tab"); // accept the completion
+    await t.settle();
+    expect(w.value).toBe("auth.ts");
+    expect(w.wantsTab(tabEv())).toBe(false); // popup closed → Tab navigates again
   });
 
   test("attachments render in the strip and ride along with onSubmit", async () => {
@@ -424,6 +462,21 @@ describe("ChatInput contextual hints", () => {
     expect(labels(w)).toEqual(["send", "newline", "history", "completions", "palette"]);
   });
 
+  test("history hint shows only on a pristine composer (tracks first input, not length)", async () => {
+    const { t, w } = await mountChat({ getHistory: () => ["earlier"] });
+    expect(labels(w)).toContain("history"); // pristine
+    type(w, "x");
+    expect(labels(w)).not.toContain("history"); // dirtied
+    key(w, "backspace"); // back to empty, but still dirty for this turn
+    expect(w.value).toBe("");
+    expect(labels(w)).not.toContain("history");
+    // Submitting starts a fresh turn → pristine again.
+    type(w, "send me");
+    key(w, "enter");
+    await t.settle();
+    expect(labels(w)).toContain("history");
+  });
+
   test("busy shows interrupt", async () => {
     const { w } = await mountChat({ busy: true });
     expect(labels(w)).toContain("interrupt");
@@ -435,6 +488,21 @@ describe("ChatInput contextual hints", () => {
     type(w, "hello");
     key(w, "home", { shift: true });
     expect(labels(w)).toEqual(expect.arrayContaining(["copy", "cut"]));
+  });
+
+  test("formatChatHints renders theme-coloured markup (keys vs labels vs separator)", () => {
+    const mk = formatChatHints([
+      { keys: "⏎", label: "send" },
+      { keys: "^j", label: "newline" },
+    ]);
+    expect(mk).toBe("[$accent]⏎[/] send[$dimmed] │ [/][$accent]^j[/] newline");
+    // Custom styling + markup metacharacters in keys are escaped.
+    const custom = formatChatHints([{ keys: "[", label: "x" }], {
+      keyStyle: "cyan",
+      labelStyle: "dim",
+      sepStyle: undefined,
+    });
+    expect(custom).toBe("[cyan]\\[[/] [dim]x[/]");
   });
 
   test("extraHints are appended", async () => {
@@ -569,5 +637,64 @@ describe("ChatInput selected-chip rendering", () => {
     const textBg = t.cellAt(c.x + 9, c.y).style.background; // the selected "x"
     // The selected chip now shares the selection background with selected text.
     expect(chipLabelBg).toBe(textBg);
+  });
+});
+
+describe("ChatInput Tab routing through the app", () => {
+  async function mountWithNeighbor(props: Record<string, unknown> = {}) {
+    const t = (await mountApp(
+      <VBox>
+        <ChatInput id="chat" {...props} />
+        <Button id="btn">Go</Button>
+      </VBox>,
+      { cols: 40, rows: 12 },
+    )) as Mounted;
+    await t.settle();
+    const w = t.findById("chat") as unknown as ChatInputWidget;
+    return { t, w };
+  }
+
+  test("a pristine composer lets Tab move focus to the next widget", async () => {
+    const { t, w } = await mountWithNeighbor();
+    t.screen.focusWidget(w as any);
+    t.driver.simulateKey("tab", "tab");
+    await t.settle();
+    expect(t.screen.focusedWidget?.id).toBe("btn");
+  });
+
+  test("with an open popup the app routes Tab into the widget (accept), not focus", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "auth.ts" }],
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountWithNeighbor({ triggers: [trigger] });
+    t.screen.focusWidget(w as any);
+    type(w, "@au");
+    await t.settle();
+    t.driver.simulateKey("tab", "tab"); // app-level dispatch
+    await t.settle();
+    expect(w.value).toBe("auth.ts"); // completion accepted
+    expect(t.screen.focusedWidget?.id).toBe("chat"); // focus did not move
+    // Now there's nothing to claim → Tab navigates away.
+    t.driver.simulateKey("tab", "tab");
+    await t.settle();
+    expect(t.screen.focusedWidget?.id).toBe("btn");
+  });
+
+  test("Shift+Tab always navigates, even with a popup open", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "auth.ts" }],
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountWithNeighbor({ triggers: [trigger] });
+    t.screen.focusWidget(w as any);
+    type(w, "@au");
+    await t.settle();
+    t.driver.simulateKey("tab", "tab", false, true); // Shift+Tab
+    await t.settle();
+    expect(w.value).toBe("@au"); // not accepted
+    expect(t.screen.focusedWidget?.id).not.toBe("chat"); // focus moved
   });
 });

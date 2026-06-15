@@ -89,7 +89,10 @@ export class RichText {
    * into a RichText instance. Supports escaping with backslashes.
    */
   public static fromMarkup(markup: string): RichText {
-    const tagRegex = /(?:\\*)\[([a-zA-Z0-9#/@ _\-=.:/?&]+)\]/g;
+    // A `$` is only part of a tag when it leads a theme variable (`$accent`),
+    // so `[$accent on $panel]` is a style tag while a literal like `[$5.00]`
+    // stays plain text.
+    const tagRegex = /(?:\\*)\[((?:[a-zA-Z0-9#/@ _\-=.:/?&]|\$[a-zA-Z])+)\]/g;
 
     let plain = "";
     const spans: Span[] = [];

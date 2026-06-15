@@ -307,6 +307,19 @@ export class Widget extends DOMNode {
   }
 
   /**
+   * Return true to claim a Tab/Shift+Tab press *before* it triggers focus
+   * traversal. The app consults the focused widget; when it returns true the
+   * key is dispatched to {@link handleKey} (to consume it) instead of moving
+   * focus. Default false, so Tab navigates as usual — override only for the
+   * states where Tab does in-widget work (e.g. accepting an open completion or
+   * inline suggestion), and return false again once there's nothing to accept so
+   * the next Tab moves on.
+   */
+  public wantsTab(_ev: KeyEvent): boolean {
+    return false;
+  }
+
+  /**
    * Handle a mouse event hit-tested to this widget (press/release/drag/move).
    * Override for click/drag interaction; call `super.handleMouse(ev)` to keep
    * the built-in drag-source lifecycle (`onDragStart`/`onDragMove`/`onDragEnd`).

@@ -4,7 +4,7 @@ import {
   ChatInput,
   type Completion,
   Dock,
-  Footer,
+  formatChatHints,
   Header,
   Label,
   type Trigger,
@@ -22,16 +22,21 @@ interface Turn {
 const FILES = ["auth.ts", "main.rs", "README.md", "server.py", "utils.ts", "config.json"];
 // Slash commands.
 const COMMANDS = ["clear", "model", "help", "retry"];
-// Canned ghost-text continuations, keyed by a prefix the user might type.
-const GHOSTS: Record<string, string> = {
-  "how do i ": "run the tests?",
-  "explain ": "this function to me",
-  "refactor ": "this to be more readable",
-};
+// Canned prompts used for ghost-text autocomplete: as the user types a prefix
+// of any of these, the remainder is offered inline (accept with → at line end).
+const SUGGESTIONS = [
+  "how do i run the tests?",
+  "explain this function to me",
+  "refactor this to be more readable",
+  "summarize the changes on this branch",
+];
 
 function ChatDemoApp() {
   const [turns, setTurns] = useState<Turn[]>([
-    { role: "agent", text: "Hi! Try @ to mention a file, / for a command, or just type." },
+    {
+      role: "agent",
+      text: 'Hi! Try @ to mention a file, / for a command, or type "how" for an inline suggestion (Tab to accept; Tab again moves focus).',
+    },
   ]);
   const [busy, setBusy] = useState(false);
   const [hints, setHints] = useState<ChatHint[]>([]);
@@ -66,10 +71,20 @@ function ChatDemoApp() {
   return (
     <Dock style={{ background: "$background" }}>
       <Header>💬 ZTUI Chat Composer</Header>
-      <Footer>
-        {hints.map((h) => `${h.keys} ${h.label}`).join("  │  ")}
-        {quitHint("  │  ")}
-      </Footer>
+      {/* The hint line as theme-coloured markup: hotkeys in $accent, the rest
+          dimmed. formatChatHints renders ChatHint[] into console markup. */}
+      <Label
+        markup
+        style={{
+          dock: "bottom",
+          height: 1,
+          background: "$surface",
+          color: "$foreground",
+          padding: { left: 1 },
+        }}
+      >
+        {formatChatHints(hints) + (quitHint() ? `[$dimmed] │ [/][$accent]Ctrl+C[/] quit` : "")}
+      </Label>
 
       <VBox style={{ padding: 1, height: "1fr" }}>
         {/* Transcript */}
@@ -93,16 +108,16 @@ function ChatDemoApp() {
         <ChatInput
           placeholder="Message the agent…"
           busy={busy}
+          acceptSuggestionKey="tab"
           triggers={[mention, slash]}
           getHistory={() => history.current}
           onHintsChange={setHints}
           serialize={(tok) => `@${tok.label}`}
           suggestionProvider={({ value }) => {
+            if (!value) return null;
             const key = value.toLowerCase();
-            for (const [prefix, sfx] of Object.entries(GHOSTS)) {
-              if (key === prefix) return sfx;
-            }
-            return null;
+            const hit = SUGGESTIONS.find((s) => s.startsWith(key) && s.length > key.length);
+            return hit ? hit.slice(value.length) : null;
           }}
           onSubmit={(value) => {
             if (!value.trim()) return;
