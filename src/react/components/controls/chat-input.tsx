@@ -25,7 +25,10 @@ export interface ChatInputProps extends ComponentProps {
   showActionGlyph?: boolean;
   /** Ghost-text accept key (default "right"). */
   acceptSuggestionKey?: "right" | "tab" | "ctrl-e";
-  /** When Up/Down recall history vs. move the caret. */
+  /**
+   * When Up/Down recall history. "bump" (default): only at the buffer's true
+   * start/end (never mid-edit). "row": eager — anywhere on the first/last row.
+   */
   historyEdge?: "row" | "bump";
   /** Character-triggered completion sources (slash, mention, …). */
   triggers?: Trigger[];

@@ -70,8 +70,13 @@ export class ChatInputWidget extends Widget {
   public showActionGlyph = true;
   /** Which key accepts a ghost-text suggestion. */
   public acceptSuggestionKey: "right" | "tab" | "ctrl-e" = "right";
-  /** When Up/Down recall history vs. move the caret. */
-  public historyEdge: "row" | "bump" = "row";
+  /**
+   * When Up/Down recall history. "bump" (default): only at the buffer's true
+   * start (Up) / end (Down), so history never fires mid-edit; the first press on
+   * the boundary row just moves the caret to the edge. "row": eager — anywhere
+   * on the first/last visual row.
+   */
+  public historyEdge: "row" | "bump" = "bump";
 
   /** Character-triggered completion sources (slash, mention, …). */
   public triggers: Trigger[] = [];
@@ -464,30 +469,46 @@ export class ChatInputWidget extends Widget {
     }
   }
 
-  /** Up/Down: history recall at the vertical edge, else move the caret a row. */
+  /**
+   * Up/Down: step through history when browsing it; otherwise move the caret a
+   * row, recalling history only at the buffer's true start (Up) / end (Down).
+   */
   private handleVertical(
     dir: -1 | 1,
     here: { row: number; col: number },
     rows: VisualRow[],
     shift: boolean,
   ): void {
-    const atTop = here.row === 0;
-    const atBottom = here.row === rows.length - 1;
-    const edge = dir < 0 ? atTop : atBottom;
-    // "row": recall as soon as the caret is on the edge row. "bump": only when
-    // the caret is also at the very start/end, so the first Up moves within text.
-    const strictEdge = dir < 0 ? this.buffer.caret === 0 : this.buffer.caret === this.buffer.length;
-    const recallEdge = this.historyEdge === "row" ? edge : edge && strictEdge;
-    if (recallEdge && this.getHistory && !shift) {
+    // Once browsing history, Up/Down keep stepping through it regardless of the
+    // caret — the position gate only governs *entering* history from the draft.
+    if (this.historyIndex !== null && this.getHistory && !shift) {
       this.recallHistory(dir);
       return;
     }
-    if (edge) {
-      // No history move available — collapse selection / no-op.
-      if (!shift) this.buffer.clearSelection();
+
+    const atEdgeRow = dir < 0 ? here.row === 0 : here.row === rows.length - 1;
+    const atBufferEdge =
+      dir < 0 ? this.buffer.caret === 0 : this.buffer.caret === this.buffer.length;
+    // "bump" (default): only enter history when the caret is at the very start
+    // (Up) / end (Down) of the buffer, so it never fires mid-edit. "row": the
+    // eager variant — anywhere on the first/last visual row.
+    const enterRecall = this.historyEdge === "row" ? atEdgeRow : atBufferEdge;
+    if (enterRecall && this.getHistory && !shift) {
+      this.recallHistory(dir);
+      return;
+    }
+
+    if (atEdgeRow) {
+      // On the boundary row but not (yet) recalling: move the caret to the
+      // buffer edge, so a *second* Up/Down then recalls — the classic
+      // move-to-edge-then-history feel. Shift extends a selection there.
+      if (shift && this.buffer.anchor === null) this.buffer.anchor = this.buffer.caret;
+      else if (!shift) this.buffer.clearSelection();
+      this.buffer.caret = dir < 0 ? 0 : this.buffer.length;
       this.app?.queueRender();
       return;
     }
+
     const target = this.indexAtRowCol(rows, here.row + dir, here.col);
     if (shift && this.buffer.anchor === null) this.buffer.anchor = this.buffer.caret;
     if (!shift) this.buffer.clearSelection();

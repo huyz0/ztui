@@ -144,6 +144,30 @@ describe("ChatInput", () => {
     expect(value).toBe("second");
   });
 
+  test("history only recalls at the buffer start (Up), not mid-edit", async () => {
+    let value = "";
+    const { w } = await mountChat({
+      getHistory: () => ["older", "newer"],
+      onChange: (v: string) => (value = v),
+    });
+    type(w, "line1");
+    key(w, "ctrl+j"); // newline
+    type(w, "line2"); // caret at very end, on the last row
+    // Up from the bottom row (caret not at start) → moves the caret up a row,
+    // does NOT recall history.
+    key(w, "up");
+    expect(value).toBe("line1\nline2");
+    // Up again: now on the top row but caret mid-line → moves to buffer start.
+    key(w, "up");
+    expect(value).toBe("line1\nline2");
+    // Up once more: caret is at position 0 → now history recalls.
+    key(w, "up");
+    expect(value).toBe("newer");
+    // Browsing continues regardless of caret position.
+    key(w, "up");
+    expect(value).toBe("older");
+  });
+
   test("a trigger opens a completion popup and accepts a chip (host serialized)", async () => {
     const trigger: Trigger = {
       char: "@",

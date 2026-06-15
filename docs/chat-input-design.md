@@ -55,7 +55,8 @@ Inputs the app sets (plain properties / callbacks):
 - `suggestionProvider?: (ctx) => string | null | Promise<…>` — inline ghost-text
   autocomplete (see below). App-supplied; widget never guesses content.
 - `acceptSuggestionKey: "right" | "tab" | "ctrl-e" | …` — default `"right"`.
-- `historyEdge: "row" | "bump"` — default `"row"` (first-row-anywhere).
+- `historyEdge: "row" | "bump"` — default `"bump"` (recall only at the buffer
+  start/end, never mid-edit).
 - `showActionGlyph: boolean` — default `true`; the in-border send/stop glyph
   (purely an affordance; Enter/Esc always work regardless).
 - `triggers: Trigger[]` — char-triggered completion sources (see below).
@@ -224,13 +225,14 @@ content cells and stays right-aligned as the box resizes.
 Up/Down recall from `getHistory()` only at the draft's vertical edges; otherwise
 they move the caret within the multiline draft.
 
-- **Default `historyEdge: "row"`** (first-row-anywhere): Up recalls older
-  entries whenever the caret is on row 0 (any column); Down recalls newer
-  entries on the last row. Immediate recall — best for mostly-short chat turns
-  (Slack/ChatGPT style).
-- **`historyEdge: "bump"`** (editor-style): Up only recalls after the caret is
-  already at row 0 and a further Up can't move (you "bump" the top edge); the
-  first Up just moves within the text. Better for heavily-multiline composing.
+- **Default `historyEdge: "bump"`** (editor-style): Up recalls only when the
+  caret is at the buffer's true start (Down: its true end), so history never
+  fires mid-edit. On the boundary row the first Up just moves the caret to the
+  start; a second Up then recalls. Once browsing, Up/Down keep stepping through
+  history regardless of caret position (the gate governs only *entering*
+  history). Best for composers that are often multiline.
+- **`historyEdge: "row"`** (eager, Slack/ChatGPT style): Up recalls whenever the
+  caret is on the first row (any column); Down on the last row.
 - The **in-progress draft is stashed** on entering history and restored when
   navigating back past the newest entry. Editing a recalled entry forks it —
   history is never mutated.
