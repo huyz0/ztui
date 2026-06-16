@@ -15,28 +15,35 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "3. Running unit and integration tests (Vitest)..."
+echo "3. Building (JS + d.ts)..."
+bun run build
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed! 'tsc -p tsconfig.build.json' caught an error tsc --noEmit doesn't (e.g. rootDir / d.ts emit)."
+  exit 1
+fi
+
+echo "4. Running unit and integration tests (Vitest)..."
 bun run test
 if [ $? -ne 0 ]; then
   echo "❌ Unit tests failed or coverage threshold was not met!"
   exit 1
 fi
 
-echo "4. Running end-to-end tests (real binary)..."
+echo "5. Running end-to-end tests (real binary)..."
 bun run test:e2e
 if [ $? -ne 0 ]; then
   echo "❌ E2E tests failed!"
   exit 1
 fi
 
-echo "5. Checking for circular dependencies (madge)..."
+echo "6. Checking for circular dependencies (madge)..."
 bunx madge --circular --extensions ts,tsx src
 if [ $? -ne 0 ]; then
   echo "❌ Circular dependency detected! Keep the import graph acyclic."
   exit 1
 fi
 
-echo "6. Layer-leak guard (no driver/ANSI in widgets/core)..."
+echo "7. Layer-leak guard (no driver/ANSI in widgets/core)..."
 bun run review
 if [ $? -ne 0 ]; then
   echo "❌ Layer-leak guard failed! Move terminal/protocol specifics into a Driver method."
