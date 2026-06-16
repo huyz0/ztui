@@ -126,6 +126,29 @@ in headless Chromium, saves a screenshot, and prints a pixel-accurate report (ro
 gaps, overflow, font-loaded, cell width) — the way to verify the web backend in
 CI without a person at a browser.
 
+## Performance: benchmarks & regression guards
+
+ztui re-renders the whole widget tree to a cell buffer and diffs it to ANSI every
+frame, so a small algorithmic regression in the render/layout core can silently
+hurt interactivity. Two commands cover the hot paths (buffer/diff, ANSI
+serialization, text measurement & wrapping, layout, selection, markdown, CSS
+resolution, and the end-to-end frame):
+
+- `bun run perf` — **ratio-guard tests** (`src/**/*.perf.ts`). Each hot path is
+  timed against a fixed calibration workload measured in the same process; the
+  assertion is on the *ratio*, so it's machine-independent and only trips on a
+  real (order-of-magnitude) regression. Runs in CI. Some guards also assert
+  deterministic invariants — e.g. an unchanged frame must diff to the empty
+  string — which catch regressions with zero timing flake.
+- `bun run bench` — **vitest `bench()` tracking** (`src/**/*.bench.ts`). Prints
+  ops/sec for eyeballing gradual drift; not asserted.
+
+Both use the shared harness in `src/test/bench/perf-harness.ts` and run on a
+dedicated config (`vitest.config.perf.ts`), kept out of the default coverage gate
+so commits stay fast. Budgets are committed constants set to ≈3× a healthy run;
+if you make a deliberate change that moves a baseline, retune the budget in that
+`.perf.ts` file (the failure message prints the observed ratio).
+
 ## Why this is the selling point
 
 Every other guarantee in ztui flows from this: a [custom widget](/ztui/guides/extending/)

@@ -12,6 +12,10 @@ export default defineConfig({
       exclude: [
         "src/**/*.test.ts",
         "src/**/*.test.tsx",
+        // Performance suite — run via `bun run perf` / `bun run bench`, not the gate.
+        "src/**/*.perf.ts",
+        "src/**/*.bench.ts",
+        "src/test/bench/**",
         // Re-export-only package entry points (no logic to cover).
         "src/core.ts",
         "src/react.ts",
