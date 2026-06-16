@@ -123,3 +123,24 @@ const tm = ThemeManager.getInstance();
 const dimmer = deriveTheme(tm.getTheme("nord")!, "nord-dim", { adjustLightness: -8 });
 tm.register(dimmer);
 ```
+
+## NO_COLOR
+
+ztui honours the [`NO_COLOR`](https://no-color.org) convention. When `NO_COLOR`
+(any value) or `ZTUI_NO_COLOR` is set in the environment, the terminal renderer
+drops all foreground/background colour and emits only the monochrome attributes
+(bold, dim, italic, underline, strikethrough, reverse) plus hyperlinks;
+`FORCE_COLOR` overrides back to colour.
+
+You can also toggle it at runtime via the global `colorMode` flag — call
+`App.refresh()` afterwards so the next frame re-emits every cell:
+
+```ts
+import { App, colorMode } from "@huyz0/ztui";
+
+colorMode.set(false); // monochrome
+App.instance?.refresh();
+```
+
+This mirrors the `motion` flag (which honours `NO_MOTION` / `ZTUI_REDUCED_MOTION`
+to settle ambient animations).

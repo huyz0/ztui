@@ -30,6 +30,21 @@ export const ok = true;
 <Markdown>{md}</Markdown>;
 ```
 
+## GFM alerts
+
+GitHub-Flavored-Markdown alerts render as [Banner](/widgets/banner/)-style
+callouts — a variant icon, a coloured heading, and an accent rule — for the five
+types `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, and `[!CAUTION]`:
+
+```md
+> [!WARNING]
+> This action cannot be undone.
+```
+
+The `[!TYPE]` marker is hidden, the body keeps its inline formatting and stays
+selectable, and copying a selected alert yields the original `> [!WARNING]`
+source (not the rendered text).
+
 ## Notes
 
 - The widget's content is its child text — pass the Markdown source as children.

@@ -80,6 +80,7 @@ export default defineConfig({
                 { label: "Tree", slug: "widgets/tree" },
                 { label: "List View", slug: "widgets/list-view" },
                 { label: "Selection List", slug: "widgets/selection-list" },
+                { label: "Description List", slug: "widgets/description-list" },
                 { label: "Sparkline", slug: "widgets/sparkline" },
                 { label: "Diff", slug: "widgets/diff" },
                 { label: "Rich Log", slug: "widgets/rich-log" },
@@ -99,6 +100,8 @@ export default defineConfig({
             {
               label: "Feedback",
               items: [
+                { label: "Banner", slug: "widgets/banner" },
+                { label: "Gauge", slug: "widgets/gauge" },
                 { label: "Status", slug: "widgets/status" },
                 { label: "Waiting & Progress", slug: "widgets/waiting" },
               ],

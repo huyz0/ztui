@@ -39,6 +39,9 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
   textarea: { cols: 64, rows: 16 },
   waiting: { cols: 56, rows: 14, wait: 800 }, // spinners mid-animation
   status: { cols: 56, rows: 16 },
+  banner: { cols: 60, rows: 20 },
+  gauge: { cols: 56, rows: 18, wait: 400 }, // live meters settle after a tick
+  "description-list": { cols: 56, rows: 18 },
   collapsible: { cols: 64, rows: 16 },
   // Batch 2
   terminal: { cols: 72, rows: 18, wait: 5500 }, // plays a ~5s build/test session
