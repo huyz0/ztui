@@ -144,12 +144,19 @@ async function handleRequest(app: InspectableApp, req: Request): Promise<Respons
   if (url.pathname === "/log" && req.method === "GET") {
     const requested = Number.parseInt(url.searchParams.get("lines") || "200", 10);
     const maxLines = Number.isFinite(requested) && requested > 0 ? requested : 200;
+    const file = logger.getFilePath();
     let body: string;
-    try {
-      const all = readFileSync(logger.getFilePath(), "utf-8").split("\n");
-      body = all.slice(-maxLines).join("\n");
-    } catch (err: any) {
-      body = `(no log available at ${logger.getFilePath()}: ${err?.message ?? err})`;
+    if (!file) {
+      // Logging is silent (the default) or routed to a custom sink — there's no
+      // file to tail. Tell the caller how to turn file logging on.
+      body = "(file logging is off — set ZTUI_LOG_FILE or call logger.configure({ filePath }))";
+    } else {
+      try {
+        const all = readFileSync(file, "utf-8").split("\n");
+        body = all.slice(-maxLines).join("\n");
+      } catch (err: any) {
+        body = `(no log available at ${file}: ${err?.message ?? err})`;
+      }
     }
     return new Response(body, {
       headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" },

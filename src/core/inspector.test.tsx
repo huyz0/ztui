@@ -1,15 +1,28 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { App, startInspector } from "../core.ts";
 import { Button, Label, render, VBox, View } from "../react.ts";
 import { VTEDriver } from "../test/vte-runner.ts";
+import { logger } from "../utils/logger.ts";
 
 const PORT = 8765;
 const BASE = `http://localhost:${PORT}`;
 
 let app: App;
 let server: { stop(): void };
+let logDir: string;
 
 beforeAll(async () => {
+  // Point the logger at a private file before app.run(): the default `ztui.log`
+  // is a single CWD file the logger singleton shares across every test worker,
+  // and each `app.run()` truncates-then-rewrites it (`logger.init`). A reader
+  // hitting `/log` could otherwise catch that file mid-truncate at 0 bytes —
+  // the source of this test's historical flake. An isolated file can't race.
+  logDir = mkdtempSync(join(tmpdir(), "ztui-inspector-"));
+  logger.configure({ filePath: join(logDir, "ztui.log") });
+
   const driver = new VTEDriver(80, 24);
   app = new App(driver);
   render(
@@ -20,7 +33,7 @@ beforeAll(async () => {
     </VBox>,
     app.activeScreen,
   );
-  app.run();
+  app.run(); // writes the session header to our isolated log file
   server = startInspector(app, PORT);
   await new Promise((r) => setTimeout(r, 50));
 });
@@ -28,6 +41,8 @@ beforeAll(async () => {
 afterAll(() => {
   server.stop();
   app.stop();
+  logger.reset(); // don't leak this test's file config onto later tests in the worker
+  rmSync(logDir, { recursive: true, force: true });
 });
 
 describe("inspector endpoints", () => {

@@ -5,16 +5,31 @@ import { appendFileSync, writeFileSync } from "node:fs";
  *
  * Why a dedicated logger instead of `console.*`?
  *   - While a TUI is running it owns the terminal screen. Writing to stdout or
- *     stderr corrupts the rendered frame, so all diagnostics must go to a file.
+ *     stderr corrupts the rendered frame, so diagnostics must go somewhere else.
  *   - A single, consistent, timestamped + leveled + scoped format makes the log
  *     greppable for humans and parseable for LLM agents trying to debug a run.
  *   - Logging must never throw or crash the app, so every write is guarded.
  *
- * Configuration (env vars, read once at startup; override with `configure`):
- *   - ZTUI_LOG_LEVEL = debug | info | warn | error | silent   (default: info)
- *   - ZTUI_LOG_FILE  = path to the log file                    (default: ztui.log)
+ * **Silent by default.** Out of the box the logger drops everything — it writes
+ * no file and produces no output, so embedding ztui never litters the working
+ * directory or races a shared file between processes/tests. Opt in explicitly:
+ *
+ *   - Env (read once at startup): set `ZTUI_LOG_FILE=path` to log to a file.
+ *     `ZTUI_LOG_LEVEL=debug|info|warn|error|silent` sets the threshold (default
+ *     `info`). With no `ZTUI_LOG_FILE`, nothing is logged regardless of level.
+ *   - Code: `logger.configure({ filePath })` to log to a file, `{ sink }` to
+ *     route formatted lines anywhere (an array, your own logger, a socket),
+ *     `{ level }` to set the threshold, or `{ enabled: false }` to silence.
+ *   - `logger.reset()` restores the environment-derived defaults (used by tests).
  */
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
+
+/**
+ * A destination for formatted log lines (each already ends in `\n`). Returned by
+ * {@link fileSink}, or supply your own to capture logs in memory, forward them to
+ * another logger, etc. Sinks must never throw.
+ */
+export type LogSink = (line: string) => void;
 
 const LEVEL_ORDER: Record<LogLevel, number> = {
   debug: 10,
@@ -43,18 +58,80 @@ function serialize(data: unknown): string {
   }
 }
 
+/** A {@link LogSink} that appends lines to `filePath` (failures are swallowed). */
+export function fileSink(filePath: string): LogSink {
+  return (line: string) => {
+    try {
+      appendFileSync(filePath, line);
+    } catch {
+      // Logging must never throw — e.g. a read-only filesystem.
+    }
+  };
+}
+
 /** @internal Diagnostic logger; use the shared {@link logger} instance. */
 class Logger {
-  private filePath = process.env.ZTUI_LOG_FILE || "ztui.log";
   private threshold = LEVEL_ORDER[parseEnvLevel()];
+  /** File target when logging to a file (also enables `init` truncation); else null. */
+  private filePath: string | null = null;
+  /** Active destination; `null` means drop everything (the default). */
+  private sink: LogSink | null = null;
 
-  /** Override the file path and/or minimum level at runtime. */
-  public configure(opts: { filePath?: string; level?: LogLevel }): void {
-    if (opts.filePath) this.filePath = opts.filePath;
-    if (opts.level) this.threshold = LEVEL_ORDER[opts.level];
+  constructor() {
+    this.applyEnvDefaults();
   }
 
-  public getFilePath(): string {
+  /** Resolve the default destination from the environment: a file only if asked. */
+  private applyEnvDefaults(): void {
+    this.threshold = LEVEL_ORDER[parseEnvLevel()];
+    const envFile = process.env.ZTUI_LOG_FILE;
+    if (envFile) {
+      this.filePath = envFile;
+      this.sink = fileSink(envFile);
+    } else {
+      this.filePath = null;
+      this.sink = null; // silent by default
+    }
+  }
+
+  /**
+   * Override the destination and/or level at runtime. Options are applied in a
+   * fixed order: an explicit `sink` wins over `filePath`; `enabled: false`
+   * silences everything regardless of the others.
+   */
+  public configure(opts: {
+    filePath?: string | null;
+    level?: LogLevel;
+    sink?: LogSink | null;
+    enabled?: boolean;
+  }): void {
+    if (opts.level) this.threshold = LEVEL_ORDER[opts.level];
+    if (opts.sink !== undefined) {
+      // A custom sink replaces any file target (init() then can't truncate).
+      this.sink = opts.sink;
+      this.filePath = null;
+    } else if (opts.filePath !== undefined) {
+      if (opts.filePath) {
+        this.filePath = opts.filePath;
+        this.sink = fileSink(opts.filePath);
+      } else {
+        this.filePath = null;
+        this.sink = null;
+      }
+    }
+    if (opts.enabled === false) {
+      this.sink = null;
+      this.filePath = null;
+    }
+  }
+
+  /** Restore the environment-derived defaults (silent unless `ZTUI_LOG_FILE` is set). */
+  public reset(): void {
+    this.applyEnvDefaults();
+  }
+
+  /** The current file target, or `null` when not logging to a file. */
+  public getFilePath(): string | null {
     return this.filePath;
   }
 
@@ -65,12 +142,22 @@ class Logger {
     );
   }
 
-  /** Truncate the log file and write a fresh session header. */
+  /**
+   * Begin a session: truncate the log file (if any) and write a fresh header.
+   * A no-op when logging is silent; for a custom sink the header is just emitted
+   * (there's nothing to truncate).
+   */
   public init(header = "ztui session started"): void {
-    try {
-      writeFileSync(this.filePath, this.format("info", "logger", header));
-    } catch {
-      // Logging must never throw — e.g. read-only filesystem.
+    if (!this.sink) return;
+    const line = this.format("info", "logger", header);
+    if (this.filePath) {
+      try {
+        writeFileSync(this.filePath, line);
+      } catch {
+        // Never throw from logging.
+      }
+    } else {
+      this.sink(line);
     }
   }
 
@@ -81,22 +168,18 @@ class Logger {
   }
 
   private write(level: LogLevel, scope: string, message: string, data?: unknown): void {
-    if (LEVEL_ORDER[level] < this.threshold) return;
-    try {
-      appendFileSync(this.filePath, this.format(level, scope, message, data));
-    } catch {
-      // Never propagate logging failures into application code.
-    }
+    // Fast path: drop without formatting when silent or below threshold.
+    if (!this.sink || LEVEL_ORDER[level] < this.threshold) return;
+    this.sink(this.format(level, scope, message, data));
   }
 
   /**
-   * Whether `level` would actually be written. Lets hot callers skip building an
-   * expensive message (e.g. a widget `describe()` per input event) when the log
-   * would be dropped anyway — the message string is otherwise computed eagerly
-   * before `write` discards it.
+   * Whether `level` would actually be emitted (false when silent). Lets hot
+   * callers skip building an expensive message (e.g. a widget `describe()` per
+   * input event) when the log would be dropped anyway.
    */
   public isEnabled(level: LogLevel): boolean {
-    return LEVEL_ORDER[level] >= this.threshold;
+    return this.sink !== null && LEVEL_ORDER[level] >= this.threshold;
   }
 
   public debug(scope: string, message: string, data?: unknown): void {

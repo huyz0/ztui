@@ -14,6 +14,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  logger.reset(); // back to the env default (silent) so nothing leaks between tests
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -72,5 +73,35 @@ describe("logger", () => {
     }).not.toThrow();
     // restore for other assertions in suite isolation
     logger.configure({ filePath: logFile, level: "debug" });
+  });
+
+  test("is silent by default — writes no file and reports no target", () => {
+    logger.reset(); // env-derived default (no ZTUI_LOG_FILE in the test env)
+    expect(logger.getFilePath()).toBeNull();
+    expect(logger.isEnabled("error")).toBe(false); // nothing is emitted
+    expect(() => {
+      logger.init("App started");
+      logger.error("x", "dropped");
+    }).not.toThrow();
+    expect(read()).toBe(""); // the configured file was never created/written
+  });
+
+  test("routes formatted lines to a custom sink", () => {
+    const lines: string[] = [];
+    logger.configure({ sink: (line) => lines.push(line), level: "debug" });
+    logger.init("session"); // a custom sink has nothing to truncate — header is emitted
+    logger.warn("net", "hi", { code: 7 });
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toContain("session");
+    expect(lines[1]).toMatch(/\[WARN\] \[net\] hi \{"code":7\}/);
+    expect(read()).toBe(""); // and nothing went to the file
+  });
+
+  test("enabled:false silences an otherwise-configured logger", () => {
+    logger.configure({ enabled: false });
+    expect(logger.isEnabled("error")).toBe(false);
+    logger.init();
+    logger.error("x", "dropped");
+    expect(read()).toBe("");
   });
 });
