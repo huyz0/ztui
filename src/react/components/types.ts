@@ -46,6 +46,8 @@ export interface ComponentProps {
   disabled?: boolean;
   /** Pointer click. */
   onClick?: (ev: any) => void;
+  /** Pointer pressed (any button); the event carries `button` and `x`/`y`. */
+  onMouseDown?: (ev: any) => void;
   /** Key event while focused; set `ev.handled` to consume it. */
   onKey?: (ev: any) => void;
   /** Wheel / scroll event. */

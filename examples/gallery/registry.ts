@@ -8,6 +8,7 @@ import { chatDemo } from "../chat_demo.tsx";
 import { checkboxDemo } from "../checkbox_demo.tsx";
 import { clipboardDemo } from "../clipboard_demo.tsx";
 import { collapsibleDemo } from "../collapsible_demo.tsx";
+import { contextMenuDemo } from "../contextmenu_demo.tsx";
 import { kitchenSinkDemo } from "../demo.tsx";
 import { diffDemo } from "../diff_demo.tsx";
 import { disabledDemo } from "../disabled_demo.tsx";
@@ -87,6 +88,7 @@ export const demos: Demo[] = [
   checkboxDemo,
   switchDemo,
   selectDemo,
+  contextMenuDemo,
   sliderDemo,
   radioDemo,
   toggleButtonDemo,

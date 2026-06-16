@@ -1,0 +1,290 @@
+import { useEffect } from "react";
+import { describe, expect, test } from "vitest";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
+import { Box, ContextMenu, Label, useContextMenu, VBox } from "../../react.ts";
+import { mountApp } from "../../test/harness.tsx";
+import { type MenuItem, MenuListWidget } from "./menu.ts";
+
+const key = (name: string) => ({ key: name, name, ctrl: false, shift: false, meta: false }) as any;
+const mouse = (x: number, y: number, type: any, button = "left") => ({ x, y, type, button }) as any;
+
+function menu(items: MenuItem[]): MenuListWidget {
+  const w = new MenuListWidget();
+  w.items = items;
+  // The app's style pass resolves computedStyle from defaultStyle before
+  // measure/layout; seed it here so border/padding geometry matches in-app.
+  w.computedStyle = { ...w.defaultStyle };
+  // A concrete region so getContentRect maps mouse rows during unit tests.
+  w.region = new Region(new Offset(0, 0), new Size(24, items.length + 2));
+  return w;
+}
+
+describe("MenuListWidget keyboard navigation", () => {
+  const items: MenuItem[] = [
+    { label: "Cut" },
+    { separator: true },
+    { label: "Paste", disabled: true },
+    { label: "Delete", danger: true },
+  ];
+
+  test("highlight starts on the first selectable row", () => {
+    expect(menu(items).highlightedIndex).toBe(0);
+  });
+
+  test("down/up skip separators and disabled rows, and wrap", () => {
+    const w = menu(items);
+    w.handleKey(key("down")); // 0 → 3 (skip separator @1, disabled @2)
+    expect(w.highlightedIndex).toBe(3);
+    w.handleKey(key("down")); // 3 → 0 (wrap)
+    expect(w.highlightedIndex).toBe(0);
+    w.handleKey(key("up")); // 0 → 3 (wrap back)
+    expect(w.highlightedIndex).toBe(3);
+  });
+
+  test("home/end jump to the first/last selectable row", () => {
+    const w = menu(items);
+    w.handleKey(key("end"));
+    expect(w.highlightedIndex).toBe(3);
+    w.handleKey(key("home"));
+    expect(w.highlightedIndex).toBe(0);
+  });
+
+  test("Enter and Space activate the highlighted row; nav keys are consumed", () => {
+    const w = menu(items);
+    const chosen: Array<[string, number]> = [];
+    w.onSelect = (item, i) => chosen.push([item.label ?? "", i]);
+    const ev = key("down");
+    w.handleKey(ev);
+    expect(ev.handled).toBe(true);
+    w.handleKey(key("enter"));
+    expect(chosen).toEqual([["Delete", 3]]);
+    w.handleKey(key("space"));
+    expect(chosen).toEqual([
+      ["Delete", 3],
+      ["Delete", 3],
+    ]);
+  });
+
+  test("Escape is left unhandled so an overlay layer can close on it", () => {
+    const ev = key("escape");
+    menu(items).handleKey(ev);
+    expect(ev.handled).toBeFalsy();
+  });
+});
+
+describe("MenuListWidget mouse", () => {
+  const items: MenuItem[] = [{ label: "One" }, { separator: true }, { label: "Two" }];
+
+  test("clicking a row activates it; clicking a separator does nothing", () => {
+    const w = menu(items);
+    const chosen: number[] = [];
+    w.onSelect = (_i, idx) => chosen.push(idx);
+    const rect = w.getContentRect();
+    w.handleMouse(mouse(rect.x + 1, rect.y + 2, "press")); // row index 2 → "Two"
+    expect(chosen).toEqual([2]);
+    w.handleMouse(mouse(rect.x + 1, rect.y + 1, "press")); // separator row
+    expect(chosen).toEqual([2]);
+  });
+
+  test("hover highlights a selectable row but not a disabled/separator row", () => {
+    const w = menu([{ label: "One" }, { label: "Two", disabled: true }]);
+    const rect = w.getContentRect();
+    w.handleMouse(mouse(rect.x, rect.y + 1, "move")); // disabled row
+    expect(w.highlightedIndex).toBe(0); // unchanged
+  });
+});
+
+describe("MenuListWidget measure", () => {
+  test("sizes to the widest row (icon + label + shortcut) plus border and padding", () => {
+    const w = menu([{ label: "Copy", shortcut: "Ctrl+C" }, { label: "X" }]);
+    w.measure(80, 24);
+    // "Copy"(4) + shortcut "Ctrl+C"(6) + 2 gap = 12, + border(2) + padding(2) = 16
+    expect(w.measuredWidth).toBe(16);
+    // 2 rows + border(2) = 4
+    expect(w.measuredHeight).toBe(4);
+  });
+});
+
+describe("onMouseDown routing", () => {
+  test("press delivers onMouseDown for any button; onClick stays left-only", async () => {
+    const downs: string[] = [];
+    const clicks: number[] = [];
+    const { driver, findById, settle } = await mountApp(
+      <VBox>
+        <Box
+          id="b"
+          style={{ width: 10, height: 3 }}
+          onMouseDown={(ev) => downs.push(ev.button)}
+          onClick={() => clicks.push(1)}
+        />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await settle();
+    const r = findById("b").getClientRect();
+    driver.simulateMouse(r.x + 1, r.y + 1, "press", "right");
+    await settle();
+    driver.simulateMouse(r.x + 1, r.y + 1, "press", "left");
+    await settle();
+    expect(downs).toEqual(["right", "left"]);
+    expect(clicks).toEqual([1]);
+  });
+
+  test("onMouseDown/onClick bubble to a container when a leaf child is clicked", async () => {
+    const downs: string[] = [];
+    let clicked = false;
+    const { driver, findById, settle } = await mountApp(
+      <VBox>
+        <Box
+          id="row"
+          style={{ width: 16, height: 1 }}
+          onMouseDown={(ev) => downs.push(ev.button)}
+          onClick={() => {
+            clicked = true;
+          }}
+        >
+          <Label id="lbl">file.ts</Label>
+        </Box>
+      </VBox>,
+      { cols: 24, rows: 5 },
+    );
+    await settle();
+    // Click lands on the inner Label, but the handlers live on the Box parent.
+    const r = findById("lbl").getClientRect();
+    driver.simulateMouse(r.x + 1, r.y, "press", "right");
+    await settle();
+    driver.simulateMouse(r.x + 1, r.y, "press", "left");
+    await settle();
+    expect(downs).toEqual(["right", "left"]); // bubbled up from the Label
+    expect(clicked).toBe(true);
+  });
+});
+
+describe("ContextMenu overlay", () => {
+  function Harness({ onPick }: { onPick: (label: string) => void }) {
+    const m = useContextMenu();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: open once on mount
+    useEffect(() => m.openAt(2, 1), []);
+    return (
+      <VBox style={{ width: 30, height: 8 }}>
+        <ContextMenu
+          {...m.props}
+          items={[{ label: "Alpha" }, { label: "Beta" }]}
+          onSelect={(item) => onPick(item.label ?? "")}
+        />
+      </VBox>
+    );
+  }
+
+  test("opens at a point, navigates, selects, and closes", async () => {
+    const picks: string[] = [];
+    const { text, driver, settle } = await mountApp(<Harness onPick={(l) => picks.push(l)} />, {
+      cols: 30,
+      rows: 8,
+    });
+    await settle();
+    expect(text()).toContain("Alpha");
+    expect(text()).toContain("Beta");
+
+    driver.simulateKey("down", "down"); // highlight Beta
+    await settle();
+    driver.simulateKey("enter", "enter"); // select + close
+    await settle();
+
+    expect(picks).toEqual(["Beta"]);
+    expect(text()).not.toContain("Alpha"); // menu dismissed
+  });
+
+  test("renders icons, right-aligned shortcuts, and separator rules", async () => {
+    function Rich() {
+      const m = useContextMenu();
+      // biome-ignore lint/correctness/useExhaustiveDependencies: open once on mount
+      useEffect(() => m.openAt(1, 1), []);
+      return (
+        <VBox style={{ width: 36, height: 10 }}>
+          <ContextMenu
+            {...m.props}
+            items={[
+              { label: "Copy", icon: "⧉", shortcut: "Ctrl+C" },
+              { separator: true },
+              { label: "Erase", danger: true, disabled: true },
+            ]}
+          />
+        </VBox>
+      );
+    }
+    const { text, settle } = await mountApp(<Rich />, { cols: 36, rows: 10 });
+    await settle();
+    const out = text();
+    expect(out).toContain("Copy");
+    expect(out).toContain("Ctrl+C"); // right-aligned shortcut
+    expect(out).toContain("⧉"); // icon
+    expect(out).toContain("Erase");
+    expect(out).toContain("─"); // separator rule
+  });
+
+  function OpenAt({ px, py }: { px: number; py: number }) {
+    const m = useContextMenu();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: open once on mount
+    useEffect(() => m.openAt(px, py), []);
+    return (
+      <VBox style={{ width: 30, height: 10 }}>
+        <ContextMenu
+          {...m.props}
+          items={[{ label: "Alpha" }, { label: "Beta" }, { label: "Gam" }]}
+        />
+      </VBox>
+    );
+  }
+
+  test("flips up/left so a menu near the corner is never clipped", async () => {
+    // The screen floors at 80x24; click near its bottom-right corner.
+    const { screen, settle } = await mountApp(<OpenAt px={78} py={23} />, { cols: 80, rows: 24 });
+    await settle();
+    const region = (screen.overlays[0].children[0] as any).region;
+    // Fully on-screen…
+    expect(region.right).toBeLessThanOrEqual(80);
+    expect(region.bottom).toBeLessThanOrEqual(24);
+    // …and flipped to open up/left of the click point (78,23), not down-right.
+    expect(region.y).toBeLessThan(23);
+    expect(region.x).toBeLessThan(78);
+  });
+
+  test("opens down-right of the point when there is room", async () => {
+    const { screen, settle } = await mountApp(<OpenAt px={2} py={1} />, { cols: 30, rows: 10 });
+    await settle();
+    const region = (screen.overlays[0].children[0] as any).region;
+    expect(region.x).toBe(2);
+    expect(region.y).toBe(1);
+  });
+
+  test("hovering a row highlights it", async () => {
+    const { screen, driver, settle } = await mountApp(<OpenAt px={2} py={1} />, {
+      cols: 30,
+      rows: 10,
+    });
+    await settle();
+    const menuList = screen.overlays[0].children[0] as any;
+    expect(menuList.highlightedIndex).toBe(0);
+    const rect = menuList.getContentRect();
+    driver.simulateMouse(rect.x + 1, rect.y + 2, "move", "none"); // third row (Gam)
+    await settle();
+    expect(menuList.highlightedIndex).toBe(2);
+  });
+
+  test("Escape dismisses without selecting", async () => {
+    const picks: string[] = [];
+    const { text, driver, settle } = await mountApp(<Harness onPick={(l) => picks.push(l)} />, {
+      cols: 30,
+      rows: 8,
+    });
+    await settle();
+    expect(text()).toContain("Alpha");
+    driver.simulateKey("escape", "escape");
+    await settle();
+    expect(picks).toEqual([]);
+    expect(text()).not.toContain("Alpha");
+  });
+});

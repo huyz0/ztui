@@ -235,6 +235,13 @@ export class Widget extends DOMNode {
 
   /** Pointer click handler. */
   public onClick?: (ev: any) => void;
+  /**
+   * Pointer pressed on this widget, for *any* button — fired on `press` before
+   * the left-button focus/`onClick` path. The event carries `button` and
+   * `x`/`y`, so this is how to react to a right-click (e.g. open a context
+   * menu). Set `ev.handled = true` to suppress the default focus/click.
+   */
+  public onMouseDown?: (ev: MouseEvent) => void;
   /** Key handler invoked while focused (the base {@link handleKey} forwards here). */
   public onKey?: (ev: any) => void;
   /** Wheel/scroll handler (the base {@link handleScroll} forwards here). */

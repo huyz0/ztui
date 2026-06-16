@@ -152,6 +152,12 @@ export type { ImageProps } from "./components/media/image.tsx";
 export { Image } from "./components/media/image.tsx";
 export type { SvgImageProps } from "./components/media/svg-image.tsx";
 export { SvgImage } from "./components/media/svg-image.tsx";
+export type {
+  ContextMenuProps,
+  MenuItem,
+  OverlayPlacement,
+} from "./components/overlay/context-menu.tsx";
+export { ContextMenu, useContextMenu } from "./components/overlay/context-menu.tsx";
 export type { DialogProps } from "./components/overlay/dialog.tsx";
 export { Dialog } from "./components/overlay/dialog.tsx";
 export type { HotkeyPaletteProps } from "./components/overlay/hotkey-palette.tsx";

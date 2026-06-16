@@ -39,8 +39,80 @@ function drawShadow(buffer: ScreenBuffer, region: Region): void {
   blend(region.right + 1, region.bottom, 2, 1, SHADOW_OUTER);
 }
 
-/** Where a sticky panel sits relative to its anchor. */
-export type OverlayPlacement = "above" | "below" | "auto";
+/**
+ * Where a floating panel sits relative to its anchor. `above`/`below` are the
+ * legacy sticky-panel values (vertical only); `top`/`bottom`/`left`/`right` pick
+ * a specific side for point-anchored menus, and `auto` flips across all four to
+ * find one that fits (else best-fit). `above`≡`top`, `below`≡`bottom`.
+ */
+export type OverlayPlacement = "above" | "below" | "top" | "bottom" | "left" | "right" | "auto";
+
+type Side = "top" | "bottom" | "left" | "right";
+
+// Side-try order per placement: the preferred side first, then sensible
+// fallbacks. `auto` prefers below, then above, then beside.
+const PLACEMENT_ORDER: Record<OverlayPlacement, Side[]> = {
+  auto: ["bottom", "top", "right", "left"],
+  below: ["bottom", "top", "right", "left"],
+  bottom: ["bottom", "top", "right", "left"],
+  above: ["top", "bottom", "right", "left"],
+  top: ["top", "bottom", "right", "left"],
+  right: ["right", "left", "bottom", "top"],
+  left: ["left", "right", "bottom", "top"],
+};
+
+/**
+ * Place a `w`×`h` panel beside the `anchor` rect within `screen`, choosing a
+ * side per `placement`: the first candidate side with enough room on its primary
+ * axis wins; if none fits, the side with the most room is used (best-fit). The
+ * result is always clamped fully on-screen. A point anchor is just a 0-size
+ * rect, which makes a context menu open at the cursor and flip up/left near an
+ * edge. Exported (and pure) so the placement logic is unit-testable.
+ */
+export function placeByBestSide(
+  anchor: Region,
+  w: number,
+  h: number,
+  screen: Region,
+  placement: OverlayPlacement = "auto",
+): { x: number; y: number } {
+  const space: Record<Side, number> = {
+    top: anchor.y - screen.y,
+    bottom: screen.bottom - anchor.bottom,
+    left: anchor.x - screen.x,
+    right: screen.right - anchor.right,
+  };
+  const need = (s: Side): number => (s === "top" || s === "bottom" ? h : w);
+  const order = PLACEMENT_ORDER[placement] ?? PLACEMENT_ORDER.auto;
+  let side = order.find((s) => space[s] >= need(s));
+  if (!side) side = order.reduce((a, b) => (space[b] > space[a] ? b : a), order[0]);
+
+  let x: number;
+  let y: number;
+  switch (side) {
+    case "bottom":
+      x = anchor.x;
+      y = anchor.bottom;
+      break;
+    case "top":
+      x = anchor.x;
+      y = anchor.y - h;
+      break;
+    case "right":
+      x = anchor.right;
+      y = anchor.y;
+      break;
+    default: // left
+      x = anchor.x - w;
+      y = anchor.y;
+      break;
+  }
+  // Clamp so the panel is fully on-screen (cross-axis always; primary axis too
+  // when best-fit had to overflow).
+  x = Math.max(screen.x, Math.min(x, screen.right - w));
+  y = Math.max(screen.y, Math.min(y, screen.bottom - h));
+  return { x, y };
+}
 
 const toOffset = (val: number | { fr: number }): number => (typeof val === "number" ? val : 0);
 
@@ -86,6 +158,14 @@ export class OverlayRootWidget extends Widget {
   public anchor: Widget | null = null;
   /** Preferred side of the {@link anchor} (default `auto`: pick whichever fits). */
   public placement: OverlayPlacement = "auto";
+  /**
+   * Rect-anchored placement (context menus / popovers): the panel is placed
+   * beside this screen rect on the best side per {@link placement} — flipping
+   * across top/bottom/left/right to find one that fits, else best-fit, always
+   * clamped on-screen (see {@link placeByBestSide}). A cursor is a 0-size rect.
+   * Takes precedence over {@link anchor}.
+   */
+  public anchorRect: Region | null = null;
 
   constructor() {
     super("overlay-root");
@@ -118,6 +198,12 @@ export class OverlayRootWidget extends Widget {
     if (this.centered) {
       x = screen.x + Math.floor((screen.width - w) / 2);
       y = screen.y + Math.floor((screen.height - h) / 2);
+    } else if (this.anchorRect) {
+      // Place beside the anchor rect on the best-fitting side (context menus /
+      // popovers). placeByBestSide clamps fully on-screen, so we return early.
+      const p = placeByBestSide(this.anchorRect, w, h, screen, this.placement);
+      child.region = new Region(new Offset(p.x, p.y), new Size(w, h));
+      return true;
     } else if (this.anchor && this.anchor.region.width > 0) {
       // Sticky panel anchored to a widget: sit flush above or below it. Use the
       // anchor's client rect (margin excluded) so the panel aligns with the

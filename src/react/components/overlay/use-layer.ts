@@ -3,6 +3,9 @@ import { App } from "../../../core/app.ts";
 import type { OverlayPlacement, OverlayRootWidget } from "../../../dom/overlay.ts";
 import type { ScreenLayer } from "../../../dom/screen.ts";
 import type { Widget } from "../../../dom/widget.ts";
+import { Offset } from "../../../geometry/offset.ts";
+import { Region } from "../../../geometry/region.ts";
+import { Size } from "../../../geometry/size.ts";
 
 export interface UseLayerOptions {
   open: boolean;
@@ -24,6 +27,11 @@ export interface UseLayerOptions {
   anchorRef?: RefObject<Widget | null>;
   /** Sticky panels: preferred side of the anchor. */
   placement?: OverlayPlacement;
+  /**
+   * Context menus: anchor the panel to a screen point, opening down-right and
+   * flipping to stay on-screen. Takes precedence over {@link anchorRef}.
+   */
+  point?: { x: number; y: number } | null;
 }
 
 /**
@@ -87,6 +95,11 @@ export function useLayer(opts: UseLayerOptions) {
     if (root) {
       root.anchor = opts.anchorRef?.current ?? null;
       root.placement = opts.placement ?? "auto";
+      // A point is a 0-size anchor rect: the menu opens at the cursor and flips
+      // to whichever side fits (see placeByBestSide).
+      root.anchorRect = opts.point
+        ? new Region(new Offset(opts.point.x, opts.point.y), new Size(0, 0))
+        : null;
       root.dimAlpha = opts.dimAlpha ?? 1;
     }
   });

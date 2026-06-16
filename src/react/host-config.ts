@@ -19,6 +19,7 @@ export { createWidgetByTagName, registerElement, TextNode };
 // a handler removed from Widget) is a compile error.
 const KNOWN_HANDLER_PROPS = [
   "onClick",
+  "onMouseDown",
   "onKey",
   "onMouseEnter",
   "onMouseLeave",

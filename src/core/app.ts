@@ -480,17 +480,36 @@ export class App extends DOMNode {
         }
 
         if (!ev.handled) {
-          if (ev.type === "press" && ev.button === "left") {
+          // Any-button press fires onMouseDown first, so a right-click can be
+          // observed (e.g. to open a context menu) before the left-only
+          // focus/onClick path below. Handling it here suppresses both. The
+          // handler bubbles to the nearest ancestor that defines it, so a click
+          // on a leaf (e.g. a Label) still reaches a clickable container's
+          // handler — handlers don't have to sit on the exact hit widget.
+          if (ev.type === "press") {
+            const target = this.findAncestorHandler(hitWidget, "onMouseDown");
+            if (target) {
+              log(() => `onMouseDown (${ev.button}) -> ${target.describe()}`);
+              this.safeInvoke(
+                () => `onMouseDown on ${target.describe()}`,
+                () => target.onMouseDown?.(ev),
+              );
+              this.queueRender("mouse:down");
+            }
+          }
+          if (!ev.handled && ev.type === "press" && ev.button === "left") {
             if (hitWidget.focusable) {
               this.activeScreen.focusWidget(hitWidget);
               log(() => `Focused via click -> ${hitWidget.describe()}`);
               this.queueRender("focus:mouse-press");
             }
-            if (hitWidget.onClick) {
-              log(() => `onClick -> ${hitWidget.describe()}`);
+            // onClick bubbles to the nearest ancestor handler too.
+            const target = this.findAncestorHandler(hitWidget, "onClick");
+            if (target) {
+              log(() => `onClick -> ${target.describe()}`);
               this.safeInvoke(
-                () => `onClick on ${hitWidget.describe()}`,
-                () => hitWidget.onClick?.(ev),
+                () => `onClick on ${target.describe()}`,
+                () => target.onClick?.(ev),
               );
               this.queueRender("mouse:click");
             }
@@ -1074,7 +1093,7 @@ export class App extends DOMNode {
   private screenHasHoverInterest(screen: Screen): boolean {
     const screenRegion = screen.region;
     let interested = false;
-    screen.walk((node) => {
+    const check = (node: DOMNode) => {
       if (interested) return;
       if (
         node instanceof Widget &&
@@ -1086,7 +1105,12 @@ export class App extends DOMNode {
       ) {
         interested = true;
       }
-    });
+    };
+    screen.walk(check);
+    // Overlay layers (dialogs, context menus) live outside the child tree, so
+    // walk them too — otherwise a hover-only overlay (e.g. an open menu) would
+    // leave passive-hover tracking disabled and never highlight on hover.
+    for (const overlay of screen.overlays) overlay.walk(check);
     return interested;
   }
 
@@ -1094,6 +1118,21 @@ export class App extends DOMNode {
     const enabled =
       this.cssResolver.hasHoverRules() || this.screenHasHoverInterest(this.activeScreen);
     this.driver.setMouseHover(enabled);
+  }
+
+  /**
+   * Walk up from `widget` (inclusive) to the nearest ancestor that defines the
+   * pointer handler `prop` (`onClick` / `onMouseDown`), or null. Lets a handler
+   * on a container fire for a click that hit-tests to one of its leaf children —
+   * pointer handlers bubble, matching the scroll-forwarding behaviour.
+   */
+  private findAncestorHandler(widget: Widget, prop: "onClick" | "onMouseDown"): Widget | null {
+    let current: DOMNode | null = widget;
+    while (current) {
+      if (current instanceof Widget && current[prop]) return current;
+      current = current.parent;
+    }
+    return null;
   }
 
   private hitTest(node: DOMNode, x: number, y: number): Widget | null {
