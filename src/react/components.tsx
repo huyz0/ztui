@@ -81,6 +81,8 @@ export type {
   BannerVariant,
 } from "./components/feedback/banner.tsx";
 export { Banner } from "./components/feedback/banner.tsx";
+export type { GaugeProps, GaugeThreshold } from "./components/feedback/gauge.tsx";
+export { Gauge } from "./components/feedback/gauge.tsx";
 export type {
   CompactProgressBarProps,
   ProgressBarProps,

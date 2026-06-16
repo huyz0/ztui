@@ -18,6 +18,7 @@ import { disabledDemo } from "../disabled_demo.tsx";
 import { fileIconDemo } from "../fileicon_demo.tsx";
 import { focusDemo } from "../focus_demo.tsx";
 import { formDemo } from "../form_validation_demo.tsx";
+import { gaugeDemo } from "../gauge_demo.tsx";
 import { generativeUiDemo } from "../generative_ui.tsx";
 import { heroiconsDemo } from "../heroicons_demo.tsx";
 import { hotkeysDemo } from "../hotkeys_demo.tsx";
@@ -112,6 +113,7 @@ export const demos: Demo[] = [
   bannerDemo,
   noColorDemo,
   descriptionListDemo,
+  gaugeDemo,
 ];
 
 export function findDemo(id: string): Demo | undefined {

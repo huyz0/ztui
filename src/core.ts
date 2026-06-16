@@ -139,6 +139,7 @@ export type { TreeNode } from "./widgets/data/tree.ts";
 export { TreeWidget } from "./widgets/data/tree.ts";
 export type { BannerGlyphSet, BannerVariant } from "./widgets/feedback/banner.ts";
 export { BannerWidget } from "./widgets/feedback/banner.ts";
+export { type GaugeThreshold, GaugeWidget } from "./widgets/feedback/gauge.ts";
 export { ProgressBarWidget } from "./widgets/feedback/progress-bar.ts";
 export {
   type SpinnerMode as SpinnerWidgetMode,
