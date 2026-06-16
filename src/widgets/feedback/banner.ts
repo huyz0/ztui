@@ -4,8 +4,9 @@ import type { MouseEvent } from "../../driver/driver.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { mix, parseRgb, rgbStr } from "../../render/color.ts";
-import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
+import { charWidth, Segment } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { truncate, wrapText } from "../../render/text-wrap.ts";
 
 /**
  * Semantic tone of a {@link BannerWidget}. Each variant drives the icon and the
@@ -31,65 +32,6 @@ const VARIANT_COLOR: Record<BannerVariant, { variable: string; fallback: string 
   error: { variable: "$error", fallback: "#e06c75" },
   neutral: { variable: "$dimmed", fallback: "bright-black" },
 };
-
-/** Greedy word-wrap of `text` to `width` display columns, wide-char aware. */
-function wrap(text: string, width: number): string[] {
-  if (width <= 0) return [];
-  const out: string[] = [];
-  for (const hard of text.split("\n")) {
-    if (hard === "") {
-      out.push("");
-      continue;
-    }
-    let line = "";
-    let lineW = 0;
-    for (const word of hard.split(/(\s+)/)) {
-      if (word === "") continue;
-      const ww = stringWidth(word);
-      // A space-run that would overflow is dropped at the wrap point.
-      if (lineW > 0 && lineW + ww > width) {
-        if (/^\s+$/.test(word)) continue;
-        out.push(line);
-        line = "";
-        lineW = 0;
-      }
-      if (ww <= width || /^\s+$/.test(word)) {
-        line += word;
-        lineW += ww;
-      } else {
-        // A single word longer than the line: hard-break it by graphemes.
-        for (const g of splitGraphemes(word)) {
-          const gw = charWidth(g);
-          if (lineW + gw > width) {
-            out.push(line);
-            line = "";
-            lineW = 0;
-          }
-          line += g;
-          lineW += gw;
-        }
-      }
-    }
-    out.push(line);
-  }
-  return out;
-}
-
-/** Truncate `text` to `width` columns with a trailing ellipsis. */
-function truncate(text: string, width: number): string {
-  if (width <= 0) return "";
-  if (stringWidth(text) <= width) return text;
-  if (width === 1) return "…";
-  let out = "";
-  let w = 0;
-  for (const g of splitGraphemes(text)) {
-    const gw = charWidth(g);
-    if (w + gw > width - 1) break;
-    out += g;
-    w += gw;
-  }
-  return `${out}…`;
-}
 
 /**
  * A persistent inline callout — an accent rule, an icon, an optional bold title
@@ -152,7 +94,7 @@ export class BannerWidget extends Widget {
   private layout(contentW: number): { title?: string; lines: string[] } {
     const textW = Math.max(0, contentW - this.leftCols - (this.dismissible ? 2 : 0));
     const title = this.title ? truncate(this.title, textW) : undefined;
-    const lines = this.message ? wrap(this.message, textW) : [];
+    const lines = this.message ? wrapText(this.message, textW) : [];
     return { title, lines };
   }
 

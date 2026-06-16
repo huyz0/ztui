@@ -2,8 +2,9 @@ import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
+import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { truncate, wrapText } from "../../render/text-wrap.ts";
 
 /** One `term → description` pair in a {@link DescriptionListWidget}. */
 export interface DescriptionItem {
@@ -22,63 +23,6 @@ function resolveColor(widget: Widget, color: string | undefined, fallback: strin
     return (widget.app ?? App.instance)?.cssResolver.resolveVariable(widget, color) || fallback;
   }
   return color;
-}
-
-/** Greedy word-wrap of `text` to `width` display columns, wide-char aware. */
-function wrap(text: string, width: number): string[] {
-  if (width <= 0) return [];
-  const out: string[] = [];
-  for (const hard of text.split("\n")) {
-    if (hard === "") {
-      out.push("");
-      continue;
-    }
-    let line = "";
-    let lineW = 0;
-    for (const word of hard.split(/(\s+)/)) {
-      if (word === "") continue;
-      const ww = stringWidth(word);
-      if (lineW > 0 && lineW + ww > width) {
-        if (/^\s+$/.test(word)) continue; // drop the space at the wrap point
-        out.push(line);
-        line = "";
-        lineW = 0;
-      }
-      if (ww <= width || /^\s+$/.test(word)) {
-        line += word;
-        lineW += ww;
-      } else {
-        for (const g of splitGraphemes(word)) {
-          const gw = charWidth(g);
-          if (lineW + gw > width) {
-            out.push(line);
-            line = "";
-            lineW = 0;
-          }
-          line += g;
-          lineW += gw;
-        }
-      }
-    }
-    out.push(line);
-  }
-  return out;
-}
-
-/** Truncate `text` to `width` columns with a trailing ellipsis. */
-function truncate(text: string, width: number): string {
-  if (width <= 0) return "";
-  if (stringWidth(text) <= width) return text;
-  if (width === 1) return "…";
-  let out = "";
-  let w = 0;
-  for (const g of splitGraphemes(text)) {
-    const gw = charWidth(g);
-    if (w + gw > width - 1) break;
-    out += g;
-    w += gw;
-  }
-  return `${out}…`;
 }
 
 /**
@@ -139,7 +83,7 @@ export class DescriptionListWidget extends Widget {
     if (hStyle === undefined) {
       const descW = Math.max(0, contentW - termW - (termW > 0 ? this.gap : 0));
       let rows = 0;
-      for (const it of this.items) rows += Math.max(1, wrap(it.description, descW).length);
+      for (const it of this.items) rows += Math.max(1, wrapText(it.description, descW).length);
       this.measuredHeight = rows + b.height + p.height;
     } else {
       const h = parseDimension(hStyle, maxH, -1);
@@ -182,7 +126,7 @@ export class DescriptionListWidget extends Widget {
         buffer.drawSegment(tx, y, new Segment(term, termStyle), rect);
       }
 
-      const lines = descW > 0 ? wrap(item.description, descW) : [];
+      const lines = descW > 0 ? wrapText(item.description, descW) : [];
       if (lines.length === 0) {
         y += 1; // term-only row still advances
         continue;

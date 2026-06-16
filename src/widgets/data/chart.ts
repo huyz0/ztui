@@ -2,8 +2,9 @@ import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
+import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { truncate } from "../../render/text-wrap.ts";
 
 /** Horizontal eighth-blocks (1/8 → 8/8) for sub-cell bar precision. */
 const HBARS = ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"] as const;
@@ -13,22 +14,6 @@ function fmtNum(n: number): string {
   if (!Number.isFinite(n)) return "";
   if (Number.isInteger(n)) return String(n);
   return n.toFixed(1);
-}
-
-/** Truncate `text` to `width` display columns, wide-char aware, with an ellipsis. */
-function truncate(text: string, width: number): string {
-  if (width <= 0) return "";
-  if (stringWidth(text) <= width) return text;
-  if (width === 1) return "…";
-  let out = "";
-  let w = 0;
-  for (const g of splitGraphemes(text)) {
-    const gw = charWidth(g);
-    if (w + gw > width - 1) break;
-    out += g;
-    w += gw;
-  }
-  return `${out}…`;
 }
 
 function resolveColor(widget: Widget, color: string | undefined, fallback: string): string {
