@@ -301,16 +301,51 @@ describe("ChatInput", () => {
     expect(value).toBe("aaX\nbb");
   });
 
-  test("select-all + Ctrl+C copies; Ctrl+X cuts", async () => {
+  // Clipboard keys (Ctrl+C/Ctrl+Shift+C/Ctrl+X/Ctrl+A) are routed by the App to
+  // these ClipboardWidget methods — the same contract as Input and TextArea — so
+  // the unit test exercises the methods directly, like the other two widgets do.
+  test("selection clipboard: copySelection / cutSelection / selectAll", async () => {
     const { t, w } = await mountChat({});
     type(w, "copyme");
-    key(w, "ctrl+a");
-    key(w, "ctrl+c");
+    w.selectAll();
+    expect(w.copySelection()).toBe("copyme");
     expect(await t.driver.clipboard.get()).toBe("copyme");
-    key(w, "ctrl+a");
-    key(w, "ctrl+x");
+    w.selectAll();
+    expect(w.cutSelection()).toBe("copyme");
     expect(w.value).toBe("");
     expect(await t.driver.clipboard.get()).toBe("copyme");
+  });
+
+  test("copySelection is null with no selection, so a bare Ctrl+C bubbles up to quit", async () => {
+    const { w } = await mountChat({});
+    type(w, "hi");
+    expect(w.hasSelection()).toBe(false);
+    expect(w.copySelection()).toBeNull();
+    expect(w.cutSelection()).toBeNull();
+  });
+
+  test("mouse drag selects text and release copies it", async () => {
+    const { t, w } = await mountChat({});
+    type(w, "hello");
+    await t.settle();
+    const c = content(w);
+    mouse(w, c.x, c.y, "press"); // anchor at column 0
+    mouse(w, c.x + 3, c.y, "drag"); // extend over "hel"
+    expect(w.hasSelection()).toBe(true);
+    mouse(w, c.x + 3, c.y, "release"); // drag-release copies
+    expect(await t.driver.clipboard.get()).toBe("hel");
+  });
+
+  test("a plain click (press+release, no drag) places the caret without selecting", async () => {
+    const { t, w } = await mountChat({});
+    type(w, "hello");
+    await t.settle();
+    const c = content(w);
+    mouse(w, c.x + 2, c.y, "press");
+    mouse(w, c.x + 2, c.y, "release");
+    expect(w.hasSelection()).toBe(false);
+    type(w, "X"); // inserts at the clicked caret (after "he")
+    expect(w.value).toBe("heXllo");
   });
 
   test("imperative API: clear / insertText / appendStreaming / undo / redo", async () => {
@@ -630,7 +665,7 @@ describe("ChatInput selected-chip rendering", () => {
     key(w, "enter"); // accept → chip "auth.ts" (1 pad + 7 label + 1 pad = 9 cells)
     await t.settle();
     type(w, "x"); // a plain text atom right after the chip
-    key(w, "ctrl+a"); // select everything
+    w.selectAll(); // Ctrl+A is app-routed to selectAll()
     await t.settle();
     const c = content(w);
     const chipLabelBg = t.cellAt(c.x + 1, c.y).style.background; // inside the pill
@@ -696,5 +731,17 @@ describe("ChatInput Tab routing through the app", () => {
     await t.settle();
     expect(w.value).toBe("@au"); // not accepted
     expect(t.screen.focusedWidget?.id).not.toBe("chat"); // focus moved
+  });
+
+  test("a mouse click focuses the chat input (like Input/TextArea)", async () => {
+    const { t, w } = await mountWithNeighbor();
+    t.screen.focusWidget(t.findById("btn") as any);
+    expect(t.screen.focusedWidget?.id).toBe("btn");
+    // A left press inside the composer must focus it — the caret-placement press
+    // is left unhandled so the App's focus-on-click runs.
+    const c = content(w);
+    t.driver.simulateMouse(c.x, c.y, "press", "left");
+    await t.settle();
+    expect(t.screen.focusedWidget?.id).toBe("chat");
   });
 });

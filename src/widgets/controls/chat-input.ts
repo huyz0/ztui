@@ -237,10 +237,49 @@ export class ChatInputWidget extends Widget {
     this.emitChange();
     this.app?.queueRender();
   }
-  /** Insert text at the caret. */
+  /** Insert text at the caret (replacing any selection); used by Ctrl+V + bracketed paste. */
   public insertText(text: string): void {
     this.buffer.insertText(text, "paste");
     this.afterEdit();
+  }
+
+  // ── selection clipboard ──────────────────────────────────────────────────────
+  // The ClipboardWidget contract shared with Input and TextArea. The App routes
+  // Ctrl+C (selection-aware, falls through to quit when empty), Ctrl+Shift+C,
+  // Ctrl+Shift+X, Ctrl+A and Escape-to-deselect to these methods.
+
+  /** True when a non-empty selection exists. */
+  public hasSelection(): boolean {
+    return this.buffer.hasSelection();
+  }
+
+  /** Selected text, or null when nothing is selected. */
+  public copySelection(): string | null {
+    if (!this.buffer.hasSelection()) return null;
+    const text = this.buffer.selectedText();
+    App.instance?.driver.clipboard.set(text);
+    return text;
+  }
+
+  /** Copy the selection, then delete it. No-op (null) when nothing is selected. */
+  public cutSelection(): string | null {
+    const text = this.copySelection();
+    if (text === null) return null;
+    this.buffer.backspace();
+    this.afterEdit();
+    return text;
+  }
+
+  /** Clear any active selection (caret stays put). */
+  public clearSelection(): void {
+    this.buffer.clearSelection();
+    this.app?.queueRender();
+  }
+
+  /** Select the entire draft. */
+  public selectAll(): void {
+    this.buffer.selectAll();
+    this.app?.queueRender();
   }
   /** Append text from an external stream (e.g. dictation). */
   public appendStreaming(text: string): void {
@@ -362,7 +401,7 @@ export class ChatInputWidget extends Widget {
   private refreshHints(): void {
     if (!this.onHintsChange) return;
     const hints = this.getHints();
-    const sig = hints.map((h) => `${h.keys} ${h.label}`).join("");
+    const sig = hints.map((h) => `${h.keys}\x00${h.label}`).join("\x01");
     if (sig === this.lastHintSig) return;
     this.lastHintSig = sig;
     this.onHintsChange(hints);
@@ -571,27 +610,11 @@ export class ChatInputWidget extends Widget {
       ev.handled = true;
       return;
     }
-    if (ev.key === "ctrl+a" || ev.key === "meta+a") {
-      this.buffer.selectAll();
-      this.app?.queueRender();
-      ev.handled = true;
-      return;
-    }
-    if (ev.key === "ctrl+c" || ev.key === "meta+c") {
-      if (this.buffer.hasSelection())
-        App.instance?.driver.clipboard.set(this.buffer.selectedText());
-      ev.handled = true;
-      return;
-    }
-    if (ev.key === "ctrl+x" || ev.key === "meta+x") {
-      if (this.buffer.hasSelection()) {
-        App.instance?.driver.clipboard.set(this.buffer.selectedText());
-        this.buffer.backspace();
-        this.afterEdit();
-      }
-      ev.handled = true;
-      return;
-    }
+    // Copy/cut/select-all/paste are NOT handled here: the App routes Ctrl+C,
+    // Ctrl+Shift+C/X, Ctrl+A and Ctrl+V to the ClipboardWidget methods below,
+    // exactly as it does for Input and TextArea. Crucially this lets a bare
+    // Ctrl+C with no selection bubble up to the App and quit (selection-aware
+    // copy), instead of being silently swallowed here.
 
     // 7. Navigation.
     switch (name) {
@@ -885,10 +908,51 @@ export class ChatInputWidget extends Widget {
   }
 
   // ── mouse ─────────────────────────────────────────────────────────────────────
+  /** True between a text mouse-press and its release — a drag selection in progress. */
+  private dragSelecting = false;
+
+  /** Caret atom-index under a screen point (row clamped to content), or null when empty. */
+  private caretIndexAtXY(x: number, y: number): number | null {
+    const content = this.getContentRect();
+    const strip = this.stripRows();
+    const rows = this.layoutRows(this.innerWidth());
+    if (rows.length === 0) return 0;
+    let localRow = y - content.y - strip + this.scrollRow;
+    localRow = Math.max(0, Math.min(rows.length - 1, localRow));
+    return this.indexAtRowCol(rows, localRow, x - content.x);
+  }
+
   public override handleMouse(ev: MouseEvent): void {
     super.handleMouse(ev);
     if (ev.handled || this.isDisabled()) return;
-    if (ev.type !== "press" || ev.button !== "left") return;
+    if (ev.button !== "left") return;
+
+    // Drag extends the caret end of the selection; the press anchored the other.
+    if (ev.type === "drag") {
+      if (!this.dragSelecting) return;
+      const idx = this.caretIndexAtXY(ev.x, ev.y);
+      if (idx !== null) {
+        if (this.buffer.anchor === null) this.buffer.anchor = this.buffer.caret;
+        this.buffer.caret = idx;
+        this.app?.queueRender();
+      }
+      return;
+    }
+
+    // A drag-release with a real selection copies it — works on every terminal
+    // (no Kitty protocol needed), matching Input and TextArea. A plain click
+    // (no drag) collapses the empty anchor.
+    if (ev.type === "release") {
+      if (this.dragSelecting) {
+        if (this.buffer.hasSelection()) this.copySelection();
+        else this.buffer.clearSelection();
+        this.dragSelecting = false;
+      }
+      return;
+    }
+
+    if (ev.type !== "press") return;
+    this.dragSelecting = false;
 
     // Click on the send/stop glyph (bottom-right inside the content).
     if (this.showActionGlyph) {
@@ -918,7 +982,7 @@ export class ChatInputWidget extends Widget {
       }
     }
 
-    // Click a chip → copy its serialized text.
+    // Click a chip → copy its serialized text (chips are atomic, not selectable).
     const rows = this.layoutRows(this.innerWidth());
     const localRow = ev.y - content.y - strip + this.scrollRow;
     const vr = rows[localRow];
@@ -931,17 +995,20 @@ export class ChatInputWidget extends Widget {
             ev.handled = true;
             return;
           }
-          this.buffer.caret = pa.index;
-          this.buffer.clearSelection();
-          ev.handled = true;
-          this.app?.queueRender();
-          return;
+          break; // a text atom — fall through to caret placement + anchor
         }
       }
-      // Past the row's end → caret to row end.
-      this.buffer.caret = vr.end;
-      this.buffer.clearSelection();
-      ev.handled = true;
+    }
+
+    // Place the caret and anchor a (possibly empty) selection here; a following
+    // drag extends it and release copies — identical to Input/TextArea. Crucially
+    // we do NOT mark the press handled: that lets the App focus this (focusable)
+    // widget on click, the same way Input and TextArea get focus.
+    const idx = this.caretIndexAtXY(ev.x, ev.y);
+    if (idx !== null) {
+      this.buffer.caret = idx;
+      this.buffer.anchor = idx;
+      this.dragSelecting = true;
       this.app?.queueRender();
     }
   }
