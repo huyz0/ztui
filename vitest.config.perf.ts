@@ -10,7 +10,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     globals: true,
-    include: ["src/**/*.perf.ts", "src/**/*.bench.ts"],
+    // Only the ratio-guard tests run under `vitest run` (`bun run perf`). The
+    // `.bench.ts` files use `bench()`, which is valid only under `vitest bench`
+    // (`bun run bench`) — including them here would error in run mode. They're
+    // scoped via `benchmark.include` below.
+    include: ["src/**/*.perf.ts"],
     exclude: ["node_modules", ".oss", "dist"],
     fileParallelism: false,
     pool: "forks",
