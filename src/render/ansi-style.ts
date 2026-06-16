@@ -32,8 +32,39 @@ export const renderCapabilities: RenderCapabilities = {
   color256: true,
 };
 
+// Per-Style memo of the serialized escape pair. A `Style` is immutable, and the
+// same themed instances are shared across thousands of cells every frame, so the
+// diff serializes the same handful of styles over and over — a WeakMap turns that
+// into a pointer-keyed hit (and lets the entries be GC'd with the styles). The
+// output also depends on the colour toggle and terminal colour depth, so the
+// cache is tagged with a generation built from those; when it changes the whole
+// map is dropped. (`parseColorToAnsi` keeps its own string→SGR cache underneath.)
+let escapeCache = new WeakMap<Style, { start: string; end: string }>();
+let escapeCacheGen = -1;
+
+function serializationGen(): number {
+  return (
+    (colorMode.enabled ? 1 : 0) |
+    (renderCapabilities.truecolor ? 2 : 0) |
+    (renderCapabilities.color256 ? 4 : 0)
+  );
+}
+
 /** SGR start/end escape pair that renders `style`, for use around cell text. */
 export function styleToEscapeCodes(style: Style): { start: string; end: string } {
+  const gen = serializationGen();
+  if (gen !== escapeCacheGen) {
+    escapeCache = new WeakMap();
+    escapeCacheGen = gen;
+  }
+  const hit = escapeCache.get(style);
+  if (hit !== undefined) return hit;
+  const codes = computeEscapeCodes(style);
+  escapeCache.set(style, codes);
+  return codes;
+}
+
+function computeEscapeCodes(style: Style): { start: string; end: string } {
   let start = "";
   let end = "";
 

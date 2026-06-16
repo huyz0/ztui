@@ -95,6 +95,19 @@ export function charWidth(char: string): number {
 }
 
 export function stringWidth(str: string): number {
+  if (str === "") return 0;
+  // ASCII fast path: every code unit is its own grapheme and is width 1 unless
+  // it's a control char (width 0). This is the overwhelmingly common case (run
+  // content in the diff, labels, etc.) and avoids the `splitGraphemes` array
+  // allocation plus a `charWidth` call per character.
+  if (isAscii(str)) {
+    let width = 0;
+    for (let i = 0; i < str.length; i++) {
+      const c = str.charCodeAt(i);
+      if (c >= 32 && c < 127) width++;
+    }
+    return width;
+  }
   let width = 0;
   for (const g of splitGraphemes(str)) {
     width += charWidth(g);

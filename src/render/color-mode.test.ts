@@ -50,6 +50,21 @@ describe("colorMode (NO_COLOR)", () => {
     expect(start).not.toContain("38;2");
   });
 
+  test("the per-Style serialization cache invalidates when colour is toggled", () => {
+    // styleToEscapeCodes memoizes per immutable Style instance; toggling the
+    // colour mode must drop those cached entries, or the *same* instance would
+    // keep emitting its stale (coloured) escapes after NO_COLOR takes effect.
+    const style = new Style({ color: "#ff0000", bold: true });
+    colorMode.set(true);
+    expect(styleToEscapeCodes(style).start).toContain("38;2;255;0;0");
+    colorMode.set(false);
+    const off = styleToEscapeCodes(style).start;
+    expect(off).not.toContain("38;2"); // colour dropped despite the cache hit
+    expect(off).toContain("\x1b[1m"); // bold attribute still emitted
+    colorMode.set(true);
+    expect(styleToEscapeCodes(style).start).toContain("38;2;255;0;0"); // colour back
+  });
+
   test("set then reset restores the environment default", () => {
     const def = colorMode.enabled;
     colorMode.set(!def);
