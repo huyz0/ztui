@@ -24,6 +24,7 @@ import { inputDemo } from "../input_demo.tsx";
 import { listviewDemo } from "../listview_demo.tsx";
 import { markdownDemo } from "../markdown_stream_demo.tsx";
 import { overlayDemo } from "../overlay_demo.tsx";
+import { popoverDemo } from "../popover_demo.tsx";
 import { qaDemo } from "../questionanswer_demo.tsx";
 import { radioDemo } from "../radio_demo.tsx";
 import { richDemo } from "../rich_demo.tsx";
@@ -89,6 +90,7 @@ export const demos: Demo[] = [
   switchDemo,
   selectDemo,
   contextMenuDemo,
+  popoverDemo,
   sliderDemo,
   radioDemo,
   toggleButtonDemo,

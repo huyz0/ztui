@@ -162,6 +162,8 @@ export type { DialogProps } from "./components/overlay/dialog.tsx";
 export { Dialog } from "./components/overlay/dialog.tsx";
 export type { HotkeyPaletteProps } from "./components/overlay/hotkey-palette.tsx";
 export { HotkeyPalette, useHotkey } from "./components/overlay/hotkey-palette.tsx";
+export type { PopoverProps } from "./components/overlay/popover.tsx";
+export { Popover } from "./components/overlay/popover.tsx";
 export type { StickyPanelProps } from "./components/overlay/sticky-panel.tsx";
 export { StickyPanel } from "./components/overlay/sticky-panel.tsx";
 export type { ThemePaletteProps } from "./components/overlay/theme-palette.tsx";
@@ -172,6 +174,8 @@ export type {
   ToastPosition,
 } from "./components/overlay/toast-host.tsx";
 export { ToastHost, useToast } from "./components/overlay/toast-host.tsx";
+export type { TooltipProps } from "./components/overlay/tooltip.tsx";
+export { Tooltip, useTooltip } from "./components/overlay/tooltip.tsx";
 export type { JSONUIProps } from "./components/text/json-ui.tsx";
 export { JSONUI } from "./components/text/json-ui.tsx";
 export { Label, type LabelProps } from "./components/text/label.tsx";

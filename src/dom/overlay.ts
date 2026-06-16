@@ -136,6 +136,12 @@ export class OverlayRootWidget extends Widget {
   public modal = false;
   /** Center the (single) panel child within the screen. */
   public centered = false;
+  /**
+   * Cast a soft drop shadow under the panel. On by default for dialogs/menus/
+   * popovers; turn off for lightweight panels (e.g. a one-line tooltip) where the
+   * fixed-size shadow would dwarf the panel.
+   */
+  public shadow = true;
   /** Blank the backdrop behind a modal panel so the layer below reads as inert. */
   public dim = false;
   /**
@@ -210,6 +216,18 @@ export class OverlayRootWidget extends Widget {
       // widget's visible box, not its margin edge — otherwise the anchor's
       // margin shows up as a gap above/below and a horizontal offset.
       const a = this.anchor.getClientRect();
+      // A side placement (popover/tooltip) flips across all four sides to fit;
+      // the legacy above/below/auto values keep the vertical sticky behaviour.
+      if (
+        this.placement === "top" ||
+        this.placement === "bottom" ||
+        this.placement === "left" ||
+        this.placement === "right"
+      ) {
+        const p = placeByBestSide(a, w, h, screen, this.placement);
+        child.region = new Region(new Offset(p.x, p.y), new Size(w, h));
+        return true;
+      }
       x = a.x;
       const spaceAbove = a.y - screen.y;
       const spaceBelow = screen.bottom - a.bottom;
@@ -260,8 +278,10 @@ export class OverlayRootWidget extends Widget {
     }
     // A soft drop shadow under each floating panel lifts it off the layer below.
     // Drawn before the panels paint, so they cover all but the protruding edge.
-    for (const child of this.children) {
-      if (child instanceof Widget && child.visible) drawShadow(buffer, child.region);
+    if (this.shadow) {
+      for (const child of this.children) {
+        if (child instanceof Widget && child.visible) drawShadow(buffer, child.region);
+      }
     }
     // Transparent everywhere else: only the children paint, so the layer below
     // stays visible around the panel.

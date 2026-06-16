@@ -32,6 +32,8 @@ export interface UseLayerOptions {
    * flipping to stay on-screen. Takes precedence over {@link anchorRef}.
    */
   point?: { x: number; y: number } | null;
+  /** Cast a drop shadow under the panel. Defaults to true; tooltips opt out. */
+  shadow?: boolean;
 }
 
 /**
@@ -100,6 +102,7 @@ export function useLayer(opts: UseLayerOptions) {
       root.anchorRect = opts.point
         ? new Region(new Offset(opts.point.x, opts.point.y), new Size(0, 0))
         : null;
+      root.shadow = opts.shadow ?? true;
       root.dimAlpha = opts.dimAlpha ?? 1;
     }
   });
