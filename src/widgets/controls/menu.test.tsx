@@ -288,3 +288,78 @@ describe("ContextMenu overlay", () => {
     expect(text()).not.toContain("Alpha");
   });
 });
+
+describe("ContextMenu submenus", () => {
+  function SubHarness({ onPick }: { onPick: (label: string) => void }) {
+    const m = useContextMenu();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: open once on mount
+    useEffect(() => m.openAt(2, 1), []);
+    return (
+      <VBox style={{ width: 40, height: 12 }}>
+        <ContextMenu
+          {...m.props}
+          items={[
+            { label: "Open" },
+            { label: "More", submenu: [{ label: "Sub A" }, { label: "Sub B" }] },
+          ]}
+          onSelect={(item) => onPick(item.label ?? "")}
+        />
+      </VBox>
+    );
+  }
+
+  test("→ opens a submenu beside the parent and Enter selects a nested leaf", async () => {
+    const picks: string[] = [];
+    const { text, driver, settle } = await mountApp(<SubHarness onPick={(l) => picks.push(l)} />, {
+      cols: 40,
+      rows: 12,
+    });
+    await settle();
+    expect(text()).toContain("More");
+    expect(text()).toContain("▸"); // submenu chevron
+    expect(text()).not.toContain("Sub A");
+
+    driver.simulateKey("down", "down"); // highlight "More"
+    await settle();
+    driver.simulateKey("right", "right"); // open its submenu (focus moves in)
+    await settle();
+    expect(text()).toContain("Sub A");
+    expect(text()).toContain("Sub B");
+
+    driver.simulateKey("enter", "enter"); // select "Sub A"
+    await settle();
+    expect(picks).toEqual(["Sub A"]);
+    expect(text()).not.toContain("Open"); // whole menu dismissed
+  });
+
+  test("← backs out of a submenu, leaving the parent open", async () => {
+    const { text, driver, settle } = await mountApp(<SubHarness onPick={() => {}} />, {
+      cols: 40,
+      rows: 12,
+    });
+    await settle();
+    driver.simulateKey("down", "down");
+    await settle();
+    driver.simulateKey("right", "right");
+    await settle();
+    expect(text()).toContain("Sub A");
+
+    driver.simulateKey("left", "left");
+    await settle();
+    expect(text()).not.toContain("Sub A"); // submenu closed
+    expect(text()).toContain("Open"); // parent still open
+  });
+
+  test("hovering a submenu row opens it", async () => {
+    const { screen, text, driver, settle } = await mountApp(<SubHarness onPick={() => {}} />, {
+      cols: 40,
+      rows: 12,
+    });
+    await settle();
+    const menuList = screen.overlays[0].children[0] as any;
+    const rect = menuList.getContentRect();
+    driver.simulateMouse(rect.x + 1, rect.y + 1, "move", "none"); // hover "More" (row 1)
+    await settle();
+    expect(text()).toContain("Sub A");
+  });
+});

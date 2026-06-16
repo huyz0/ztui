@@ -20,6 +20,17 @@ function ContextMenuDemoApp() {
 
   const items: MenuItem[] = [
     { label: "Open", icon: "📄", shortcut: "Enter" },
+    {
+      label: "Open with",
+      icon: "📂",
+      submenu: [
+        { label: "VS Code" },
+        { label: "Vim" },
+        { label: "Nano" },
+        { separator: true },
+        { label: "Choose…", submenu: [{ label: "Browse…" }, { label: "Defaults" }] },
+      ],
+    },
     { label: "Rename", icon: "✎", shortcut: "F2" },
     { label: "Copy path", icon: "⧉", shortcut: "Ctrl+C" },
     { label: "Duplicate", disabled: true },
@@ -69,6 +80,7 @@ export const contextMenuDemo: Demo = {
   id: "context-menu",
   title: "Context Menu",
   group: "Controls",
-  description: "Right-click action menu: icons, shortcuts, separators, disabled and danger rows.",
+  description:
+    "Right-click action menu: nested submenus, icons, shortcuts, separators, disabled and danger rows.",
   Component: ContextMenuDemoApp,
 };
