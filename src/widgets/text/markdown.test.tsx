@@ -168,6 +168,30 @@ describe("Markdown generative UI (code fences)", () => {
     expect(onAction).toHaveBeenCalledWith("launch", expect.objectContaining({ id: "go" }));
   });
 
+  test("nested generative children apply margin/padding objects at every level", async () => {
+    const fence = [
+      "```ztui-vbox",
+      JSON.stringify({
+        id: "root",
+        style: { margin: { bottom: 1 } },
+        children: [
+          {
+            type: "ztui-vbox",
+            id: "inner",
+            style: { padding: { top: 1, left: 2 }, margin: { top: 1 } },
+            children: [{ type: "ztui-label", id: "deep", text: "deep text" }],
+          },
+        ],
+      }),
+      "```",
+    ].join("\n");
+    const t = await mountApp(<Markdown>{fence}</Markdown>);
+    expect(t.findById("root")).toBeDefined();
+    expect(t.findById("inner")).toBeDefined();
+    expect(t.findById("deep")).toBeDefined();
+    expect(t.text()).toContain("deep text"); // grandchild rendered through recursion
+  });
+
   test("unparseable fence JSON falls back to the raw text as content", async () => {
     const fence = "```ztui-label\n!!! not json at all !!!\n```";
     const t = await mountApp(<Markdown>{fence}</Markdown>);

@@ -110,6 +110,34 @@ describe("ZTUI ProgressBar Widget Suite", () => {
     expect(litCells(cellAt)).toBe(10);
   });
 
+  test("indeterminate mode paints an animated sweep across the track", async () => {
+    const { cellAt, findById } = await mountApp(
+      <HBox>
+        <ProgressBar id="pb" indeterminate style={{ width: 12 }} />
+      </HBox>,
+      { cols: 20, rows: 3 },
+    );
+    expect(findById("pb")).toBeDefined();
+    const colors = new Set<string>();
+    for (let x = 0; x < 12; x++) {
+      expect(cellAt(x, 0).char).toBe("█"); // solid band
+      colors.add(cellAt(x, 0).style.color ?? "");
+    }
+    // The crest fades into the track, so the row holds more than one shade.
+    expect(colors.size).toBeGreaterThan(1);
+  });
+
+  test("auto-sizes to an intrinsic width, reserving room for the percent readout", async () => {
+    const { findById } = await mountApp(
+      <HBox>
+        <ProgressBar id="pb" value={10} showPercent />
+      </HBox>,
+      { cols: 40, rows: 3 },
+    );
+    // Intrinsic 20-cell track + 5 for " 100%" when no explicit width is set.
+    expect(findById("pb")!.getClientRect().width).toBe(25);
+  });
+
   test("without animate, a value change is applied immediately", async () => {
     let setV: ((n: number) => void) | undefined;
     function Probe() {
