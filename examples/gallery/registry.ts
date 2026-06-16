@@ -25,6 +25,7 @@ import { imageDemo } from "../image_demo.tsx";
 import { inputDemo } from "../input_demo.tsx";
 import { listviewDemo } from "../listview_demo.tsx";
 import { markdownDemo } from "../markdown_stream_demo.tsx";
+import { noColorDemo } from "../no_color_demo.tsx";
 import { overlayDemo } from "../overlay_demo.tsx";
 import { popoverDemo } from "../popover_demo.tsx";
 import { qaDemo } from "../questionanswer_demo.tsx";
@@ -108,6 +109,7 @@ export const demos: Demo[] = [
   chartDemo,
   statusDemo,
   bannerDemo,
+  noColorDemo,
 ];
 
 export function findDemo(id: string): Demo | undefined {

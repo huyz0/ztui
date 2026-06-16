@@ -684,6 +684,20 @@ export class App extends DOMNode {
   }
 
   /**
+   * Force the next frame to re-emit **every** cell, even ones whose buffer
+   * content is unchanged. Needed after a global that affects *serialization* but
+   * not the cell data the per-cell diff compares — toggling {@link colorMode}
+   * (`NO_COLOR`) or the terminal's colour depth — where a normal
+   * {@link queueRender} would find no changed cells and emit nothing.
+   */
+  public refresh(reason = "refresh"): void {
+    // Invalidate the retained frame: the next diff sees a size mismatch, blanks
+    // every old cell, and so treats the whole screen as changed.
+    this.prevBuffer.resize(0, 0);
+    this.queueRender(reason);
+  }
+
+  /**
    * Schedule a **paint-only** re-render: restyle + paint, reusing the previous
    * frame's layout (regions/sizes). For high-frequency animations that change
    * appearance but never geometry — the blinking caret above all — so an idle

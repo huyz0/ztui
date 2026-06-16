@@ -82,6 +82,7 @@ export { Size } from "./geometry/size.ts";
 export { Spacing } from "./geometry/spacing.ts";
 export { type BlendBase, type Cell, type GraphicMetadata, ScreenBuffer } from "./render/buffer.ts";
 export type { RGB } from "./render/color.ts";
+export { colorMode } from "./render/color-mode.ts";
 // Heroicons — lazy loading
 export { registerHeroIcon, resolveHeroIcon } from "./render/heroicons.ts";
 export {

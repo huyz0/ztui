@@ -1,4 +1,5 @@
 import { parseColor } from "./color.ts";
+import { colorMode } from "./color-mode.ts";
 import type { Style, UnderlineStyle } from "./style.ts";
 
 /**
@@ -36,6 +37,10 @@ export function styleToEscapeCodes(style: Style): { start: string; end: string }
   let start = "";
   let end = "";
 
+  // Honour NO_COLOR / the colour toggle: emit only the monochrome attributes
+  // below and skip every fg/bg/underline-colour escape.
+  const useColor = colorMode.enabled;
+
   if (style.bold) {
     start += "\x1b[1m";
     end += "\x1b[22m";
@@ -54,7 +59,7 @@ export function styleToEscapeCodes(style: Style): { start: string; end: string }
     const sub = UNDERLINE_SGR[style.underlineStyle ?? "single"];
     start += `\x1b[4:${sub}m`;
     end += "\x1b[24m";
-    if (style.underlineColor) {
+    if (useColor && style.underlineColor) {
       const c = parseColor(style.underlineColor)?.rgb;
       if (c) {
         start += `\x1b[58:2::${c.r}:${c.g}:${c.b}m`;
@@ -71,7 +76,7 @@ export function styleToEscapeCodes(style: Style): { start: string; end: string }
     end += "\x1b[27m";
   }
 
-  if (style.color) {
+  if (useColor && style.color) {
     const fgCode = parseColorToAnsi(style.color, false);
     if (fgCode) {
       start += fgCode;
@@ -79,7 +84,7 @@ export function styleToEscapeCodes(style: Style): { start: string; end: string }
     }
   }
 
-  if (style.background) {
+  if (useColor && style.background) {
     const bgCode = parseColorToAnsi(style.background, true);
     if (bgCode) {
       start += bgCode;
