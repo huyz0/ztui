@@ -7,6 +7,7 @@ import {
   Input,
   Select,
   ValidationSummary,
+  VBox,
 } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { CheckboxWidget } from "./checkbox.ts";
@@ -231,5 +232,37 @@ describe("ValidationSummary", () => {
     summary.handleKey({ name: "down" } as any); // select second row
     summary.handleKey({ name: "enter" } as any); // jump to it
     expect(app.activeScreen.focusedWidget?.id).toBe("b");
+  });
+
+  test("up-arrow clamps at the top and Enter jumps to the first field", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+        <Input id="b" validators={[required("B required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.focused = true;
+    summary.handleKey({ name: "down" } as any); // → row 1
+    summary.handleKey({ name: "up" } as any); // → row 0
+    summary.handleKey({ name: "up" } as any); // clamps at 0
+    summary.handleKey({ name: "enter" } as any);
+    expect(app.activeScreen.focusedWidget?.id).toBe("a");
+  });
+
+  test("binds to a form by id when placed outside it", async () => {
+    const { findById, settle, text } = await mountApp(
+      <VBox>
+        <ValidationSummary id="summary" formId="form" />
+        <Form id="form">
+          <Input id="a" validators={[required("A required")]} validateOn="submit" />
+        </Form>
+      </VBox>,
+    );
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    expect(text()).toContain("A required"); // resolved the form by id across the tree
   });
 });

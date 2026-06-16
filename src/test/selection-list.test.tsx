@@ -112,4 +112,61 @@ describe("SelectionList", () => {
     await t.settle();
     expect(changes).toHaveLength(0);
   });
+
+  test("renders a scrollbar and scrolls to the end when items overflow", async () => {
+    const many: ListItem[] = Array.from({ length: 20 }, (_, i) => ({
+      id: `i${i}`,
+      label: `item-${i}`,
+    }));
+    const t = await mountApp(
+      <VBox style={{ width: 30, height: 5 }}>
+        <SelectionList id="s" items={many} defaultValue={[]} style={{ height: 5 }} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<SelectionListWidget>("s") as SelectionListWidget;
+    expect(t.text()).toContain("item-0");
+    expect(t.text()).toMatch(/[█░]/); // scrollbar track/thumb drawn
+
+    w.handleKey({ name: "end", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("item-19"); // scrolled to the bottom
+    expect(t.text()).not.toContain("item-0");
+  });
+
+  test("dragging the scrollbar scrolls the list", async () => {
+    const many: ListItem[] = Array.from({ length: 20 }, (_, i) => ({
+      id: `i${i}`,
+      label: `item-${i}`,
+    }));
+    const t = await mountApp(
+      <VBox style={{ width: 30, height: 5 }}>
+        <SelectionList id="s" items={many} defaultValue={[]} style={{ height: 5 }} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<SelectionListWidget>("s") as SelectionListWidget;
+    const c = w.getContentRect();
+
+    w.handleMouse({
+      type: "press",
+      button: "left",
+      x: c.right - 1,
+      y: c.y,
+      handled: false,
+    } as never);
+    w.handleMouse({ type: "drag", x: c.right - 1, y: c.bottom - 1, handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("item-19"); // dragged the thumb to the bottom
+
+    w.handleMouse({
+      type: "release",
+      x: c.right - 1,
+      y: c.bottom - 1,
+      handled: false,
+    } as never);
+    expect(w).toBeTruthy(); // release ends the drag without throwing
+  });
 });

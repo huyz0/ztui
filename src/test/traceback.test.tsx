@@ -103,4 +103,63 @@ describe("Traceback", () => {
     expect(t.text()).toContain("frame29");
     expect(t.text()).not.toContain("frame0");
   });
+
+  /** Mount a Traceback whose trace overflows an 8-row viewport. */
+  async function deepTrace() {
+    const frames = Array.from(
+      { length: 30 },
+      (_, i) => `    at frame${i} (/proj/src/f${i}.ts:${i + 1}:1)`,
+    );
+    const stack = ["Error: deep", ...frames].join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 78 }}>
+        <Traceback
+          id="tb"
+          style={{ height: 8 }}
+          error={Object.assign(new Error("deep"), { stack })}
+          showSource={false}
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    return { t, w: t.findById<TracebackWidget>("tb") as TracebackWidget };
+  }
+
+  test("keyboard scrolling: down, pagedown, pageup, home (and ignores unknown keys)", async () => {
+    const { t, w } = await deepTrace();
+    expect(t.text()).toContain("frame0");
+
+    w.handleKey({ name: "down", handled: false } as never);
+    await t.settle();
+
+    w.handleKey({ name: "pagedown", handled: false } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("frame0"); // paged past the top
+
+    w.handleKey({ name: "pageup", handled: false } as never);
+    w.handleKey({ name: "home", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("frame0"); // home returns to the top
+
+    const ev = { name: "x", handled: false } as never;
+    w.handleKey(ev);
+    expect((ev as { handled: boolean }).handled).toBe(false); // unknown key left unhandled
+  });
+
+  test("dragging the scrollbar scrolls the trace", async () => {
+    const { t, w } = await deepTrace();
+    const c = w.getContentRect();
+
+    // Press on the scrollbar column, drag to the bottom, then release.
+    w.handleMouse({ type: "press", button: "left", x: c.right - 1, y: c.y, handled: false });
+    w.handleMouse({ type: "drag", x: c.right - 1, y: c.bottom - 1, handled: false });
+    await t.settle();
+    expect(t.text()).toContain("frame29"); // dragged to the bottom
+
+    w.handleMouse({ type: "release", x: c.right - 1, y: c.bottom - 1, handled: false });
+    w.handleKey({ name: "home", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("frame0");
+  });
 });
