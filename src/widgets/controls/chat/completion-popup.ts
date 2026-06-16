@@ -23,7 +23,7 @@ export class CompletionPopupWidget extends Widget {
   /** Invoked with the chosen item index. */
   public onChoose?: (index: number) => void;
   /** Invoked when a click lands outside the popup. */
-  public onDismiss?: () => void;
+  public declare onDismiss?: () => void;
 
   constructor() {
     super("chat-completion-popup");

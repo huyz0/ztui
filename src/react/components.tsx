@@ -71,6 +71,12 @@ export { Tree } from "./components/data/tree.tsx";
 // (registered via `registerElement` from `ztui`). See the "Extending ztui" guide.
 export { hostComponent, presetBox } from "./components/factory.tsx";
 export type {
+  BannerGlyphSet,
+  BannerProps,
+  BannerVariant,
+} from "./components/feedback/banner.tsx";
+export { Banner } from "./components/feedback/banner.tsx";
+export type {
   CompactProgressBarProps,
   ProgressBarProps,
 } from "./components/feedback/progress-bar.tsx";

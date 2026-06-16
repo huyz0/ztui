@@ -288,6 +288,7 @@ export class Widget extends DOMNode {
   /** @internal */ public declare onAttach?: (...args: never[]) => void;
   /** @internal */ public declare onAttachRemove?: (...args: never[]) => void;
   /** @internal */ public declare onHintsChange?: (...args: never[]) => void;
+  /** @internal */ public declare onDismiss?: (...args: never[]) => void;
 
   /**
    * Handle a wheel/scroll event. Override to scroll your own content; set

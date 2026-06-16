@@ -32,6 +32,8 @@ export { TerminalViewWidget } from "./data/terminal-view.ts";
 export { TracebackWidget } from "./data/traceback.ts";
 export type { TreeNode } from "./data/tree.ts";
 export { TreeWidget } from "./data/tree.ts";
+export type { BannerGlyphSet, BannerVariant } from "./feedback/banner.ts";
+export { BannerWidget } from "./feedback/banner.ts";
 export { ProgressBarWidget } from "./feedback/progress-bar.ts";
 export { type SpinnerMode, SpinnerWidget } from "./feedback/spinner.ts";
 export {

@@ -1,5 +1,6 @@
 import { protocolsDemo } from "../advanced_protocols.tsx";
 import { animationDemo } from "../animation_demo.tsx";
+import { bannerDemo } from "../banner_demo.tsx";
 import { blendDemo } from "../blend_demo.tsx";
 import { borderDemo } from "../border_demo.tsx";
 import { boxTitleDemo } from "../box_title_demo.tsx";
@@ -106,6 +107,7 @@ export const demos: Demo[] = [
   sparklineDemo,
   chartDemo,
   statusDemo,
+  bannerDemo,
 ];
 
 export function findDemo(id: string): Demo | undefined {
