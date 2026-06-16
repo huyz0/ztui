@@ -52,6 +52,45 @@ function areTokensEqual(a: any, b: any): boolean {
   return true;
 }
 
+/** Visual vocabulary for a GFM alert variant: a leading icon + accent colour. */
+interface AlertMeta {
+  icon: string;
+  color: string;
+  title: string;
+}
+
+/**
+ * The five GitHub-Flavored-Markdown alert variants, mapped to a single-cell
+ * icon, a theme accent, and a heading. NOTE/WARNING/CAUTION line up with the
+ * `info`/`warning`/`error` Banner tones; TIP borrows `$success` and IMPORTANT
+ * `$accent` (the default theme's violet), matching GitHub's own colour cues.
+ */
+const GFM_ALERTS: Record<string, AlertMeta> = {
+  note: { icon: "ⓘ", color: "$primary", title: "Note" },
+  tip: { icon: "✦", color: "$success", title: "Tip" },
+  important: { icon: "◆", color: "$accent", title: "Important" },
+  warning: { icon: "▲", color: "$warning", title: "Warning" },
+  caution: { icon: "✘", color: "$error", title: "Caution" },
+};
+
+/** Leading `[!TYPE]` marker (with its trailing newline) of a GFM alert blockquote. */
+const ALERT_MARKER_RE = /^[ \t]*\[!(note|tip|important|warning|caution)\][ \t]*\r?\n?/i;
+
+/**
+ * Recognise a GFM alert (`> [!NOTE]` …). Plain `marked` does not parse the
+ * marker, so a blockquote whose inner text opens with `[!TYPE]` is an alert: the
+ * marker line is stripped and the remaining body is re-lexed into block tokens.
+ * Returns `null` for an ordinary blockquote.
+ */
+function detectAlert(bq: Tokens.Blockquote): { type: string; bodyTokens: Token[] } | null {
+  const text = typeof bq.text === "string" ? bq.text : "";
+  const m = text.match(ALERT_MARKER_RE);
+  if (!m) return null;
+  const bodyMd = text.slice(m[0].length);
+  const bodyTokens = bodyMd.trim() ? (getMarked().lexer(bodyMd) as unknown as Token[]) : [];
+  return { type: m[1].toLowerCase(), bodyTokens };
+}
+
 export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
   private readonly copyButton = new CopyButtonWidget();
   private _markdownTheme?: string = "theme";
@@ -319,6 +358,34 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
     return widget;
   }
 
+  /**
+   * A quoted body row: a `▌` accent bar (chrome, never selectable) beside a
+   * vertical body built from `childTokens`. Shared by plain blockquotes (a dim
+   * `$secondary` bar) and GFM alert callouts (a solid variant-coloured bar).
+   */
+  private buildQuoteRow(childTokens: Token[], barColor: string, dimBar: boolean): Widget {
+    const container = new Widget("blockquote");
+    container.style.layout = "horizontal";
+
+    const bar = new RichTextWidget();
+    bar.selectable = false; // the quote bar is chrome, not content
+    bar.style.color = barColor;
+    if (dimBar) bar.style.dim = true;
+    bar.appendChild(new TextNode("▌ "));
+    container.appendChild(bar);
+
+    const body = new Widget("blockquote_body");
+    body.style.layout = "vertical";
+    body.style.flexGrow = 1;
+    for (const childToken of childTokens) {
+      const w = this.buildWidgetFromToken(childToken);
+      if (w) body.appendChild(w);
+    }
+    container.appendChild(body);
+
+    return container;
+  }
+
   private buildBlockFromToken(token: Token): Widget | null {
     // 1. Heading
     if (token.type === "heading") {
@@ -391,30 +458,32 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       return container;
     }
 
-    // 4. Blockquote
+    // 4. Blockquote — including GFM alerts (`> [!NOTE]` …) rendered as callouts.
     if (token.type === "blockquote") {
-      const container = new Widget("blockquote");
-      container.style.layout = "horizontal";
-      container.style.margin = new Spacing(0, 0, 1, 0);
+      const alert = detectAlert(token as Tokens.Blockquote);
+      if (alert) {
+        const meta = GFM_ALERTS[alert.type];
+        const container = new Widget("alert");
+        container.style.layout = "vertical";
+        container.style.margin = new Spacing(0, 0, 1, 0);
 
-      const bar = new RichTextWidget();
-      bar.selectable = false; // blockquote bar is chrome, not content
-      bar.style.color = "$secondary";
-      bar.style.dim = true;
-      bar.appendChild(new TextNode("▌ "));
-      container.appendChild(bar);
+        // Callout heading: variant icon + title in the accent colour. It is
+        // decoration, not source text, so it registers no selection run — the
+        // block's `selectionRaw` already carries the `[!TYPE]` marker for copy.
+        const heading = new RichTextWidget();
+        heading.selectable = false;
+        heading.style.bold = true;
+        heading.style.color = meta.color;
+        heading.appendChild(new TextNode(`${meta.icon} ${meta.title}`));
+        container.appendChild(heading);
 
-      const body = new Widget("blockquote_body");
-      body.style.layout = "vertical";
-      body.style.flexGrow = 1;
-
-      for (const childToken of token.tokens || []) {
-        const w = this.buildWidgetFromToken(childToken);
-        if (w) body.appendChild(w);
+        container.appendChild(this.buildQuoteRow(alert.bodyTokens, meta.color, false));
+        return container;
       }
-      container.appendChild(body);
 
-      return container;
+      const row = this.buildQuoteRow(token.tokens || [], "$secondary", true);
+      row.style.margin = new Spacing(0, 0, 1, 0);
+      return row;
     }
 
     // 5. Thematic Break (HR)

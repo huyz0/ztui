@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Banner,
   Button,
   Dock,
   Footer,
@@ -43,6 +44,9 @@ This is a paragraph featuring **bold text**, *italic emphasis*, and \`inline cod
 ## Blockquotes & Code Blocks
 > This is a quote block.
 > And it can contain nested quotes.
+
+> [!NOTE]
+> GFM alerts render as the same callout style — selecting one copies the raw \`> [!NOTE]\` source.
 
 \`\`\`ts
 const value = "Hello World";
@@ -176,7 +180,21 @@ Select -->|Markdown| MarkdownTab[Show rendered markdown]
             </VBox>
           )}
 
-          {tab === "markdown" && <Markdown style={{ flexGrow: 1 }}>{mdText}</Markdown>}
+          {tab === "markdown" && (
+            <VBox style={{ flexGrow: 1 }}>
+              <Banner
+                variant="info"
+                title="Banner widget"
+                message="These are standalone Banner widgets; the [!NOTE] block below is the same look rendered from Markdown."
+              />
+              <Banner
+                variant="success"
+                message="All three rich engines share one theme."
+                style={{ margin: { top: 1, bottom: 1 } }}
+              />
+              <Markdown style={{ flexGrow: 1 }}>{mdText}</Markdown>
+            </VBox>
+          )}
         </VBox>
       </HBox>
     </Dock>

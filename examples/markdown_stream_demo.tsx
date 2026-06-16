@@ -28,6 +28,13 @@ function greet(name: string) {
 
 > Blockquotes, lists, and headings all stream the same way.
 
+> [!TIP]
+> GFM alerts render as callouts — \`[!NOTE]\`, \`[!TIP]\`, \`[!IMPORTANT]\`,
+> \`[!WARNING]\`, and \`[!CAUTION]\` each get an icon and accent colour.
+
+> [!WARNING]
+> Selecting an alert and copying yields the **raw** \`> [!WARNING]\` source.
+
 ## A table
 
 | Model      | Context |  Speed |

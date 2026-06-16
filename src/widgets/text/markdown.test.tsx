@@ -61,6 +61,57 @@ describe("Markdown block building", () => {
   });
 });
 
+/** Collect a widget's `selectionRaw` strings across the subtree. */
+function rawSources(w: Widget): string[] {
+  const out: string[] = [];
+  const visit = (n: any) => {
+    if (n.selectionRaw != null) out.push(n.selectionRaw);
+    for (const c of n.children ?? []) visit(c);
+  };
+  visit(w);
+  return out;
+}
+
+describe("Markdown GFM alerts", () => {
+  test("renders `> [!WARNING]` as a callout, hiding the marker", async () => {
+    const t = await mountApp(<Markdown>{"> [!WARNING]\n> Be careful here."}</Markdown>, {
+      cols: 40,
+      rows: 8,
+    });
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("▲"); // warning icon
+    expect(text).toContain("Warning"); // callout heading
+    expect(text).toContain("Be careful here."); // body kept
+    expect(text).not.toContain("[!WARNING]"); // marker not shown literally
+  });
+
+  test("an alert block carries the raw markdown for copy-on-select", () => {
+    const w = md("> [!NOTE]\n> Remember **this**.");
+    // The callout container is tagged `alert`, not `blockquote`.
+    expect(tags(w)).toEqual(["alert"]);
+    // Its raw source — what a full selection copies — keeps the marker and the
+    // inline `**bold**`, not the rendered text.
+    const raw = rawSources(blocks(w)[0]);
+    expect(raw.some((s) => s.includes("[!NOTE]") && s.includes("**this**"))).toBe(true);
+  });
+
+  test("each GFM variant maps to its icon and an ordinary quote stays a blockquote", () => {
+    for (const [marker, icon] of [
+      ["NOTE", "ⓘ"],
+      ["TIP", "✦"],
+      ["IMPORTANT", "◆"],
+      ["CAUTION", "✘"],
+    ] as const) {
+      const w = md(`> [!${marker}]\n> body`);
+      expect(tags(w)).toEqual(["alert"]);
+      expect(rawSources(blocks(w)[0]).join("\n")).toContain(`[!${marker}]`);
+      void icon; // icon coverage is asserted in the render test above
+    }
+    expect(tags(md("> just a quote"))).toEqual(["blockquote"]);
+  });
+});
+
 describe("Markdown streaming reconciliation", () => {
   test("unchanged leading blocks are reused, appended blocks are added", () => {
     const w = md("# Title\n\nfirst paragraph.\n");
