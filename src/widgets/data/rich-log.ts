@@ -2,6 +2,7 @@ import { App } from "../../core/app.ts";
 import { runCols } from "../../core/selection.ts";
 import { scrollTopForKey } from "../../dom/key-nav.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
+import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
 import { Offset } from "../../geometry/offset.ts";
@@ -363,9 +364,11 @@ export class RichLogWidget extends Widget {
       color: this.computedStyle.borderColor || this.computedStyle.color || "default",
       background: bg,
     });
+    const track = scrollbarTrackStyle(this);
     for (let yy = content.y; yy < content.y + trackH; yy++) {
       const isThumb = yy >= thumbStart && yy < thumbStart + thumbH;
-      buffer.setCell(x, yy, isThumb ? "█" : "░", style);
+      if (isThumb) buffer.setCell(x, yy, "█", style);
+      else buffer.setCell(x, yy, " ", track);
     }
   }
 }

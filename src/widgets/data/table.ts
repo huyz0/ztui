@@ -1,6 +1,7 @@
 import { App } from "../../core/app.ts";
 import { runCols } from "../../core/selection.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
+import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
@@ -760,9 +761,11 @@ export class TableWidget<Row = any> extends Widget {
     const style = this.baseStyle({
       color: this.computedStyle.borderColor || this.computedStyle.color,
     });
+    const track = scrollbarTrackStyle(this);
     for (let yy = trackTop; yy < trackTop + trackH; yy++) {
       const isThumb = yy >= thumbStart && yy < thumbStart + thumbH;
-      buffer.setCell(x, yy, isThumb ? "█" : "░", style);
+      if (isThumb) buffer.setCell(x, yy, "█", style);
+      else buffer.setCell(x, yy, " ", track);
     }
   }
 }

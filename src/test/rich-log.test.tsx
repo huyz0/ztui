@@ -136,9 +136,14 @@ describe("RichLog", () => {
     // Wrapped at the gutter width (79), so each entry spans two rows: 79 + 1.
     expect(w.selectableLines().slice(0, 2)).toEqual(["w".repeat(79), "w"]);
 
-    // The scrollbar column (79) must hold a scrollbar glyph, not wrapped text.
-    const row0 = t.text().split("\n")[0];
-    expect(row0[79]).toMatch(/[█░]/);
+    // The scrollbar column (79) must hold the scrollbar, not wrapped text: either
+    // the thumb (█) or a solid track cell (a space with a dimmed background) —
+    // crucially never a content "w".
+    const cell = t.cellAt(79, 0);
+    const isThumb = cell.char === "█";
+    const isTrack =
+      cell.char === " " && !!cell.style.background && cell.style.background !== "default";
+    expect(isThumb || isTrack).toBe(true);
   });
 
   test("selectableLines rebuilds lazily after lines change before a render", async () => {

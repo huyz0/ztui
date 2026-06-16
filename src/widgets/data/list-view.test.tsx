@@ -41,6 +41,15 @@ describe("ListView rendering", () => {
     expect(txt).toContain("item-0");
     expect(txt).not.toContain("item-100");
     expect(txt).toContain("█"); // scrollbar thumb
+    // The track is a solid dimmed background (a space), not a `░` shade glyph
+    // (which renders unevenly across terminal fonts).
+    expect(txt).not.toContain("░");
+    const list = findList(t);
+    const content = (list as any).getContentRect();
+    const trackCell = t.cellAt(content.right - 1, content.bottom - 1); // track, below the thumb
+    expect(trackCell.char).toBe(" ");
+    expect(trackCell.style.background).toBeTruthy();
+    expect(trackCell.style.background).not.toBe("default");
   });
 
   test("selected row gets the selection background", async () => {

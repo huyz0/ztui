@@ -1,6 +1,7 @@
 import { App } from "../../core/app.ts";
 import { selectionDeltaForKey } from "../../dom/key-nav.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
+import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
@@ -259,9 +260,11 @@ export class SelectionListWidget extends Widget {
       color: this.computedStyle.borderColor || this.computedStyle.color || "default",
       background: this.findResolvedBackground(),
     });
+    const track = scrollbarTrackStyle(this);
     for (let yy = content.y; yy < content.y + trackH; yy++) {
       const isThumb = yy >= thumbStart && yy < thumbStart + thumbH;
-      buffer.setCell(x, yy, isThumb ? "█" : "░", style);
+      if (isThumb) buffer.setCell(x, yy, "█", style);
+      else buffer.setCell(x, yy, " ", track);
     }
   }
 }

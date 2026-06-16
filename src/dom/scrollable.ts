@@ -5,6 +5,7 @@ import { Size } from "../geometry/size.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
 import { fadeScrollEdges } from "./scroll-fade.ts";
+import { scrollbarTrackStyle } from "./scrollbar.ts";
 import { Widget } from "./widget.ts";
 
 /** @internal Mixin base constructor type. */
@@ -387,6 +388,10 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       const fg = this.computedStyle.borderColor || this.computedStyle.color || "default";
       const bg = this.computedStyle.background || "default";
       const style = new Style({ color: fg, background: bg });
+      // Borderless scrollbars fill the track with a solid dimmed background (a
+      // space glyph) instead of a `░` shade character, which renders poorly in
+      // many fonts. Bordered bars keep the crisp line glyphs on the frame.
+      const track = scrollbarTrackStyle(this);
 
       const { showY, showX } = this.scrollbarVisibility();
 
@@ -409,8 +414,9 @@ export function Scrollable<TBase extends Constructor<Widget>>(
 
           for (let y = startY; y <= endY; y++) {
             const isThumb = y >= thumbStart && y < thumbStart + thumbHeight;
-            const char = isThumb ? "█" : hasBorder ? "│" : "░";
-            buffer.setCell(x, y, char, style);
+            if (isThumb) buffer.setCell(x, y, "█", style);
+            else if (hasBorder) buffer.setCell(x, y, "│", style);
+            else buffer.setCell(x, y, " ", track);
           }
         }
       }
@@ -434,8 +440,9 @@ export function Scrollable<TBase extends Constructor<Widget>>(
 
           for (let x = startX; x <= endX; x++) {
             const isThumb = x >= thumbStart && x < thumbStart + thumbWidth;
-            const char = isThumb ? "▀" : hasBorder ? "─" : "░";
-            buffer.setCell(x, y, char, style);
+            if (isThumb) buffer.setCell(x, y, "▀", style);
+            else if (hasBorder) buffer.setCell(x, y, "─", style);
+            else buffer.setCell(x, y, " ", track);
           }
         }
       }
