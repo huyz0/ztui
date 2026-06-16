@@ -12,6 +12,7 @@ import { clipboardDemo } from "../clipboard_demo.tsx";
 import { collapsibleDemo } from "../collapsible_demo.tsx";
 import { contextMenuDemo } from "../contextmenu_demo.tsx";
 import { kitchenSinkDemo } from "../demo.tsx";
+import { descriptionListDemo } from "../description_list_demo.tsx";
 import { diffDemo } from "../diff_demo.tsx";
 import { disabledDemo } from "../disabled_demo.tsx";
 import { fileIconDemo } from "../fileicon_demo.tsx";
@@ -110,6 +111,7 @@ export const demos: Demo[] = [
   statusDemo,
   bannerDemo,
   noColorDemo,
+  descriptionListDemo,
 ];
 
 export function findDemo(id: string): Demo | undefined {

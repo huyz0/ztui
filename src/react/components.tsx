@@ -49,6 +49,11 @@ export type { ValidationSummaryProps } from "./components/controls/validation-su
 export { ValidationSummary } from "./components/controls/validation-summary.tsx";
 export type { BarChartItem, BarChartProps, LinePlotProps } from "./components/data/chart.tsx";
 export { BarChart, LinePlot } from "./components/data/chart.tsx";
+export type {
+  DescriptionItem,
+  DescriptionListProps,
+} from "./components/data/description-list.tsx";
+export { DescriptionList } from "./components/data/description-list.tsx";
 export type { DiffProps } from "./components/data/diff.tsx";
 export { Diff } from "./components/data/diff.tsx";
 export type { ListViewProps } from "./components/data/list-view.tsx";

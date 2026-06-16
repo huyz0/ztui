@@ -20,6 +20,7 @@ export { TextAreaWidget } from "./controls/textarea.ts";
 export { ToggleButtonWidget } from "./controls/toggle-button.ts";
 export * from "./controls/validation.ts";
 export { ValidationSummaryWidget } from "./controls/validation-summary.ts";
+export { type DescriptionItem, DescriptionListWidget } from "./data/description-list.ts";
 export { type DiffView, DiffWidget } from "./data/diff.ts";
 export type { ListItem } from "./data/list-view.ts";
 export { ListViewWidget } from "./data/list-view.ts";
