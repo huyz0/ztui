@@ -82,6 +82,7 @@ export default defineConfig({
                 { label: "Selection List", slug: "widgets/selection-list" },
                 { label: "Description List", slug: "widgets/description-list" },
                 { label: "Sparkline", slug: "widgets/sparkline" },
+                { label: "Chart", slug: "widgets/chart" },
                 { label: "Diff", slug: "widgets/diff" },
                 { label: "Rich Log", slug: "widgets/rich-log" },
                 { label: "Terminal View", slug: "widgets/terminal-view" },
