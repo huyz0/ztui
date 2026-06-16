@@ -159,7 +159,7 @@ export class BarChartWidget extends Widget {
   }
 }
 
-// ── Braille line plot ─────────────────────────────────────────────────────
+// ── Braille plotting surface ──────────────────────────────────────────────
 
 const BRAILLE_BASE = 0x2800;
 // Unicode braille dot bit for (dx ∈ {0,1}, dy ∈ {0..3}).
@@ -167,6 +167,84 @@ const DOT_BITS = [
   [0x01, 0x02, 0x04, 0x40],
   [0x08, 0x10, 0x20, 0x80],
 ];
+
+/**
+ * A `cols×rows` cell grid that addresses a `(cols*2)×(rows*4)` braille dot
+ * surface — the shared canvas behind {@link LinePlotWidget},
+ * {@link ScatterPlotWidget} and {@link AreaChartWidget}. Each lit dot also
+ * records the colour of the series that lit it last.
+ */
+class BrailleGrid {
+  readonly dotsW: number;
+  readonly dotsH: number;
+  private readonly mask: Uint8Array;
+  private readonly cellColor: (string | undefined)[];
+
+  constructor(
+    private readonly cols: number,
+    private readonly rows: number,
+  ) {
+    this.dotsW = cols * 2;
+    this.dotsH = rows * 4;
+    this.mask = new Uint8Array(cols * rows);
+    this.cellColor = new Array(cols * rows);
+  }
+
+  /** Light a single dot, ignoring anything outside the surface. */
+  plot(px: number, py: number, color: string): void {
+    if (px < 0 || py < 0 || px >= this.dotsW || py >= this.dotsH) return;
+    const cx = px >> 1;
+    const cy = py >> 2;
+    const idx = cy * this.cols + cx;
+    this.mask[idx] |= DOT_BITS[px & 1][py & 3];
+    this.cellColor[idx] = color;
+  }
+
+  /** Bresenham between two dots so a line is continuous, not a dotty scatter. */
+  line(x0: number, y0: number, x1: number, y1: number, color: string): void {
+    const dx = Math.abs(x1 - x0);
+    const dy = -Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    let x = x0;
+    let y = y0;
+    for (;;) {
+      this.plot(x, y, color);
+      if (x === x1 && y === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) {
+        err += dy;
+        x += sx;
+      }
+      if (e2 <= dx) {
+        err += dx;
+        y += sy;
+      }
+    }
+  }
+
+  /** Blit the lit cells into `buffer`, leaving empty cells untouched. */
+  draw(
+    buffer: ScreenBuffer,
+    rect: { x: number; y: number },
+    bg: string | undefined,
+    fallback: string,
+  ): void {
+    for (let cy = 0; cy < this.rows; cy++) {
+      for (let cx = 0; cx < this.cols; cx++) {
+        const idx = cy * this.cols + cx;
+        if (this.mask[idx] === 0) continue;
+        const ch = String.fromCharCode(BRAILLE_BASE + this.mask[idx]);
+        const style = new Style({ color: this.cellColor[idx] ?? fallback, background: bg });
+        buffer.setCell(rect.x + cx, rect.y + cy, ch, style);
+      }
+    }
+  }
+}
+
+/** Default series-colour rotation shared by the braille plots. */
+const PLOT_PALETTE = ["$accent", "$success", "$warning", "$error", "$secondary"];
 
 /**
  * A braille line plot — each terminal cell is a 2×4 dot grid, so a `cols×rows`
@@ -225,89 +303,350 @@ export class LinePlotWidget extends Widget {
     const series = this.allSeries();
     if (rect.width <= 0 || rect.height <= 0 || series.length === 0) return;
 
-    const cols = rect.width;
-    const rowsN = rect.height;
-    const dotsW = cols * 2;
-    const dotsH = rowsN * 4;
-
-    // Per-cell dot mask + the colour of the last series to light it.
-    const mask = new Uint8Array(cols * rowsN);
-    const cellColor: (string | undefined)[] = new Array(cols * rowsN);
-
+    const grid = new BrailleGrid(rect.width, rect.height);
     const all = series.flat();
     const lo = this.min ?? Math.min(...all);
     const hi = this.max ?? Math.max(...all);
     const span = hi - lo;
-
     const bg = this.findResolvedBackground();
-    const palette = ["$accent", "$success", "$warning", "$error", "$secondary"];
 
     const yDot = (v: number): number => {
       const t = span > 0 ? (v - lo) / span : 0.5; // flat series → middle
-      return Math.round((1 - Math.max(0, Math.min(1, t))) * (dotsH - 1));
+      return Math.round((1 - Math.max(0, Math.min(1, t))) * (grid.dotsH - 1));
     };
     const xDot = (i: number, n: number): number =>
-      n <= 1 ? 0 : Math.round((i / (n - 1)) * (dotsW - 1));
-
-    const plot = (px: number, py: number, color: string) => {
-      if (px < 0 || py < 0 || px >= dotsW || py >= dotsH) return;
-      const cx = px >> 1;
-      const cy = py >> 2;
-      const idx = cy * cols + cx;
-      mask[idx] |= DOT_BITS[px & 1][py & 3];
-      cellColor[idx] = color;
-    };
-    // Bresenham between two dots so the line is continuous, not a dotty scatter.
-    const line = (x0: number, y0: number, x1: number, y1: number, color: string) => {
-      const dx = Math.abs(x1 - x0);
-      const dy = -Math.abs(y1 - y0);
-      const sx = x0 < x1 ? 1 : -1;
-      const sy = y0 < y1 ? 1 : -1;
-      let err = dx + dy;
-      let x = x0;
-      let y = y0;
-      for (;;) {
-        plot(x, y, color);
-        if (x === x1 && y === y1) break;
-        const e2 = 2 * err;
-        if (e2 >= dy) {
-          err += dy;
-          x += sx;
-        }
-        if (e2 <= dx) {
-          err += dx;
-          y += sy;
-        }
-      }
-    };
+      n <= 1 ? 0 : Math.round((i / (n - 1)) * (grid.dotsW - 1));
 
     series.forEach((s, si) => {
       const color = resolveColor(
         this,
-        this.colors?.[si] ?? palette[si % palette.length],
+        this.colors?.[si] ?? PLOT_PALETTE[si % PLOT_PALETTE.length],
         "#4daafc",
       );
       const n = s.length;
       let prevX = xDot(0, n);
       let prevY = yDot(s[0]);
-      plot(prevX, prevY, color);
+      grid.plot(prevX, prevY, color);
       for (let i = 1; i < n; i++) {
         const cx = xDot(i, n);
         const cy = yDot(s[i]);
-        line(prevX, prevY, cx, cy, color);
+        grid.line(prevX, prevY, cx, cy, color);
         prevX = cx;
         prevY = cy;
       }
     });
 
-    for (let cy = 0; cy < rowsN; cy++) {
-      for (let cx = 0; cx < cols; cx++) {
-        const idx = cy * cols + cx;
-        if (mask[idx] === 0) continue;
-        const ch = String.fromCharCode(BRAILLE_BASE + mask[idx]);
-        const style = new Style({ color: cellColor[idx] ?? "#4daafc", background: bg });
-        buffer.setCell(rect.x + cx, rect.y + cy, ch, style);
+    grid.draw(buffer, rect, bg, "#4daafc");
+  }
+}
+
+// ── Scatter plot ──────────────────────────────────────────────────────────
+
+/** One point in a {@link ScatterPlotWidget} series. */
+export interface ScatterPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * A braille scatter plot — one or more series of `{x, y}` points drawn on the
+ * shared 2×4-dot surface without connecting lines. Unlike {@link LinePlotWidget}
+ * the x position is meaningful (not just the sample index), so it suits
+ * correlations and clouds rather than ordered trends.
+ *
+ * Both axes auto-range over the data unless pinned via {@link minX}/{@link maxX}
+ * and {@link minY}/{@link maxY}. Out-of-range points are simply not drawn.
+ *
+ * ```tsx
+ * <ScatterPlot points={[{ x: 1, y: 2 }, { x: 3, y: 5 }]} />
+ * ```
+ */
+export class ScatterPlotWidget extends Widget {
+  /** A single series (convenience for one cloud). */
+  public points: ScatterPoint[] = [];
+  /** Multiple series; when set, takes precedence over {@link points}. */
+  public series?: ScatterPoint[][];
+  /** Per-series colours (theme `$var` or literal); cycles if shorter. */
+  public colors?: string[];
+  /** X-axis floor / ceiling (default the data range). */
+  public minX?: number;
+  public maxX?: number;
+  /** Y-axis floor / ceiling (default the data range). */
+  public minY?: number;
+  public maxY?: number;
+
+  constructor() {
+    super("scatter-plot");
+    this.defaultStyle = { width: 40, height: 8 };
+  }
+
+  private allSeries(): ScatterPoint[][] {
+    if (this.series && this.series.length > 0) return this.series.filter((s) => s.length > 0);
+    return this.points.length > 0 ? [this.points] : [];
+  }
+
+  public override measure(maxW: number, maxH: number): void {
+    const b = this.borderSize;
+    const p = this.padding;
+    const w =
+      this.computedStyle.width === undefined
+        ? 40
+        : parseDimension(this.computedStyle.width, maxW, -1);
+    const h =
+      this.computedStyle.height === undefined
+        ? 8
+        : parseDimension(this.computedStyle.height, maxH, -1);
+    this.measuredWidth = (typeof w === "number" ? w : 40) + b.width + p.width;
+    this.measuredHeight = (typeof h === "number" ? h : 8) + b.height + p.height;
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    super.render(buffer);
+    const rect = this.getContentRect();
+    const series = this.allSeries();
+    if (rect.width <= 0 || rect.height <= 0 || series.length === 0) return;
+
+    const grid = new BrailleGrid(rect.width, rect.height);
+    const all = series.flat();
+    const xs = all.map((p) => p.x);
+    const ys = all.map((p) => p.y);
+    const xlo = this.minX ?? Math.min(...xs);
+    const xhi = this.maxX ?? Math.max(...xs);
+    const ylo = this.minY ?? Math.min(...ys);
+    const yhi = this.maxY ?? Math.max(...ys);
+    const xspan = xhi - xlo;
+    const yspan = yhi - ylo;
+    const bg = this.findResolvedBackground();
+
+    const xDot = (v: number): number =>
+      Math.round((xspan > 0 ? (v - xlo) / xspan : 0.5) * (grid.dotsW - 1));
+    const yDot = (v: number): number =>
+      Math.round((1 - (yspan > 0 ? (v - ylo) / yspan : 0.5)) * (grid.dotsH - 1));
+
+    series.forEach((s, si) => {
+      const color = resolveColor(
+        this,
+        this.colors?.[si] ?? PLOT_PALETTE[si % PLOT_PALETTE.length],
+        "#4daafc",
+      );
+      for (const pt of s) grid.plot(xDot(pt.x), yDot(pt.y), color);
+    });
+
+    grid.draw(buffer, rect, bg, "#4daafc");
+  }
+}
+
+// ── Area chart ────────────────────────────────────────────────────────────
+
+/**
+ * A braille area chart — a {@link LinePlotWidget} whose region *below* each
+ * series line is filled in, for cumulative or volume-style trends. Series are
+ * drawn in order, so a later (typically smaller) series paints over an earlier
+ * one; pass them largest-first when stacking visually.
+ *
+ * Shares the line plot's value-range and constraint behaviour: it fills any box
+ * down to a single cell and tolerates empty, single-point, and flat series.
+ *
+ * ```tsx
+ * <AreaChart data={requestsPerMinute} colors={["$accent"]} style={{ height: 8 }} />
+ * ```
+ */
+export class AreaChartWidget extends Widget {
+  /** A single series (convenience for one area). */
+  public data: number[] = [];
+  /** Multiple series; when set, takes precedence over {@link data}. */
+  public series?: number[][];
+  /** Per-series colours (theme `$var` or literal); cycles if shorter. */
+  public colors?: string[];
+  /** Value-range floor (default 0) / ceiling (default the data maximum). */
+  public min?: number;
+  public max?: number;
+
+  constructor() {
+    super("area-chart");
+    this.defaultStyle = { width: 40, height: 8 };
+  }
+
+  private allSeries(): number[][] {
+    if (this.series && this.series.length > 0) return this.series.filter((s) => s.length > 0);
+    return this.data.length > 0 ? [this.data] : [];
+  }
+
+  public override measure(maxW: number, maxH: number): void {
+    const b = this.borderSize;
+    const p = this.padding;
+    const w =
+      this.computedStyle.width === undefined
+        ? 40
+        : parseDimension(this.computedStyle.width, maxW, -1);
+    const h =
+      this.computedStyle.height === undefined
+        ? 8
+        : parseDimension(this.computedStyle.height, maxH, -1);
+    this.measuredWidth = (typeof w === "number" ? w : 40) + b.width + p.width;
+    this.measuredHeight = (typeof h === "number" ? h : 8) + b.height + p.height;
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    super.render(buffer);
+    const rect = this.getContentRect();
+    const series = this.allSeries();
+    if (rect.width <= 0 || rect.height <= 0 || series.length === 0) return;
+
+    const grid = new BrailleGrid(rect.width, rect.height);
+    const all = series.flat();
+    const lo = this.min ?? 0;
+    const hi = this.max ?? Math.max(lo, ...all);
+    const span = hi - lo;
+    const bg = this.findResolvedBackground();
+
+    const yDot = (v: number): number => {
+      const t = span > 0 ? (v - lo) / span : 0;
+      return Math.round((1 - Math.max(0, Math.min(1, t))) * (grid.dotsH - 1));
+    };
+
+    series.forEach((s, si) => {
+      const color = resolveColor(
+        this,
+        this.colors?.[si] ?? PLOT_PALETTE[si % PLOT_PALETTE.length],
+        "#4daafc",
+      );
+      const n = s.length;
+      // Sample the series at every dot-column and fill from the line down to the
+      // baseline, so the area reads as a solid braille region.
+      for (let px = 0; px < grid.dotsW; px++) {
+        const f = n <= 1 ? 0 : (px / (grid.dotsW - 1)) * (n - 1);
+        const i0 = Math.floor(f);
+        const i1 = Math.min(n - 1, i0 + 1);
+        const v = s[i0] + (s[i1] - s[i0]) * (f - i0);
+        const top = yDot(v);
+        for (let py = top; py < grid.dotsH; py++) grid.plot(px, py, color);
       }
+    });
+
+    grid.draw(buffer, rect, bg, "#4daafc");
+  }
+}
+
+// ── Pie chart (100% stacked bar + legend) ──────────────────────────────────
+
+/** One slice of a {@link PieChartWidget}. */
+export interface PieSlice {
+  /** Legend label. */
+  label?: string;
+  /** Slice magnitude (share of the total). */
+  value: number;
+  /** Slice colour (theme `$var` or literal); defaults to the palette rotation. */
+  color?: string;
+}
+
+/**
+ * A proportional breakdown rendered as a single 100%-stacked horizontal bar with
+ * a percentage legend beneath — the terminal-friendly stand-in for a pie chart,
+ * crisp at any width (a real circle only gets coarse and ambiguous in cells).
+ *
+ * Segment widths are allocated to sum exactly to the bar width (the largest
+ * remainder absorbs rounding), so the bar always spans the full content box.
+ * When height is tight the legend rows are clipped; the bar is kept first.
+ *
+ * ```tsx
+ * <PieChart items={[{ label: "used", value: 70 }, { label: "free", value: 30 }]} />
+ * ```
+ */
+export class PieChartWidget extends Widget {
+  /** Slices to chart. */
+  public items: PieSlice[] = [];
+  /** Show the percentage legend below the bar. Default true. */
+  public showLegend = true;
+
+  constructor() {
+    super("pie-chart");
+    this.defaultStyle = { width: 40 };
+  }
+
+  public override measure(maxW: number, maxH: number): void {
+    const b = this.borderSize;
+    const p = this.padding;
+    const intrinsicW = 40;
+    const intrinsicH = 1 + (this.showLegend ? this.items.length : 0);
+    const w =
+      this.computedStyle.width === undefined
+        ? intrinsicW
+        : parseDimension(this.computedStyle.width, maxW, -1);
+    const h =
+      this.computedStyle.height === undefined
+        ? intrinsicH
+        : parseDimension(this.computedStyle.height, maxH, -1);
+    this.measuredWidth = (typeof w === "number" ? w : intrinsicW) + b.width + p.width;
+    this.measuredHeight = (typeof h === "number" ? h : intrinsicH) + b.height + p.height;
+  }
+
+  public override render(buffer: ScreenBuffer): void {
+    super.render(buffer);
+    const rect = this.getContentRect();
+    if (rect.width <= 0 || rect.height <= 0 || this.items.length === 0) return;
+
+    const bg = this.findResolvedBackground();
+    const dimmed = resolveColor(this, "$dimmed", "gray");
+    const fg = this.computedStyle.color || resolveColor(this, "$foreground", "default");
+    const accent = resolveColor(this, "$accent", "#4daafc");
+
+    const valid = this.items.filter((it) => it.value > 0);
+    const total = valid.reduce((a, it) => a + it.value, 0) || 1;
+    const colorOf = (it: PieSlice, i: number): string =>
+      resolveColor(this, it.color ?? PLOT_PALETTE[i % PLOT_PALETTE.length], accent);
+
+    // Allocate integer segment widths that sum to the bar width, giving the
+    // leftover cells to the slices with the largest fractional remainder.
+    const barW = rect.width;
+    const exact = valid.map((it) => (it.value / total) * barW);
+    const widths = exact.map((e) => Math.floor(e));
+    let leftover = barW - widths.reduce((a, w) => a + w, 0);
+    valid
+      .map((_, i) => i)
+      .sort((a, b) => (exact[b] % 1) - (exact[a] % 1))
+      .forEach((i) => {
+        if (leftover > 0) {
+          widths[i] += 1;
+          leftover--;
+        }
+      });
+
+    // Row 0: the stacked bar.
+    let bx = rect.x;
+    valid.forEach((it, i) => {
+      const style = new Style({ color: colorOf(it, i), background: bg });
+      for (let c = 0; c < widths[i] && bx < rect.x + barW; c++, bx++) {
+        buffer.setCell(bx, rect.y, "█", style);
+      }
+    });
+
+    // Remaining rows: one legend entry each, clipped to the available height.
+    if (!this.showLegend) return;
+    for (let i = 0; i < valid.length && 1 + i < rect.height; i++) {
+      const it = valid[i];
+      const y = rect.y + 1 + i;
+      const pct = Math.round((it.value / total) * 100);
+      buffer.drawSegment(
+        rect.x,
+        y,
+        new Segment("■ ", new Style({ color: colorOf(it, i), background: bg })),
+        rect,
+      );
+      const label = truncate(it.label ?? "", Math.max(0, rect.width - 8));
+      buffer.drawSegment(
+        rect.x + 2,
+        y,
+        new Segment(label, new Style({ color: fg, background: bg })),
+        rect,
+      );
+      const pctStr = `${pct}%`;
+      buffer.drawSegment(
+        rect.x + rect.width - stringWidth(pctStr),
+        y,
+        new Segment(pctStr, new Style({ color: dimmed, background: bg })),
+        rect,
+      );
     }
   }
 }

@@ -18,7 +18,13 @@ import { SwitchWidget } from "./controls/switch.ts";
 import { TextAreaWidget } from "./controls/textarea.ts";
 import { ToggleButtonWidget } from "./controls/toggle-button.ts";
 import { ValidationSummaryWidget } from "./controls/validation-summary.ts";
-import { BarChartWidget, LinePlotWidget } from "./data/chart.ts";
+import {
+  AreaChartWidget,
+  BarChartWidget,
+  LinePlotWidget,
+  PieChartWidget,
+  ScatterPlotWidget,
+} from "./data/chart.ts";
 import { DescriptionListWidget } from "./data/description-list.ts";
 import { DiffWidget } from "./data/diff.ts";
 import { ListViewWidget } from "./data/list-view.ts";
@@ -88,6 +94,9 @@ registerElement("ztui-diff", () => new DiffWidget());
 registerElement("ztui-sparkline", () => new SparklineWidget());
 registerElement("ztui-bar-chart", () => new BarChartWidget());
 registerElement("ztui-line-plot", () => new LinePlotWidget());
+registerElement("ztui-scatter-plot", () => new ScatterPlotWidget());
+registerElement("ztui-area-chart", () => new AreaChartWidget());
+registerElement("ztui-pie-chart", () => new PieChartWidget());
 registerElement("ztui-selection-list", () => new SelectionListWidget());
 registerElement("ztui-traceback", () => new TracebackWidget());
 registerElement("ztui-terminal-view", () => new TerminalViewWidget());

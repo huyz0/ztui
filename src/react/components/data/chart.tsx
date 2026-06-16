@@ -1,8 +1,8 @@
-import type { BarChartItem } from "../../../widgets/data/chart.ts";
+import type { BarChartItem, PieSlice, ScatterPoint } from "../../../widgets/data/chart.ts";
 import { hostComponent } from "../factory.tsx";
 import type { ComponentProps } from "../types.ts";
 
-export type { BarChartItem };
+export type { BarChartItem, PieSlice, ScatterPoint };
 
 /** Props for {@link BarChart}. */
 export interface BarChartProps extends Omit<ComponentProps, "children"> {
@@ -50,3 +50,71 @@ export interface LinePlotProps extends Omit<ComponentProps, "children"> {
  * ```
  */
 export const LinePlot = hostComponent<LinePlotProps>("ztui-line-plot");
+
+/** Props for {@link ScatterPlot}. */
+export interface ScatterPlotProps extends Omit<ComponentProps, "children"> {
+  /** A single series of points (convenience for one cloud). */
+  points?: ScatterPoint[];
+  /** Multiple series; takes precedence over {@link ScatterPlotProps.points}. */
+  series?: ScatterPoint[][];
+  /** Per-series colours (theme `$var` or literal), cycled if shorter. */
+  colors?: string[];
+  /** X-axis floor / ceiling (default the data range). */
+  minX?: number;
+  maxX?: number;
+  /** Y-axis floor / ceiling (default the data range). */
+  minY?: number;
+  maxY?: number;
+}
+
+/**
+ * A braille scatter plot — `{x, y}` points drawn without connecting lines, so
+ * the x position is meaningful. Auto-ranges both axes unless pinned.
+ *
+ * ```tsx
+ * <ScatterPlot points={[{ x: 1, y: 2 }, { x: 3, y: 5 }]} style={{ height: 8 }} />
+ * ```
+ */
+export const ScatterPlot = hostComponent<ScatterPlotProps>("ztui-scatter-plot");
+
+/** Props for {@link AreaChart}. */
+export interface AreaChartProps extends Omit<ComponentProps, "children"> {
+  /** A single series (convenience for one area). */
+  data?: number[];
+  /** Multiple series; takes precedence over {@link AreaChartProps.data}. */
+  series?: number[][];
+  /** Per-series colours (theme `$var` or literal), cycled if shorter. */
+  colors?: string[];
+  /** Value-range floor (default 0) / ceiling (default the data maximum). */
+  min?: number;
+  max?: number;
+}
+
+/**
+ * A braille area chart — a line plot with the region below each series filled,
+ * for cumulative/volume trends. Series paint in order (later over earlier).
+ *
+ * ```tsx
+ * <AreaChart data={requestsPerMinute} colors={["$accent"]} style={{ height: 8 }} />
+ * ```
+ */
+export const AreaChart = hostComponent<AreaChartProps>("ztui-area-chart");
+
+/** Props for {@link PieChart}. */
+export interface PieChartProps extends Omit<ComponentProps, "children"> {
+  /** Slices to chart (label + value, optional colour). */
+  items: PieSlice[];
+  /** Show the percentage legend below the bar. Default true. */
+  showLegend?: boolean;
+}
+
+/**
+ * A proportional breakdown drawn as a 100%-stacked horizontal bar with a
+ * percentage legend — the terminal-friendly stand-in for a pie chart, crisp at
+ * any width.
+ *
+ * ```tsx
+ * <PieChart items={[{ label: "used", value: 70 }, { label: "free", value: 30 }]} />
+ * ```
+ */
+export const PieChart = hostComponent<PieChartProps>("ztui-pie-chart");

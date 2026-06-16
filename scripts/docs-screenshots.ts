@@ -33,7 +33,7 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
   listview: { cols: 48, rows: 14 },
   "selection-list": { cols: 48, rows: 14 },
   sparkline: { cols: 64, rows: 12 },
-  chart: { cols: 64, rows: 20, wait: 400 }, // animated line plot settles after a tick
+  chart: { cols: 72, rows: 17, wait: 400 }, // 2-column gallery; plots settle after a tick
   diff: { cols: 72, rows: 18 },
   richlog: { cols: 72, rows: 16 },
   markdown: { cols: 72, rows: 22, wait: 4000 }, // streams in token-by-token

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BarChart, LinePlot, VBox } from "../../react.ts";
+import { AreaChart, BarChart, LinePlot, PieChart, ScatterPlot, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 /** Count cells in [content] rows whose char is one of `chars`. */
@@ -173,5 +173,146 @@ describe("LinePlot", () => {
       }
     }
     expect(colors.size).toBeGreaterThanOrEqual(2); // two series → two colours
+  });
+});
+
+describe("ScatterPlot", () => {
+  test("plots points as braille dots and honours the x position", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <ScatterPlot
+          id="s"
+          style={{ width: 20, height: 5 }}
+          points={[
+            { x: 0, y: 0 },
+            { x: 10, y: 10 },
+          ]}
+          minX={0}
+          maxX={10}
+          minY={0}
+          maxY={10}
+        />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    await settle();
+    const r = findById("s").getClientRect();
+    // The two extremes land in opposite corners of the surface.
+    expect(isBraille(cellAt(r.x, r.y + r.height - 1).char)).toBe(true); // (0,0) → bottom-left
+    expect(isBraille(cellAt(r.x + r.width - 1, r.y).char)).toBe(true); // (10,10) → top-right
+    expect(countIn(cellAt, r, isBraille)).toBe(2); // points only, no connecting line
+  });
+
+  test("auto-ranges and survives empty/single-point series", async () => {
+    const single = await mountApp(
+      <VBox>
+        <ScatterPlot id="s" style={{ width: 12, height: 4 }} points={[{ x: 3, y: 7 }]} />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await single.settle();
+    expect(countIn(single.cellAt, single.findById("s").getClientRect(), isBraille)).toBe(1);
+
+    const empty = await mountApp(
+      <VBox>
+        <ScatterPlot id="s" style={{ width: 12, height: 4 }} points={[]} />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await empty.settle();
+    expect(empty.findById("s")).toBeTruthy(); // no throw
+  });
+});
+
+describe("AreaChart", () => {
+  test("fills the region below the line down to the baseline", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <AreaChart
+          id="a"
+          style={{ width: 20, height: 5 }}
+          data={[2, 6, 4, 8, 5]}
+          min={0}
+          max={10}
+        />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    await settle();
+    const r = findById("a").getClientRect();
+    const filled = countIn(cellAt, r, isBraille);
+    // A filled area lights far more cells than a bare line would in the same box.
+    expect(filled).toBeGreaterThan(r.width);
+    // The bottom row is part of the baseline fill across the whole width.
+    const bottom = countIn(
+      cellAt,
+      { x: r.x, y: r.y + r.height - 1, width: r.width, height: 1 },
+      isBraille,
+    );
+    expect(bottom).toBe(r.width);
+  });
+
+  test("handles empty data without throwing", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <AreaChart id="a" style={{ width: 12, height: 4 }} data={[]} />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await settle();
+    expect(findById("a")).toBeTruthy();
+  });
+});
+
+describe("PieChart", () => {
+  test("draws a full-width stacked bar split into per-slice colours plus a legend", async () => {
+    const { findById, cellAt, text, settle } = await mountApp(
+      <VBox>
+        <PieChart
+          id="pie"
+          style={{ width: 20 }}
+          items={[
+            { label: "used", value: 75, color: "$accent" },
+            { label: "free", value: 25, color: "$success" },
+          ]}
+        />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    await settle();
+    const r = findById("pie").getClientRect();
+    // Bar row spans the full width with block glyphs in (at least) two colours.
+    const colors = new Set<string>();
+    for (let x = r.x; x < r.x + r.width; x++) {
+      const c = cellAt(x, r.y);
+      expect(c.char).toBe("█");
+      colors.add((c as { style: { color?: string } }).style.color ?? "");
+    }
+    expect(colors.size).toBe(2);
+    // Legend rows carry the labels and rounded percentages.
+    const out = text();
+    expect(out).toContain("used");
+    expect(out).toContain("75%");
+    expect(out).toContain("25%");
+  });
+
+  test("legend can be hidden and zero/empty data is tolerated", async () => {
+    const noLegend = await mountApp(
+      <VBox>
+        <PieChart id="pie" style={{ width: 16 }} showLegend={false} items={[{ value: 1 }]} />
+      </VBox>,
+      { cols: 24, rows: 6 },
+    );
+    await noLegend.settle();
+    expect(noLegend.findById("pie").getClientRect().height).toBe(1); // bar only
+
+    const empty = await mountApp(
+      <VBox>
+        <PieChart id="pie" style={{ width: 16 }} items={[]} />
+      </VBox>,
+      { cols: 24, rows: 6 },
+    );
+    await empty.settle();
+    expect(empty.findById("pie")).toBeTruthy(); // no throw
   });
 });

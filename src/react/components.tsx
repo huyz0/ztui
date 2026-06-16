@@ -47,8 +47,17 @@ export type { ToggleButtonProps } from "./components/controls/toggle-button.tsx"
 export { ToggleButton } from "./components/controls/toggle-button.tsx";
 export type { ValidationSummaryProps } from "./components/controls/validation-summary.tsx";
 export { ValidationSummary } from "./components/controls/validation-summary.tsx";
-export type { BarChartItem, BarChartProps, LinePlotProps } from "./components/data/chart.tsx";
-export { BarChart, LinePlot } from "./components/data/chart.tsx";
+export type {
+  AreaChartProps,
+  BarChartItem,
+  BarChartProps,
+  LinePlotProps,
+  PieChartProps,
+  PieSlice,
+  ScatterPlotProps,
+  ScatterPoint,
+} from "./components/data/chart.tsx";
+export { AreaChart, BarChart, LinePlot, PieChart, ScatterPlot } from "./components/data/chart.tsx";
 export type {
   DescriptionItem,
   DescriptionListProps,
