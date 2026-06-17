@@ -3,6 +3,7 @@ import { selectionDeltaForKey } from "../../dom/key-nav.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import { Widget } from "../../dom/widget.ts";
+import type { PointerShape } from "../../driver/driver.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
@@ -33,6 +34,19 @@ export type SelectionGlyphSet = keyof typeof BOXES;
  * ListViewWidget} the body is virtualized, so it scales to large lists.
  */
 export class SelectionListWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
+  /** Rows take the `pointer`; the scrollbar gutter keeps the default arrow. */
+  public override cursorShapeAt(x: number, y: number): PointerShape | null {
+    if (this.rowCount > this.lastVisibleRows) {
+      const content = this.getContentRect();
+      if (x === content.right - 1 && y >= content.y && y < content.bottom) return null;
+    }
+    return super.cursorShapeAt(x, y);
+  }
+
   /** Items to display. */
   public items: ListItem[] = [];
   /** Checked item ids. */

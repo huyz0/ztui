@@ -4,7 +4,7 @@ import { DOMNode } from "../dom/dom.ts";
 import { Screen } from "../dom/screen.ts";
 import { Widget } from "../dom/widget.ts";
 import { BunDriver } from "../driver/bun/index.ts";
-import type { Driver, KeyEvent, MouseEvent } from "../driver/driver.ts";
+import type { Driver, KeyEvent, MouseEvent, PointerShape } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
@@ -103,16 +103,39 @@ export class App extends DOMNode {
   private frameCount = 0;
   /** Unsubscribe from the global theme manager; called on {@link stop}. */
   private themeUnsubscribe: (() => void) | null = null;
+  private _pointerShapes = true;
+
+  /**
+   * Whether the app drives the mouse-pointer shape (OSC 22) from the hovered
+   * widget's `cursor`. On by default; set `false` to leave the pointer alone
+   * (e.g. to cut passive-hover tracking on capable terminals). Turning it off at
+   * runtime immediately resets the pointer to the terminal default. Has no
+   * effect on terminals that don't advertise {@link TerminalCapabilities.pointerShapes}.
+   */
+  public get pointerShapes(): boolean {
+    return this._pointerShapes;
+  }
+  public set pointerShapes(enabled: boolean) {
+    if (this._pointerShapes === enabled) return;
+    this._pointerShapes = enabled;
+    if (!enabled) this.driver.setPointerShape(null);
+    // Cursor widgets count as hover interest only while enabled, so the tracking
+    // mode may need to flip.
+    this.syncMouseHoverMode();
+  }
 
   /**
    * @param driver Backend to render through. Defaults to {@link BunDriver} (the
    * terminal); pass {@link WebDriver} for the browser canvas or {@link MockDriver}
    * for tests.
+   * @param options.pointerShapes Drive the mouse-pointer shape from widget
+   * `cursor` styles (default `true`); see {@link App.pointerShapes}.
    */
-  constructor(driver?: Driver) {
+  constructor(driver?: Driver, options?: { pointerShapes?: boolean }) {
     super("app");
     App.instance = this;
     this.driver = driver || new BunDriver();
+    if (options?.pointerShapes !== undefined) this._pointerShapes = options.pointerShapes;
 
     const defaultScreen = new Screen();
     this.pushScreen(defaultScreen);
@@ -448,6 +471,16 @@ export class App extends DOMNode {
         if (this.cssResolver.hasHoverRules()) {
           this.queueRender("mouse:hover-css");
         }
+      }
+
+      // Push the pointer shape (OSC 22) for the cell under the cursor. Resolved
+      // every processed move — not just on widget boundary crossings — so a
+      // shape that varies *within* a widget (e.g. a list's rows vs its scrollbar
+      // gutter) updates too. `setPointerShape` dedupes redundant writes.
+      if (this._pointerShapes && this.driver.capabilities.pointerShapes) {
+        const dragging = this.activeDragWidget;
+        const target = dragging ?? hit;
+        this.driver.setPointerShape(this.resolveCursorShape(target, ev.x, ev.y));
       }
 
       // Modal outside-click: a press that resolves to the bare backdrop (i.e.
@@ -1113,6 +1146,23 @@ export class App extends DOMNode {
    * hit-testing; it filters obviously irrelevant off-screen/zero-sized widgets
    * before deciding whether to keep terminal any-motion hover enabled.
    */
+  /**
+   * The pointer shape at cell `(x, y)` for `hit`: its own shape (which may vary
+   * by sub-region, e.g. a list's scrollbar gutter), else the nearest ancestor's,
+   * else `null` (default arrow). Mirrors CSS `cursor` inheritance.
+   */
+  private resolveCursorShape(hit: Widget | null, x: number, y: number): PointerShape | null {
+    let node: DOMNode | null = hit;
+    while (node) {
+      if (node instanceof Widget && node.visible) {
+        const shape = node.cursorShapeAt(x, y);
+        if (shape) return shape;
+      }
+      node = node.parent;
+    }
+    return null;
+  }
+
   private screenHasHoverInterest(screen: Screen): boolean {
     const screenRegion = screen.region;
     let interested = false;
@@ -1121,7 +1171,10 @@ export class App extends DOMNode {
       if (
         node instanceof Widget &&
         node.visible &&
-        node.hoverInterest &&
+        (node.hoverInterest ||
+          (this._pointerShapes &&
+            this.driver.capabilities.pointerShapes &&
+            node.hasCursorStyle())) &&
         node.region.width > 0 &&
         node.region.height > 0 &&
         node.region.overlaps(screenRegion)

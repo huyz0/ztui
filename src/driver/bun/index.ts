@@ -140,7 +140,7 @@ export class BunDriver extends Driver {
 
       // Emit probe escape sequences to stdout
       this.write(
-        "\x1b[c\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p\x1b_25a1;s\x1b\\\x1b[14t\x1b[16t",
+        "\x1b[c\x1b[>c\x1b[?u\x1b_Gi=31,a=q;\x1b\\\x1b[?1003$p\x1b[?2026$p\x1b_25a1;s\x1b\\\x1b]22;?default\x1b\\\x1b[14t\x1b[16t",
       );
 
       this.probeTimeout = setTimeout(() => {
@@ -160,6 +160,10 @@ export class BunDriver extends Driver {
       clearTimeout(this.probeTimeout);
       this.probeTimeout = null;
     }
+
+    // Restore the default mouse pointer shape so a custom shape doesn't leak
+    // back to the shell after exit.
+    this.setPointerShape(null);
 
     // Disable mouse tracking (hover 1003 and standard 1000/1002/1006) and
     // bracketed paste.
@@ -294,6 +298,7 @@ export class BunDriver extends Driver {
       data.includes("\x1b[?") ||
       data.includes("\x1b[>") ||
       data.includes("\x1b_") ||
+      data.includes("\x1b]22;") ||
       data.includes("\x1b[4;") ||
       data.includes("\x1b[6;");
     if (!this.isProbing && mayBeCapabilityReply) {
@@ -348,6 +353,17 @@ export class BunDriver extends Driver {
           this.capabilities.mouseHover = true;
         }
         data = data.replace(hoverMatch[0], "");
+        matchedAny = true;
+      }
+
+      // 5b. OSC 22 pointer-shape support (late reply to our `?default` query)
+      while (true) {
+        const pointerMatch = data.match(/\x1b\]22;([01])(?:\x1b\\|\x07)/);
+        if (!pointerMatch) break;
+        if (pointerMatch[1] === "1") {
+          this.capabilities.pointerShapes = true;
+        }
+        data = data.replace(pointerMatch[0], "");
         matchedAny = true;
       }
 

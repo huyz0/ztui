@@ -53,8 +53,11 @@ export { BunDriver } from "./driver/bun/index.ts";
 export {
   type Clipboard,
   Driver,
+  isPointerShape,
   type KeyEvent,
   type MouseEvent,
+  POINTER_SHAPES,
+  type PointerShape,
   type TerminalCapabilities,
 } from "./driver/driver.ts";
 export { MockDriver } from "./driver/mock/index.ts";

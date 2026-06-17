@@ -23,6 +23,10 @@ export type CollapsibleGlyphSet = keyof typeof MARKERS;
  * title row toggles. `open` is driven by the prop; toggling fires `onToggle`.
  */
 export class CollapsibleWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Title row text. */
   public title = "";
   /** Whether the section is expanded. */

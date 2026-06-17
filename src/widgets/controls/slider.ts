@@ -7,6 +7,10 @@ import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class SliderWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Current value. */
   public value = 0;
   /** Minimum value. */

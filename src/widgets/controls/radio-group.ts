@@ -15,6 +15,10 @@ export interface RadioOption {
 }
 
 export class RadioGroupWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Choices (strings or {value,label}). */
   public options: (string | RadioOption)[] = [];
   /** Selected value. */

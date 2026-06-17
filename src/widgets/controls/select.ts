@@ -15,6 +15,10 @@ export interface SelectOption {
 }
 
 export class DropdownOverlayWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   constructor(
     public selectWidget: SelectWidget,
     public dropdownX: number,
@@ -145,6 +149,10 @@ export class DropdownOverlayWidget extends Widget {
 }
 
 export class SelectWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Choices — strings or `{ value, label }`. */
   public options: (string | SelectOption)[] = [];
   /** Current selection (a value, or array when `multiple`). */

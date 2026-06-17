@@ -30,6 +30,16 @@ describe("SplitterWidget", () => {
     expect(deltas).toEqual([-3]);
   });
 
+  test("reports a resize pointer shape matching its axis", () => {
+    const v = new SplitterWidget();
+    v.orientation = "vertical"; // resizes width → left/right
+    expect(v.cursorShape).toBe("ew-resize");
+
+    const h = new SplitterWidget();
+    h.orientation = "horizontal"; // resizes height → up/down
+    expect(h.cursorShape).toBe("ns-resize");
+  });
+
   test("ignores drag before a press and after release", () => {
     const s = new SplitterWidget();
     const deltas: number[] = [];

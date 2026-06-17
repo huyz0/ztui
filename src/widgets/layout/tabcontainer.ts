@@ -14,6 +14,10 @@ export interface TabMetric {
 }
 
 export class TabContainerWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Index of the visible tab. */
   public activeIndex = 0;
   /** Index of the highlighted tab. */

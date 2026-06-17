@@ -6,6 +6,31 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Mouse pointer shapes: widgets can request a context-appropriate cursor via the
+  `cursor` style (`"pointer"`, `"text"`, `"grab"`, `"not-allowed"`, the
+  `*-resize` family, …, named after CSS). The App pushes the hovered widget's
+  shape to the terminal over OSC 22, inheriting from the nearest ancestor that
+  sets `cursor` and resetting to the default arrow on empty space and exit.
+  Capability is probed at startup and stays off unless the terminal confirms
+  support (kitty, foot, recent xterm; opt-in on Alacritty), so terminals without
+  OSC 22 (Windows Terminal, VS Code, iTerm2) degrade silently. New public
+  exports: `PointerShape`, `POINTER_SHAPES`, `isPointerShape`, and
+  `TerminalCapabilities.pointerShapes`.
+- Built-in widgets now carry a role-based default shape: buttons, checkboxes,
+  switches, radios, toggle buttons, selects, sliders, menus, tabs, collapsibles,
+  lists/trees, and any `onClick` widget show `pointer`; text inputs/textareas/the
+  chat composer show `text`; a disabled interactive widget shows `not-allowed`;
+  and resize splitters (in `SplitView`/`Workbench`, hence the IDE/workbench
+  demos) show `ew-resize` or `ns-resize` matching their drag axis.
+  An explicit `cursor` style overrides the default. Pointer shapes can be turned
+  off app-wide via `new App(driver, { pointerShapes: false })` or the
+  `app.pointerShapes` setter (default on); disabling at runtime resets the
+  pointer to the terminal default. The shape can also vary *within* a widget via
+  `Widget.cursorShapeAt(x, y)` — lists and trees keep the default arrow over
+  their scrollbar gutter instead of the row `pointer`.
+
 ## [1.0.6] - 2026-06-17
 
 ### Fixed

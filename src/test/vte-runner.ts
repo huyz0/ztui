@@ -39,6 +39,7 @@ export class VTEDriver extends Driver {
       glyphProtocol: true,
       clipboard: true,
       notifications: true,
+      pointerShapes: true,
       graphicsProtocol: "kitty",
       cellSize: { width: 8, height: 16 },
       ...capabilities,

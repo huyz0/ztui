@@ -8,6 +8,10 @@ import { Style } from "../../render/style.ts";
 import { isFormWidget } from "./form.ts";
 
 export class ButtonWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Submits or resets the nearest ancestor form when the button activates. */
   public formAction?: "submit" | "reset";
 

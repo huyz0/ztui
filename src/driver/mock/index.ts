@@ -24,6 +24,7 @@ export class MockDriver extends Driver {
       glyphProtocol: false,
       clipboard: true,
       notifications: true,
+      pointerShapes: false,
       graphicsProtocol: "none",
     };
     let mockClipboardText = "";

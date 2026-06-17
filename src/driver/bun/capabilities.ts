@@ -52,6 +52,10 @@ export function getBaselineCapabilities(): TerminalCapabilities {
     glyphProtocol: false,
     clipboard: true,
     notifications: true,
+    // Left false until the OSC 22 probe positively confirms support; relying on
+    // a env-name heuristic would falsely enable it on terminals that advertise
+    // but mis-render shapes (e.g. parts of Ghostty's set).
+    pointerShapes: false,
     graphicsProtocol,
     terminalProgram: termProgram || (isWT ? "Windows Terminal" : undefined),
     cellSize: isWT ? { width: 11, height: 22 } : { width: 10, height: 20 },
@@ -106,6 +110,16 @@ export function parseProbeResponse(
       capabilities.mouseHover = true;
     }
     leftover = leftover.replace(hoverMatch[0], "");
+  }
+
+  // Parse OSC 22 pointer-shape query response: \x1b]22;<1|0>(ST|BEL). We query
+  // `?default`; a leading "1" means the terminal supports named pointer shapes.
+  const pointerMatch = leftover.match(/\x1b\]22;([01])(?:\x1b\\|\x07)/);
+  if (pointerMatch) {
+    if (pointerMatch[1] === "1") {
+      capabilities.pointerShapes = true;
+    }
+    leftover = leftover.replace(pointerMatch[0], "");
   }
 
   // Parse Synchronized Updates DECRQM response: \x1b[?2026;<status>$y

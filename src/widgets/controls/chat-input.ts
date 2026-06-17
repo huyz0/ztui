@@ -97,6 +97,10 @@ export function formatChatHints(hints: ChatHint[], opts: ChatHintMarkupOptions =
  * announces events and never assumes a render framework.
  */
 export class ChatInputWidget extends Widget {
+  protected override defaultCursor() {
+    return "text" as const;
+  }
+
   private buffer = new ChatBuffer();
 
   // ── host-set configuration ─────────────────────────────────────────────────

@@ -10,6 +10,10 @@ import { blendCaretColors, CaretBlink, smoothCaretIntensity } from "./internal/c
 import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
 
 export class InputWidget extends Widget implements ValidatableField {
+  protected override defaultCursor() {
+    return "text" as const;
+  }
+
   private _value = "";
   public get value(): string {
     return this._value;

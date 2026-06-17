@@ -50,6 +50,10 @@ export interface MenuItem {
  * enclosing overlay layer's `closeOnEscape` dismisses the whole menu.
  */
 export class MenuListWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   private _items: MenuItem[] = [];
   /** Index of the highlighted row (always a selectable row, or 0 when none). */
   public highlightedIndex = 0;

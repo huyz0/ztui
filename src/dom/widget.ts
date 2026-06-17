@@ -1,6 +1,6 @@
 import { requestAnimationTick, requestCosmeticRepaint } from "../anim/animation.ts";
 import { ColorTween, Tween, type TweenOptions } from "../anim/tween.ts";
-import type { KeyEvent, MouseEvent } from "../driver/driver.ts";
+import type { KeyEvent, MouseEvent, PointerShape } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { parseDimension } from "../geometry/parse-dimension.ts";
 import { Region } from "../geometry/region.ts";
@@ -129,6 +129,14 @@ export interface WidgetStyles {
   strikethrough?: boolean;
   /** Hyperlink target (OSC 8) where the terminal supports it. */
   link?: string;
+  /**
+   * Mouse-pointer shape shown while the pointer is over this widget, named after
+   * the CSS `cursor` property (`"pointer"`, `"text"`, `"grab"`, `"not-allowed"`,
+   * `"col-resize"` → `"ew-resize"`, …). Inherited from the nearest ancestor that
+   * sets it. Requires terminal OSC 22 support (see
+   * {@link TerminalCapabilities.pointerShapes}); ignored otherwise.
+   */
+  cursor?: PointerShape;
   /** Horizontal overflow: clip (`"hidden"`, default), `"scroll"`/`"auto"`, or `"visible"`. */
   overflowX?: "scroll" | "auto" | "hidden" | "visible";
   /** Vertical overflow handling (see {@link overflowX}). */
@@ -174,6 +182,49 @@ export class Widget extends DOMNode {
   /** Set by the engine each frame after resolving styles; you rarely set this yourself. */
   public set computedStyle(val: WidgetStyles) {
     this._computedStyle = val;
+  }
+
+  /**
+   * The widget's intrinsic pointer shape from its *role* (a button is
+   * clickable, an input edits text), independent of any author `cursor` style.
+   * The base maps an `onClick` handler to `"pointer"`; interactive widget
+   * subclasses override this (e.g. `InputWidget` → `"text"`). Returns `null`
+   * for non-interactive widgets. Authors override the result with a `cursor`
+   * style; a disabled interactive widget shows `"not-allowed"`.
+   */
+  protected defaultCursor(): PointerShape | null {
+    return this.onClick ? "pointer" : null;
+  }
+
+  /**
+   * The mouse-pointer shape shown over this widget, or `null` (default arrow).
+   * An explicit `cursor` style wins (resolved style first, so a `:hover` rule
+   * applies); otherwise the role-based {@link defaultCursor} is used. A disabled
+   * interactive widget always reports `"not-allowed"`.
+   */
+  public get cursorShape(): PointerShape | null {
+    const explicit = this.computedStyle.cursor ?? this.style.cursor ?? this.defaultStyle.cursor;
+    const semantic = this.defaultCursor();
+    if ((explicit != null || semantic != null || this.focusable) && this.isDisabled()) {
+      return "not-allowed";
+    }
+    return explicit ?? semantic ?? null;
+  }
+
+  /**
+   * The pointer shape at a specific cell (absolute screen coordinates), letting
+   * a widget vary the cursor across its own area — e.g. a list returns its
+   * `pointer` over rows but the default arrow over its scrollbar gutter. The
+   * base ignores position and returns {@link cursorShape}; override for
+   * sub-region control. Returning `null` defers to the ancestor / default arrow.
+   */
+  public cursorShapeAt(_x: number, _y: number): PointerShape | null {
+    return this.cursorShape;
+  }
+
+  /** Whether the pointer takes on any shape over this widget (style or role). */
+  public hasCursorStyle(): boolean {
+    return this.cursorShape != null;
   }
 
   /**

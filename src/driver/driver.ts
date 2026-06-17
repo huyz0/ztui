@@ -33,6 +33,56 @@ export interface MouseEvent {
   handled?: boolean;
 }
 
+/**
+ * The 30 standard mouse-pointer shapes, named after the CSS `cursor` property
+ * and required by the OSC 22 pointer-shape protocol (kitty/foot/xterm). A
+ * widget requests one via its `cursor` style; the App pushes it to the driver
+ * as the pointer crosses widget boundaries. `"default"` is the platform arrow.
+ */
+export const POINTER_SHAPES = [
+  "default",
+  "pointer",
+  "text",
+  "vertical-text",
+  "wait",
+  "progress",
+  "help",
+  "crosshair",
+  "cell",
+  "move",
+  "grab",
+  "grabbing",
+  "alias",
+  "copy",
+  "no-drop",
+  "not-allowed",
+  "zoom-in",
+  "zoom-out",
+  "n-resize",
+  "e-resize",
+  "s-resize",
+  "w-resize",
+  "ne-resize",
+  "nw-resize",
+  "se-resize",
+  "sw-resize",
+  "ew-resize",
+  "ns-resize",
+  "nesw-resize",
+  "nwse-resize",
+] as const;
+
+/** A standard mouse-pointer shape name (see {@link POINTER_SHAPES}). */
+export type PointerShape = (typeof POINTER_SHAPES)[number];
+
+/** Fast membership test for runtime validation of pointer-shape names. */
+const POINTER_SHAPE_SET: ReadonlySet<string> = new Set(POINTER_SHAPES);
+
+/** Whether `name` is one of the standard pointer-shape names. */
+export function isPointerShape(name: string): name is PointerShape {
+  return POINTER_SHAPE_SET.has(name);
+}
+
 /** What the active backend/terminal supports; drivers fill this in (some after a probe). */
 export interface TerminalCapabilities {
   /** 24-bit color. */
@@ -55,6 +105,13 @@ export interface TerminalCapabilities {
   clipboard: boolean;
   /** Desktop notifications. */
   notifications: boolean;
+  /**
+   * OSC 22 mouse-pointer shapes — the terminal can change the mouse cursor to a
+   * named shape (`pointer`, `text`, `grab`, …). Detected by a startup probe and
+   * left `false` unless the terminal positively confirms support, so unsupported
+   * terminals (most notably Windows Terminal, VS Code, iTerm2) degrade silently.
+   */
+  pointerShapes: boolean;
   /**
    * Inline-graphics capability. The terminal protocols (`kitty`/`iterm2`/`sixel`)
    * consume rasterized pixels; `web` means the backend renders images/SVG
@@ -142,6 +199,23 @@ export abstract class Driver extends EventEmitter {
   public abstract showNotification(title: string, body: string): void;
   /** Enable/disable passive hover (any-motion) reporting at runtime. */
   public setMouseHover(_enabled: boolean): void {}
+  /** Last shape written, to suppress redundant OSC 22 emissions. `undefined` = nothing written yet. */
+  private lastPointerShape: PointerShape | null | undefined = undefined;
+  /**
+   * Set the mouse-pointer shape via OSC 22 (`ESC ] 22 ; <name> ST`). Pass `null`
+   * to reset to the terminal default (`ESC ] 22 ; ST`). A no-op when the backend
+   * lacks {@link TerminalCapabilities.pointerShapes} or when the shape is already
+   * active. Unknown names are coerced to the default so a stray value can never
+   * wedge the cursor on an unsupported shape. Backends that don't speak ANSI
+   * (e.g. the web canvas) override this.
+   */
+  public setPointerShape(shape: PointerShape | null): void {
+    if (!this.capabilities.pointerShapes) return;
+    const next = shape !== null && isPointerShape(shape) ? shape : null;
+    if (next === this.lastPointerShape) return;
+    this.lastPointerShape = next;
+    this.write(next === null ? "\x1b]22;\x1b\\" : `\x1b]22;${next}\x1b\\`);
+  }
   /** Whether passive hover move suppression should be enforced by the app. */
   public get enforcesRuntimeHoverMode(): boolean {
     return false;

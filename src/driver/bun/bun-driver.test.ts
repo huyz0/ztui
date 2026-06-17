@@ -347,4 +347,33 @@ describe("BunDriver input + graphics sequences", () => {
     expect(out).toContain("\x1b]9;Title: Body\x07");
     expect(out).toContain("\x1b]777;notify;Title;Body\x07");
   });
+
+  test("queries OSC 22 pointer-shape support in the startup probe burst", () => {
+    stdin.isTTY = true;
+    stdout.isTTY = true;
+    const ttyDriver = new BunDriver({ stdin, stdout });
+    ttyDriver.start();
+    expect(stdout.all()).toContain("\x1b]22;?default\x1b\\");
+    ttyDriver.stop();
+  });
+
+  test('a late OSC 22 "1" reply enables pointerShapes through the pre-check gate', () => {
+    expect(driver.capabilities.pointerShapes).toBe(false);
+    stdin.emit("data", "\x1b]22;1\x1b\\");
+    expect(driver.capabilities.pointerShapes).toBe(true);
+  });
+
+  test('a late OSC 22 "0" reply leaves pointerShapes disabled', () => {
+    stdin.emit("data", "\x1b]22;0\x1b\\");
+    expect(driver.capabilities.pointerShapes).toBe(false);
+  });
+
+  test("stop() resets the mouse pointer shape when the terminal supports it", () => {
+    driver.capabilities.pointerShapes = true;
+    driver.start();
+    driver.setPointerShape("pointer");
+    const before = stdout.all().length;
+    driver.stop();
+    expect(stdout.all().slice(before)).toContain("\x1b]22;\x1b\\");
+  });
 });

@@ -16,6 +16,10 @@ import { blendCaretColors, CaretBlink, smoothCaretIntensity } from "./internal/c
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class TextAreaWidget extends Widget {
+  protected override defaultCursor() {
+    return "text" as const;
+  }
+
   private _value = "";
   /** The current multi-line text. */
   public get value(): string {

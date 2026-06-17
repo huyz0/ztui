@@ -33,6 +33,14 @@ export class SplitterWidget extends Widget {
   private hovered = false;
   private lastPos = 0;
 
+  /**
+   * A vertical splitter resizes width (drag left/right → `ew-resize`); a
+   * horizontal one resizes height (drag up/down → `ns-resize`).
+   */
+  protected override defaultCursor() {
+    return this.orientation === "vertical" ? ("ew-resize" as const) : ("ns-resize" as const);
+  }
+
   constructor() {
     super("splitter");
     // Hover highlight is paint-only (the grip recolors, the layout is unchanged),

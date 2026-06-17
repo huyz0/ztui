@@ -54,6 +54,9 @@ export class WebDriver extends Driver {
       glyphProtocol: false,
       clipboard: true,
       notifications: false,
+      // The terminal OSC 22 protocol doesn't apply to the canvas backend; a DOM
+      // binding sets `canvas.style.cursor` directly if it wants pointer shapes.
+      pointerShapes: false,
       // The canvas draws images/SVG natively (drawImage), so widgets emit
       // vector/raster source instead of ANSI-encoding pixels.
       graphicsProtocol: "web",

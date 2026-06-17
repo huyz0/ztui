@@ -62,6 +62,32 @@ Booleans toggle terminal cell attributes:
 `link: "https://…"` marks the text as a hyperlink (OSC 8) on terminals that
 support it.
 
+## Mouse pointer shape
+
+`cursor` sets the mouse-pointer shape shown while the pointer is over a widget,
+using the CSS cursor names (`pointer`, `text`, `grab`, `grabbing`, `not-allowed`,
+`progress`, `wait`, `crosshair`, `move`, `zoom-in`, and the `*-resize` family —
+note the OSC 22 names like `ew-resize`/`ns-resize`, not `col-resize`):
+
+```tsx
+<Box style={{ cursor: "pointer" }} onClick={…}>Open</Box>
+<Box style={{ cursor: "text" }}>Editable</Box>
+<Box style={{ cursor: "ew-resize" }}>│ drag to resize</Box>
+```
+
+The shape is inherited from the nearest ancestor that sets `cursor`, so wrapping
+a clickable region is enough — children don't each need it. It relies on the
+terminal's OSC 22 support (`capabilities.pointerShapes`: kitty, foot, recent
+xterm; opt-in on Alacritty) and is ignored elsewhere, with the pointer reset to
+the default arrow over empty space and on exit.
+
+Built-in widgets already pick a sensible default, so you usually don't set
+`cursor` yourself: interactive controls (buttons, checkboxes, switches, radios,
+toggle buttons, selects, sliders, menus, tabs, collapsibles, lists/trees) and
+any widget with an `onClick` show `pointer`; text inputs, textareas, and the
+chat composer show `text`; and a disabled control shows `not-allowed`. Set
+`cursor` explicitly to override.
+
 ## Box properties
 
 Sizing, spacing, borders, alignment, docking, and overflow are all set through

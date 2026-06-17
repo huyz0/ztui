@@ -7,6 +7,10 @@ import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class CheckboxWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Checked state. */
   public checked = false;
   public label = "";

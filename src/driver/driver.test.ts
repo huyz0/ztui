@@ -571,6 +571,7 @@ describe("BunDriver Capability Probing", () => {
         glyphProtocol: false,
         clipboard: false,
         notifications: false,
+        pointerShapes: false,
         graphicsProtocol: "none",
       };
       public clipboard = {

@@ -7,6 +7,10 @@ import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 
 export class ToggleButtonWidget extends Widget {
+  protected override defaultCursor() {
+    return "pointer" as const;
+  }
+
   /** Pressed/active state. */
   public active = false;
   public label = "";
