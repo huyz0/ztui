@@ -147,6 +147,50 @@ describe("Traceback", () => {
     expect((ev as { handled: boolean }).handled).toBe(false); // unknown key left unhandled
   });
 
+  test("wheel + up/end keys move the scroll position", async () => {
+    const { t, w } = await deepTrace();
+    expect(t.text()).toContain("frame0");
+
+    for (let i = 0; i < 6; i++) w.handleScroll({ type: "scroll_down", handled: false } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("frame0"); // wheel scrolled the top off
+
+    for (let i = 0; i < 10; i++) w.handleScroll({ type: "scroll_up", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("frame0"); // wheeled back to the top
+
+    w.handleKey({ name: "end", handled: false } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("frame0"); // jumped toward the bottom
+    w.handleKey({ name: "up", handled: false } as never); // exercises the "up" branch
+    await t.settle();
+    expect(t.text()).not.toContain("frame0");
+  });
+
+  test("source peek is skipped when the file is unreadable or the line is out of range", async () => {
+    // Top app frame points at a path that cannot be read -> no source rows, no crash.
+    const missing = ["Error: nope", "    at fn (/no/such/file-xyz.ts:5:1)"].join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 78, height: 12 }}>
+        <Traceback id="tb" error={Object.assign(new Error("nope"), { stack: missing })} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("Error: nope");
+    expect(text).not.toContain("❯"); // no source marker since the read failed
+
+    // A real file but a wildly out-of-range line also yields no source rows.
+    const here = import.meta.url.replace(/^file:\/\//, "");
+    const oob = ["Error: oob", `    at outOfRangeFn (${here}:99999:1)`].join("\n");
+    const w = t.findById<TracebackWidget>("tb") as TracebackWidget;
+    w.stack = oob;
+    const lines = w.selectableLines();
+    expect(lines.some((l) => l.includes("outOfRangeFn"))).toBe(true);
+    expect(lines.some((l) => l.includes("❯"))).toBe(false); // line out of range -> no source peek
+  });
+
   test("dragging the scrollbar scrolls the trace", async () => {
     const { t, w } = await deepTrace();
     const c = w.getContentRect();

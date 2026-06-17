@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { motion } from "../anim/motion.ts";
 import { Widget } from "../dom/widget.ts";
 import { adjustLightness, deriveTheme, ThemeManager } from "../theme.ts";
 import { parseTCSS } from "./css-parser.ts";
@@ -216,6 +217,91 @@ describe("CSSResolver Theming and Variables", () => {
     expect(shadowLight?.startsWith("#")).toBe(true);
 
     themeManager.setTheme("default-dark"); // restore
+  });
+});
+
+describe("CSSResolver value coercion and glow", () => {
+  test("coerceValue parses margin/padding shorthand with 1–4 values and rejects junk", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+
+    w.style.margin = "2" as never;
+    expect(resolver.resolveStyles(w, false).margin).toMatchObject({
+      top: 2,
+      right: 2,
+      bottom: 2,
+      left: 2,
+    });
+
+    w.style.margin = "1 2" as never;
+    expect(resolver.resolveStyles(w, false).margin).toMatchObject({ top: 1, right: 2 });
+
+    w.style.padding = "1 2 3" as never;
+    expect(resolver.resolveStyles(w, false).padding).toMatchObject({
+      top: 1,
+      right: 2,
+      bottom: 3,
+      left: 2,
+    });
+
+    w.style.padding = "1 2 3 4" as never;
+    expect(resolver.resolveStyles(w, false).padding).toMatchObject({
+      top: 1,
+      right: 2,
+      bottom: 3,
+      left: 4,
+    });
+
+    w.style.margin = "nope" as never;
+    expect(resolver.resolveStyles(w, false).margin).toBe(0);
+  });
+
+  test("coerceValue parses numeric position/size and keeps non-numeric position as-is", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    w.style.zIndex = "5" as never;
+    w.style.minWidth = "10" as never;
+    const s = resolver.resolveStyles(w, false);
+    expect(s.zIndex).toBe(5);
+    expect(s.minWidth).toBe(10);
+
+    w.style.left = "auto" as never;
+    expect(resolver.resolveStyles(w, false).left).toBe("auto"); // NaN -> passthrough
+  });
+
+  test("an unresolved variable token is returned unchanged", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    expect(resolver.resolveVariable(w, "$totally-unknown")).toBe("$totally-unknown");
+    expect(resolver.resolveVariable(w, "var(--also-unknown)")).toBe("var(--also-unknown)");
+    expect(resolver.resolveVariable(w, "#abcdef")).toBe("#abcdef"); // fast path, no token
+  });
+
+  test("focusGlow/focusGlowPair breathe a hex base when motion is on, and stay static otherwise", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("button");
+
+    // Motion off: static base + a contrasting text colour.
+    motion.set(false);
+    expect(resolver.focusGlow(w, "#ff0000")).toBe("#ff0000");
+    const offPair = resolver.focusGlowPair(w, "#ff0000");
+    expect(offPair.bg).toBe("#ff0000");
+    expect(offPair.fg.startsWith("#")).toBe(true);
+
+    // Motion on: a hex base pulses (still a hex), a $var base resolves first,
+    // and a non-hex/unresolvable base returns unchanged.
+    motion.set(true);
+    try {
+      // Breathing yields a concrete colour string (hex or rgb()) for a hex base.
+      expect(resolver.focusGlow(w, "#ff0000").length).toBeGreaterThan(0);
+      expect(resolver.focusGlow(w, "$primary").length).toBeGreaterThan(0);
+      expect(resolver.focusGlow(w, "red")).toBe("red"); // non-hex base stays as-is
+      const onPair = resolver.focusGlowPair(w, "#00ff00");
+      expect(onPair.bg.length).toBeGreaterThan(0);
+      expect(onPair.fg.length).toBeGreaterThan(0);
+    } finally {
+      motion.reset();
+    }
   });
 });
 

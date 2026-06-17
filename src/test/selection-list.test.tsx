@@ -169,4 +169,38 @@ describe("SelectionList", () => {
     } as never);
     expect(w).toBeTruthy(); // release ends the drag without throwing
   });
+
+  test("the mouse wheel scrolls without toggling rows, and 'a' toggles all", async () => {
+    const changes: string[][] = [];
+    const many: ListItem[] = Array.from({ length: 20 }, (_, i) => ({
+      id: `i${i}`,
+      label: `item-${i}`,
+    }));
+    const t = await mountApp(
+      <VBox style={{ width: 30, height: 5 }}>
+        <SelectionList
+          id="s"
+          items={many}
+          defaultValue={[]}
+          style={{ height: 5 }}
+          onChange={(v) => changes.push(v)}
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<SelectionListWidget>("s") as SelectionListWidget;
+
+    w.handleScroll({ type: "scroll_down", handled: false } as never);
+    w.handleScroll({ type: "scroll_down", handled: false } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("item-0 ");
+    expect(changes).toHaveLength(0); // wheel never toggles
+
+    w.handleScroll({ type: "scroll_up", handled: false } as never);
+    await t.settle();
+
+    w.handleKey({ name: "a", handled: false } as never);
+    expect(changes.at(-1)).toHaveLength(20); // 'a' selected every row
+  });
 });

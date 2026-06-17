@@ -89,4 +89,40 @@ describe("InputWidget — selection & clipboard", () => {
     w.insertText("12\n34");
     expect(w.value).toBe("ab12 34ef");
   });
+
+  test("delete removes the char ahead; end jumps to the end; right collapses a selection", () => {
+    const w = new InputWidget();
+    w.value = "abcd";
+    press(w, { name: "home" });
+    press(w, { name: "delete" }); // removes "a"
+    expect(w.value).toBe("bcd");
+
+    press(w, { name: "end" });
+    press(w, { key: "!" });
+    expect(w.value).toBe("bcd!");
+
+    // A selection collapses to its right edge on a bare Right.
+    press(w, { name: "home" });
+    press(w, { name: "right", shift: true });
+    press(w, { name: "right", shift: true });
+    expect(w.hasSelection()).toBe(true);
+    press(w, { name: "right" }); // collapse, no extend
+    expect(w.hasSelection()).toBe(false);
+  });
+});
+
+describe("InputWidget — mouse selection", () => {
+  test("press anchors, drag extends, release without a selection clears the anchor", () => {
+    const w = new InputWidget();
+    w.value = "hello world";
+    // Press then drag to a different column establishes and extends a selection.
+    w.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: false } as any);
+    w.handleMouse({ type: "drag", button: "left", x: 5, y: 0, handled: false } as any);
+    expect(w.hasSelection()).toBe(true);
+
+    // A release where start == end (no real selection) clears the anchor.
+    w.handleMouse({ type: "press", button: "left", x: 2, y: 0, handled: false } as any);
+    w.handleMouse({ type: "release", button: "left", x: 2, y: 0, handled: false } as any);
+    expect(w.hasSelection()).toBe(false);
+  });
 });

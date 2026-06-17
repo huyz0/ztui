@@ -106,6 +106,51 @@ describe("renderBufferToCanvas", () => {
     expect(calls.fillRect.length).toBeGreaterThanOrEqual(3);
   });
 
+  test("strokes every rounded corner, straight arm, and double-line glyph", () => {
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(12, 1);
+    // ╮ ╰ ╯ exercise the remaining rounded-corner branches; │ ─ the straight
+    // arms; ═ ║ ╔ the double-line two-stroke path; ┈ the dashed dash pattern.
+    const glyphs = ["╮", "╰", "╯", "│", "─", "═", "║", "╔", "┈", "┊"];
+    glyphs.forEach((g, i) => {
+      buf.setCell(i, 0, g, new Style({ color: "white" }));
+    });
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    expect(calls.arcTo).toBeGreaterThan(0); // ╮ ╰ ╯ corners
+    expect(calls.stroke).toBeGreaterThan(glyphs.length); // double glyphs stroke twice
+  });
+
+  test("draws strikethrough and every underline style", () => {
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(8, 1);
+    buf.setCell(0, 0, "a", new Style({ color: "white", strikethrough: true }));
+    buf.setCell(1, 0, "b", new Style({ color: "white", underline: true }));
+    buf.setCell(2, 0, "c", new Style({ underlineStyle: "curly", underlineColor: "red" }));
+    buf.setCell(3, 0, "d", new Style({ underlineStyle: "double" }));
+    buf.setCell(4, 0, "e", new Style({ underlineStyle: "dotted" }));
+    buf.setCell(5, 0, "f", new Style({ underlineStyle: "dashed" }));
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    expect(calls.stroke).toBeGreaterThan(0);
+    expect(calls.fillText.length).toBeGreaterThanOrEqual(6); // each glyph painted
+  });
+
+  test("italic + bold compose into the font string", () => {
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(2, 1);
+    buf.setCell(0, 0, "Z", new Style({ italic: true, bold: true }));
+    // Capture the font in effect at fillText time.
+    let fontAtDraw = "";
+    const origFillText = ctx.fillText;
+    ctx.fillText = (...a: any[]) => {
+      fontAtDraw = ctx.font;
+      return origFillText(...a);
+    };
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    expect(fontAtDraw).toContain("italic");
+    expect(fontAtDraw).toContain("bold");
+    void calls;
+  });
+
   test("snaps cell boundaries so a filled run has no sub-pixel gap", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(3, 1);

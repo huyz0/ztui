@@ -135,6 +135,94 @@ describe("Diff", () => {
     expect(t.text()).not.toContain("row 0");
   });
 
+  test("split view pads unequal deletion/addition blocks across both panes", async () => {
+    const oldText = "keep\ndrop A\ndrop B\ndrop C\ntail";
+    const newText = "keep\nadd X\ntail";
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff id="d" oldText={oldText} newText={newText} view="split" context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const lines = w.selectableLines();
+    // Both the removed-only and added lines survive into the paired split rows.
+    expect(lines.some((l) => l.includes("drop A"))).toBe(true);
+    expect(lines.some((l) => l.includes("add X"))).toBe(true);
+    expect(t.text()).toContain("│");
+  });
+
+  test("mouse wheel scrolls the body up and down", async () => {
+    const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff
+          id="d"
+          style={{ height: 8 }}
+          oldText={big}
+          newText={`${big}\ntail`}
+          context={Infinity}
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    expect(t.text()).toContain("row 0");
+
+    for (let i = 0; i < 5; i++) w.handleScroll({ type: "scroll_down", handled: false } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("row 0");
+
+    for (let i = 0; i < 10; i++) w.handleScroll({ type: "scroll_up", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("row 0");
+  });
+
+  test("dragging the scrollbar track jumps the view; release ends the drag", async () => {
+    const big = Array.from({ length: 60 }, (_, i) => `row ${i}`).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff
+          id="d"
+          style={{ height: 8 }}
+          oldText={big}
+          newText={`${big}\ntail`}
+          context={Infinity}
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const c = w.getContentRect();
+    const sbX = c.right - 1;
+
+    // Press near the bottom of the scrollbar track to jump down.
+    w.handleMouse({
+      type: "press",
+      button: "left",
+      x: sbX,
+      y: c.bottom - 1,
+      handled: false,
+    } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("row 0");
+
+    // Drag back to the top.
+    w.handleMouse({ type: "drag", x: sbX, y: c.y, handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("row 0");
+
+    // Release ends the drag; a later stray drag must not move the view.
+    w.handleMouse({ type: "release", x: sbX, y: c.y, handled: false } as never);
+    const after = t.text();
+    w.handleMouse({ type: "drag", x: sbX, y: c.bottom - 1, handled: false } as never);
+    await t.settle();
+    expect(t.text()).toBe(after);
+  });
+
   test("keyboard scrolling only acts while focused (keys consumed)", async () => {
     const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
     const t = await mountApp(

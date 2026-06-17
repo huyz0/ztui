@@ -152,4 +152,32 @@ describe("AnsiTerminal", () => {
     t.write("a\nb\nc\nd\ne");
     expect(plain(t)).toEqual(["c", "d", "e"]);
   });
+
+  test("dim/italic/underline/strikethrough set, then their off-codes clear", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[2;3;4;9mA\x1b[23;24;29mB");
+    const a = t.lines[0][0].style;
+    expect(a.dim).toBe(true);
+    expect(a.italic).toBe(true);
+    expect(a.underline).toBe(true);
+    expect(a.strikethrough).toBe(true);
+    const b = t.lines[0][1].style;
+    expect(b.italic).toBe(false);
+    expect(b.underline).toBe(false);
+    expect(b.strikethrough).toBe(false);
+  });
+
+  test("bright foreground (90–97) and reverse-off (27) resolve", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[7;92mA\x1b[27mB");
+    expect(t.lines[0][0].style.color).toBe("bright-green");
+    expect(t.lines[0][0].style.reverse).toBe(true);
+    expect(t.lines[0][1].style.reverse).toBe(false);
+  });
+
+  test("zero-width / control characters are not placed as cells", () => {
+    const t = new AnsiTerminal();
+    t.write("a\x00\x07b"); // NUL + BEL carry no width
+    expect(plain(t)).toEqual(["ab"]);
+  });
 });

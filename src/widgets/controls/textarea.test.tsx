@@ -1,6 +1,53 @@
 import { describe, expect, test } from "vitest";
 import { TextArea, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
+import { TextAreaWidget } from "./textarea.ts";
+
+describe("TextAreaWidget — line editing edge cases", () => {
+  const press = (w: TextAreaWidget, ev: Record<string, unknown>) => w.onKey?.(ev as never);
+
+  test("delete at end-of-line merges the next line up", () => {
+    const w = new TextAreaWidget();
+    w.value = "ab\ncd";
+    press(w, { name: "up" }); // row 0
+    press(w, { name: "end" }); // after "ab"
+    press(w, { name: "delete" }); // pulls "cd" onto row 0
+    expect(w.value).toBe("abcd");
+  });
+
+  test("backspace at column 0 merges into the previous line", () => {
+    const w = new TextAreaWidget();
+    w.value = "ab\ncd";
+    press(w, { name: "home" }); // row 1, col 0 (cursor starts at end → row 1)
+    press(w, { name: "backspace" });
+    expect(w.value).toBe("abcd");
+  });
+
+  test("up/down + home/end clamp within the document", () => {
+    const w = new TextAreaWidget();
+    w.value = Array.from({ length: 6 }, (_, i) => `row${i}`).join("\n");
+    for (let i = 0; i < 8; i++) press(w, { name: "up" }); // clamps at the top row
+    press(w, { name: "home" });
+    press(w, { key: "X" });
+    expect(w.value.startsWith("Xrow0")).toBe(true);
+
+    for (let i = 0; i < 8; i++) press(w, { name: "down" }); // clamps at the bottom row
+    press(w, { name: "end" });
+    press(w, { key: "Y" });
+    expect(w.value.endsWith("row5Y")).toBe(true);
+  });
+
+  test("a bare left/right collapses an active selection to its edge", () => {
+    const w = new TextAreaWidget();
+    w.value = "hello";
+    press(w, { name: "home" });
+    press(w, { name: "right", shift: true });
+    press(w, { name: "right", shift: true });
+    expect(w.hasSelection()).toBe(true);
+    press(w, { name: "left" }); // collapse to the start
+    expect(w.hasSelection()).toBe(false);
+  });
+});
 
 describe("ZTUI TextArea Widget Suite", () => {
   test("TextArea values, keys and navigation", async () => {

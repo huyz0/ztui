@@ -148,4 +148,37 @@ describe("ListView mouse", () => {
     expect(t.text()).not.toContain("item-0 ");
     expect(list.selectedId).toBeNull();
   });
+
+  test("dragging the scrollbar jumps the viewport; release ends the drag", async () => {
+    const t = await mountApp(<ListView items={bigList(100)} style={{ height: "100%" }} />, {
+      rows: 10,
+    });
+    const list = findList(t);
+    const c = list.getContentRect();
+    const sbX = c.right - 1;
+
+    list.handleMouse({ type: "press", button: "left", x: sbX, y: c.bottom - 1, handled: false });
+    await t.settle();
+    expect(t.text()).not.toContain("item-0 ");
+
+    list.handleMouse({ type: "drag", x: sbX, y: c.y, handled: false });
+    await t.settle();
+    expect(t.text()).toContain("item-0");
+
+    // Release ends the drag; a later stray drag must not move the viewport.
+    list.handleMouse({ type: "release", x: sbX, y: c.y, handled: false });
+    const after = t.text();
+    list.handleMouse({ type: "drag", x: sbX, y: c.bottom - 1, handled: false });
+    await t.settle();
+    expect(t.text()).toBe(after);
+  });
+
+  test("a press in the body margin (below all rows) selects nothing", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />, { rows: 20 });
+    const list = findList(t);
+    const c = list.getContentRect();
+    // Click well below the last row.
+    list.handleMouse({ type: "press", button: "left", x: c.x, y: c.bottom - 1, handled: false });
+    expect(list.selectedId).toBeNull();
+  });
 });

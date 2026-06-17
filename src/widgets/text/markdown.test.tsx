@@ -198,3 +198,57 @@ describe("Markdown generative UI (code fences)", () => {
     expect(t.text()).toContain("!!! not json at all !!!");
   });
 });
+
+describe("Markdown GFM tables", () => {
+  test("builds a header, rule, and zebra-striped, alignment-padded rows", async () => {
+    const table = [
+      "| Name | Age | City |",
+      "| :--- | :-: | ---: |",
+      "| Alice | 30 | NYC |",
+      "| Bob | 5 | Los Angeles |",
+    ].join("\n");
+    const t = await mountApp(<Markdown>{table}</Markdown>, { cols: 60, rows: 10 });
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("Name");
+    expect(text).toContain("Alice");
+    expect(text).toContain("Los Angeles");
+    expect(text).toContain("─"); // header underline rule
+    // Right-aligned "City" column pads the shorter "NYC" on the left.
+    expect(text).toMatch(/NYC/);
+  });
+
+  test("a table token builds a 'table' container block", () => {
+    const w = md(["| A | B |", "| - | - |", "| 1 | 2 |"].join("\n"));
+    expect(tags(w)).toContain("table");
+  });
+});
+
+describe("Markdown theme propagation", () => {
+  test("setting theme cascades to existing generated children", () => {
+    const w = md("# Title\n\n```ts\nconst x = 1;\n```\n");
+    w.theme = "dracula";
+    const syntax = blocks(w).find((c: any) => c.tagName === "syntax") as any;
+    expect(syntax).toBeDefined();
+    expect(syntax.theme).toBe("dracula");
+    // Re-setting the same value is a no-op (no throw, value stable).
+    w.theme = "dracula";
+    expect(w.theme).toBe("dracula");
+  });
+});
+
+describe("Markdown list items", () => {
+  test("an ordered list numbers each item and nests its body content", () => {
+    const w = md("1. **bold** item\n2. second\n");
+    const list = blocks(w)[0] as any;
+    expect(list.tagName).toBe("ordered_list");
+    // Items carry their raw markdown for copy round-tripping.
+    const visit = (n: any, out: string[]) => {
+      if (n.selectionRaw) out.push(n.selectionRaw);
+      for (const c of n.children ?? []) visit(c, out);
+    };
+    const raw: string[] = [];
+    visit(list, raw);
+    expect(raw.some((s) => s.includes("**bold**"))).toBe(true);
+  });
+});

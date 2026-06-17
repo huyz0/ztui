@@ -252,6 +252,49 @@ describe("ValidationSummary", () => {
     expect(app.activeScreen.focusedWidget?.id).toBe("a");
   });
 
+  test("does nothing on keypress while every field is valid", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" />
+      </Form>,
+    );
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.focused = true;
+    // No validators → no invalid fields → onKey returns before moving selection.
+    expect(() => summary.handleKey({ name: "down" } as any)).not.toThrow();
+    expect(() => summary.handleKey({ name: "enter" } as any)).not.toThrow();
+    summary.measure(40, 10);
+    expect(summary.measuredHeight).toBe(0); // collapsed: nothing to show
+  });
+
+  test("space also jumps to the selected field", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.focused = true;
+    summary.handleKey({ name: "space" } as any);
+    expect(app.activeScreen.focusedWidget?.id).toBe("a");
+  });
+
+  test("a message wider than the box is truncated with an ellipsis", async () => {
+    const long = "This is a very long validation message that exceeds the available width";
+    const { findById, settle, text } = await mountApp(
+      <Form id="form" style={{ width: 24 }}>
+        <ValidationSummary id="summary" style={{ width: 24 }} />
+        <Input id="a" validators={[required(long)]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    expect(text()).toContain("…"); // truncated to fit
+  });
+
   test("binds to a form by id when placed outside it", async () => {
     const { findById, settle, text } = await mountApp(
       <VBox>
