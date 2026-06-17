@@ -89,6 +89,12 @@ export declare interface Driver {
   on(event: "paste", listener: (text: string) => void): this;
   /** Fires once capability probing completes. */
   on(event: "capabilities_resolved", listener: () => void): this;
+  /**
+   * Subscribe to a received OS signal (SIGINT/SIGTERM). Only emitted by drivers
+   * constructed with `exitOnSignal: false`; otherwise the driver restores the
+   * terminal and exits before any listener could run.
+   */
+  on(event: "signal", listener: (signal: "SIGINT" | "SIGTERM") => void): this;
   /** Emit a resize (drivers call this). */
   emit(event: "resize", size: Size): boolean;
   /** Emit a key event. */
@@ -99,6 +105,8 @@ export declare interface Driver {
   emit(event: "paste", text: string): boolean;
   /** Emit the capabilities-resolved signal. */
   emit(event: "capabilities_resolved"): boolean;
+  /** Emit a received OS signal (drivers call this when `exitOnSignal` is false). */
+  emit(event: "signal", signal: "SIGINT" | "SIGTERM"): boolean;
 }
 
 /** Read/write access to the system clipboard, as the backend exposes it. */

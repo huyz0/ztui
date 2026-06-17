@@ -146,3 +146,56 @@ describe("renderDiff: an unchanged image is not re-emitted", () => {
     expect(out.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * The App compares each full frame's `graphicSignature` against the previous
+ * one; a change forces a whole-screen graphics wipe + re-emit so an
+ * added/moved/removed image can't leave an orphaned placement on the terminal's
+ * stateful graphics layer. These pin the signature's distinguishing power.
+ */
+describe("graphicSignature: add / move / remove detection", () => {
+  test("a buffer with no graphics has a zero signature", () => {
+    const buf = new ScreenBuffer(4, 2);
+    expect(buf.graphicSignature).toBe(0);
+    expect(buf.containsGraphics).toBe(false);
+  });
+
+  test("noteGraphic marks the buffer and changes the signature", () => {
+    const buf = new ScreenBuffer(4, 2);
+    buf.noteGraphic(0, 0);
+    expect(buf.containsGraphics).toBe(true);
+    expect(buf.graphicSignature).not.toBe(0);
+  });
+
+  test("the signature is order-independent for the same set of positions", () => {
+    const a = new ScreenBuffer(4, 2);
+    const b = new ScreenBuffer(4, 2);
+    a.noteGraphic(0, 0);
+    a.noteGraphic(2, 1);
+    b.noteGraphic(2, 1);
+    b.noteGraphic(0, 0);
+    expect(a.graphicSignature).toBe(b.graphicSignature);
+  });
+
+  test("moving a graphic to a new cell changes the signature (forces a wipe)", () => {
+    const before = new ScreenBuffer(4, 2);
+    const after = new ScreenBuffer(4, 2);
+    before.noteGraphic(0, 0);
+    after.noteGraphic(1, 0);
+    expect(after.graphicSignature).not.toBe(before.graphicSignature);
+  });
+
+  test("adding a second graphic changes the signature; removing it restores none", () => {
+    const one = new ScreenBuffer(4, 2);
+    one.noteGraphic(0, 0);
+    const two = new ScreenBuffer(4, 2);
+    two.noteGraphic(0, 0);
+    two.noteGraphic(3, 1);
+    expect(two.graphicSignature).not.toBe(one.graphicSignature);
+
+    // A fresh frame that drew nothing is back to the zero (no-graphics) state.
+    const none = new ScreenBuffer(4, 2);
+    expect(none.graphicSignature).toBe(0);
+    expect(none.graphicSignature).not.toBe(one.graphicSignature);
+  });
+});

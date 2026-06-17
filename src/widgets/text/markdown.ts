@@ -664,10 +664,19 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       container.selectionRaw = token.raw.replace(/\n+$/, "");
     }
 
-    const bulletSymbol = isOrdered ? `${index + 1}. ` : "• ";
+    // A GFM task-list item (`- [ ]` / `- [x]`) shows a checkbox glyph in place
+    // of the bullet, tinted by completion (a done item reads as success-green).
+    const isTask = token.task === true;
+    const bulletSymbol = isTask
+      ? token.checked
+        ? "☑ "
+        : "☐ "
+      : isOrdered
+        ? `${index + 1}. `
+        : "• ";
     const bullet = new RichTextWidget();
     bullet.selectable = false; // list marker is chrome, not content
-    bullet.style.color = "$primary";
+    bullet.style.color = isTask && token.checked ? "$success" : "$primary";
     bullet.style.bold = true;
     bullet.appendChild(new TextNode(bulletSymbol));
     container.appendChild(bullet);

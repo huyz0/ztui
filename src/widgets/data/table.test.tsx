@@ -427,6 +427,32 @@ describe("Table rich (widget-bearing) cells (phase 5)", () => {
     expect(t.text()).not.toContain("act-Row500");
   });
 
+  test("column.render is invoked only for the visible window, not every row", async () => {
+    const data = bigData(1000);
+    let renderCalls = 0;
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      {
+        key: "act",
+        header: "Act",
+        width: 14,
+        render: (r) => {
+          renderCalls++;
+          return <Label>act-{r.name}</Label>;
+        },
+      },
+    ];
+    const t = await mountApp(<Table data={data} columns={cols} style={{ height: 12 }} />, {
+      screenStyle: { flexDirection: "column" },
+    });
+    await t.settle();
+    await t.settle();
+    // render() must be called O(viewport), never O(rows). A regression that
+    // materializes the full dataset would push this into the thousands.
+    expect(renderCalls).toBeGreaterThan(0);
+    expect(renderCalls).toBeLessThan(40);
+  });
+
   test("a button inside a cell is clickable through the table", async () => {
     let clicked = "";
     const cols: TableColumn<Person>[] = [

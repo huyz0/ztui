@@ -36,7 +36,7 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
   chart: { cols: 72, rows: 17, wait: 400 }, // 2-column gallery; plots settle after a tick
   diff: { cols: 72, rows: 18 },
   richlog: { cols: 72, rows: 16, wait: 5000 }, // streams a log line every 700ms; let it fill
-  markdown: { cols: 72, rows: 22, wait: 4000 }, // streams in token-by-token
+  markdown: { cols: 72, rows: 22, wait: 8500 }, // streams token-by-token over ~9.2s; capture near the end
   textarea: { cols: 64, rows: 16 },
   chat: { cols: 72, rows: 13 }, // chat composer with a seeded transcript
   waiting: { cols: 56, rows: 14, wait: 800 }, // spinners mid-animation

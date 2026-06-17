@@ -55,12 +55,35 @@ export class ToastManager {
   }
 
   private _toasts: readonly Toast[] = [];
+  /** Overflow waiting for a visible slot, oldest first (see {@link maxVisible}). */
+  private _pending: Toast[] = [];
   private listeners = new Set<() => void>();
   private nextId = 1;
+  private _maxVisible = Number.POSITIVE_INFINITY;
 
-  /** Current toasts, oldest first. Stable reference between changes. */
+  /**
+   * Cap on simultaneously-visible toasts. A burst beyond the cap queues; each
+   * queued toast is promoted (and its auto-dismiss countdown started) only when a
+   * visible slot frees up, so a flood can't bury the screen. Default: unlimited.
+   */
+  public get maxVisible(): number {
+    return this._maxVisible;
+  }
+  public set maxVisible(n: number) {
+    this._maxVisible = n >= 1 ? Math.floor(n) : 1;
+    const before = this._toasts.length;
+    this.promote();
+    if (this._toasts.length !== before) this.emit();
+  }
+
+  /** Current *visible* toasts, oldest first. Stable reference between changes. */
   public getToasts(): readonly Toast[] {
     return this._toasts;
+  }
+
+  /** Number of toasts queued behind the {@link maxVisible} cap. */
+  public get pendingCount(): number {
+    return this._pending.length;
   }
 
   /** Subscribe to changes; returns an unsubscribe function. */
@@ -83,26 +106,48 @@ export class ToastManager {
       duration: opts.duration ?? DEFAULT_DURATIONS[level],
       createdAt: Date.now(),
     };
-    this._toasts = [...this._toasts, toast];
-    this.emit();
+    if (this._toasts.length < this._maxVisible) {
+      this._toasts = [...this._toasts, toast];
+      this.emit();
+    } else {
+      // No visible slot: queue it. createdAt is restamped on promotion so the
+      // auto-dismiss countdown starts when it actually appears, not now.
+      this._pending.push(toast);
+    }
     return id;
   }
 
-  /** Remove the toast with `id`. */
+  /** Remove the toast with `id` (visible or still queued). */
   public dismiss(id: number): void {
     const next = this._toasts.filter((t) => t.id !== id);
     if (next.length !== this._toasts.length) {
       this._toasts = next;
+      this.promote();
+      this.emit();
+      return;
+    }
+    const pendingNext = this._pending.filter((t) => t.id !== id);
+    if (pendingNext.length !== this._pending.length) this._pending = pendingNext;
+  }
+
+  /** Remove all toasts, visible and queued. */
+  public clear(): void {
+    if (this._toasts.length > 0 || this._pending.length > 0) {
+      this._toasts = [];
+      this._pending = [];
       this.emit();
     }
   }
 
-  /** Remove all toasts. */
-  public clear(): void {
-    if (this._toasts.length > 0) {
-      this._toasts = [];
-      this.emit();
+  /** Fill freed visible slots from the pending queue, restamping createdAt. */
+  private promote(): void {
+    if (this._pending.length === 0 || this._toasts.length >= this._maxVisible) return;
+    const promoted: Toast[] = [];
+    while (this._pending.length > 0 && this._toasts.length + promoted.length < this._maxVisible) {
+      const next = this._pending.shift();
+      if (next) promoted.push({ ...next, createdAt: Date.now() });
     }
+    if (promoted.length > 0) this._toasts = [...this._toasts, ...promoted];
   }
 
   private emit(): void {

@@ -2,6 +2,7 @@ import { App } from "../../core/app.ts";
 import { Screen } from "../../dom/screen.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { KeyEvent, MouseEvent } from "../../driver/driver.ts";
+import type { Region } from "../../geometry/region.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
@@ -1121,7 +1122,7 @@ export class ChatInputWidget extends Widget {
     chip: ChipToken,
     resolve: (v: string) => string,
     bg: string,
-    content: { right: number },
+    content: Region,
     selected = false,
   ): number {
     const accent = resolve("$accent");
@@ -1133,7 +1134,7 @@ export class ChatInputWidget extends Widget {
       const style = new Style({ color: accent, background: chipBg });
       const delim = new Style({ color: dim, background: chipBg });
       if (x < content.right) buffer.setCell(x, y, "‹", delim);
-      buffer.drawSegment(x + 1, y, new Segment(chip.label, style), content as any);
+      buffer.drawSegment(x + 1, y, new Segment(chip.label, style), content);
       const endX = x + 1 + stringWidth(chip.label);
       if (endX < content.right) buffer.setCell(endX, y, "›", delim);
       return endX + 1;
@@ -1141,7 +1142,7 @@ export class ChatInputWidget extends Widget {
     // fill: a tinted pill with one render-only space of padding each side.
     const pill = new Style({ color: accent, background: selected ? chipBg : resolve("$panel") });
     if (x < content.right) buffer.setCell(x, y, " ", pill);
-    buffer.drawSegment(x + 1, y, new Segment(chip.label, pill), content as any);
+    buffer.drawSegment(x + 1, y, new Segment(chip.label, pill), content);
     const endX = x + 1 + stringWidth(chip.label);
     if (endX < content.right) buffer.setCell(endX, y, " ", pill);
     return endX + 1;
@@ -1149,7 +1150,7 @@ export class ChatInputWidget extends Widget {
 
   private drawCaret(
     buffer: ScreenBuffer,
-    content: { x: number; y: number; right: number },
+    content: Region,
     textTop: number,
     here: { row: number; col: number },
     fg: string,
@@ -1171,7 +1172,7 @@ export class ChatInputWidget extends Widget {
   /** Paint the attachment strip on row `y`: removable pills, each `label ✕`. */
   private drawAttachmentStrip(
     buffer: ScreenBuffer,
-    content: { x: number; right: number },
+    content: Region,
     y: number,
     resolve: (v: string) => string,
     fg: string,
@@ -1182,7 +1183,7 @@ export class ChatInputWidget extends Widget {
     for (const att of this.attachments) {
       if (x >= content.right) break;
       const label = ` ${att.label} `;
-      buffer.drawSegment(x, y, new Segment(label, pill), content as any);
+      buffer.drawSegment(x, y, new Segment(label, pill), content);
       const cx = x + stringWidth(label);
       if (cx < content.right) buffer.setCell(cx, y, "✕", close);
       x = cx + 2; // close glyph + a gap before the next pill

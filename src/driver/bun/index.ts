@@ -76,20 +76,32 @@ export class BunDriver extends Driver {
     this.stop();
   };
 
-  private sigintHandler = () => {
-    this.stop();
-    process.exit(130);
-  };
+  // By default a received SIGINT/SIGTERM restores the terminal and exits
+  // immediately — the safe default, so a Ctrl+C from outside raw mode (e.g. a
+  // job-control signal, not the `\x03` keystroke apps normally intercept) can
+  // never leave the terminal wedged in raw mode / alt-screen. Apps that want to
+  // own shutdown (confirm-on-quit, flush state) set `exitOnSignal: false` and
+  // listen for the `signal` event; they are then responsible for calling
+  // `stop()` and exiting themselves.
+  private exitOnSignal = true;
 
-  private sigtermHandler = () => {
+  private handleSignal(signal: "SIGINT" | "SIGTERM", code: number): void {
+    if (!this.exitOnSignal) {
+      this.emit("signal", signal);
+      return;
+    }
     this.stop();
-    process.exit(143);
-  };
+    process.exit(code);
+  }
 
-  constructor(options?: { stdin?: any; stdout?: any }) {
+  private sigintHandler = () => this.handleSignal("SIGINT", 130);
+  private sigtermHandler = () => this.handleSignal("SIGTERM", 143);
+
+  constructor(options?: { stdin?: any; stdout?: any; exitOnSignal?: boolean }) {
     super();
     this.stdin = options?.stdin || process.stdin;
     this.stdout = options?.stdout || process.stdout;
+    this.exitOnSignal = options?.exitOnSignal ?? true;
     this.capabilities = getBaselineCapabilities();
   }
 

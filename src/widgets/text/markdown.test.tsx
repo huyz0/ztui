@@ -242,6 +242,18 @@ describe("Markdown GFM tables", () => {
     const w = md(["| A | B |", "| - | - |", "| 1 | 2 |"].join("\n"));
     expect(tags(w)).toContain("table");
   });
+
+  test("a GFM task list renders checkbox glyphs by completion", async () => {
+    const list = ["- [x] done item", "- [ ] todo item"].join("\n");
+    const t = await mountApp(<Markdown>{list}</Markdown>, { cols: 40, rows: 6 });
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("☑"); // checked
+    expect(text).toContain("☐"); // unchecked
+    expect(text).toContain("done item");
+    expect(text).toContain("todo item");
+    expect(text).not.toContain("•"); // task items replace the plain bullet
+  });
 });
 
 describe("Markdown theme propagation", () => {

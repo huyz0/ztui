@@ -242,6 +242,21 @@ describe("BunDriver clipboard", () => {
     stdin.emit("data", "\x1b]52;c;\x07");
     expect(await pending).toBe("kept");
   });
+
+  test("exitOnSignal:false surfaces a 'signal' event instead of exiting", () => {
+    const optOut = new BunDriver({ stdin, stdout, exitOnSignal: false });
+    optOut.start();
+    let received: string | null = null;
+    optOut.on("signal", (s) => {
+      received = s;
+    });
+    // Call the handler directly rather than racing a real process signal. With
+    // exitOnSignal:false it must emit the event and return — never process.exit
+    // (which would tear down the whole test run if it did).
+    (optOut as unknown as { sigintHandler: () => void }).sigintHandler();
+    expect(received).toBe("SIGINT");
+    optOut.stop();
+  });
 });
 
 describe("BunDriver capability replies", () => {

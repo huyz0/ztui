@@ -4,12 +4,8 @@ import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
-import type { FormWidget } from "./form.ts";
-import { FieldValidation, type ValidatableField } from "./validation.ts";
-
-function isField(w: Widget): w is ValidatableField {
-  return (w as any).validation instanceof FieldValidation;
-}
+import { type FormWidget, isFormWidget } from "./form.ts";
+import { isValidatableField, type ValidatableField } from "./validation.ts";
 
 /**
  * Lists every currently-invalid field in a form, one message per row, and lets
@@ -81,14 +77,14 @@ export class ValidationSummaryWidget extends Widget {
     }
     let cur = this.parent;
     while (cur) {
-      if ((cur as any).isForm === true) return cur as FormWidget;
+      if (cur instanceof Widget && isFormWidget(cur)) return cur;
       cur = cur.parent;
     }
     return null;
   }
 
   private findForm(w: Widget, id: string): FormWidget | null {
-    if (w.id === id && (w as any).isForm === true) return w as FormWidget;
+    if (w.id === id && isFormWidget(w)) return w;
     for (const c of w.children) {
       if (c instanceof Widget) {
         const found = this.findForm(c, id);
@@ -110,7 +106,7 @@ export class ValidationSummaryWidget extends Widget {
     const walk = (w: Widget) => {
       for (const c of w.children) {
         if (c instanceof Widget) {
-          if (isField(c)) out.push(c);
+          if (isValidatableField(c)) out.push(c);
           walk(c);
         }
       }

@@ -122,6 +122,16 @@ export interface ValidatableField extends Widget {
 }
 
 /**
+ * Type guard: true when a widget participates in form validation (carries a
+ * {@link FieldValidation}). Lets the form/error/summary widgets recognize fields
+ * without importing every control class. Defined here, beside the contract it
+ * tests, so the duck-type lives in one place.
+ */
+export function isValidatableField(w: Widget): w is ValidatableField {
+  return (w as { validation?: unknown }).validation instanceof FieldValidation;
+}
+
+/**
  * Per-field validation state + behavior, embedded in a control widget. Keeps the
  * control's `invalid` flag and resolved border/icon color in sync with the
  * latest result, and reports the message for the shared/inline display layers.

@@ -7,6 +7,7 @@ import { Size } from "../geometry/size.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import type { DOMNode } from "./dom.ts";
 import type { OverlayRootWidget } from "./overlay.ts";
+import type { AccessibleNode } from "./widget.ts";
 import { Widget } from "./widget.ts";
 
 /**
@@ -39,6 +40,15 @@ export interface ScreenLayer {
 const FOCUS_TICK_MS = 75;
 
 /** The root widget of one screen: holds the widget tree, focus, and overlay layers. {@link App} renders the active one. */
+/** Render one {@link AccessibleNode} as a compact line: `role: "label" =value [state]`. */
+function formatAccessible(a: AccessibleNode): string {
+  let s = a.role;
+  if (a.label) s += `: "${a.label}"`;
+  if (a.value !== undefined) s += ` =${a.value}`;
+  if (a.state && a.state.length > 0) s += ` [${a.state.join(", ")}]`;
+  return s;
+}
+
 export class Screen extends Widget {
   private _focusedWidget: Widget | null = null;
   /** Top-level overlay roots (dialogs, dropdowns) painted above the tree. */
@@ -100,6 +110,34 @@ export class Screen extends Widget {
       // relaying out the entire tree ~60×/s while a widget holds focus.
       requestAnimationTick(this._focusedWidget, FOCUS_TICK_MS, true);
     }
+  }
+
+  /**
+   * A plain-text, screen-reader-style rendering of the visible widget tree:
+   * one line per semantically-meaningful widget (see
+   * {@link Widget.getAccessibleNode}), indented by nesting depth, with active
+   * overlays/layers appended. Useful for accessibility tooling and for asserting
+   * *what* a screen presents in tests without diffing pixels.
+   */
+  public toAccessibleText(): string {
+    const lines: string[] = [];
+    const visit = (node: DOMNode, depth: number): void => {
+      let nextDepth = depth;
+      if (node instanceof Widget) {
+        const a = node.getAccessibleNode();
+        if (a) {
+          lines.push(`${"  ".repeat(depth)}${formatAccessible(a)}`);
+          nextDepth = depth + 1;
+        }
+      }
+      for (const child of node.children) visit(child, nextDepth);
+    };
+    visit(this, 0);
+    for (const layer of this.layers) {
+      lines.push(`[${layer.modal ? "modal" : "layer"}]`);
+      visit(layer.root, 0);
+    }
+    return lines.join("\n");
   }
 
   /** All focusable, enabled, visible widgets in tab order. */

@@ -5,6 +5,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { contrastText } from "../../render/color.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { isFormWidget } from "./form.ts";
 
 export class ButtonWidget extends Widget {
   /** Submits or resets the nearest ancestor form when the button activates. */
@@ -41,9 +42,8 @@ export class ButtonWidget extends Widget {
     if (!this.formAction) return;
     let cur = this.parent;
     while (cur) {
-      const f = cur as any;
-      if (f?.isForm === true && typeof f.submit === "function") {
-        this.formAction === "reset" ? f.reset() : f.submit();
+      if (cur instanceof Widget && isFormWidget(cur)) {
+        this.formAction === "reset" ? cur.reset() : cur.submit();
         return;
       }
       cur = cur.parent;

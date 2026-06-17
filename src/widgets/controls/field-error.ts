@@ -3,11 +3,7 @@ import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
-import { FieldValidation, type ValidatableField } from "./validation.ts";
-
-function isField(w: Widget): w is ValidatableField {
-  return (w as any).validation instanceof FieldValidation;
-}
+import { isValidatableField, type ValidatableField } from "./validation.ts";
 
 /**
  * Inline, per-field error message. Collapses to **zero height** while its field
@@ -37,7 +33,7 @@ export class FieldErrorWidget extends Widget {
     const idx = siblings.indexOf(this);
     for (let i = idx - 1; i >= 0; i--) {
       const s = siblings[i];
-      if (s instanceof Widget && isField(s)) return s;
+      if (s instanceof Widget && isValidatableField(s)) return s;
     }
     return null;
   }
@@ -49,7 +45,7 @@ export class FieldErrorWidget extends Widget {
   }
 
   private findById(w: Widget, id: string): ValidatableField | null {
-    if (w.id === id && isField(w)) return w;
+    if (w.id === id && isValidatableField(w)) return w;
     for (const c of w.children) {
       if (c instanceof Widget) {
         const found = this.findById(c, id);

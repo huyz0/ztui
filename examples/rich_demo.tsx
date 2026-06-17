@@ -61,6 +61,12 @@ console.log(value);
 1. Ordered list item 1
 2. Ordered list item 2
 
+## Task List
+- [x] Render bold, italic, and inline code
+- [x] GFM alerts and blockquotes
+- [ ] Wire up the syntax tab
+- [ ] Ship the mermaid diagram
+
 ## Table
 | Model      | Context |  Speed |
 |------------|--------:|:------:|

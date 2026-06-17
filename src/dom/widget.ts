@@ -21,6 +21,21 @@ function zIndexOf(node: DOMNode): number {
 }
 
 /**
+ * A widget's semantic identity for non-visual output (see
+ * {@link Widget.getAccessibleNode} and {@link Screen.toAccessibleText}).
+ */
+export interface AccessibleNode {
+  /** Coarse role, defaults to the widget's tag (e.g. `button`, `input`). */
+  role: string;
+  /** Human-readable label (inline text, or a `label` prop). */
+  label: string;
+  /** Current value, when the control has one (input text, slider number, …). */
+  value?: string;
+  /** State flags such as `focused`, `disabled`, `checked`. */
+  state?: string[];
+}
+
+/**
  * @internal
  * The slice of the owning `App` that widgets reach through {@link Widget.app}:
  * render scheduling, the focus-bearing active screen, and the style resolver.
@@ -520,6 +535,49 @@ export class Widget extends DOMNode {
       }
     }
     return text;
+  }
+
+  /**
+   * A semantic snapshot of this widget for accessibility / non-visual output
+   * (see {@link Screen.toAccessibleText}). Returns `null` to be skipped — the
+   * default for pure layout containers that carry no inline text — so the
+   * accessible tree shows meaningful nodes (controls, labels, headings) without
+   * the structural scaffolding around them.
+   *
+   * The base infers a reasonable node from the tag, inline text, focus/disabled
+   * state, and a structurally-read `checked`/`value`/`label`. Interactive widgets
+   * that know more (a slider's range, a select's options) should override to add
+   * `value`/`state`, calling `super.getAccessibleNode()` for the common fields.
+   */
+  public getAccessibleNode(): AccessibleNode | null {
+    if (!this.visible) return null;
+    const label = this.getTextContent().trim();
+    const self = this as {
+      checked?: unknown;
+      value?: unknown;
+      label?: unknown;
+      focusable?: boolean;
+    };
+    // Skip anonymous layout boxes: no text, not interactive, no own semantics.
+    const interactive = this.focusable;
+    const named = typeof self.label === "string" && self.label.length > 0;
+    if (!label && !interactive && !named && typeof self.checked === "undefined") {
+      return null;
+    }
+    const state: string[] = [];
+    if (this.focused) state.push("focused");
+    if (this.isDisabled()) state.push("disabled");
+    if (typeof self.checked === "boolean") state.push(self.checked ? "checked" : "unchecked");
+    let value: string | undefined;
+    if (typeof self.value === "string" || typeof self.value === "number") {
+      value = String(self.value);
+    }
+    return {
+      role: this.tagName,
+      label: label || (named ? String(self.label) : ""),
+      value,
+      state: state.length > 0 ? state : undefined,
+    };
   }
 
   /**

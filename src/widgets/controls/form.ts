@@ -4,14 +4,10 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { BoxWidget } from "../layout/box.ts";
-import { FieldValidation, type ValidatableField } from "./validation.ts";
+import { isValidatableField, type ValidatableField } from "./validation.ts";
 
 /** How a form surfaces field error messages, balanced against TUI screen space. */
 export type FormMessageMode = "auto" | "shared" | "inline" | "none";
-
-function isField(w: Widget): w is ValidatableField {
-  return (w as any).validation instanceof FieldValidation;
-}
 
 /**
  * A container that coordinates validation across its descendant fields.
@@ -46,7 +42,7 @@ export class FormWidget extends BoxWidget {
     const walk = (w: Widget) => {
       for (const child of w.children) {
         if (child instanceof Widget) {
-          if (isField(child)) out.push(child);
+          if (isValidatableField(child)) out.push(child);
           walk(child);
         }
       }
@@ -123,4 +119,14 @@ export class FormWidget extends BoxWidget {
     }
     buffer.drawSegment(rect.x, y, new Segment(text, new Style({ color, background: bg })), rect);
   }
+}
+
+/**
+ * Type guard: true when a widget is a {@link FormWidget}. Tests the duck-typed
+ * `isForm` marker so callers (Button's form-action lookup, the validation
+ * summary) can find the enclosing form without importing the class — avoiding an
+ * import cycle while keeping the check in one place.
+ */
+export function isFormWidget(w: Widget): w is FormWidget {
+  return (w as { isForm?: unknown }).isForm === true;
 }

@@ -5,7 +5,11 @@ import { ToastHost } from "../react/components.tsx";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
-afterEach(() => ToastManager.getInstance().clear());
+afterEach(() => {
+  const mgr = ToastManager.getInstance();
+  mgr.maxVisible = Number.POSITIVE_INFINITY;
+  mgr.clear();
+});
 
 describe("ToastManager", () => {
   test("notify / dismiss / clear and subscribe notifications", () => {
@@ -40,6 +44,37 @@ describe("ToastManager", () => {
     mgr.notify({ level: "info", message: "fyi" });
     expect(mgr.getToasts()[0].duration).toBe(0);
     expect(mgr.getToasts()[1].duration).toBeGreaterThan(0);
+  });
+
+  test("maxVisible caps visible toasts and queues the overflow", () => {
+    const mgr = ToastManager.getInstance();
+    mgr.maxVisible = 2;
+
+    mgr.notify({ message: "a" });
+    mgr.notify({ message: "b" });
+    const idC = mgr.notify({ message: "c" }); // overflows the cap
+    expect(mgr.getToasts().map((t) => t.message)).toEqual(["a", "b"]);
+    expect(mgr.pendingCount).toBe(1);
+
+    // Dismissing a visible toast promotes the queued one into the freed slot.
+    mgr.dismiss(mgr.getToasts()[0].id);
+    expect(mgr.getToasts().map((t) => t.message)).toEqual(["b", "c"]);
+    expect(mgr.pendingCount).toBe(0);
+
+    // A queued toast can be dismissed before it ever becomes visible.
+    mgr.notify({ message: "d" });
+    expect(mgr.pendingCount).toBe(1);
+    mgr.dismiss(mgr.notify({ message: "e" })); // e queues, then is removed
+    expect(mgr.pendingCount).toBe(1);
+    void idC;
+
+    // Raising the cap promotes queued toasts immediately and notifies.
+    let pinged = 0;
+    const unsub = mgr.subscribe(() => pinged++);
+    mgr.maxVisible = 5;
+    expect(mgr.pendingCount).toBe(0);
+    expect(pinged).toBe(1);
+    unsub();
   });
 });
 
