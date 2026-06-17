@@ -13,6 +13,7 @@ import { RichText } from "../../render/rich/text.ts";
 import { Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
+import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 
 /** One wrapped display row: the segments to draw and its plain text. */
 interface DisplayLine {
@@ -216,23 +217,20 @@ export class RichLogWidget extends Widget {
   }
 
   private maxScrollTop(visibleRows: number): number {
-    return Math.max(0, this.rowCount - visibleRows);
+    return maxRowScrollTop(this.rowCount, visibleRows);
   }
 
   public override handleScroll(ev: any): void {
     super.handleScroll(ev);
     if (ev.handled) return;
-    if (ev.type === "scroll_up") {
-      this.scrollTop = Math.max(0, this.scrollTop - 1);
-      this.tailing = false;
+    const max = this.maxScrollTop(this.lastVisibleRows);
+    const next = wheelScrollTop(ev.type, this.scrollTop, max);
+    if (next !== null) {
+      this.scrollTop = next;
+      this.tailing = this.scrollTop >= max; // re-pins only when scrolled back to the bottom
       ev.handled = true;
-    } else if (ev.type === "scroll_down") {
-      const max = this.maxScrollTop(this.lastVisibleRows);
-      this.scrollTop = Math.min(max, this.scrollTop + 1);
-      this.tailing = this.scrollTop >= max;
-      ev.handled = true;
+      App.instance?.queueRender();
     }
-    if (ev.handled) App.instance?.queueRender();
   }
 
   public override handleKey(ev: any): void {
@@ -281,11 +279,11 @@ export class RichLogWidget extends Widget {
   }
 
   private scrollToTrackY(y: number): void {
-    const trackH = this.lastVisibleRows;
-    const maxScroll = this.maxScrollTop(trackH);
-    if (trackH <= 1 || maxScroll <= 0) return;
-    const ratio = Math.max(0, Math.min(1, (y - this.getContentRect().y) / (trackH - 1)));
-    this.scrollTop = Math.round(ratio * maxScroll);
+    const v = this.lastVisibleRows;
+    const maxScroll = this.maxScrollTop(v);
+    const next = trackYToScrollTop(y, this.getContentRect().y, v, maxScroll);
+    if (next === null) return;
+    this.scrollTop = next;
     this.tailing = this.scrollTop >= maxScroll;
     App.instance?.queueRender();
   }

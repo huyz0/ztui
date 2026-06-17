@@ -9,6 +9,7 @@ import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 import { fitCell } from "./table.ts";
 
 /** An item in a {@link ListViewWidget} / {@link SelectionListWidget}. */
@@ -82,7 +83,7 @@ export class ListViewWidget extends Widget {
   // ---- scrolling / selection ------------------------------------------------
 
   private maxScrollTop(visibleRows: number): number {
-    return Math.max(0, this.rowCount - visibleRows);
+    return maxRowScrollTop(this.rowCount, visibleRows);
   }
 
   private ensureVisible(index: number): void {
@@ -124,14 +125,12 @@ export class ListViewWidget extends Widget {
   public override handleScroll(ev: any): void {
     super.handleScroll(ev);
     if (ev.handled) return;
-    if (ev.type === "scroll_up") {
-      this.scrollTop = Math.max(0, this.scrollTop - 1);
+    const next = wheelScrollTop(ev.type, this.scrollTop, this.maxScrollTop(this.lastVisibleRows));
+    if (next !== null) {
+      this.scrollTop = next;
       ev.handled = true;
-    } else if (ev.type === "scroll_down") {
-      this.scrollTop = Math.min(this.maxScrollTop(this.lastVisibleRows), this.scrollTop + 1);
-      ev.handled = true;
+      this.requestRender();
     }
-    if (ev.handled) this.requestRender();
   }
 
   public override handleKey(ev: any): void {
@@ -205,11 +204,10 @@ export class ListViewWidget extends Widget {
   }
 
   private scrollToTrackY(y: number): void {
-    const trackH = this.lastVisibleRows;
-    const maxScroll = this.maxScrollTop(trackH);
-    if (trackH <= 1 || maxScroll <= 0) return;
-    const ratio = Math.max(0, Math.min(1, (y - this.getContentRect().y) / (trackH - 1)));
-    this.scrollTop = Math.round(ratio * maxScroll);
+    const v = this.lastVisibleRows;
+    const next = trackYToScrollTop(y, this.getContentRect().y, v, this.maxScrollTop(v));
+    if (next === null) return;
+    this.scrollTop = next;
     this.requestRender();
   }
 

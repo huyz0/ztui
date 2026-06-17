@@ -19,6 +19,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Raised test line coverage from ~92% to 95% with behavior-focused tests across
   the widgets, renderers, the canvas backend, and the terminal driver's
   capability-probe parsing.
+- De-duplicated the row-indexed scroll math (wheel step, track-Y mapping, max
+  scroll) into a shared `widgets/data/row-scroll` helper used by `ListView`,
+  `SelectionList`, `Tree`, `RichLog`, `Table`, `TerminalView`, `Diff`, and
+  `Traceback` (no behavior change).
 
 ## [1.0.4] - 2026-06-15
 

@@ -10,6 +10,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
+import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 
 /** Sort direction for a {@link TableColumn}. */
 export type SortDirection = "asc" | "desc";
@@ -245,7 +246,7 @@ export class TableWidget<Row = any> extends Widget {
   }
 
   private maxScrollTop(visibleRows: number): number {
-    return Math.max(0, this.rowCount - visibleRows);
+    return maxRowScrollTop(this.rowCount, visibleRows);
   }
 
   private ensureVisible(viewIdx: number): void {
@@ -268,14 +269,12 @@ export class TableWidget<Row = any> extends Widget {
   public override handleScroll(ev: any): void {
     super.handleScroll(ev);
     if (ev.handled) return;
-    if (ev.type === "scroll_up") {
-      this.scrollTop = Math.max(0, this.scrollTop - 1);
+    const next = wheelScrollTop(ev.type, this.scrollTop, this.maxScrollTop(this.lastVisibleRows));
+    if (next !== null) {
+      this.scrollTop = next;
       ev.handled = true;
-    } else if (ev.type === "scroll_down") {
-      this.scrollTop = Math.min(this.maxScrollTop(this.lastVisibleRows), this.scrollTop + 1);
-      ev.handled = true;
+      this.requestRender();
     }
-    if (ev.handled) this.requestRender();
   }
 
   public override handleKey(ev: any): void {
@@ -428,13 +427,10 @@ export class TableWidget<Row = any> extends Widget {
 
   /** Map a Y within the scrollbar track to a scroll position. */
   private scrollToTrackY(y: number): void {
-    const visible = this.lastVisibleRows;
-    const trackTop = this.lastBodyTop;
-    const trackH = visible; // one track cell per visible row
-    const maxScroll = this.maxScrollTop(visible);
-    if (trackH <= 1 || maxScroll <= 0) return;
-    const ratio = Math.max(0, Math.min(1, (y - trackTop) / (trackH - 1)));
-    this.scrollTop = Math.round(ratio * maxScroll);
+    const v = this.lastVisibleRows; // one track cell per visible row
+    const next = trackYToScrollTop(y, this.lastBodyTop, v, this.maxScrollTop(v));
+    if (next === null) return;
+    this.scrollTop = next;
     this.requestRender();
   }
 
