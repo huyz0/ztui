@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { type GraphicMetadata, graphicsEqual, ScreenBuffer } from "./buffer.ts";
+import {
+  type Cell,
+  type GraphicMetadata,
+  graphicsEqual,
+  needsGraphicClear,
+  ScreenBuffer,
+} from "./buffer.ts";
+import { Style } from "./style.ts";
 
 function makeGraphic(overrides: Partial<GraphicMetadata> = {}): GraphicMetadata {
   return {
@@ -46,6 +53,42 @@ describe("graphicsEqual: value comparison for cell graphics", () => {
     expect(graphicsEqual(base, makeGraphic({ pixelHeight: 40 }))).toBe(false);
     expect(graphicsEqual(base, makeGraphic({ zIndex: -1 }))).toBe(false);
     expect(graphicsEqual(base, makeGraphic({ svg: "<svg/>" }))).toBe(false);
+  });
+});
+
+describe("needsGraphicClear: when to erase a stale terminal graphic", () => {
+  const cell = (over: Partial<Cell> = {}): Cell => ({
+    char: " ",
+    style: new Style(),
+    wideContinuation: false,
+    ...over,
+  });
+
+  test("clears when the previous frame had an image here and now it's gone", () => {
+    expect(needsGraphicClear(cell(), cell({ graphic: makeGraphic() }))).toBe(true);
+    expect(needsGraphicClear(cell(), cell({ icon: "hero:home" }))).toBe(true);
+  });
+
+  test("clears when the image changed in place", () => {
+    const old = cell({ graphic: makeGraphic() });
+    const next = cell({ graphic: makeGraphic({ pngBase64: "NEW" }) });
+    expect(needsGraphicClear(next, old)).toBe(true);
+  });
+
+  test("does not clear an unchanged image, or a cell with no prior image", () => {
+    const g = makeGraphic();
+    expect(needsGraphicClear(cell({ graphic: makeGraphic() }), cell({ graphic: g }))).toBe(false);
+    expect(needsGraphicClear(cell(), cell())).toBe(false);
+    expect(needsGraphicClear(cell(), undefined)).toBe(false);
+  });
+
+  test("never clears a continuation cell of a current image (the sixel black-hole bug)", () => {
+    // The new frame draws an image whose footprint covers this cell (a
+    // wideContinuation), while the previous frame had a *different* image here.
+    // Clearing would punch an opaque rectangle into the fresh sixel image.
+    const continuation = cell({ char: "", wideContinuation: true });
+    const oldImage = cell({ graphic: makeGraphic({ pngBase64: "OLD" }) });
+    expect(needsGraphicClear(continuation, oldImage)).toBe(false);
   });
 });
 

@@ -6,6 +6,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Sixel: a stray opaque cell ("black hole") no longer punches through a newly
+  drawn image when switching between graphics-bearing screens (e.g. the
+  protocols → images demo). The per-cell graphics-erase now skips continuation
+  cells already covered by a current image, which a terminal with no global
+  graphics-delete (sixel) would otherwise overpaint.
+
 ### Added
 
 - Documentation page and gallery screenshot for the `ChatInput` widget.

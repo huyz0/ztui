@@ -68,6 +68,21 @@ export function graphicsEqual(a?: GraphicMetadata, b?: GraphicMetadata): boolean
   );
 }
 
+/**
+ * Whether a per-cell graphics-erase must be emitted before drawing this cell:
+ * the previous frame held an icon/graphic here that is now different or gone.
+ *
+ * A cell that continues a *current* image ({@link Cell.wideContinuation}) is
+ * never cleared — its lead cell's image already spans this footprint, and the
+ * erase paints an opaque rectangle that (on sixel, which has no global delete)
+ * punches a black hole into the freshly-drawn image.
+ */
+export function needsGraphicClear(cell: Cell, oldCell?: Cell): boolean {
+  const oldHadImage = !!(oldCell && (oldCell.icon || oldCell.graphic));
+  if (!oldHadImage || cell.wideContinuation) return false;
+  return oldCell.icon !== cell.icon || !graphicsEqual(oldCell.graphic, cell.graphic);
+}
+
 /** One grid cell: its glyph, style, and optional icon/graphic. */
 export interface Cell {
   /** The character (may be a multi-code-point grapheme). */

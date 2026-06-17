@@ -12,7 +12,7 @@ import { BoxLayout } from "../layout/box-layout.ts";
 import { DockLayout } from "../layout/dock-layout.ts";
 import { GridLayout } from "../layout/grid-layout.ts";
 import { parseDimension } from "../layout/layout.ts";
-import { graphicsEqual, ScreenBuffer } from "../render/buffer.ts";
+import { needsGraphicClear, ScreenBuffer } from "../render/buffer.ts";
 import { ThemeManager } from "../theme.ts";
 import { logger } from "../utils/logger.ts";
 import { hitTest } from "./hit-test.ts";
@@ -920,13 +920,10 @@ export class App extends DOMNode {
       (cell, oldCell) => {
         let prefix = "";
         // Erase a stale image when the cell previously held an icon/graphic that
-        // is now different or gone. Text/spaces don't clear a terminal's graphics
-        // layer (esp. sixel), so without this an old icon lingers after a swap.
-        const oldHadImage = !!(oldCell && (oldCell.icon || oldCell.graphic));
-        if (
-          oldHadImage &&
-          (oldCell.icon !== cell.icon || !graphicsEqual(oldCell.graphic, cell.graphic))
-        ) {
+        // is now different or gone (continuation cells of a current image are
+        // exempt — see needsGraphicClear). Text/spaces don't clear a terminal's
+        // graphics layer (esp. sixel), so without this an old icon lingers.
+        if (needsGraphicClear(cell, oldCell)) {
           prefix = this.driver.getGraphicClearSequence(cell.style.background);
         }
 
