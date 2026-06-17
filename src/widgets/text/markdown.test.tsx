@@ -157,7 +157,6 @@ describe("Markdown streaming reconciliation", () => {
     // the trailing blockquote may rebuild once content follows it.
     expect(blocks(w)[0]).toBe(list);
     expect(blocks(w)[1]).toBe(code);
-    void quote;
   });
 });
 

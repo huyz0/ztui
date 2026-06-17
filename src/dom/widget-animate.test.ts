@@ -28,10 +28,12 @@ describe("Widget.animate (scalar tween)", () => {
 describe("Widget.animateColor", () => {
   test("first call settles on the target colour; retarget returns a colour string", () => {
     const w = new Box();
+    // First sight settles on the target, so it returns red as a concrete colour.
     const first = w.animateColor("bg", "#ff0000");
-    expect(typeof first).toBe("string");
-    expect(first.length).toBeGreaterThan(0);
+    expect(first).toMatch(/^(#|rgb)/);
+    // A zero-duration retarget snaps to the new colour.
     const next = w.animateColor("bg", "#00ff00", { duration: 0 });
-    expect(typeof next).toBe("string");
+    expect(next).toMatch(/^(#|rgb)/);
+    expect(next).not.toBe(first);
   });
 });

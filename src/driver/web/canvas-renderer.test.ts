@@ -168,7 +168,7 @@ describe("renderBufferToCanvas", () => {
   });
 
   test("italic + bold compose into the font string", () => {
-    const { ctx, calls } = mockCtx();
+    const { ctx } = mockCtx();
     const buf = new ScreenBuffer(2, 1);
     buf.setCell(0, 0, "Z", new Style({ italic: true, bold: true }));
     // Capture the font in effect at fillText time.
@@ -181,7 +181,6 @@ describe("renderBufferToCanvas", () => {
     renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
     expect(fontAtDraw).toContain("italic");
     expect(fontAtDraw).toContain("bold");
-    void calls;
   });
 
   test("draws SVG-icon and inline-image cells when an Image impl is available", () => {
@@ -196,7 +195,7 @@ describe("renderBufferToCanvas", () => {
     const prevImage = (globalThis as any).Image;
     (globalThis as any).Image = FakeImage;
     try {
-      const { ctx, calls } = mockCtx();
+      const { ctx } = mockCtx();
       let drawImageCalls = 0;
       ctx.drawImage = () => {
         drawImageCalls++;
@@ -218,7 +217,6 @@ describe("renderBufferToCanvas", () => {
       };
       renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
       expect(drawImageCalls).toBeGreaterThanOrEqual(2); // icon SVG + inline image
-      void calls;
     } finally {
       (globalThis as any).Image = prevImage;
     }

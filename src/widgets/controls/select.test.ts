@@ -48,9 +48,11 @@ describe("SelectWidget option logic", () => {
     expect(w.value).toBe("two");
   });
 
-  test("openDropdown is a no-op without a mounted screen", () => {
+  test("openDropdown bails (no overlay) when there is no mounted screen", () => {
     const w = new SelectWidget();
     w.options = ["a"];
-    expect(() => w.openDropdown()).not.toThrow();
+    w.openDropdown();
+    // Without a screen to portal into, it can't build the dropdown overlay.
+    expect((w as unknown as { overlay: unknown }).overlay).toBeFalsy();
   });
 });

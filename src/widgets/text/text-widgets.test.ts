@@ -20,10 +20,11 @@ describe("LabelWidget selectable lines", () => {
     expect(m.selectableLines()).toEqual(["hi"]);
   });
 
-  test("a handled mouse event is left alone", () => {
+  test("an already-handled mouse event is left untouched (no re-processing)", () => {
     const w = withText(new LabelWidget(), "x");
     const ev = { type: "press", button: "left", x: 0, y: 0, handled: true } as any;
-    expect(() => w.handleMouse(ev)).not.toThrow();
+    w.handleMouse(ev);
+    expect(ev.handled).toBe(true); // consumed upstream → early return, still handled
   });
 });
 
@@ -36,9 +37,10 @@ describe("RichTextWidget selectable lines", () => {
     expect(withText(new RichTextWidget(), "[red]value[/]").selectableLines()).toEqual(["value"]);
   });
 
-  test("a handled mouse event is left alone", () => {
+  test("an already-handled mouse event is left untouched (no re-processing)", () => {
     const w = withText(new RichTextWidget(), "y");
     const ev = { type: "press", button: "left", x: 0, y: 0, handled: true } as any;
-    expect(() => w.handleMouse(ev)).not.toThrow();
+    w.handleMouse(ev);
+    expect(ev.handled).toBe(true); // consumed upstream → early return, still handled
   });
 });

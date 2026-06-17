@@ -1,7 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { Box, Input, RichLog, VBox } from "../react/components.tsx";
 import type { InputWidget } from "../widgets/controls/input.ts";
-import type { RichLogWidget } from "../widgets/data/rich-log.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -45,8 +44,6 @@ describe("App mouse dispatch", () => {
     t.driver.simulateMouse(2, 2, "scroll_up", "none");
     t.driver.simulateMouse(2, 2, "scroll_up", "none");
     await t.settle();
-    const w = t.findById<RichLogWidget>("log") as RichLogWidget;
-    expect(w).toBeTruthy();
     expect(t.text()).not.toContain("line 59"); // wheel scrolled up off the tail
   });
 
@@ -99,9 +96,11 @@ describe("App key dispatch", () => {
       <Box id="glass" style={{ background: "#ff000080", width: 12, height: 4 }} />,
     );
     await t.settle();
-    // The cell under the panel paints an opaque blend of red over the surface.
-    const cell = t.cellAt(1, 1);
-    expect(cell.style.background).toBeTruthy();
+    // The translucent rgba is flattened to a concrete opaque colour (red blended
+    // over the surface), never passed through with its alpha.
+    const bg = t.cellAt(1, 1).style.background;
+    expect(bg).toMatch(/^(#|rgb)/);
+    expect(bg).not.toBe("#ff000080"); // alpha was resolved, not kept
   });
 
   test("Ctrl+V pastes bracketed text into the focused input", async () => {
