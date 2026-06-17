@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-06-17
+
 ### Added
 
 - Mouse pointer shapes: widgets can request a context-appropriate cursor via the
