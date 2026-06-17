@@ -6,13 +6,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-06-17
+
 ### Fixed
 
-- Sixel: a stray opaque cell ("black hole") no longer punches through a newly
-  drawn image when switching between graphics-bearing screens (e.g. the
-  protocols → images demo). The per-cell graphics-erase now skips continuation
-  cells already covered by a current image, which a terminal with no global
-  graphics-delete (sixel) would otherwise overpaint.
+- Sixel/iTerm2: a stray opaque cell ("black hole") no longer punches through a
+  newly drawn image when switching between graphics-bearing screens (e.g. the
+  protocols → images demo). On a graphics change these protocols now wipe the
+  screen and re-emit the frame (as Kitty already did) instead of painting
+  per-cell opaque rectangles, which could overpaint a freshly drawn image when
+  the old and new images overlapped.
 
 ### Added
 
