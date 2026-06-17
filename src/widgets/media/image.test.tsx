@@ -121,6 +121,24 @@ describe("Image & SVG Image Widgets", () => {
     expect(cellAt(0, 0).char).toBe("E");
   });
 
+  test("SvgImage renders an error placeholder for an unreadable file path", async () => {
+    const { text } = await mountApp(
+      <SvgImage src="/no/such/file-xyz.svg" style={{ width: 24, height: 3 }} />,
+      { cols: 30, rows: 5, capabilities: { graphicsProtocol: "none" } },
+    );
+    await waitFor(() => /error/i.test(text()), { timeout: 500 }).catch(() => {});
+    expect(text().toLowerCase()).toContain("error");
+  });
+
+  test("SvgImage with no source shows the 'No SVG source' placeholder", async () => {
+    const { text } = await mountApp(<SvgImage src="" style={{ width: 24, height: 3 }} />, {
+      cols: 30,
+      rows: 5,
+      capabilities: { graphicsProtocol: "none" },
+    });
+    expect(text()).toContain("No SVG source");
+  });
+
   test("Forces ANSI half-block rendering when ansi=true prop is set", async () => {
     const { cellAt } = await mountApp(
       <Image src={pngDataUri} ansi={true} style={{ width: 4, height: 2 }} />,
