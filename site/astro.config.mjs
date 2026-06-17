@@ -94,6 +94,7 @@ export default defineConfig({
                 { label: "Markdown", slug: "widgets/markdown" },
                 { label: "Rich Text", slug: "widgets/rich-text" },
                 { label: "Text Area", slug: "widgets/text-area" },
+                { label: "Chat Input", slug: "widgets/chat-input" },
                 { label: "Form", slug: "widgets/form" },
                 { label: "Question / Answer", slug: "widgets/question-answer" },
               ],

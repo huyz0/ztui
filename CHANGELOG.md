@@ -6,6 +6,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Documentation page and gallery screenshot for the `ChatInput` widget.
+
+### Changed
+
+- Extracted the mouse hit-testing logic out of `App` into a standalone,
+  unit-tested `core/hit-test` module (no behavior change).
+- Replaced 30 `as any` casts in the render/dispatch core (`dom/widget`,
+  `dom/dom`, `core/app`, `core/inspector`) with precise typed shapes.
+
 ## [1.0.4] - 2026-06-15
 
 ### Changed

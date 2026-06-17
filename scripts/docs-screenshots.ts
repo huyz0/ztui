@@ -38,6 +38,7 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
   richlog: { cols: 72, rows: 16, wait: 5000 }, // streams a log line every 700ms; let it fill
   markdown: { cols: 72, rows: 22, wait: 4000 }, // streams in token-by-token
   textarea: { cols: 64, rows: 16 },
+  chat: { cols: 72, rows: 13 }, // chat composer with a seeded transcript
   waiting: { cols: 56, rows: 14, wait: 800 }, // spinners mid-animation
   status: { cols: 56, rows: 16 },
   banner: { cols: 60, rows: 20 },

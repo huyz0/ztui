@@ -15,6 +15,11 @@ import { logger } from "../utils/logger.ts";
 import { DOMNode } from "./dom.ts";
 import { TextNode } from "./text-node.ts";
 
+/** A node's paint z-index — only {@link Widget}s carry one; everything else is 0. */
+function zIndexOf(node: DOMNode): number {
+  return node instanceof Widget ? (node.computedStyle.zIndex ?? 0) : 0;
+}
+
 /**
  * @internal
  * The slice of the owning `App` that widgets reach through {@link Widget.app}:
@@ -367,12 +372,7 @@ export class Widget extends DOMNode {
     if (m instanceof Spacing) return m;
     if (typeof m === "number") return new Spacing(m, m, m, m);
     if (m && typeof m === "object") {
-      return new Spacing(
-        (m as any).top ?? 0,
-        (m as any).right ?? 0,
-        (m as any).bottom ?? 0,
-        (m as any).left ?? 0,
-      );
+      return new Spacing(m.top ?? 0, m.right ?? 0, m.bottom ?? 0, m.left ?? 0);
     }
     return Spacing.ZERO;
   }
@@ -383,12 +383,7 @@ export class Widget extends DOMNode {
     if (p instanceof Spacing) return p;
     if (typeof p === "number") return new Spacing(p, p, p, p);
     if (p && typeof p === "object") {
-      return new Spacing(
-        (p as any).top ?? 0,
-        (p as any).right ?? 0,
-        (p as any).bottom ?? 0,
-        (p as any).left ?? 0,
-      );
+      return new Spacing(p.top ?? 0, p.right ?? 0, p.bottom ?? 0, p.left ?? 0);
     }
     return Spacing.ZERO;
   }
@@ -649,17 +644,13 @@ export class Widget extends DOMNode {
     // every node, every frame.
     let hasZ = false;
     for (let i = 0; i < this.children.length; i++) {
-      if (((this.children[i] as any).computedStyle?.zIndex ?? 0) !== 0) {
+      if (zIndexOf(this.children[i]) !== 0) {
         hasZ = true;
         break;
       }
     }
     const sorted = hasZ
-      ? [...this.children].sort((a, b) => {
-          const az = (a as any).computedStyle?.zIndex ?? 0;
-          const bz = (b as any).computedStyle?.zIndex ?? 0;
-          return az - bz;
-        })
+      ? [...this.children].sort((a, b) => zIndexOf(a) - zIndexOf(b))
       : this.children;
     for (const child of sorted) {
       if (child instanceof Widget) {

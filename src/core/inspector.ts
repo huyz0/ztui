@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Screen } from "../dom/screen.ts";
+import type { Widget } from "../dom/widget.ts";
 import type { Driver } from "../driver/driver.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { renderBufferToHTML, renderBufferToText } from "../render/html-renderer.ts";
@@ -22,6 +23,9 @@ export interface InspectableApp {
   driver: Driver;
   screenStack: Screen[];
   queueRender(): void;
+  /** Optional runtime diagnostics surfaced in `GET /state` (present on the real App). */
+  getMouseDiagnostics?(): Record<string, number>;
+  getRenderReasonStats?(): Record<string, number>;
 }
 
 /** @internal Handle to a running inspector server. */
@@ -234,16 +238,19 @@ async function handleRequest(app: InspectableApp, req: Request): Promise<Respons
 /** High-level snapshot of the running app, for quick human/LLM diagnosis. */
 function dumpAppState(app: InspectableApp): any {
   const screen = app.activeScreen;
-  const focused = (screen as any).focusedWidget;
+  const focused = screen.focusedWidget;
   const driver = app.driver;
-  let size: any;
+  let size: { width: number; height: number } | null;
   try {
     const s = driver.getSize();
     size = { width: s.width, height: s.height };
   } catch {
     size = null;
   }
-  const hovered = (app as any).hoveredWidget;
+  // `hoveredWidget` is private on App; read it structurally (typed, not `any`).
+  const hovered = (app as { hoveredWidget?: Widget | null }).hoveredWidget;
+  // `getInputDiagnostics` lives on the concrete driver, not the Driver base.
+  const inputDiag = (driver as { getInputDiagnostics?: () => unknown }).getInputDiagnostics;
   return {
     terminalSize: size,
     screenStackDepth: app.screenStack.length,
@@ -251,18 +258,9 @@ function dumpAppState(app: InspectableApp): any {
     hoveredWidget: hovered ? hovered.describe() : null,
     activeTheme: ThemeManager.getInstance().getActiveTheme().name,
     capabilities: driver.capabilities,
-    mouseDiagnostics:
-      typeof (app as any).getMouseDiagnostics === "function"
-        ? (app as any).getMouseDiagnostics()
-        : null,
-    inputDiagnostics:
-      typeof (driver as any).getInputDiagnostics === "function"
-        ? (driver as any).getInputDiagnostics()
-        : null,
-    renderReasons:
-      typeof (app as any).getRenderReasonStats === "function"
-        ? (app as any).getRenderReasonStats()
-        : null,
+    mouseDiagnostics: app.getMouseDiagnostics ? app.getMouseDiagnostics() : null,
+    inputDiagnostics: typeof inputDiag === "function" ? inputDiag.call(driver) : null,
+    renderReasons: app.getRenderReasonStats ? app.getRenderReasonStats() : null,
     log: { file: logger.getFilePath(), level: logger.getLevel() },
   };
 }

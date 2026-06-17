@@ -73,11 +73,11 @@ export class DOMNode {
   /** Depth-first visit of this node and its descendants, in z-index order. */
   public walk(callback: (node: DOMNode) => void): void {
     callback(this);
-    const sorted = [...this.children].sort((a, b) => {
-      const az = (a as any).computedStyle?.zIndex ?? 0;
-      const bz = (b as any).computedStyle?.zIndex ?? 0;
-      return az - bz;
-    });
+    // `zIndex` lives on Widget; reading it structurally avoids a dom → widget
+    // import cycle while staying typed (no `any`).
+    const z = (n: DOMNode): number =>
+      (n as { computedStyle?: { zIndex?: number } }).computedStyle?.zIndex ?? 0;
+    const sorted = [...this.children].sort((a, b) => z(a) - z(b));
     for (const child of sorted) {
       child.walk(callback);
     }

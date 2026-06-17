@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { hitTest } from "../core/hit-test.ts";
 import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
 import { reconciler } from "../react/reconciler.ts";
@@ -647,14 +648,14 @@ A --> B
     const clickX = client.right - 3;
     const clickY = client.y;
 
-    const hit = (app as any).hitTest(app.activeScreen, clickX, clickY);
+    const hit = hitTest(app.activeScreen, clickX, clickY) as any;
     expect(hit).toBeDefined();
     expect(hit.tagName).toBe("button");
 
     hit.onClick({ x: clickX, y: clickY, type: "press", button: "left" });
     expect(mermaidWidget.showDiagram).toBe(false);
 
-    const hitOutside = (app as any).hitTest(app.activeScreen, client.x, client.y);
+    const hitOutside = hitTest(app.activeScreen, client.x, client.y) as any;
     expect(hitOutside).toBeDefined();
     expect(hitOutside.tagName).toBe("mermaid");
     if (hitOutside.onClick) {

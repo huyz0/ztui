@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { RichLog, VBox } from "../react/components.tsx";
+import { Box, RichLog, VBox } from "../react/components.tsx";
 import { reconciler } from "../react/reconciler.ts";
 import type { RichLogWidget } from "../widgets/data/rich-log.ts";
 import "../widgets/index.ts";
@@ -144,6 +144,28 @@ describe("RichLog", () => {
     const isTrack =
       cell.char === " " && !!cell.style.background && cell.style.background !== "default";
     expect(isThumb || isTrack).toBe(true);
+  });
+
+  test("a press on the scrollbar column is consumed, not leaked to an ancestor onClick", async () => {
+    // Regression: clicking the scrollbar must not bubble through to a clickable
+    // container wrapping the scrollable (the scrollable owns that column).
+    let parentClicks = 0;
+    const lines = Array.from({ length: 60 }, (_, i) => `line ${i}`);
+    const t = await mountApp(
+      <Box onClick={() => parentClicks++} style={{ width: 80, height: 24 }}>
+        <RichLog id="log" lines={lines} />
+      </Box>,
+    );
+    await t.settle();
+    // Borderless vertical scrollbar sits in the last column (x = 79 of 80).
+    // Drive it through the real app mouse pipeline (hit-test → dispatch → bubble).
+    t.driver.simulateMouse(79, 0, "press", "left");
+    t.driver.simulateMouse(79, 0, "release", "left");
+    await t.settle();
+
+    expect(parentClicks).toBe(0);
+    // And the scrollbar still did its job: pressing the top jumped off the tail.
+    expect(t.text()).not.toContain("line 59");
   });
 
   test("selectableLines rebuilds lazily after lines change before a render", async () => {

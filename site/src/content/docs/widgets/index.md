@@ -38,6 +38,7 @@ batch by batch; the remaining controls, layout, and media widgets land next.
 - [Markdown](/ztui/widgets/markdown/) — render (and stream) Markdown with highlighted code.
 - [Rich Text](/ztui/widgets/rich-text/) — inline-markup styled text in one element.
 - [Text Area](/ztui/widgets/text-area/) — multi-line editor with gutter and validation.
+- [Chat Input](/ztui/widgets/chat-input/) — chat composer with chips, completions, ghost-text, and a send/stop affordance.
 - [Form](/ztui/widgets/form/) — validating container that aggregates its fields.
 - [Question / Answer](/ztui/widgets/question-answer/) — single/multi-choice prompt.
 
