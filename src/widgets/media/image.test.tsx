@@ -2,7 +2,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, test } from "vitest";
 import { fullColorRgbaToSixel } from "../../driver/bun/graphics.ts";
-import { Image, SvgImage } from "../../react.ts";
+import { reconciler } from "../../react/reconciler.ts";
+import { Image, SvgImage, VBox, View } from "../../react.ts";
 import { mountApp, waitFor } from "../../test/harness.tsx";
 import { decodeImage, resizeImage } from "./image.ts";
 
@@ -79,6 +80,41 @@ describe("Image & SVG Image Widgets", () => {
     expect(cell0.graphic?.cellWidth).toBe(80);
     expect(cell0.graphic?.cellHeight).toBe(24);
     expect(cellAt(1, 0).wideContinuation).toBe(true);
+  });
+
+  test("Sixel: switching graphics screens wipes + redraws (no per-cell erase over the new image)", async () => {
+    // Regression: moving/replacing an image on sixel must take the screen-erase
+    // wipe path (`\x1b[2J`) rather than per-cell opaque "clear" rectangles, which
+    // punched a black hole into the freshly drawn image.
+    const t = await mountApp(
+      <VBox>
+        <Image id="img" src={pngDataUri} style={{ width: 4, height: 2 }} />
+      </VBox>,
+      { cols: 12, rows: 8, capabilities: { graphicsProtocol: "sixel" } },
+    );
+    await t.settle();
+
+    // Capture what the driver emits for the next (graphics-changed) frame.
+    let written = "";
+    const orig = t.driver.write.bind(t.driver);
+    t.driver.write = (data: string) => {
+      written += data;
+      return orig(data);
+    };
+
+    // Move the image down a row → its graphic signature changes.
+    reconciler.updateContainer(
+      <VBox>
+        <View style={{ height: 1 }} />
+        <Image id="img" src={pngDataUri} style={{ width: 4, height: 2 }} />
+      </VBox>,
+      t.container,
+      null,
+      () => {},
+    );
+    await t.settle();
+
+    expect(written).toContain("\x1b[2J"); // full erase, then a clean re-emit
   });
 
   test("Renders SvgImage Widget with iTerm2 protocol when supported", async () => {

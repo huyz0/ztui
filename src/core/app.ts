@@ -893,17 +893,28 @@ export class App extends DOMNode {
     let graphicsResetSeq = "";
     if (full && this.currentBuffer.graphicSignature !== this.lastGraphicSignature) {
       const resetSeq = this.driver.getGraphicResetSequence();
-      if (resetSeq) {
-        // Graphics reset + screen blank; the clear sequence (SGR reset + home +
-        // erase) lives behind a Driver method so no raw escape leaks into core.
+      // Take the wipe path on any inline-graphics terminal, not just those with a
+      // global delete (Kitty). Kitty deletes every placement up front; the others
+      // (Sixel, iTerm2) rely on the screen erase (ED), which clears the
+      // inline-graphics layer too. Either way we then re-emit the whole frame.
+      //
+      // The alternative — per-cell opaque "clear" rectangles — is what punched a
+      // black hole into a freshly drawn Sixel image when switching between two
+      // graphics screens: a cell the old screen drew an image in, now covered by
+      // the *new* image, was erased on top of it. Sixel has no global delete to
+      // fall back on, so wiping + redrawing once is the only clean fix.
+      const usesInlineGraphics = this.driver.capabilities.graphicsProtocol !== "none";
+      if (resetSeq || usesInlineGraphics) {
+        // Graphics reset (Kitty delete-all, else empty) + screen blank; the clear
+        // sequence (SGR reset + home + erase) lives behind a Driver method so no
+        // raw escape leaks into core.
         graphicsResetSeq = `${resetSeq}${this.driver.getScreenClearSequence()}`;
         // After the wipe, every current cell must be re-emitted, so invalidate
         // the prev buffer to force a full redraw over the just-erased terminal.
-        // Also drop any stale icon/graphic on the prev cells: the global delete
-        // above already cleared every placement, so the per-cell diff must NOT
-        // emit its own delete-at-cursor (`d=c`) prefix — doing so right before
-        // re-placing an image makes the terminal drop the fresh placement,
-        // leaving only the cell background (an empty square).
+        // Dropping the prev icons/graphics also stops the per-cell diff from
+        // emitting its own erase before re-placing an image: on Kitty that
+        // delete-at-cursor would drop the fresh placement (an empty square); on
+        // Sixel that opaque rectangle would punch the black hole described above.
         for (const row of this.prevBuffer.cells) {
           for (const c of row) {
             c.char = "";
