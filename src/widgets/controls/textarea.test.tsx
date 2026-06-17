@@ -47,6 +47,27 @@ describe("TextAreaWidget — line editing edge cases", () => {
     press(w, { name: "left" }); // collapse to the start
     expect(w.hasSelection()).toBe(false);
   });
+
+  test("shift+arrow/home/end all extend a selection", () => {
+    const w = new TextAreaWidget();
+    w.value = "one\ntwo\nthree";
+    // Start at the very end (caret default), extend left and up.
+    press(w, { name: "left", shift: true });
+    expect(w.hasSelection()).toBe(true);
+    press(w, { name: "up", shift: true });
+    press(w, { name: "home", shift: true });
+    expect(w.hasSelection()).toBe(true);
+
+    // A fresh selection extended with shift+end then shift+down.
+    const w2 = new TextAreaWidget();
+    w2.value = "alpha\nbeta";
+    press(w2, { name: "up" }); // row 0
+    press(w2, { name: "home" });
+    press(w2, { name: "end", shift: true });
+    press(w2, { name: "down", shift: true });
+    expect(w2.hasSelection()).toBe(true);
+    expect((w2.copySelection() ?? "").length).toBeGreaterThan(0);
+  });
 });
 
 describe("ZTUI TextArea Widget Suite", () => {

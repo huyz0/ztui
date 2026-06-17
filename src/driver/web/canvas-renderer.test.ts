@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { ScreenBuffer } from "../../render/buffer.ts";
+import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import {
@@ -62,6 +63,38 @@ describe("serializeForCanvas", () => {
     buf.drawSegment(0, 0, new Segment("x", new Style({ color: "red", reverse: true })));
     const cell = serializeForCanvas(buf)[0][0];
     expect(cell.bg).toMatch(/^#/); // the fg became the background
+  });
+
+  test("carries underline style/color, an icon's SVG, and inline graphics", () => {
+    const buf = new ScreenBuffer(4, 1);
+    iconRegistry.registerIcon({ name: "test-dot", svg: "<svg/>", textFallback: "•" });
+
+    buf.cells[0][0] = {
+      char: "u",
+      style: new Style({ underlineStyle: "curly", underlineColor: "red", strikethrough: true }),
+      wideContinuation: false,
+    };
+    buf.cells[0][1] = { char: "•", style: new Style(), wideContinuation: false, icon: "test-dot" };
+    buf.cells[0][2] = {
+      char: " ",
+      style: new Style(),
+      wideContinuation: false,
+      graphic: { svg: "<svg></svg>", cellWidth: 2, cellHeight: 1 } as any,
+    };
+    buf.cells[0][3] = {
+      char: " ",
+      style: new Style(),
+      wideContinuation: false,
+      graphic: { pngBase64: "AAAA", cellWidth: 1, cellHeight: 1 } as any,
+    };
+
+    const cells = serializeForCanvas(buf);
+    expect(cells[0][0]).toMatchObject({ underline: true, uStyle: "curly", strike: true });
+    expect(cells[0][0].uColor).toMatch(/^#/);
+    expect(cells[0][1]).toMatchObject({ icon: true, svg: "<svg/>" });
+    expect(cells[0][2].img).toMatch(/^data:image\/svg\+xml,/);
+    expect(cells[0][2]).toMatchObject({ gw: 2, gh: 1 });
+    expect(cells[0][3].img).toMatch(/^data:image\/png;base64,/);
   });
 });
 
@@ -149,6 +182,46 @@ describe("renderBufferToCanvas", () => {
     expect(fontAtDraw).toContain("italic");
     expect(fontAtDraw).toContain("bold");
     void calls;
+  });
+
+  test("draws SVG-icon and inline-image cells when an Image impl is available", () => {
+    // No jsdom in this env, so stub a minimal, already-"loaded" Image so the
+    // drawSvgCell / drawImageCell paths run their drawImage branch.
+    class FakeImage {
+      onload: (() => void) | null = null;
+      complete = true;
+      naturalWidth = 16;
+      set src(_v: string) {}
+    }
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = FakeImage;
+    try {
+      const { ctx, calls } = mockCtx();
+      let drawImageCalls = 0;
+      ctx.drawImage = () => {
+        drawImageCalls++;
+      };
+      ctx.imageSmoothingEnabled = false;
+      iconRegistry.registerIcon({ name: "draw-dot", svg: "<svg/>", textFallback: "•" });
+      const buf = new ScreenBuffer(4, 1);
+      buf.cells[0][0] = {
+        char: "•",
+        style: new Style({ color: "white" }),
+        wideContinuation: false,
+        icon: "draw-dot",
+      };
+      buf.cells[0][1] = {
+        char: " ",
+        style: new Style(),
+        wideContinuation: false,
+        graphic: { pngBase64: "AAAA", cellWidth: 1, cellHeight: 1 } as any,
+      };
+      renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+      expect(drawImageCalls).toBeGreaterThanOrEqual(2); // icon SVG + inline image
+      void calls;
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
   });
 
   test("snaps cell boundaries so a filled run has no sub-pixel gap", () => {

@@ -35,6 +35,17 @@ describe("Seti File Icon Theme Loader and Component", () => {
     expect(unknown.color).toBe("#d4d7d6");
   });
 
+  test("resolves via an explicit languageId and via extension-inferred language", () => {
+    // Explicit languageId wins when the name/extension don't map directly.
+    const explicit = resolveFileIcon("Makefile.custom", false, "makefile");
+    expect(explicit.name.startsWith("seti:")).toBe(true);
+
+    // An extension with no direct file-extension entry but a known language id
+    // routes through the language-id table.
+    const byLang = resolveFileIcon("notes.markdown");
+    expect(byLang.name.startsWith("seti:")).toBe(true);
+  });
+
   test("Correctly parsed glyph outlines as SVGs in the registry", () => {
     const jsIcon = iconRegistry.get("seti:_javascript");
     expect(jsIcon).toBeDefined();

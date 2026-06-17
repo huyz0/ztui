@@ -146,6 +146,30 @@ describe("RichLog", () => {
     expect(isThumb || isTrack).toBe(true);
   });
 
+  test("wheel down re-tails; pageup/home page through the log", async () => {
+    const lines = Array.from({ length: 60 }, (_, i) => `line ${i}`);
+    const t = await mountApp(<RichLog id="log" lines={lines} style={{ width: 20, height: 6 }} />);
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log") as RichLogWidget;
+
+    w.handleScroll({ type: "scroll_up", handled: false });
+    await t.settle();
+    expect(t.text()).not.toContain("line 59"); // left the tail
+
+    // Wheel down enough to reach the bottom again → tailing resumes.
+    for (let i = 0; i < 5; i++) w.handleScroll({ type: "scroll_down", handled: false });
+    await t.settle();
+    expect(t.text()).toContain("line 59");
+
+    // Keyboard paging.
+    w.handleKey({ name: "home", handled: false });
+    await t.settle();
+    expect(t.text()).toContain("line 0");
+    w.handleKey({ name: "pagedown", handled: false });
+    await t.settle();
+    expect(t.text()).not.toContain("line 0");
+  });
+
   test("a press on the scrollbar column is consumed, not leaked to an ancestor onClick", async () => {
     // Regression: clicking the scrollbar must not bubble through to a clickable
     // container wrapping the scrollable (the scrollable owns that column).

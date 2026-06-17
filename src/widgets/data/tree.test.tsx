@@ -179,6 +179,28 @@ describe("Tree keyboard navigation", () => {
     await t.settle();
     expect(selected).toBe("src");
   });
+
+  test("right on an already-expanded node steps into its first child; unknown keys pass through", async () => {
+    const ids: string[] = [];
+    const t = await mountApp(
+      <Tree
+        data={workspace}
+        expanded={["src"]}
+        onSelect={(n) => ids.push(n.id)}
+        style={{ height: "100%" }}
+      />,
+    );
+    const tree = findTree(t);
+    t.screen.focusWidget(tree);
+    tree.handleKey({ name: "down" } as any); // select "src" (expanded)
+    tree.handleKey({ name: "right" } as any); // expanded → step into first child
+    await t.settle();
+    expect(ids.at(-1)).toBe("src/app.ts");
+
+    const ev = { name: "q", handled: false } as any;
+    tree.handleKey(ev);
+    expect(ev.handled).toBeFalsy(); // unknown key left for other widgets
+  });
 });
 
 describe("Tree selection & toggling", () => {

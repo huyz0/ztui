@@ -220,6 +220,33 @@ describe("CSSResolver Theming and Variables", () => {
   });
 });
 
+describe("CSSResolver syntax/diff fallbacks for theme-undefined names", () => {
+  test("builtin/type/boolean/regex/punctuation and diff row tints resolve to a colour", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    const w = new Widget("code");
+    // These names are NOT defined directly by default-dark, so each falls
+    // through to its semantic base (primary/warning/dimmed/…).
+    for (const name of [
+      "builtin",
+      "type",
+      "boolean",
+      "regex",
+      "attr-name",
+      "regexp",
+      "punctuation",
+      "diff-added-bg",
+      "diff-removed-bg",
+    ]) {
+      w.style.color = `$${name}`;
+      const c = resolver.resolveStyles(w, false).color;
+      expect(typeof c === "string" && c.length > 0).toBe(true);
+    }
+    themeManager.setTheme("default-dark");
+  });
+});
+
 describe("CSSResolver value coercion and glow", () => {
   test("coerceValue parses margin/padding shorthand with 1–4 values and rejects junk", () => {
     const resolver = new CSSResolver([]);

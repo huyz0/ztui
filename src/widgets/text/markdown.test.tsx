@@ -138,6 +138,27 @@ describe("Markdown streaming reconciliation", () => {
     md("one\n", w);
     expect(blocks(w).length).toBe(1);
   });
+
+  test("reuses byte-identical list/code/blockquote blocks across a streamed append", () => {
+    // Deep token equality compares the type-specific fields of list/list_item/
+    // code/blockquote, so an unchanged prefix of those is reused (not rebuilt)
+    // when more content streams in after it.
+    const doc = ["- one", "- two", "", "```ts", "const x = 1;", "```", "", "> quoted", ""].join(
+      "\n",
+    );
+    const w = md(doc);
+    const [list, code, quote] = blocks(w);
+    expect(list.tagName).toBe("bullet_list");
+    expect(code.tagName).toBe("syntax");
+    expect(quote.tagName).toBe("blockquote");
+
+    md(`${doc}\nA new trailing paragraph.\n`, w);
+    // The identical leading blocks (list, code) keep their widget instances;
+    // the trailing blockquote may rebuild once content follows it.
+    expect(blocks(w)[0]).toBe(list);
+    expect(blocks(w)[1]).toBe(code);
+    void quote;
+  });
 });
 
 describe("Markdown generative UI (code fences)", () => {

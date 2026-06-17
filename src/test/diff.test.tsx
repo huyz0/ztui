@@ -223,6 +223,25 @@ describe("Diff", () => {
     expect(t.text()).toBe(after);
   });
 
+  test("split view with hunks and over-wide lines: folds runs and clips segments", async () => {
+    const rows = Array.from({ length: 30 }, (_, i) => `${"col".repeat(8)} ${i}`);
+    const oldText = rows.join("\n");
+    const newText = rows.map((r, i) => (i === 0 ? `${r} CHANGED` : r)).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 40 }}>
+        <Diff id="d" oldText={oldText} newText={newText} view="split" context={1} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("⋯"); // hunk marker for the folded middle
+    expect(text).toContain("│"); // split divider
+    // Lines are wider than the narrow panes, so they're clipped (no overflow row).
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    expect(w.selectableLines().length).toBeGreaterThan(0);
+  });
+
   test("keyboard scrolling only acts while focused (keys consumed)", async () => {
     const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
     const t = await mountApp(

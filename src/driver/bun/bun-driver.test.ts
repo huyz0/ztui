@@ -243,3 +243,93 @@ describe("BunDriver clipboard", () => {
     expect(await pending).toBe("kept");
   });
 });
+
+describe("BunDriver capability replies", () => {
+  let stdout: FakeStdout;
+  let stdin: FakeStdin;
+  let driver: BunDriver;
+
+  beforeEach(() => {
+    stdout = new FakeStdout();
+    stdin = new FakeStdin();
+    driver = new BunDriver({ stdin, stdout });
+    driver.start();
+  });
+  afterEach(() => driver.stop());
+
+  test("parses the full battery of late capability responses", () => {
+    // DA2, kitty keyboard (?…u), kitty graphics OK, mouse-hover (?1003;1$y),
+    // synchronized updates (?2026;2$y), glyph protocol, window pixel size,
+    // and cell size — all in one chunk.
+    stdin.emit(
+      "data",
+      "\x1b[>1;4000;0c" + // DA2
+        "\x1b[?1u" + // kitty keyboard
+        "\x1b_Gi=31;OK\x1b\\" + // kitty graphics OK
+        "\x1b[?1003;1$y" + // mouse hover supported
+        "\x1b[?2026;2$y" + // synchronized updates
+        "\x1b_25a1;s\x1b\\" + // glyph protocol
+        "\x1b[4;480;640t", // window pixel size 640x480
+    );
+    const caps = driver.capabilities;
+    expect(caps.kittyKeyboard).toBe(true);
+    expect(caps.graphicsProtocol).toBe("kitty");
+    expect(caps.mouseHover).toBe(true);
+    expect(caps.synchronizedUpdates).toBe(true);
+    expect(caps.glyphProtocol).toBe(true);
+    expect(caps.cellSize).toEqual({ width: Math.round(640 / 80), height: Math.round(480 / 24) });
+  });
+
+  test("a cell-size response (CSI 6) sets the exact cell size", () => {
+    stdin.emit("data", "\x1b[6;32;16t");
+    expect(driver.capabilities.cellSize).toEqual({ width: 16, height: 32 });
+  });
+});
+
+describe("BunDriver input + graphics sequences", () => {
+  let stdout: FakeStdout;
+  let stdin: FakeStdin;
+  let driver: BunDriver;
+
+  beforeEach(() => {
+    stdout = new FakeStdout();
+    stdin = new FakeStdin();
+    driver = new BunDriver({ stdin, stdout });
+    driver.start();
+  });
+  afterEach(() => driver.stop());
+
+  test("a raw Ctrl+C byte emits a key event and does not exit when handled", () => {
+    let sawCtrlC = false;
+    driver.on("key", (ev: any) => {
+      if (ev.ctrl && ev.name === "c") {
+        sawCtrlC = true;
+        ev.handled = true; // claim it so the safety-exit fallback is skipped
+      }
+    });
+    stdin.emit("data", "");
+    expect(sawCtrlC).toBe(true);
+  });
+
+  test("clearScreen and graphic reset emit kitty deletes when the protocol is kitty", () => {
+    driver.capabilities.graphicsProtocol = "kitty";
+    const before = stdout.all().length;
+    driver.clearScreen();
+    const emitted = stdout.all().slice(before);
+    expect(emitted).toContain("\x1b[2J");
+    expect(emitted).toContain("\x1b_Ga=d"); // kitty placement delete
+    expect(driver.getGraphicResetSequence()).toContain("\x1b_Ga=d");
+  });
+
+  test("graphic reset is empty without a kitty protocol", () => {
+    driver.capabilities.graphicsProtocol = "none";
+    expect(driver.getGraphicResetSequence()).toBe("");
+  });
+
+  test("showNotification writes both OSC 9 and OSC 777 sequences", () => {
+    driver.showNotification("Title", "Body");
+    const out = stdout.all();
+    expect(out).toContain("\x1b]9;Title: Body\x07");
+    expect(out).toContain("\x1b]777;notify;Title;Body\x07");
+  });
+});

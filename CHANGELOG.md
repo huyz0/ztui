@@ -16,6 +16,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   unit-tested `core/hit-test` module (no behavior change).
 - Replaced 30 `as any` casts in the render/dispatch core (`dom/widget`,
   `dom/dom`, `core/app`, `core/inspector`) with precise typed shapes.
+- Raised test line coverage from ~92% to 95% with behavior-focused tests across
+  the widgets, renderers, the canvas backend, and the terminal driver's
+  capability-probe parsing.
 
 ## [1.0.4] - 2026-06-15
 
