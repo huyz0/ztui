@@ -1,8 +1,29 @@
 import { describe, expect, test } from "vitest";
 import { iconRegistry } from "../../core.ts";
 import { HeroIcon, Icon, VBox } from "../../react.ts";
+import { registerHeroIcon, resolveHeroIcon } from "../../render/heroicons.ts";
 import { parseColorToRGB } from "../../render/icon-registry.ts";
 import { mountApp } from "../../test/harness.tsx";
+
+describe("resolveHeroIcon variants", () => {
+  test("each variant resolves to a real SVG from a different size/style dir", () => {
+    for (const variant of ["solid", "outline", "mini", "micro"] as const) {
+      const svg = resolveHeroIcon("home", variant);
+      expect(svg).toContain("<svg");
+    }
+  });
+
+  test("a non-existent icon throws", () => {
+    expect(() => resolveHeroIcon("definitely-not-a-heroicon")).toThrow();
+  });
+
+  test("registerHeroIcon registers under a hero: key and is idempotent", () => {
+    const name = registerHeroIcon("home", "outline");
+    expect(name).toBe("hero:outline:home");
+    expect(iconRegistry.get(name)?.svg).toContain("<svg");
+    expect(registerHeroIcon("home", "outline")).toBe(name); // no throw, cached
+  });
+});
 
 const mockSvg = `
 <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">

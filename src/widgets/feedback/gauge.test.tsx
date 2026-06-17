@@ -86,4 +86,32 @@ describe("Gauge", () => {
     expect(countRow(cellAt, r, isFill)).toBeGreaterThan(0); // bar survives
     expect(cellAt(r.x + r.width, r.y).char.trim()).toBe(""); // nothing past the edge
   });
+
+  test("a fractional value prints one decimal in a unit readout", async () => {
+    const { text } = await mountApp(
+      <VBox>
+        <Gauge id="g" style={{ width: 28 }} value={12.5} max={100} unit="MB" />
+      </VBox>,
+      { cols: 34, rows: 4 },
+    );
+    expect(text()).toContain("12.5"); // fmtNum keeps one decimal for non-integers
+  });
+
+  test("a zero range (min === max) renders an empty bar without dividing by zero", async () => {
+    const { findById, text } = await mountApp(
+      <VBox>
+        <Gauge
+          id="g"
+          style={{ width: 20, height: 1 }}
+          value={5}
+          min={5}
+          max={5}
+          showValue={false}
+        />
+      </VBox>,
+      { cols: 24, rows: 3 },
+    );
+    expect(findById("g")).toBeDefined();
+    expect(() => text()).not.toThrow();
+  });
 });

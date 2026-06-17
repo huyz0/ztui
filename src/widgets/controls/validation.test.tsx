@@ -144,6 +144,32 @@ describe("Form widget integration", () => {
     expect(err.measuredHeight).toBe(1); // message → one row
   });
 
+  test("FieldError binds to the nearest preceding field and renders its message", async () => {
+    const { findById, settle, text } = await mountApp(
+      <Form id="form" style={{ width: 30 }}>
+        <Input id="a" validators={[required("Name is required")]} validateOn="submit" />
+        <FieldError id="err" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    // No targetId → reports on the immediately-preceding Input.
+    expect(text()).toContain("Name is required");
+  });
+
+  test("FieldError truncates a message wider than its box", async () => {
+    const long = "This validation message is far too long to fit the narrow field width";
+    const { findById, settle, text } = await mountApp(
+      <Form id="form" style={{ width: 20 }}>
+        <Input id="a" validators={[required(long)]} validateOn="submit" />
+        <FieldError id="err" style={{ width: 20 }} />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    expect(text()).toContain("…");
+  });
+
   test("invalid input resolves an error border color", async () => {
     const { findById } = await mountApp(
       <Form id="form">

@@ -124,4 +124,28 @@ describe("TabContainer Widget Suite", () => {
     expect(tabsWidget.activeIndex).toBe(1);
     expect(activeIdx).toBe(1);
   });
+
+  test("renders the tab bar labels and honours an explicit clamped size", async () => {
+    const { findById, text } = await mountApp(
+      <TabContainer
+        id="tabs"
+        activeIndex={0}
+        style={{ width: 40, height: 8, minWidth: 30, maxWidth: 50 }}
+      >
+        <Box id="pane0" label="First" />
+        <Box id="pane1" label="Second" />
+        <Box id="pane2" label="Third" />
+      </TabContainer>,
+      { cols: 60, rows: 12 },
+    );
+    const out = text();
+    expect(out).toContain("First");
+    expect(out).toContain("Second"); // inactive tab header still drawn
+    expect(out).toContain("Third");
+
+    const w = findById("tabs")!;
+    w.measure(60, 12);
+    expect(w.measuredWidth).toBe(40); // explicit width within [30,50]
+    expect(w.measuredHeight).toBe(8);
+  });
 });

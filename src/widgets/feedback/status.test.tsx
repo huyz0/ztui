@@ -80,4 +80,33 @@ describe("ZTUI Status Widget Suite", () => {
     expect(out).toContain("✘ e2e");
     expect(out).toContain("2 failed");
   });
+
+  test("an explicit color overrides the state colour on a StatusDot", async () => {
+    const { findById, cellAt } = await mountApp(
+      <VBox>
+        <StatusDot id="d" state="failed" style={{ color: "#abcdef" }} />
+      </VBox>,
+      { cols: 10, rows: 3 },
+    );
+    expect(findById("d")).toBeDefined();
+    expect(cellAt(0, 0).style.color).toBe("#abcdef"); // override, not the $error fallback
+  });
+
+  test("explicit width/height props drive the measured size across Status widgets", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <StatusBadge id="b" state="active" label="run" style={{ width: 20, height: 2 }} />
+        <StatusList id="l" items={[{ state: "completed", label: "x" }]} style={{ height: 4 }} />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    const badge = findById("b")!;
+    badge.measure(30, 8);
+    expect(badge.measuredWidth).toBe(20);
+    expect(badge.measuredHeight).toBe(2);
+
+    const list = findById("l")!;
+    list.measure(30, 8);
+    expect(list.measuredHeight).toBe(4);
+  });
 });

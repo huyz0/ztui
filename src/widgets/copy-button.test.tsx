@@ -72,4 +72,19 @@ describe("copy button", () => {
     await t.settle();
     expect(await t.driver.clipboard.get()).toBe("OLD");
   });
+
+  test("clicking the glyph shows the ✓ acknowledgement, then reverts after the timeout", async () => {
+    const t = await mountApp(<Syntax language="ts">{"const y = 2;"}</Syntax>);
+    await t.settle();
+    const g = glyphAt(t);
+    press(t, g.x, g.y);
+    await t.settle();
+    expect(t.cellAt(g.x, g.y).char).toBe("✓"); // acknowledgement shown
+
+    // The 1200ms ack timer reverts the glyph to the idle ⧉.
+    await new Promise((r) => setTimeout(r, 1300));
+    t.app.queueRender();
+    await t.settle();
+    expect(t.cellAt(g.x, g.y).char).toBe("⧉");
+  });
 });
