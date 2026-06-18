@@ -27,6 +27,7 @@ import { imageDemo } from "../image_demo.tsx";
 import { inputDemo } from "../input_demo.tsx";
 import { listviewDemo } from "../listview_demo.tsx";
 import { markdownDemo } from "../markdown_stream_demo.tsx";
+import { modelPickerDemo } from "../model_picker_demo.tsx";
 import { noColorDemo } from "../no_color_demo.tsx";
 import { overlayDemo } from "../overlay_demo.tsx";
 import { popoverDemo } from "../popover_demo.tsx";
@@ -64,6 +65,7 @@ export const demos: Demo[] = [
   generativeUiDemo,
   workerDemo,
   tableDemo,
+  modelPickerDemo,
   treeDemo,
   listviewDemo,
   selectionListDemo,
