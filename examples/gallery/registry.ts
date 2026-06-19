@@ -18,6 +18,7 @@ import { disabledDemo } from "../disabled_demo.tsx";
 import { fileIconDemo } from "../fileicon_demo.tsx";
 import { focusDemo } from "../focus_demo.tsx";
 import { formDemo } from "../form_validation_demo.tsx";
+import { galleryViewDemo } from "../gallery_view_demo.tsx";
 import { gaugeDemo } from "../gauge_demo.tsx";
 import { generativeUiDemo } from "../generative_ui.tsx";
 import { groupedListDemo } from "../grouped_list_demo.tsx";
@@ -70,6 +71,7 @@ export const demos: Demo[] = [
   modelPickerDemo,
   groupedListDemo,
   themeCardsDemo,
+  galleryViewDemo,
   treeDemo,
   listviewDemo,
   selectionListDemo,

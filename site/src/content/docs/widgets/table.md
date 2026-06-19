@@ -43,4 +43,21 @@ const rows = [
 `↑`/`↓` move selection · `PgUp`/`PgDn`/`Home`/`End` paginate · click a header to
 sort · `Enter` activates the selected row.
 
+## Grouping
+
+Pass `groups` instead of `data` to split rows into collapsible sections, each
+introduced by a non-interactive title row (with a count). The cursor skips the
+titles; clicking a title collapses/expands its group, and `onToggleGroup` reports
+the change. Grouped tables render text columns (no sorting or `render` cells).
+
+```tsx
+<Table
+  columns={columns}
+  groups={[
+    { id: "anthropic", title: "Anthropic", items: anthropicRows },
+    { id: "openai", title: "OpenAI", items: openaiRows, collapsed: true },
+  ]}
+/>;
+```
+
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/table_demo.tsx)

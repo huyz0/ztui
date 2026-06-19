@@ -54,6 +54,9 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number; clip?: 
   tabs: { cols: 64, rows: 16 },
   overlay: { cols: 64, rows: 18 },
   workbench: { cols: 84, rows: 24 },
+  // Responsive swatch grid; clip past the empty band below the grid (and the
+  // footer) to just the cards (CSS px from the grid origin).
+  "gallery-view": { cols: 84, rows: 18, clip: { x: 3, y: 2, width: 990, height: 630 } },
   // The picker's 3×3 theme cards; the demo's Dock leaves the canvas's lower half
   // empty, so clip (CSS px from the grid origin) to just the card grid.
   "theme-cards": { cols: 82, rows: 16, clip: { x: 11, y: 39, width: 550, height: 360 } },

@@ -98,6 +98,13 @@ export class VTEDriver extends Driver {
     this.emit("mouse", { x, y, type, button });
   }
 
+  /** Inject a terminal resize (updates {@link getSize} and emits `resize`). */
+  public simulateResize(width: number, height: number): void {
+    this.width = width;
+    this.height = height;
+    this.emit("resize", new Size(width, height));
+  }
+
   private getOrRasterize(name: string, svg: string, color: string): RasterizedIcon {
     const cacheKey = `${name}_${color}`;
     let cache = this.iconCache.get(cacheKey);

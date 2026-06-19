@@ -79,6 +79,7 @@ export default defineConfig({
                 { label: "Table", slug: "widgets/table" },
                 { label: "Tree", slug: "widgets/tree" },
                 { label: "List View", slug: "widgets/list-view" },
+                { label: "Gallery View", slug: "widgets/gallery-view" },
                 { label: "Selection List", slug: "widgets/selection-list" },
                 { label: "Description List", slug: "widgets/description-list" },
                 { label: "Sparkline", slug: "widgets/sparkline" },

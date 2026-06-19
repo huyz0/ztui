@@ -39,4 +39,23 @@ const items = [
 `↑`/`↓` move · `PgUp`/`PgDn`/`Home`/`End` paginate · `Enter`/`Space` activates ·
 click a row to select.
 
+## Grouping
+
+Pass `groups` instead of `items` to render collapsible sections: each group is a
+non-interactive title row (with an item count) followed by its items. The cursor
+and clicks skip the titles; clicking a title — or `←`/`→` on a row in it —
+collapses/expands the group.
+
+```tsx
+<ListView
+  groups={[
+    { id: "today", title: "Today", items: todayItems },
+    { id: "earlier", title: "Earlier", items: earlierItems, collapsed: true },
+  ]}
+  onToggleGroup={(id, collapsed) => console.log(id, collapsed)}
+/>;
+```
+
+`Table` takes the same `groups` prop (with row objects) for grouped grids.
+
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/listview_demo.tsx)

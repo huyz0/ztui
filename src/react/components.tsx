@@ -65,6 +65,8 @@ export type {
 export { DescriptionList } from "./components/data/description-list.tsx";
 export type { DiffProps } from "./components/data/diff.tsx";
 export { Diff } from "./components/data/diff.tsx";
+export type { GalleryItemContext, GalleryViewProps } from "./components/data/gallery-view.tsx";
+export { GalleryView } from "./components/data/gallery-view.tsx";
 export type { ListViewProps } from "./components/data/list-view.tsx";
 export { ListView } from "./components/data/list-view.tsx";
 export type { RichLogProps } from "./components/data/rich-log.tsx";
