@@ -59,19 +59,46 @@ ThemeManager.getInstance().setTheme("tokyo-night");
 The app subscribes to theme changes and re-renders the whole tree, so every
 `$token` updates live. (An unknown name is ignored with a warning.)
 
-## The live picker
+## The theme picker
 
-Mount `<ThemePalette>` once near your app root for a built-in visual picker —
-press **Ctrl+Alt+T** to open it, arrow through the palettes with a live preview,
-Enter to apply:
+Mount `<ThemePalette>` once near your app root and press **Ctrl+T** for a
+built-in visual picker. It lays every registered theme out as a card painted in
+its _own_ colors — the palette swatches plus a tiny live example (a button, body
+text, and status dots) — so you can compare them at a glance:
+
+![A grid of ztui theme cards, each rendered in its own colors with a palette strip and a sample button](../../../assets/widgets/theme-cards.png)
 
 ```tsx
 import { ThemePalette } from "@huyz0/ztui/react";
 
 <Dock>
-  <ThemePalette />        {/* Ctrl+Alt+T; override with toggleKey="…" */}
+  <ThemePalette />        {/* Ctrl+T; override with toggleKey="…" */}
   …
 </Dock>;
+```
+
+- **Browse** with the arrows, or scroll/drag the grid with the mouse — the card
+  you land on previews live across the whole app.
+- **Enter or click** applies a theme but keeps the picker open, so you can see it
+  in context before committing.
+- **Esc** closes — keeping a theme you applied, or reverting an un-committed
+  preview back to the one you opened with.
+
+### Persisting the choice
+
+Bind it like a controlled input: pass the saved theme name in as `value`, and
+write the chosen one back from `onSelect` (to `localStorage`, a config file, …).
+
+```tsx
+const [theme, setTheme] = useState(() => loadSavedTheme() ?? "default-dark");
+
+<ThemePalette
+  value={theme}
+  onSelect={(t) => {
+    setTheme(t.name);
+    saveTheme(t.name);
+  }}
+/>;
 ```
 
 ## Per-subtree themes

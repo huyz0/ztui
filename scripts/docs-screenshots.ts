@@ -27,7 +27,8 @@ const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "../site/src/asset
  * tweens) drive their content from timers, so we let them run `wait` ms and
  * re-render before capturing — otherwise we'd shoot an empty first frame.
  */
-const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
+type Clip = { x: number; y: number; width: number; height: number };
+const BATCH: Record<string, { cols: number; rows: number; wait?: number; clip?: Clip }> = {
   table: { cols: 64, rows: 16 },
   tree: { cols: 48, rows: 18 },
   listview: { cols: 48, rows: 14 },
@@ -53,6 +54,9 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number }> = {
   tabs: { cols: 64, rows: 16 },
   overlay: { cols: 64, rows: 18 },
   workbench: { cols: 84, rows: 24 },
+  // The picker's 3×3 theme cards; the demo's Dock leaves the canvas's lower half
+  // empty, so clip (CSS px from the grid origin) to just the card grid.
+  "theme-cards": { cols: 82, rows: 16, clip: { x: 11, y: 39, width: 550, height: 360 } },
   form: { cols: 56, rows: 20 },
   heroicons: { cols: 64, rows: 12 },
   "file-icon": { cols: 56, rows: 18 },
@@ -85,8 +89,9 @@ async function main() {
       console.warn(`! skip "${id}" — no such demo id`);
       continue;
     }
-    const size = BATCH[id] ?? DEFAULT_SIZE;
-    const wait = (BATCH[id] as { wait?: number } | undefined)?.wait ?? 0;
+    const entry = BATCH[id];
+    const size = entry ?? DEFAULT_SIZE;
+    const wait = entry?.wait ?? 0;
     const out = join(OUT_DIR, `${id}.png`);
     const insp = await WebInspector.launch(createElement(demo.Component), size);
     try {
@@ -96,7 +101,7 @@ async function main() {
         await new Promise((r) => setTimeout(r, wait));
         await insp.render();
       }
-      await insp.screenshot(out);
+      await insp.screenshot(out, entry?.clip);
       console.log(
         `✓ ${id.padEnd(16)} → site/src/assets/widgets/${id}.png  (${size.cols}×${size.rows})${
           wait ? `  [+${wait}ms]` : ""

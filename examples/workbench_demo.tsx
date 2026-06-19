@@ -83,7 +83,7 @@ function WorkbenchDemo() {
     <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
       <ThemePalette />
       <Header>
-        🧱 ZTUI Workbench — drag to re-dock · drag splitters · Ctrl+B / Ctrl+Space toggle
+        🧱 ZTUI Workbench — 🎨 Ctrl+T themes · drag to re-dock · Ctrl+B / Ctrl+Space toggle
         {quitHint()}
       </Header>
       <Workbench

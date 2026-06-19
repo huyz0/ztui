@@ -41,13 +41,13 @@ function DemoApp() {
       {/* Header with sensible defaults */}
       <Header>🚀 ZTUI Premium Form Elements Dashboard</Header>
 
-      {/* Ctrl+Alt+T — visual theme picker with live preview */}
+      {/* Ctrl+T — visual theme picker with live preview */}
       <ThemePalette />
 
       {/* Footer with sensible defaults */}
       <Footer>
-        Tab: Cycle Focus │ Space/Enter: Select/Toggle │ Arrows: Navigate │ ESC: Close Select │
-        Ctrl+Alt+T: Themes
+        🎨 Ctrl+T: Themes │ Tab: Cycle Focus │ Space/Enter: Select/Toggle │ Arrows: Navigate │ ESC:
+        Close Select
       </Footer>
 
       {/* Main Split Layout */}

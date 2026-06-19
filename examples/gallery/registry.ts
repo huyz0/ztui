@@ -47,6 +47,7 @@ import { tabsDemo } from "../tabcontainer_demo.tsx";
 import { tableDemo } from "../table_demo.tsx";
 import { terminalDemo } from "../terminal_view_demo.tsx";
 import { textareaDemo } from "../textarea_demo.tsx";
+import { themeCardsDemo } from "../theme_cards_demo.tsx";
 import { themesDemo } from "../theme_explorer.tsx";
 import { toggleButtonDemo } from "../toggle_button_demo.tsx";
 import { tracebackDemo } from "../traceback_demo.tsx";
@@ -68,6 +69,7 @@ export const demos: Demo[] = [
   tableDemo,
   modelPickerDemo,
   groupedListDemo,
+  themeCardsDemo,
   treeDemo,
   listviewDemo,
   selectionListDemo,

@@ -56,20 +56,80 @@ describe("ThemePalette", () => {
     expect(t.text()).toContain("No themes match");
   });
 
-  test("arrow keys preview live and Enter confirms the theme", async () => {
+  test("arrow keys preview live; Enter applies but keeps the picker open", async () => {
     const manager = ThemeManager.getInstance();
     manager.setTheme("default-dark");
-    const t = await mountApp(<Host />, { cols: 80, rows: 24 });
+    const t = await mountApp(<Host />, { cols: 80, rows: 40 });
     await open(t);
 
-    // The selection starts on the active theme (default-dark, index 0); one
-    // arrow down previews the next registered theme immediately.
-    await press(t, "down");
+    // The selection starts on the active theme (default-dark, index 0). The
+    // grid is multi-column, so the next theme (default-light, index 1) is the
+    // card to the right; moving there previews it immediately.
+    await press(t, "right");
     expect(manager.getActiveThemeName()).toBe("default-light");
 
+    // Enter applies the theme but does NOT close — so it can be seen first.
     await press(t, "enter");
     expect(manager.getActiveThemeName()).toBe("default-light");
+    expect(t.text()).toContain("Themes"); // still open
+
+    // Esc now keeps the committed theme (rather than reverting) and closes.
+    await press(t, "escape");
+    expect(manager.getActiveThemeName()).toBe("default-light");
     expect(t.text()).not.toContain("Themes"); // closed
+  });
+
+  test("scrolls to reach themes below the visible window", async () => {
+    const t = await mountApp(<Host />, { cols: 80, rows: 40 });
+    await open(t);
+
+    // The first window shows the top rows; the last themes are off-screen.
+    expect(t.text()).toContain("default-dark");
+    expect(t.text()).not.toContain("nightfly");
+
+    // Page down twice walks the selection (and the scroll window) to the end.
+    await press(t, "pagedown");
+    await press(t, "pagedown");
+
+    expect(t.text()).toContain("nightfly"); // last theme now visible
+    expect(t.text()).not.toContain("default-dark"); // top scrolled off
+  });
+
+  test("value binds the active theme and onSelect reports applied themes", async () => {
+    const manager = ThemeManager.getInstance();
+    manager.setTheme("default-dark");
+    const picked: string[] = [];
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <ThemePalette toggleKey="f3" value="nord" onSelect={(th) => picked.push(th.name)} />
+      </VBox>,
+      { cols: 80, rows: 40 },
+    );
+    await t.settle();
+    // The controlled `value` is applied on mount (restores a persisted choice).
+    expect(manager.getActiveThemeName()).toBe("nord");
+
+    await open(t);
+    // Selection starts on the active theme (nord). Move right to dracula and
+    // apply it — onSelect fires with the applied theme (the persist hook).
+    await press(t, "right");
+    await press(t, "enter");
+    expect(picked.at(-1)).toBe("dracula");
+    expect(manager.getActiveThemeName()).toBe("dracula");
+  });
+
+  test("mouse wheel scrolls the grid", async () => {
+    const t = await mountApp(<Host />, { cols: 80, rows: 40 });
+    await open(t);
+    expect(t.text()).toContain("default-dark");
+    expect(t.text()).not.toContain("nightfly");
+
+    // Wheel down over the (centered) modal scrolls the grid a row at a time.
+    for (let i = 0; i < 20; i++) {
+      t.driver.simulateMouse(40, 18, "scroll_down", "none");
+      await t.settle();
+    }
+    expect(t.text()).toContain("nightfly"); // scrolled to the bottom
   });
 
   test("Escape reverts the previewed theme", async () => {
@@ -78,7 +138,7 @@ describe("ThemePalette", () => {
     const t = await mountApp(<Host />, { cols: 80, rows: 24 });
     await open(t);
 
-    await press(t, "down");
+    await press(t, "right");
     expect(manager.getActiveThemeName()).toBe("default-light");
 
     await press(t, "escape");

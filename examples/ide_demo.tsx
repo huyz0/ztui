@@ -107,7 +107,7 @@ function IDEDemo() {
     <VBox style={{ width: "100%", height: "100%", background: "$surface" }}>
       <ThemePalette />
       <Header>
-        🧰 ZTUI IDE — drag to re-dock · split/resize panes · Ctrl+B / Ctrl+Space toggle{quitHint()}
+        🧰 ZTUI IDE — 🎨 Ctrl+T themes · drag to re-dock · Ctrl+B / Ctrl+Space toggle{quitHint()}
       </Header>
       <Workbench
         panels={panels}
