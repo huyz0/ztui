@@ -124,6 +124,7 @@ export {
   DescriptionListWidget,
 } from "./widgets/data/description-list.ts";
 export { type DiffView, DiffWidget } from "./widgets/data/diff.ts";
+export type { GroupedRow, RowGroup } from "./widgets/data/grouping.ts";
 export type { ListItem } from "./widgets/data/list-view.ts";
 export { ListViewWidget } from "./widgets/data/list-view.ts";
 export { RichLogWidget } from "./widgets/data/rich-log.ts";

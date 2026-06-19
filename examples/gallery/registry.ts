@@ -20,6 +20,7 @@ import { focusDemo } from "../focus_demo.tsx";
 import { formDemo } from "../form_validation_demo.tsx";
 import { gaugeDemo } from "../gauge_demo.tsx";
 import { generativeUiDemo } from "../generative_ui.tsx";
+import { groupedListDemo } from "../grouped_list_demo.tsx";
 import { heroiconsDemo } from "../heroicons_demo.tsx";
 import { hotkeysDemo } from "../hotkeys_demo.tsx";
 import { ideDemo } from "../ide_demo.tsx";
@@ -66,6 +67,7 @@ export const demos: Demo[] = [
   workerDemo,
   tableDemo,
   modelPickerDemo,
+  groupedListDemo,
   treeDemo,
   listviewDemo,
   selectionListDemo,

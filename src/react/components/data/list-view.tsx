@@ -1,11 +1,19 @@
 import { createElement, type ReactElement } from "react";
+import type { RowGroup } from "../../../widgets/data/grouping.ts";
 import type { ListItem } from "../../../widgets/data/list-view.ts";
 import type { ComponentProps } from "../types.ts";
 
 /** Props for {@link ListView}. */
 export interface ListViewProps extends Omit<ComponentProps, "children"> {
-  /** Items to display. */
-  items: ListItem[];
+  /** Items to display (flat mode). Ignored when `groups` is set. */
+  items?: ListItem[];
+  /**
+   * Grouped mode: each group renders a non-interactive title row followed by
+   * its items; clicking a title (or `←`/`→` on a row) collapses/expands it.
+   */
+  groups?: RowGroup<ListItem>[];
+  /** A group was collapsed or expanded (grouped mode). */
+  onToggleGroup?: (id: string, collapsed: boolean) => void;
   /** Height of each row in cells. */
   rowHeight?: number;
   /** Selected item id, or null. */

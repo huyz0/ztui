@@ -10,6 +10,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
+import { buildGroupedRows, type GroupedRow, initialCollapsed, type RowGroup } from "./grouping.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 
 /** Sort direction for a {@link TableColumn}. */
@@ -88,8 +89,15 @@ export interface TableTextStyle {
  * untouched source data rather than copying rows.
  */
 export class TableWidget<Row = any> extends Widget {
-  /** Source rows; only the visible window is rendered. */
+  /** Source rows; only the visible window is rendered. Ignored when {@link groups} is set. */
   public data: Row[] = [];
+  /**
+   * Grouped mode: each group renders a non-interactive title row (spanning all
+   * columns) followed by its item rows; clicking a title collapses/expands the
+   * group. When set, this supersedes {@link data}, and `sort` and rich
+   * (`column.render`) cells are ignored — grouped tables render text columns.
+   */
+  public groups: RowGroup<Row>[] | null = null;
   /** Column definitions. */
   public columns: TableColumn<Row>[] = [];
   /** Height of each row in cells. */
@@ -123,11 +131,22 @@ export class TableWidget<Row = any> extends Widget {
   /** Row activated — Enter or double-click (the "open it" intent). */
   public declare onActivate?: (row: Row, viewIndex: number) => void;
   public declare onSortChange?: (sort: SortState | null) => void;
+  /** A group was collapsed or expanded (grouped mode). */
+  public declare onToggleGroup?: (id: string, collapsed: boolean) => void;
   /**
    * Reports the visible row window so a stateful `<Table>` can render
    * widget-bearing cells (`column.render`) only for on-screen rows.
    */
   public declare onViewportChange?: (window: { first: number; dataIndices: number[] }) => void;
+
+  // ---- grouping state -------------------------------------------------------
+  /** Ids of collapsed groups (grouped mode). */
+  private collapsed = new Set<string>();
+  private collapsedSeeded = false;
+  private vrCache: GroupedRow<Row>[] | null = null;
+  private vrCacheGroups: RowGroup<Row>[] | null = null;
+  private collapseVersion = 0;
+  private vrCacheVersion = -1;
 
   private lastViewportSig = "";
   private suppressChildren = false;
@@ -174,14 +193,15 @@ export class TableWidget<Row = any> extends Widget {
     return col.cell ? col.cell(row, dataIndex) : "";
   }
 
-  private cellText(col: TableColumn<Row>, dataIndex: number): string {
-    const row = this.data[dataIndex];
-    if (col.cell) return col.cell(row, dataIndex);
+  /** Cell text for an explicit row (used by both flat and grouped paths). */
+  private cellTextFor(col: TableColumn<Row>, row: Row, rowIndex: number): string {
+    if (col.cell) return col.cell(row, rowIndex);
     const raw = (row as any)?.[col.key];
     return raw === undefined || raw === null ? "" : String(raw);
   }
 
   private ensureViewIndex(): void {
+    if (this.grouped) return; // grouped mode ignores sort and uses visual rows
     const sort = this.sort;
     const sig = sort ? `${sort.key}:${sort.direction}` : "";
     if (
@@ -239,10 +259,65 @@ export class TableWidget<Row = any> extends Widget {
     App.instance?.queueRender();
   }
 
+  // ---- grouping -------------------------------------------------------------
+
+  /** True when the table is showing grouped (sectioned) data. */
+  private get grouped(): boolean {
+    return this.groups !== null;
+  }
+
+  private ensureCollapsedSeeded(): void {
+    if (this.collapsedSeeded || !this.groups) return;
+    this.collapsed = initialCollapsed(this.groups);
+    this.collapsedSeeded = true;
+  }
+
+  /** Memoized flattened visual rows for grouped mode. */
+  private visualRows(): GroupedRow<Row>[] {
+    this.ensureCollapsedSeeded();
+    if (
+      this.vrCache &&
+      this.vrCacheGroups === this.groups &&
+      this.vrCacheVersion === this.collapseVersion
+    ) {
+      return this.vrCache;
+    }
+    this.vrCache = buildGroupedRows(this.groups ?? [], this.collapsed);
+    this.vrCacheGroups = this.groups;
+    this.vrCacheVersion = this.collapseVersion;
+    return this.vrCache;
+  }
+
+  /** The header row at view index `v`, or null when it is an item/flat row. */
+  private headerAtView(v: number): Extract<GroupedRow<Row>, { kind: "header" }> | null {
+    if (!this.grouped) return null;
+    const row = this.visualRows()[v];
+    return row && row.kind === "header" ? row : null;
+  }
+
+  /** The data row at view index `v` (post-sort flat, or grouped item); null for a header. */
+  private rowAtView(v: number): { row: Row; rowIndex: number } | null {
+    if (this.grouped) {
+      const row = this.visualRows()[v];
+      return row && row.kind === "item" ? { row: row.item, rowIndex: v } : null;
+    }
+    const di = this.viewIndex[v];
+    return di === undefined ? null : { row: this.data[di], rowIndex: di };
+  }
+
+  /** Toggle a group's collapsed state (grouped mode). */
+  public toggleGroup(id: string): void {
+    if (this.collapsed.has(id)) this.collapsed.delete(id);
+    else this.collapsed.add(id);
+    this.collapseVersion++;
+    this.onToggleGroup?.(id, this.collapsed.has(id));
+    this.requestRender();
+  }
+
   // ---- scrolling / selection ------------------------------------------------
 
   private get rowCount(): number {
-    return this.data.length;
+    return this.grouped ? this.visualRows().length : this.data.length;
   }
 
   private maxScrollTop(visibleRows: number): number {
@@ -258,11 +333,22 @@ export class TableWidget<Row = any> extends Widget {
 
   private moveSelection(delta: number): void {
     if (this.rowCount === 0) return;
-    const start = this.selectedIndex < 0 ? (delta > 0 ? -1 : this.rowCount) : this.selectedIndex;
-    const next = Math.max(0, Math.min(this.rowCount - 1, start + delta));
+    const dir = delta > 0 ? 1 : -1;
+    const start = this.selectedIndex < 0 ? (dir > 0 ? -1 : this.rowCount) : this.selectedIndex;
+    let next = Math.max(0, Math.min(this.rowCount - 1, start + delta));
+    if (this.grouped) {
+      // Skip header rows in the travel direction; fall back inward at an edge.
+      while (next >= 0 && next < this.rowCount && this.headerAtView(next)) next += dir;
+      if (next < 0 || next >= this.rowCount) {
+        next = Math.max(0, Math.min(this.rowCount - 1, start + delta));
+        while (next >= 0 && next < this.rowCount && this.headerAtView(next)) next -= dir;
+      }
+      if (next < 0 || next >= this.rowCount || this.headerAtView(next)) return;
+    }
     this.selectedIndex = next;
     this.ensureVisible(next);
-    this.onSelect?.(this.data[this.viewIndex[next]], next);
+    const sel = this.rowAtView(next);
+    if (sel) this.onSelect?.(sel.row, next);
     this.requestRender();
   }
 
@@ -313,8 +399,8 @@ export class TableWidget<Row = any> extends Widget {
       case "enter":
       case "space":
         if (this.selectedIndex >= 0 && this.onActivate) {
-          const dataIdx = this.viewIndex[this.selectedIndex];
-          this.onActivate(this.data[dataIdx], this.selectedIndex);
+          const sel = this.rowAtView(this.selectedIndex);
+          if (sel) this.onActivate(sel.row, this.selectedIndex);
         }
         break;
       default:
@@ -386,10 +472,20 @@ export class TableWidget<Row = any> extends Widget {
     const rowOffset = Math.floor((ev.y - this.lastBodyTop) / this.rowHeight);
     if (rowOffset < 0) return;
     const viewIdx = this.scrollTop + rowOffset;
-    if (viewIdx >= 0 && viewIdx < this.rowCount) {
+    if (viewIdx < 0 || viewIdx >= this.rowCount) return;
+
+    // A click on a group header toggles its collapse; nothing selectable there.
+    const header = this.headerAtView(viewIdx);
+    if (header) {
+      this.toggleGroup(header.id);
+      ev.handled = true;
+      return;
+    }
+
+    const sel = this.rowAtView(viewIdx);
+    if (sel) {
       this.selectedIndex = viewIdx;
-      const dataIdx = this.viewIndex[viewIdx];
-      this.onSelect?.(this.data[dataIdx], viewIdx);
+      this.onSelect?.(sel.row, viewIdx);
 
       // Double-click on the same row -> activate.
       const now = Date.now();
@@ -399,7 +495,7 @@ export class TableWidget<Row = any> extends Widget {
       this.lastClickAt = now;
       if (isDouble) {
         this.lastClickIndex = -1;
-        this.onActivate?.(this.data[dataIdx], viewIdx);
+        this.onActivate?.(sel.row, viewIdx);
       }
 
       ev.handled = true;
@@ -409,19 +505,37 @@ export class TableWidget<Row = any> extends Widget {
 
   /** The padded text of one body row (columns joined), the selectable value. */
   private rowLineText(dataIndex: number, widths: number[]): string {
+    return this.rowLineTextFor(this.data[dataIndex], dataIndex, widths);
+  }
+
+  /** {@link rowLineText} for an explicit row (flat or grouped). */
+  private rowLineTextFor(row: Row, rowIndex: number, widths: number[]): string {
     return this.columns
       .map((col, i) =>
-        this.isRich(col)
+        // Rich cells are blanked only in flat mode (their widget paints there);
+        // grouped tables are text-only, so render the cell text instead.
+        !this.grouped && this.isRich(col)
           ? " ".repeat(widths[i])
-          : fitCell(this.cellText(col, dataIndex), widths[i], col.align),
+          : fitCell(this.cellTextFor(col, row, rowIndex), widths[i], col.align),
       )
       .join(" ".repeat(GAP));
+  }
+
+  /** The `▾ Title  (n)` text of a group header row. */
+  private groupHeaderText(header: Extract<GroupedRow<Row>, { kind: "header" }>): string {
+    const caret = header.collapsed ? "▸" : "▾";
+    return `${caret} ${header.title}  (${header.count})`;
   }
 
   /** Every body row as a selectable line (view order), for full-range copy. */
   public selectableLines(): string[] {
     const widths = this.lastColWidths;
     if (widths.length === 0) return [];
+    if (this.grouped) {
+      return this.visualRows().map((r) =>
+        r.kind === "header" ? this.groupHeaderText(r) : this.rowLineTextFor(r.item, 0, widths),
+      );
+    }
     return this.viewIndex.map((di) => this.rowLineText(di, widths));
   }
 
@@ -487,11 +601,14 @@ export class TableWidget<Row = any> extends Widget {
 
     const first = this.scrollTop;
     const last = Math.min(this.rowCount, first + visibleRows);
-    const sample: number[] = [];
-    for (let v = first; v < last; v++) sample.push(this.viewIndex[v]);
+    const sampleRows: Row[] = [];
+    for (let v = first; v < last; v++) {
+      const sel = this.rowAtView(v);
+      if (sel) sampleRows.push(sel.row);
+    }
 
     const bodyW = this.bodyWidth();
-    const colWidths = this.resolveColumnWidths(bodyW, sample);
+    const colWidths = this.resolveColumnWidths(bodyW, sampleRows);
     this.lastColWidths = colWidths;
     this.lastContentWidth =
       colWidths.reduce((s, w) => s + w, 0) + Math.max(0, this.columns.length - 1) * GAP;
@@ -505,7 +622,7 @@ export class TableWidget<Row = any> extends Widget {
   }
 
   private maybeEmitViewport(first: number, last: number): void {
-    if (!this.onViewportChange) return;
+    if (!this.onViewportChange || this.grouped) return; // grouped = text-only, no rich cells
     const dataIndices: number[] = [];
     for (let v = first; v < last; v++) dataIndices.push(this.viewIndex[v]);
     const sig = `${first}:${dataIndices.join(",")}`;
@@ -526,6 +643,13 @@ export class TableWidget<Row = any> extends Widget {
       if (child instanceof TableCellWidget) cells.push(child);
     }
     if (cells.length === 0) return false;
+
+    // Grouped mode is text-only: hide any rich cells rather than positioning
+    // them against an interleaved-header row layout they don't account for.
+    if (this.grouped) {
+      for (const cell of cells) cell.visible = false;
+      return true;
+    }
 
     const m = this.computeMetrics();
     for (const cell of cells) {
@@ -556,7 +680,7 @@ export class TableWidget<Row = any> extends Widget {
   }
 
   /** Resolve per-column cell widths to fit `avail`, given a sample of rows. */
-  private resolveColumnWidths(avail: number, sampleDataIdx: number[]): number[] {
+  private resolveColumnWidths(avail: number, sampleRows: Row[]): number[] {
     const n = this.columns.length;
     const widths = new Array<number>(n).fill(0);
     const frParts: Array<{ i: number; fr: number }> = [];
@@ -574,8 +698,8 @@ export class TableWidget<Row = any> extends Widget {
       } else {
         // auto (also the default): widest of header + sampled cells
         let cw = stringWidth(col.header) + (col.sortable ? 2 : 0);
-        for (const di of sampleDataIdx) {
-          cw = Math.max(cw, stringWidth(this.cellText(col, di)));
+        for (const row of sampleRows) {
+          cw = Math.max(cw, stringWidth(this.cellTextFor(col, row, 0)));
         }
         widths[i] = cw;
       }
@@ -627,21 +751,29 @@ export class TableWidget<Row = any> extends Widget {
 
     for (let v = first; v < last; v++) {
       const y = bodyTop + (v - first) * this.rowHeight;
-      this.renderRow(
-        buffer,
-        content.x,
-        y,
-        this.viewIndex[v],
-        colWidths,
-        bodyW,
-        v === this.selectedIndex,
-      );
+      const header = this.headerAtView(v);
+      let lineText: string;
+      if (header) {
+        this.renderGroupHeader(buffer, content.x, y, header, bodyW);
+        lineText = this.groupHeaderText(header);
+      } else {
+        const sel = this.rowAtView(v);
+        if (!sel) continue;
+        this.renderRow(
+          buffer,
+          content.x,
+          y,
+          sel.row,
+          sel.rowIndex,
+          colWidths,
+          bodyW,
+          v === this.selectedIndex,
+        );
+        lineText = this.rowLineTextFor(sel.row, sel.rowIndex, colWidths);
+      }
       // Register the row text (honoring horizontal scroll) as selectable content.
       if (this.selectable) {
-        const cols = runCols(this.rowLineText(this.viewIndex[v], colWidths)).slice(
-          this.scrollLeft,
-          this.scrollLeft + bodyW,
-        );
+        const cols = runCols(lineText).slice(this.scrollLeft, this.scrollLeft + bodyW);
         if (cols.length > 0) {
           App.instance?.selection.addRun({ widget: this, line: v, y, x: content.x, cols });
         }
@@ -717,17 +849,18 @@ export class TableWidget<Row = any> extends Widget {
     buffer: ScreenBuffer,
     originX: number,
     y: number,
-    dataIndex: number,
+    row: Row,
+    rowIndex: number,
     widths: number[],
     bodyW: number,
     selected: boolean,
   ): void {
     const cells = this.columns.map((col, i) =>
-      // Rich columns are drawn by their cell widget; reserve blank cells so the
-      // row background (and selection highlight) still fills the slot.
-      this.isRich(col)
+      // Rich columns are drawn by their cell widget (flat mode only); reserve a
+      // blank cell so the row background/selection highlight fills the slot.
+      !this.grouped && this.isRich(col)
         ? " ".repeat(widths[i])
-        : fitCell(this.cellText(col, dataIndex), widths[i], col.align),
+        : fitCell(this.cellTextFor(col, row, rowIndex), widths[i], col.align),
     );
     const line = padTo(cells.join(" ".repeat(GAP)), Math.max(bodyW, this.lastContentWidth));
     // Selection uses an explicit background (not reverse) so widget-bearing
@@ -737,6 +870,31 @@ export class TableWidget<Row = any> extends Widget {
       this.baseStyle(selected ? { background: this.resolvedSelectedBackground() } : {}),
     );
     buffer.drawSegment(originX - this.scrollLeft, y, seg);
+  }
+
+  /** A group title row, spanning the full body width (bold title + dim count). */
+  private renderGroupHeader(
+    buffer: ScreenBuffer,
+    originX: number,
+    y: number,
+    header: Extract<GroupedRow<Row>, { kind: "header" }>,
+    bodyW: number,
+  ): void {
+    const text = this.groupHeaderText(header);
+    const line = padTo(text, Math.max(bodyW, this.lastContentWidth));
+    buffer.drawSegment(
+      originX - this.scrollLeft,
+      y,
+      new Segment(line, this.baseStyle({ bold: true })),
+    );
+    // Dim the trailing `(count)` so it reads as secondary to the title.
+    const suffix = `(${header.count})`;
+    const at = stringWidth(text) - stringWidth(suffix);
+    buffer.drawSegment(
+      originX - this.scrollLeft + at,
+      y,
+      new Segment(suffix, this.baseStyle({ bold: true, dim: true })),
+    );
   }
 
   private renderScrollbar(

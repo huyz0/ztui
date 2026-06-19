@@ -1,11 +1,21 @@
 import { createElement, type ReactElement, type ReactNode, useState } from "react";
+import type { RowGroup } from "../../../widgets/data/grouping.ts";
 import type { SortState, TableColumn, TableTextStyle } from "../../../widgets/data/table.ts";
 import type { ComponentProps } from "../types.ts";
 
 /** Props for {@link Table}. */
 export interface TableProps<Row = any> extends Omit<ComponentProps, "children"> {
-  /** Source rows. Only the visible window is ever rendered (virtualized). */
-  data: Row[];
+  /** Source rows. Only the visible window is ever rendered (virtualized). Ignored when `groups` is set. */
+  data?: Row[];
+  /**
+   * Grouped mode: each group renders a non-interactive title row (spanning all
+   * columns) followed by its rows; clicking a title collapses/expands it. When
+   * set, `sort` and rich (`render`) cells are ignored — grouped tables are
+   * text-only.
+   */
+  groups?: RowGroup<Row>[];
+  /** A group was collapsed or expanded (grouped mode). */
+  onToggleGroup?: (id: string, collapsed: boolean) => void;
   /** Column definitions (key, header, width, optional `render`). */
   columns: TableColumn<Row>[];
   /** Height of each row in cells (default 1). */
@@ -58,8 +68,9 @@ function buildCells<Row>(columns: TableColumn<Row>[], data: Row[], vp: Viewport)
 
 /** A virtualized, sortable data grid. Renders only on-screen rows. */
 export function Table<Row = any>(props: TableProps<Row>): ReactElement {
-  const { data, columns } = props;
-  const hasRich = columns.some((c) => typeof c.render === "function");
+  const { data, columns, groups } = props;
+  // Grouped tables are text-only, so skip the rich-cell viewport machinery.
+  const hasRich = !groups && columns.some((c) => typeof c.render === "function");
   const [vp, setVp] = useState<Viewport>({ first: 0, dataIndices: [] });
 
   if (!hasRich) {
@@ -78,7 +89,7 @@ export function Table<Row = any>(props: TableProps<Row>): ReactElement {
   return createElement(
     "ztui-table",
     { ...props, onViewportChange },
-    ...buildCells(columns, data, vp),
+    ...buildCells(columns, data ?? [], vp),
   );
 }
 Table.displayName = "Table";

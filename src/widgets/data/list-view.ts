@@ -10,6 +10,7 @@ import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { buildGroupedRows, type GroupedRow, initialCollapsed, type RowGroup } from "./grouping.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 import { fitCell } from "./table.ts";
 
@@ -48,8 +49,14 @@ export class ListViewWidget extends Widget {
     return super.cursorShapeAt(x, y);
   }
 
-  /** Items to display. */
+  /** Items to display (flat mode). Ignored when {@link groups} is set. */
   public items: ListItem[] = [];
+  /**
+   * Grouped mode: each group renders a non-interactive title row followed by
+   * its items. Clicking a title (or `←`/`→` on a row in it) collapses/expands
+   * the group. When set, this supersedes {@link items}.
+   */
+  public groups: RowGroup<ListItem>[] | null = null;
   /** Height of each row in cells. */
   public rowHeight = 1;
   /** Selected item id, or null. */
@@ -63,6 +70,18 @@ export class ListViewWidget extends Widget {
   public declare onSelect?: (item: ListItem) => void;
   /** Item activated — Enter, Space, or double-click (the "open it" intent). */
   public declare onActivate?: (item: ListItem) => void;
+  /** A group was collapsed or expanded (grouped mode). */
+  public declare onToggleGroup?: (id: string, collapsed: boolean) => void;
+
+  // ---- grouping state -------------------------------------------------------
+  /** Ids of collapsed groups (grouped mode). */
+  private collapsed = new Set<string>();
+  private collapsedSeeded = false;
+  /** Memoized flattened visual rows + the inputs they were built from. */
+  private vrCache: GroupedRow<ListItem>[] | null = null;
+  private vrCacheGroups: RowGroup<ListItem>[] | null = null;
+  private collapseVersion = 0;
+  private vrCacheVersion = -1;
 
   // Double-click detection (no driver support; measured here).
   private lastClickIndex = -1;
@@ -85,12 +104,69 @@ export class ListViewWidget extends Widget {
     App.instance?.queueRender();
   }
 
+  // ---- grouping -------------------------------------------------------------
+
+  /** True when the widget is showing grouped (sectioned) data. */
+  private get grouped(): boolean {
+    return this.groups !== null;
+  }
+
+  /** Seed collapse state from each group's `collapsed` flag, once. */
+  private ensureCollapsedSeeded(): void {
+    if (this.collapsedSeeded || !this.groups) return;
+    this.collapsed = initialCollapsed(this.groups);
+    this.collapsedSeeded = true;
+  }
+
+  /** Memoized flattened visual rows for grouped mode. */
+  private visualRows(): GroupedRow<ListItem>[] {
+    this.ensureCollapsedSeeded();
+    if (
+      this.vrCache &&
+      this.vrCacheGroups === this.groups &&
+      this.vrCacheVersion === this.collapseVersion
+    ) {
+      return this.vrCache;
+    }
+    this.vrCache = buildGroupedRows(this.groups ?? [], this.collapsed);
+    this.vrCacheGroups = this.groups;
+    this.vrCacheVersion = this.collapseVersion;
+    return this.vrCache;
+  }
+
+  /** The {@link ListItem} at visual-row `index`, or null for a header/out-of-range. */
+  private itemAtRow(index: number): ListItem | null {
+    if (this.grouped) {
+      const row = this.visualRows()[index];
+      return row && row.kind === "item" ? row.item : null;
+    }
+    return this.items[index] ?? null;
+  }
+
+  /** Whether visual-row `index` is a selectable (enabled, non-header) row. */
+  private rowSelectable(index: number): boolean {
+    const item = this.itemAtRow(index);
+    return !!item && !item.disabled;
+  }
+
+  /** Toggle a group's collapsed state (grouped mode). */
+  public toggleGroup(id: string): void {
+    if (this.collapsed.has(id)) this.collapsed.delete(id);
+    else this.collapsed.add(id);
+    this.collapseVersion++;
+    this.onToggleGroup?.(id, this.collapsed.has(id));
+    this.requestRender();
+  }
+
   private get rowCount(): number {
-    return this.items.length;
+    return this.grouped ? this.visualRows().length : this.items.length;
   }
 
   private get selectedIndex(): number {
     if (this.selectedId === null) return -1;
+    if (this.grouped) {
+      return this.visualRows().findIndex((r) => r.kind === "item" && r.item.id === this.selectedId);
+    }
     return this.items.findIndex((it) => it.id === this.selectedId);
   }
 
@@ -109,8 +185,8 @@ export class ListViewWidget extends Widget {
 
   private selectIndex(index: number, fireSelect = true): void {
     if (index < 0 || index >= this.rowCount) return;
-    const item = this.items[index];
-    if (item.disabled) return;
+    const item = this.itemAtRow(index);
+    if (!item || item.disabled) return;
     this.selectedId = item.id;
     this.ensureVisible(index);
     if (fireSelect) this.onSelect?.(item);
@@ -118,8 +194,9 @@ export class ListViewWidget extends Widget {
   }
 
   /**
-   * Step the selection by `delta`, landing on the nearest enabled row in that
-   * direction (disabled rows are skipped; a fully disabled tail is a no-op).
+   * Step the selection by `delta`, landing on the nearest selectable row in
+   * that direction. Disabled rows — and, in grouped mode, group headers — are
+   * skipped; a fully non-selectable tail is a no-op.
    */
   private moveSelection(delta: number): void {
     if (this.rowCount === 0 || delta === 0) return;
@@ -127,13 +204,27 @@ export class ListViewWidget extends Widget {
     const dir = delta > 0 ? 1 : -1;
     const start = cur < 0 ? (dir > 0 ? -1 : this.rowCount) : cur;
     let target = Math.max(0, Math.min(this.rowCount - 1, start + delta));
-    while (target >= 0 && target < this.rowCount && this.items[target].disabled) target += dir;
+    while (target >= 0 && target < this.rowCount && !this.rowSelectable(target)) target += dir;
     if (target < 0 || target >= this.rowCount) {
-      // Walked off the edge: fall back to the nearest enabled row inward.
+      // Walked off the edge: fall back to the nearest selectable row inward.
       target = Math.max(0, Math.min(this.rowCount - 1, start + delta));
-      while (target >= 0 && target < this.rowCount && this.items[target].disabled) target -= dir;
+      while (target >= 0 && target < this.rowCount && !this.rowSelectable(target)) target -= dir;
     }
     this.selectIndex(target);
+  }
+
+  /** Collapse (`expand=false`) or expand the group the cursor's item belongs to. */
+  private collapseCursorGroup(expand: boolean): boolean {
+    if (!this.grouped || !this.groups || this.selectedId === null) return false;
+    // Resolve by id across all groups so a collapsed (hidden) cursor item can
+    // still be re-expanded — its visual row is gone, but its group is known.
+    const group = this.groups.find((g) => g.items.some((it) => it.id === this.selectedId));
+    if (!group) return false;
+    const isCollapsed = this.collapsed.has(group.id);
+    if (expand && isCollapsed) this.toggleGroup(group.id);
+    else if (!expand && !isCollapsed) this.toggleGroup(group.id);
+    else return false;
+    return true;
   }
 
   public override handleScroll(ev: any): void {
@@ -157,8 +248,13 @@ export class ListViewWidget extends Widget {
     let handled = true;
     if (delta !== null) {
       this.moveSelection(delta);
+    } else if (this.grouped && (name === "left" || name === "right")) {
+      // Collapse/expand the cursor's group; a no-op (already in that state)
+      // leaves the event unhandled so a parent can react instead.
+      handled = this.collapseCursorGroup(name === "right");
     } else if (name === "enter" || name === "space") {
-      if (idx >= 0) this.onActivate?.(this.items[idx]);
+      const item = idx >= 0 ? this.itemAtRow(idx) : null;
+      if (item) this.onActivate?.(item);
       else handled = false;
     } else {
       handled = false;
@@ -197,7 +293,19 @@ export class ListViewWidget extends Widget {
     const rowOffset = Math.floor((ev.y - content.y) / this.rowHeight);
     const index = this.scrollTop + rowOffset;
     if (index < 0 || index >= this.rowCount) return;
-    if (this.items[index].disabled) {
+
+    // A click on a group header toggles its collapse; nothing selectable there.
+    if (this.grouped) {
+      const row = this.visualRows()[index];
+      if (row && row.kind === "header") {
+        this.toggleGroup(row.id);
+        ev.handled = true;
+        return;
+      }
+    }
+
+    const item = this.itemAtRow(index);
+    if (!item || item.disabled) {
       ev.handled = true;
       return;
     }
@@ -212,7 +320,7 @@ export class ListViewWidget extends Widget {
     this.selectIndex(index);
     if (isDouble) {
       this.lastClickIndex = -1; // a third click starts a fresh pair
-      this.onActivate?.(this.items[index]);
+      this.onActivate?.(item);
     }
     ev.handled = true;
   }
@@ -238,6 +346,24 @@ export class ListViewWidget extends Widget {
     return `${icon}${item.label}${detail}`;
   }
 
+  /** Caret glyphs for a group header (expanded / collapsed). */
+  private static readonly CARET = { open: "▾", closed: "▸" } as const;
+
+  /** The `▾ Title  (n)` line for a group header row. */
+  private headerText(row: Extract<GroupedRow<ListItem>, { kind: "header" }>): string {
+    const caret = row.collapsed ? ListViewWidget.CARET.closed : ListViewWidget.CARET.open;
+    return `${caret} ${row.title}  (${row.count})`;
+  }
+
+  /** Display text of visual-row `v` (drives horizontal-scroll bounds). */
+  private displayTextAt(v: number): string {
+    if (this.grouped) {
+      const row = this.visualRows()[v];
+      return row.kind === "header" ? this.headerText(row) : this.rowText(row.item);
+    }
+    return this.rowText(this.items[v]);
+  }
+
   public override render(buffer: ScreenBuffer): void {
     if (!this.visible) return;
     super.render(buffer); // background + border
@@ -256,7 +382,7 @@ export class ListViewWidget extends Widget {
     // Widest visible row drives horizontal scroll bounds.
     let maxRowW = 0;
     for (let v = first; v < last; v++)
-      maxRowW = Math.max(maxRowW, stringWidth(this.rowText(this.items[v])));
+      maxRowW = Math.max(maxRowW, stringWidth(this.displayTextAt(v)));
     this.lastContentWidth = maxRowW;
     this.scrollLeft = Math.max(0, Math.min(this.scrollLeft, Math.max(0, maxRowW - bodyW)));
 
@@ -266,16 +392,17 @@ export class ListViewWidget extends Widget {
     const resolver = (this.app ?? App.instance)?.cssResolver;
     const selectedBg = resolver?.resolveVariable(this, this.selectedBackground) ?? "#264f78";
     const muted = resolver?.resolveVariable(this, this.mutedColor) ?? "#8a8a8a";
-    for (let v = first; v < last; v++) {
-      const item = this.items[v];
-      const y = content.y + (v - first) * this.rowHeight;
-      const background = v === selIdx ? selectedBg : this.findResolvedBackground();
+    const fullW = Math.max(bodyW, this.lastContentWidth);
+    const ownBg = this.findResolvedBackground();
+    const groupedRows = this.grouped ? this.visualRows() : null;
+
+    const drawItem = (item: ListItem, y: number, selected: boolean): void => {
+      const background = selected ? selectedBg : ownBg;
       const color = item.disabled ? muted : baseColor;
-      const line = fitCell(this.rowText(item), Math.max(bodyW, this.lastContentWidth), "left");
       buffer.drawSegment(
         content.x - this.scrollLeft,
         y,
-        new Segment(line, new Style({ color, background })),
+        new Segment(fitCell(this.rowText(item), fullW, "left"), new Style({ color, background })),
       );
       // Re-draw the detail suffix dimmed so it reads as secondary text.
       if (item.detail && !item.disabled) {
@@ -286,6 +413,33 @@ export class ListViewWidget extends Widget {
           new Segment(item.detail, new Style({ color: muted, background })),
         );
       }
+    };
+
+    for (let v = first; v < last; v++) {
+      const y = content.y + (v - first) * this.rowHeight;
+      const row = groupedRows?.[v];
+      if (row && row.kind === "header") {
+        // Non-interactive title row: bold title with a dimmed `(count)` suffix.
+        const text = this.headerText(row);
+        buffer.drawSegment(
+          content.x - this.scrollLeft,
+          y,
+          new Segment(
+            fitCell(text, fullW, "left"),
+            new Style({ color: baseColor, background: ownBg, bold: true }),
+          ),
+        );
+        const suffix = `(${row.count})`;
+        const at = stringWidth(text) - stringWidth(suffix);
+        buffer.drawSegment(
+          content.x - this.scrollLeft + at,
+          y,
+          new Segment(suffix, new Style({ color: muted, background: ownBg, bold: true })),
+        );
+        continue;
+      }
+      const item = row ? (row.kind === "item" ? row.item : null) : this.items[v];
+      if (item) drawItem(item, y, v === selIdx);
     }
     buffer.popClip();
 

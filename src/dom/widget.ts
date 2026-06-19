@@ -347,6 +347,7 @@ export class Widget extends DOMNode {
   /** @internal */ public declare onSelect?: (...args: never[]) => void;
   /** @internal */ public declare onActivate?: (...args: never[]) => void;
   /** @internal */ public declare onSortChange?: (...args: never[]) => void;
+  /** @internal */ public declare onToggleGroup?: (...args: never[]) => void;
   /** @internal */ public declare onViewportChange?: (...args: never[]) => void;
   /** @internal */ public declare onViewChange?: (...args: never[]) => void;
   /** @internal */ public declare onToggle?: (...args: never[]) => void;
