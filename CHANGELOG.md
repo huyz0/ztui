@@ -6,6 +6,36 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-06-20
+
+### Added
+
+- **`GalleryView`** — a responsive, scrollable grid of arbitrary items with 2D
+  keyboard navigation (`←→`/`↑↓`, `PgUp`/`PgDn`/`Home`/`End`), mouse wheel and a
+  draggable scrollbar, and a **column count that flows from the container width**
+  and reflows on resize. You render each cell with `renderItem`; selection is
+  reported through `onSelect`/`onActivate`, and the cursor is scrolled into view.
+  New exports: `GalleryView`, `GalleryViewProps`, `GalleryItemContext`.
+- **Collapsible grouped rows for `Table` and `ListView`** — pass `groups`
+  (`RowGroup[]`) instead of flat data to render sections, each introduced by a
+  non-interactive title row with an item count. The cursor and clicks skip the
+  titles; clicking a title (or `←`/`→` on a `ListView` row) collapses/expands the
+  group, reported via `onToggleGroup`. New exports: `RowGroup`, `GroupedRow`.
+  (Grouped tables render text columns — sorting and `render` cells stay flat-only.)
+- **`ThemePalette` is now a scrollable card grid** — every theme renders as a
+  card painted in its own colors (palette swatches plus a live example),
+  navigable in 2D. New `value`/`defaultValue` props make the active theme a
+  controlled binding (pair with `onSelect`) so the choice can be persisted and
+  restored. Enter/click apply a theme but keep the picker open so it can be seen
+  first; Esc closes.
+
+### Changed
+
+- **`ThemePalette`'s default toggle key is now `Ctrl+T`** (was `Ctrl+Alt+T`) — a
+  single cross-platform binding that reaches the app on every terminal, where
+  `Ctrl+Alt+<letter>` collides with OS shortcuts and `F9` isn't delivered by some
+  terminals. Override with `toggleKey` as before.
+
 ## [1.0.7] - 2026-06-17
 
 ### Added
