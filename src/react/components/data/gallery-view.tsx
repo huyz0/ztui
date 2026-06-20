@@ -197,6 +197,14 @@ export function GalleryView<T>(props: GalleryViewProps<T>): ReactElement {
     ev.handled = true;
   };
 
+  // Move keyboard focus to the gallery's focusable wrapper. The App only
+  // focuses the *exact* clicked widget if it's focusable, and the cells aren't —
+  // so clicking the grid wouldn't otherwise hand the arrows to the gallery.
+  const focusSelf = (): void => {
+    const wrapper = (boxRef.current as { parent?: unknown } | null)?.parent;
+    if (wrapper) App.instance?.activeScreen.focusWidget(wrapper as never);
+  };
+
   const clickCell = (index: number): void => {
     const now = Date.now();
     const isDouble =
@@ -234,7 +242,13 @@ export function GalleryView<T>(props: GalleryViewProps<T>): ReactElement {
   }
 
   return (
-    <VBox focusable={focusable ?? true} onKey={onKey} style={style} {...rest}>
+    <VBox
+      focusable={focusable ?? true}
+      onKey={onKey}
+      onMouseDown={focusSelf}
+      style={style}
+      {...rest}
+    >
       {createElement(
         "ztui-scrollable-box",
         {

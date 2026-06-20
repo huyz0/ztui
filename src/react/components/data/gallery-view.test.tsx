@@ -177,4 +177,50 @@ describe("GalleryView", () => {
     await t.settle();
     expect(box.scrollOffset.y).toBeGreaterThan(0);
   });
+
+  test("is focusable: arrows route to it through the focus chain", async () => {
+    const onSelect = vi.fn();
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        onSelect={onSelect}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const wrapper = findBox(t).parent;
+    expect(wrapper.focusable).toBe(true);
+
+    t.screen.focusWidget(wrapper);
+    t.driver.simulateKey("right", "right"); // dispatched to the focused widget
+    await t.settle();
+    expect(onSelect).toHaveBeenLastCalledWith(1);
+  });
+
+  test("clicking a cell focuses the gallery so the keyboard takes over", async () => {
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const box = findBox(t);
+    const wrapper = box.parent;
+    expect(t.screen.focusedWidget).not.toBe(wrapper);
+
+    const cell = box.children[0].children[1]; // second cell of the first row
+    const r = cell.region;
+    t.driver.simulateMouse(r.x + 1, r.y + 1, "press", "left");
+    await t.settle();
+    expect(t.screen.focusedWidget).toBe(wrapper);
+  });
 });
