@@ -95,6 +95,28 @@ export class Style {
     );
   }
 
+  /**
+   * Whether this style's resolved fields equal `props` *as the constructor would
+   * normalise them* — booleans coerced (`!!`), `underline` implied by
+   * `underlineStyle`. Lets {@link StyleCache} match a request against a cached
+   * instance without allocating a throwaway `Style` to compare.
+   */
+  public matchesProps(props: StyleProps): boolean {
+    return (
+      this.color === props.color &&
+      this.background === props.background &&
+      this.bold === !!props.bold &&
+      this.italic === !!props.italic &&
+      this.underline === (!!props.underline || props.underlineStyle !== undefined) &&
+      this.underlineStyle === props.underlineStyle &&
+      this.underlineColor === props.underlineColor &&
+      this.reverse === !!props.reverse &&
+      this.dim === !!props.dim &&
+      this.strikethrough === !!props.strikethrough &&
+      this.link === props.link
+    );
+  }
+
   /** Return a new Style with `other`'s defined attributes layered over this one. */
   public merge(other: StyleProps | Style): Style {
     return new Style({
@@ -112,5 +134,48 @@ export class Style {
       strikethrough: other.strikethrough !== undefined ? other.strikethrough : this.strikethrough,
       link: other.link !== undefined ? other.link : this.link,
     });
+  }
+}
+
+/**
+ * A small, bounded {@link Style} memo for a producer that builds its paint styles
+ * fresh every frame (a widget's fill/border/text styles). Backs
+ * `Widget.cachedStyle`, the general mechanism — see that method for the rationale.
+ *
+ * The render diff has an identity fast path (`a === b`) and `ScreenBuffer.copyTo`
+ * carries a cell's Style *reference* into the prev-frame buffer — so the diff
+ * only short-circuits when the *same* Style instance reappears in the same cell
+ * next frame. A producer that does `new Style({…})` each frame defeats that:
+ * structurally-identical styles compare unequal by reference, forcing a full
+ * field compare on every cell, every frame (the `table` demo sat at ~8% identity
+ * for exactly this reason).
+ *
+ * It caches the last few *distinct* styles and returns the cached instance when
+ * the requested fields match one (a `Table` cycles through a small fixed set —
+ * normal, selected, header-bold, group-bold — so a handful of slots covers a
+ * whole frame). Matching is a field comparison ({@link Style.matchesProps}) with
+ * **no allocation on a hit** and **no per-call string key** — the string-keyed
+ * global intern tried earlier was break-even (its key cost matched the diff it
+ * saved) and a keyless *global* intern measurably regressed syntax-heavy text
+ * (hashing hundreds of distinct styles per frame in the hot render phase). The
+ * bound is what makes it safe to apply everywhere: a high-variety producer simply
+ * overflows and falls back to fresh styles — same as before, never worse.
+ */
+export class StyleCache {
+  private slots: Style[] = [];
+
+  /** @param max Distinct styles to retain (oldest evicted past this; default 8). */
+  constructor(private readonly max = 8) {}
+
+  /** The cached Style matching `props`, or a freshly built one cached for reuse. */
+  public get(props: StyleProps): Style {
+    const slots = this.slots;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].matchesProps(props)) return slots[i];
+    }
+    const style = new Style(props);
+    slots.push(style);
+    if (slots.length > this.max) slots.shift();
+    return style;
   }
 }

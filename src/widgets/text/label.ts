@@ -6,7 +6,6 @@ import type { Region } from "../../geometry/region.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { logger } from "../../utils/logger.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
@@ -44,7 +43,9 @@ export class LabelWidget extends Widget {
 
     const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
-    const style = new Style({
+    // cachedStyle (base Widget) reuses one instance across frames while the fields
+    // are unchanged, so a static label hits the render diff's identity fast path.
+    const style = this.cachedStyle({
       color: fg,
       background: bg,
       bold: this.computedStyle.bold,

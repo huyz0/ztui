@@ -9,7 +9,7 @@ import { Spacing } from "../geometry/spacing.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { mix, parseColor, rgbStr } from "../render/color.ts";
 import { stringWidth } from "../render/segment.ts";
-import { Style } from "../render/style.ts";
+import { type Style, StyleCache, type StyleProps } from "../render/style.ts";
 import { themeBlendBase } from "../theme.ts";
 import { logger } from "../utils/logger.ts";
 import { type BorderSide, borderCorner, borderEdge, hasBorderWeight } from "./border.ts";
@@ -755,41 +755,37 @@ export class Widget extends DOMNode {
     return false;
   }
 
-  /** Last {@link cachedRenderStyle} result; reused while the inputs are unchanged. */
-  private renderStyleCache?: Style;
+  /** Lazily-created per-widget {@link Style} memo backing {@link cachedStyle}. */
+  private _styleCache?: StyleCache;
 
   /**
-   * The {@link Style} this widget paints its background and border with, **reused
-   * across frames** whenever its fields are unchanged.
+   * Build a paint {@link Style}, **reusing one instance across frames** while its
+   * fields are unchanged — the general way for a widget to feed the render diff's
+   * identity fast path. **Use this instead of `new Style(...)` in {@link render}.**
    *
-   * Cells store a style by reference and {@link ScreenBuffer.copyTo} carries that
-   * reference into the prev-frame buffer, so the render diff's identity fast path
-   * (`a === b`) only fires when the *same* Style instance reappears. Allocating a
-   * fresh `new Style` here every frame defeated that — structurally-identical
-   * styles compared unequal by reference, forcing a full field-by-field
-   * `Style.equals` on every cell of every frame. Returning the cached instance
-   * while the inputs match makes a no-op repaint diff to a pointer compare, and a
-   * new instance is built only when something actually changed — exactly when the
-   * cells *should* be detected as dirty.
+   * Why it matters: cells store a style by reference and {@link ScreenBuffer.copyTo}
+   * carries that reference into the prev-frame buffer, so the diff only
+   * short-circuits (`a === b`) when the *same* instance reappears in a cell next
+   * frame. A widget that allocates a fresh `new Style` every frame defeats that —
+   * structurally-identical styles compare unequal by reference, forcing a full
+   * field compare on every one of its cells, every frame.
+   *
+   * This lives on the base class so **every widget, including custom ones, gets
+   * cross-frame Style caching for free** — no per-widget cache plumbing. It is
+   * bounded ({@link StyleCache}), so a producer that emits many distinct styles
+   * (e.g. syntax highlighting) simply overflows and falls back to fresh
+   * instances — never worse than `new Style`. (A *global* intern at the paint
+   * chokepoint was measured instead and rejected: it taxes high-variety text in
+   * the hot render phase for no gain — see {@link StyleCache}.)
    */
+  protected cachedStyle(props: StyleProps): Style {
+    this._styleCache ??= new StyleCache();
+    return this._styleCache.get(props);
+  }
+
   private cachedRenderStyle(color: string, background: string): Style {
     const cs = this.computedStyle;
-    const c = this.renderStyleCache;
-    if (
-      c !== undefined &&
-      c.color === color &&
-      c.background === background &&
-      c.bold === !!cs.bold &&
-      c.italic === !!cs.italic &&
-      c.underline === !!cs.underline &&
-      c.reverse === !!cs.reverse &&
-      c.dim === !!cs.dim &&
-      c.strikethrough === !!cs.strikethrough &&
-      c.link === cs.link
-    ) {
-      return c;
-    }
-    const style = new Style({
+    return this.cachedStyle({
       color,
       background,
       bold: cs.bold,
@@ -800,8 +796,6 @@ export class Widget extends DOMNode {
       strikethrough: cs.strikethrough,
       link: cs.link,
     });
-    this.renderStyleCache = style;
-    return style;
   }
 
   /**

@@ -8,7 +8,7 @@ import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
+import type { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 import { buildGroupedRows, type GroupedRow, initialCollapsed, type RowGroup } from "./grouping.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
@@ -819,7 +819,10 @@ export class TableWidget<Row = any> extends Widget {
   }
 
   private baseStyle(extra: Partial<ConstructorParameters<typeof Style>[0]> = {}): Style {
-    return new Style({
+    // cachedStyle (base Widget) memoizes across frames: a table cycles a small fixed
+    // set of variants (normal/selected/header-bold/group-bold/-dim), so each row
+    // reuses one Style instance and hits the render diff's identity fast path.
+    return this.cachedStyle({
       color: this.computedStyle.color || "default",
       background: this.findResolvedBackground(),
       ...extra,
