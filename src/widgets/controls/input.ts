@@ -97,7 +97,7 @@ export class InputWidget extends Widget implements ValidatableField {
   constructor() {
     super("input");
     this.focusable = true;
-    this.defaultStyle = { height: 3 };
+    this.defaultStyle = { height: 3, border: "rounded" };
 
     Object.defineProperty(this, "onValidate", {
       get: () => this.validation.onValidate,
@@ -335,6 +335,21 @@ export class InputWidget extends Widget implements ValidatableField {
     }
   }
 
+  // Border colour in priority order: a validation error/warning wins, else a
+  // focused input breathes its border with the $focus accent (so focus shows on
+  // the frame itself, not only via the caret), else the resolved style.
+  protected override resolveBorderColor(): string | undefined {
+    if (this._invalidOverride && App.instance) {
+      return App.instance.cssResolver.resolveVariable(this, "$error") || "red";
+    }
+    const severityColor = this.validation.resolveColor();
+    if (severityColor) return severityColor;
+    if (this.focused && this.style.borderColor === undefined && App.instance) {
+      return App.instance.cssResolver.resolveVariable(this, "$focus");
+    }
+    return super.resolveBorderColor();
+  }
+
   public override render(buffer: ScreenBuffer): void {
     if (this.focused !== this._focused) {
       this._focused = this.focused;
@@ -344,23 +359,6 @@ export class InputWidget extends Widget implements ValidatableField {
         this.stopBlinking();
         this.validation.maybeValidate("blur");
       }
-    }
-
-    if (this.computedStyle.border === undefined) {
-      this.computedStyle.border = "rounded";
-    }
-
-    // Border colour, in priority order: a validation error/warning wins, else a
-    // focused input breathes its border with the $focus accent (so focus is
-    // visible on the frame itself, not only via the caret), else the default.
-    const severityColor = this.validation.resolveColor();
-    if (this._invalidOverride && App.instance) {
-      this.computedStyle.borderColor =
-        App.instance.cssResolver.resolveVariable(this, "$error") || "red";
-    } else if (severityColor) {
-      this.computedStyle.borderColor = severityColor;
-    } else if (this.focused && this.style.borderColor === undefined && App.instance) {
-      this.computedStyle.borderColor = App.instance.cssResolver.resolveVariable(this, "$focus");
     }
 
     super.render(buffer);

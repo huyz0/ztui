@@ -804,15 +804,26 @@ export class Widget extends DOMNode {
     return style;
   }
 
+  /**
+   * The border colour to paint this frame. Resolved through a method (rather
+   * than read straight from `computedStyle`) so a control can add a
+   * state-driven colour — validation severity, a breathing focus ring — without
+   * mutating the shared `computedStyle` object during render (which would leak
+   * the per-frame colour into a cached style). Defaults to the resolved
+   * `borderColor` style.
+   */
+  protected resolveBorderColor(): string | undefined {
+    return this.computedStyle.borderColor;
+  }
+
   private drawBorder(buffer: ScreenBuffer, rect: Region, style: Style): void {
     const top = this.borderWeightForSide("top");
     const right = this.borderWeightForSide("right");
     const bottom = this.borderWeightForSide("bottom");
     const left = this.borderWeightForSide("left");
 
-    const borderStyle = this.computedStyle.borderColor
-      ? style.merge({ color: this.computedStyle.borderColor })
-      : style;
+    const borderColor = this.resolveBorderColor();
+    const borderStyle = borderColor ? style.merge({ color: borderColor }) : style;
 
     // A corner glyph is drawn only where two adjacent sides meet; uniform
     // weights give the right corner, mixed weights take the horizontal side's.

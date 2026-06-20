@@ -297,7 +297,6 @@ export class MenuListWidget extends Widget {
   }
 
   public override render(buffer: ScreenBuffer): void {
-    if (this.computedStyle.border === undefined) this.computedStyle.border = "rounded";
     super.render(buffer);
 
     const rect = this.getContentRect();

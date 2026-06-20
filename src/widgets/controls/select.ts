@@ -181,7 +181,7 @@ export class SelectWidget extends Widget {
   constructor() {
     super("select");
     this.focusable = true;
-    this.defaultStyle = { height: 3 };
+    this.defaultStyle = { height: 3, border: "rounded" };
 
     this.onKey = (ev) => {
       this.handleSelectKey(ev);
@@ -347,19 +347,18 @@ export class SelectWidget extends Widget {
     super.onUnmount();
   }
 
-  public override render(buffer: ScreenBuffer): void {
-    if (this.computedStyle.border === undefined) {
-      this.computedStyle.border = "rounded";
-    }
+  // Validation severity wins; else a focused select breathes its border with the
+  // $focus accent, so focus shows on the box itself, not only the value text.
+  protected override resolveBorderColor(): string | undefined {
     const severityColor = this.validation.resolveColor();
-    if (severityColor) {
-      this.computedStyle.borderColor = severityColor;
-    } else if (this.focused && this.style.borderColor === undefined && App.instance) {
-      // A focused select breathes its border with the $focus accent, so focus is
-      // visible on the box itself, not only via the value-text colour.
-      this.computedStyle.borderColor = App.instance.cssResolver.resolveVariable(this, "$focus");
+    if (severityColor) return severityColor;
+    if (this.focused && this.style.borderColor === undefined && App.instance) {
+      return App.instance.cssResolver.resolveVariable(this, "$focus");
     }
+    return super.resolveBorderColor();
+  }
 
+  public override render(buffer: ScreenBuffer): void {
     super.render(buffer);
     const contentRect = this.getContentRect();
 

@@ -84,7 +84,7 @@ export class TextAreaWidget extends Widget {
   constructor() {
     super("textarea");
     this.focusable = true;
-    this.defaultStyle = { height: 10 };
+    this.defaultStyle = { height: 10, border: "rounded" };
 
     this.onKey = (ev) => {
       this.handleInputKey(ev);
@@ -423,6 +423,11 @@ export class TextAreaWidget extends Widget {
     }
   }
 
+  // A validation error/warning colours the border; otherwise the resolved style.
+  protected override resolveBorderColor(): string | undefined {
+    return this.validation.resolveColor() ?? super.resolveBorderColor();
+  }
+
   public override render(buffer: ScreenBuffer): void {
     if (this.focused !== this._focused) {
       this._focused = this.focused;
@@ -434,13 +439,6 @@ export class TextAreaWidget extends Widget {
       }
     }
 
-    if (this.computedStyle.border === undefined) {
-      this.computedStyle.border = "rounded";
-    }
-    const severityColor = this.validation.resolveColor();
-    if (severityColor) {
-      this.computedStyle.borderColor = severityColor;
-    }
     super.render(buffer);
 
     const contentRect = this.getContentRect();
