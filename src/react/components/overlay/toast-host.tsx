@@ -64,37 +64,33 @@ function ToastItem({
     return () => clearTimeout(handle);
   }, [t.id, t.duration]);
 
-  // The level shows only as a thick colored bar flush to the left edge. Rather
-  // than a percentage-height bar (which the layout engine sizes against the whole
-  // screen), we colour the *outer* box with the level colour and lay a neutral
-  // $panel content box over everything except column 0 — so the left column shows
-  // through as a full-height bar that tracks the content height for free. The
-  // padding lives on the content box; an ✕ on the top-right dismisses this toast.
+  // The level shows as a thick colored bar flush to the left edge — a single
+  // `block`-weight left border whose full-height cell tracks the content for
+  // free. The padding sits inside the bar; an ✕ on the top-right dismisses this.
   const color = LEVEL_COLOR[t.level];
   return (
-    <Box style={{ width, background: color }}>
-      <Box
-        style={{
-          width: width - 1,
-          background: "$panel",
-          color: "$foreground",
-          margin: { left: 1 },
-          padding: { left: 1, right: 1, top: 1, bottom: 1 },
-        }}
-      >
-        <HBox>
-          <VBox style={{ flexGrow: 1 }}>
-            {t.title ? <Label style={{ bold: true }}>{t.title}</Label> : null}
-            <Label>{t.message}</Label>
-          </VBox>
-          <Label
-            onClick={() => toast.dismiss(t.id)}
-            style={{ color: "$placeholder", margin: { left: 1 } }}
-          >
-            {CLOSE[glyphSet]}
-          </Label>
-        </HBox>
-      </Box>
+    <Box
+      style={{
+        width,
+        borderLeft: "block",
+        borderColor: color,
+        background: "$panel",
+        color: "$foreground",
+        padding: { left: 1, right: 1, top: 1, bottom: 1 },
+      }}
+    >
+      <HBox>
+        <VBox style={{ flexGrow: 1 }}>
+          {t.title ? <Label style={{ bold: true }}>{t.title}</Label> : null}
+          <Label>{t.message}</Label>
+        </VBox>
+        <Label
+          onClick={() => toast.dismiss(t.id)}
+          style={{ color: "$placeholder", margin: { left: 1 } }}
+        >
+          {CLOSE[glyphSet]}
+        </Label>
+      </HBox>
     </Box>
   );
 }

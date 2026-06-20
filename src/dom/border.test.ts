@@ -116,6 +116,23 @@ describe("per-side & heavy borders", () => {
     expect(charAt(buffer, 4, 1)).toBe("▐"); // right
   });
 
+  test("block border fills the whole cell on every edge", () => {
+    const { buffer } = build({ border: "block" });
+    expect(charAt(buffer, 1, 0)).toBe("█"); // top
+    expect(charAt(buffer, 1, 3)).toBe("█"); // bottom
+    expect(charAt(buffer, 0, 1)).toBe("█"); // left
+    expect(charAt(buffer, 4, 1)).toBe("█"); // right
+    expect(charAt(buffer, 0, 0)).toBe("█"); // corner
+  });
+
+  test("a single block side is a full-cell bar across the whole edge", () => {
+    const { buffer } = build({ borderLeft: "block" });
+    expect(charAt(buffer, 0, 0)).toBe("█");
+    expect(charAt(buffer, 0, 1)).toBe("█");
+    expect(charAt(buffer, 0, 3)).toBe("█");
+    expect(charAt(buffer, 1, 0)).not.toBe("█"); // no top edge
+  });
+
   test("a per-side weight overrides the all-sides border for its side", () => {
     const { buffer } = build({ border: "thin", borderTop: "heavy" });
     expect(charAt(buffer, 1, 0)).toBe("━"); // heavy top edge

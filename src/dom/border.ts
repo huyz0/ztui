@@ -32,9 +32,12 @@ const SETS: Record<string, GlyphSet> = {
   dashed: { h: "╌", v: "┆", tl: "╭", tr: "╮", br: "╯", bl: "╰" },
 };
 
-/** Solid-block edge glyphs for the `bar` weight (a prominent one-sided accent). */
+/** Half-block edge glyphs for the `bar` weight (a prominent one-sided accent). */
 const BAR_EDGE: Record<BorderSide, string> = { top: "▀", bottom: "▄", left: "▌", right: "▐" };
 const BAR_CORNER = "█";
+
+/** The `block` weight fills the whole cell on every side — the thickest bar. */
+const BLOCK = "█";
 
 /** Unrecognized weights fall back to `rounded` — the historical default. */
 function setFor(weight: string): GlyphSet {
@@ -48,6 +51,7 @@ export function hasBorderWeight(weight: string | undefined | null): weight is st
 
 /** The edge glyph for `side` at the given weight. */
 export function borderEdge(weight: string, side: BorderSide): string {
+  if (weight === "block") return BLOCK;
   if (weight === "bar") return BAR_EDGE[side];
   const set = setFor(weight);
   return side === "top" || side === "bottom" ? set.h : set.v;
@@ -55,6 +59,7 @@ export function borderEdge(weight: string, side: BorderSide): string {
 
 /** The corner glyph (`tl`/`tr`/`br`/`bl`) at the given weight. */
 export function borderCorner(weight: string, corner: "tl" | "tr" | "br" | "bl"): string {
+  if (weight === "block") return BLOCK;
   if (weight === "bar") return BAR_CORNER;
   return setFor(weight)[corner];
 }

@@ -99,8 +99,8 @@ describe("ToastHost", () => {
     await t.settle();
     expect(t.screen.layers.length).toBe(1);
 
-    // root → corner VBox → toast Box (level bar) → panel Box → HBox → [content, close]
-    const hbox = t.screen.layers[0].root.children[0].children[0].children[0].children[0] as Widget;
+    // root → corner VBox → toast Box (block left bar) → HBox → [content, close]
+    const hbox = t.screen.layers[0].root.children[0].children[0].children[0] as Widget;
     const close = hbox.children[hbox.children.length - 1] as Widget;
     const r = close.region;
     t.driver.simulateMouse(r.x, r.y, "press", "left");

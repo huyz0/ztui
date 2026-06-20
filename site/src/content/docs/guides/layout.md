@@ -74,7 +74,7 @@ Both take a number (all sides), a `{ top, right, bottom, left }` object, or a
 A `border` draws a one-cell frame on all four sides and shrinks the content box
 accordingly. Color it with `borderColor`. The weight is the box-drawing style:
 `"rounded"` (default), `"thin"`, `"solid"`, `"heavy"`, `"double"`, `"dashed"`,
-`"bar"` (solid block), or `"none"`.
+`"bar"` (half-block accent `▌`), `"block"` (full-cell solid `█`), or `"none"`.
 
 ### Per-side borders
 
