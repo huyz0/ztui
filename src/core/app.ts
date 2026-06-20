@@ -15,6 +15,7 @@ import { parseDimension } from "../layout/layout.ts";
 import { needsGraphicClear, ScreenBuffer } from "../render/buffer.ts";
 import { ThemeManager } from "../theme.ts";
 import { logger } from "../utils/logger.ts";
+import { frameProfiler } from "./frame-profiler.ts";
 import { hitTest } from "./hit-test.ts";
 import { HotkeyRegistry } from "./hotkeys.ts";
 import { type InspectorServer, startInspector } from "./inspector.ts";
@@ -861,22 +862,38 @@ export class App extends DOMNode {
     // *could* carry a time-varying token resolved by this pass — so when rules
     // exist we keep re-resolving every frame (correctness over speed).
     const restyle = doLayout || this.cssResolver.hasRules();
-    if (restyle) this.resolveAllStyles(screen);
+    if (restyle) {
+      const t = frameProfiler.now();
+      this.resolveAllStyles(screen);
+      frameProfiler.record("restyle", t);
+    }
     const size = this.driver.getSize();
     if (doLayout) {
+      let t = frameProfiler.now();
       screen.measure(screen.region.width, size.height);
+      frameProfiler.record("measure", t);
+      t = frameProfiler.now();
       this.resolveAllLayouts(screen);
+      frameProfiler.record("layout", t);
     }
 
     // Resolve styles and absolute layouts for screen overlays. Overlays fill the
     // screen and must be measured (so layer content can size/center itself)
     // before their subtree is laid out.
     for (const overlay of screen.overlays) {
-      if (restyle) this.resolveAllStyles(overlay);
+      if (restyle) {
+        const t = frameProfiler.now();
+        this.resolveAllStyles(overlay);
+        frameProfiler.record("restyle", t);
+      }
       if (doLayout) {
+        let t = frameProfiler.now();
         overlay.measure(screen.region.width, screen.region.height);
+        frameProfiler.record("measure", t);
         overlay.region = screen.region.clone();
+        t = frameProfiler.now();
         this.resolveAllLayouts(overlay);
+        frameProfiler.record("layout", t);
       }
     }
 
@@ -888,6 +905,7 @@ export class App extends DOMNode {
     const dmgY0 = full ? 0 : Math.max(0, Math.floor(damageTop));
     const dmgY1 = full ? size.height : Math.min(size.height, Math.ceil(damageBottom));
 
+    const tRender = frameProfiler.now();
     if (full) {
       // Recompute graphics presence/signature from scratch this frame; a full
       // render visits every widget, so they end accurate. (Partial frames leave
@@ -959,6 +977,9 @@ export class App extends DOMNode {
       this.lastGraphicSignature = this.currentBuffer.graphicSignature;
     }
 
+    frameProfiler.record("render", tRender);
+
+    const tDiff = frameProfiler.now();
     const ansiDiff = this.currentBuffer.renderDiff(
       this.prevBuffer,
       (cell, oldCell) => {
@@ -999,7 +1020,11 @@ export class App extends DOMNode {
       dmgY1,
       dmgY0,
     );
-    if (ansiDiff || graphicsResetSeq) {
+    frameProfiler.record("diff", tDiff);
+
+    const emitted = !!(ansiDiff || graphicsResetSeq);
+    const tWrite = frameProfiler.now();
+    if (emitted) {
       this.driver.writeFrame(graphicsResetSeq + ansiDiff);
       this.driver.presentBuffer(this.currentBuffer);
       this.currentBuffer.copyTo(this.prevBuffer, dmgY0, dmgY1);
@@ -1009,6 +1034,12 @@ export class App extends DOMNode {
         `frame #${this.frameCount} painted (${ansiDiff.length} bytes, ${size.width}x${size.height})`,
       );
     }
+    frameProfiler.record("write", tWrite);
+    frameProfiler.frame({
+      full,
+      emitted,
+      bytes: emitted ? graphicsResetSeq.length + ansiDiff.length : 0,
+    });
   }
 
   private resolveAllStyles(node: DOMNode): void {
