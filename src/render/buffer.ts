@@ -330,6 +330,9 @@ export class ScreenBuffer {
     }
 
     let cursor: { x: number; y: number } | null = null;
+    // The style currently set on the terminal ("pen"). Tracked across runs so a
+    // run only (re)issues SGR codes when the pen actually changes (see flushRun).
+    let lastStyle: Style | null = null;
 
     // Invalidation pass: if a cell becomes wideContinuation but was previously text,
     // force redraw of its main cell to clear the old text and restore the graphic/wide char.
@@ -379,16 +382,19 @@ export class ScreenBuffer {
               runContent,
               this.cells[y][runStartX].style,
               cursor,
+              lastStyle,
             );
             output += res.out;
             cursor = res.cursor;
+            lastStyle = res.lastStyle;
             runStartX = null;
             runContent = "";
           }
           if (changed && !newCell.wideContinuation) {
             const content = formatChar ? formatChar(newCell, oldCell) : newCell.char;
-            const res = this.flushRun(x, y, content, newCell.style, cursor);
+            const res = this.flushRun(x, y, content, newCell.style, cursor, lastStyle);
             output += res.out;
+            lastStyle = res.lastStyle;
           }
           // After any special cell — a graphic, an icon, or the continuation
           // half of a wide glyph — we can no longer trust relative cursor
@@ -398,7 +404,13 @@ export class ScreenBuffer {
           // `stringWidth` assumed. Force the next run to emit an absolute
           // cursor move; otherwise its content can stream from the wrong
           // column and leave stale fragments of the previous frame on screen.
+          // An inline graphic/icon sequence also leaves the terminal pen in an
+          // unknown state, so drop the tracked style to re-issue it next run.
+          // Close any open hyperlink first — nulling the pen would otherwise lose
+          // track of it and leave it bleeding onto subsequent output.
+          if (lastStyle?.link) output += "\x1b]8;;\x1b\\";
           cursor = null;
+          lastStyle = null;
           continue;
         }
 
@@ -416,9 +428,11 @@ export class ScreenBuffer {
               runContent,
               this.cells[y][runStartX].style,
               cursor,
+              lastStyle,
             );
             output += res.out;
             cursor = res.cursor;
+            lastStyle = res.lastStyle;
             runStartX = null;
             runContent = "";
           }
@@ -430,10 +444,26 @@ export class ScreenBuffer {
       }
 
       if (runStartX !== null) {
-        const res = this.flushRun(runStartX, y, runContent, this.cells[y][runStartX].style, cursor);
+        const res = this.flushRun(
+          runStartX,
+          y,
+          runContent,
+          this.cells[y][runStartX].style,
+          cursor,
+          lastStyle,
+        );
         output += res.out;
         cursor = res.cursor;
+        lastStyle = res.lastStyle;
       }
+    }
+
+    // Return the terminal to the default pen after the frame's last styled run,
+    // matching the per-run reset the old serialization always left behind. Close
+    // a trailing hyperlink too, for the same reason as above.
+    if (output.length > 0) {
+      if (lastStyle?.link) output += "\x1b]8;;\x1b\\";
+      output += "\x1b[0m";
     }
 
     return output;
@@ -445,16 +475,31 @@ export class ScreenBuffer {
     content: string,
     style: Style,
     cursor: { x: number; y: number } | null,
-  ): { out: string; cursor: { x: number; y: number } } {
+    lastStyle: Style | null,
+  ): { out: string; cursor: { x: number; y: number }; lastStyle: Style } {
     let out = "";
     if (!cursor || cursor.y !== y || cursor.x !== x) {
       out += `\x1b[${y + 1};${x + 1}H`;
     }
-    const { start, end } = styleToEscapeCodes(style);
-    out += start + content + end;
+    // Sticky SGR: only (re)issue style codes when the pen actually changes from
+    // what we last emitted. A leading full reset clears any attribute the
+    // previous run set that this one omits; the matching trailing reset is
+    // deferred to the end of the frame. Runs that repeat a style emit no SGR at
+    // all — the bulk of a frame's escape bytes used to be this redundant reset +
+    // re-set between same-style runs.
+    if (lastStyle === null || !style.equals(lastStyle)) {
+      // Close a hyperlink the previous run left open before we reset — `\x1b[0m`
+      // is SGR and does not terminate an OSC-8 link, so it would otherwise bleed
+      // onto this run. The new style's `start` re-opens its own link if any.
+      if (lastStyle?.link && lastStyle.link !== style.link) out += "\x1b]8;;\x1b\\";
+      const { start } = styleToEscapeCodes(style);
+      out += `\x1b[0m${start}`;
+    }
+    out += content;
     return {
       out,
       cursor: { x: x + stringWidth(content), y },
+      lastStyle: style,
     };
   }
 
