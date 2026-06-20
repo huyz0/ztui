@@ -816,14 +816,32 @@ export class Widget extends DOMNode {
     return this.computedStyle.borderColor;
   }
 
+  /** Last {@link borderStyleFor} result; reused while the base and colour hold. */
+  private borderStyleCache?: { base: Style; color: string; merged: Style };
+
+  /**
+   * The border's paint style: `base` recoloured with `color`. Memoized on
+   * (`base`, `color`) so a static border reuses one instance across frames and
+   * hits the diff's identity fast path — same idea as {@link cachedRenderStyle}.
+   * A breathing focus ring changes `color` each frame and so re-merges, exactly
+   * when its cells should repaint.
+   */
+  private borderStyleFor(base: Style, color: string | undefined): Style {
+    if (!color) return base;
+    const c = this.borderStyleCache;
+    if (c !== undefined && c.base === base && c.color === color) return c.merged;
+    const merged = base.merge({ color });
+    this.borderStyleCache = { base, color, merged };
+    return merged;
+  }
+
   private drawBorder(buffer: ScreenBuffer, rect: Region, style: Style): void {
     const top = this.borderWeightForSide("top");
     const right = this.borderWeightForSide("right");
     const bottom = this.borderWeightForSide("bottom");
     const left = this.borderWeightForSide("left");
 
-    const borderColor = this.resolveBorderColor();
-    const borderStyle = borderColor ? style.merge({ color: borderColor }) : style;
+    const borderStyle = this.borderStyleFor(style, this.resolveBorderColor());
 
     // A corner glyph is drawn only where two adjacent sides meet; uniform
     // weights give the right corner, mixed weights take the horizontal side's.

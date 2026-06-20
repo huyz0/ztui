@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { App } from "../../../core/app.ts";
+import type { Widget } from "../../../dom/widget.ts";
 import { Offset } from "../../../geometry/offset.ts";
 import { HBox } from "../layout/hbox.tsx";
 import { VBox } from "../layout/vbox.tsx";
@@ -201,8 +202,8 @@ export function GalleryView<T>(props: GalleryViewProps<T>): ReactElement {
   // focuses the *exact* clicked widget if it's focusable, and the cells aren't —
   // so clicking the grid wouldn't otherwise hand the arrows to the gallery.
   const focusSelf = (): void => {
-    const wrapper = (boxRef.current as { parent?: unknown } | null)?.parent;
-    if (wrapper) App.instance?.activeScreen.focusWidget(wrapper as never);
+    const wrapper = (boxRef.current as { parent?: Widget | null } | null)?.parent;
+    if (wrapper) App.instance?.activeScreen.focusWidget(wrapper);
   };
 
   const clickCell = (index: number): void => {

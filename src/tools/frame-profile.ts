@@ -76,14 +76,16 @@ export function profileScenario(
   const drive = mode === "repaint" ? forceRepaintFrame : forceFullFrame;
 
   frameProfiler.enabled = true;
-  frameProfiler.reset();
-  for (let i = 0; i < warmup; i++) drive(a);
-  frameProfiler.reset(); // drop warmup; measure only the steady-state frames
-  for (let i = 0; i < iterations; i++) drive(a);
-  const report = frameProfiler.report();
-  frameProfiler.enabled = false;
-
-  return { mode, iterations, report };
+  try {
+    frameProfiler.reset();
+    for (let i = 0; i < warmup; i++) drive(a);
+    frameProfiler.reset(); // drop warmup; measure only the steady-state frames
+    for (let i = 0; i < iterations; i++) drive(a);
+    return { mode, iterations, report: frameProfiler.report() };
+  } finally {
+    // Never leave profiling on if a forced frame throws.
+    frameProfiler.enabled = false;
+  }
 }
 
 /** Mount a UI and run both scenarios against it. */
