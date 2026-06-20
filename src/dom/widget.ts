@@ -12,6 +12,7 @@ import { stringWidth } from "../render/segment.ts";
 import { Style } from "../render/style.ts";
 import { themeBlendBase } from "../theme.ts";
 import { logger } from "../utils/logger.ts";
+import { type BorderSide, borderCorner, borderEdge, hasBorderWeight } from "./border.ts";
 import { DOMNode } from "./dom.ts";
 import { TextNode } from "./text-node.ts";
 
@@ -85,8 +86,20 @@ export interface WidgetStyles {
   margin?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
   /** Space inside the border, before content. */
   padding?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
-  /** Border style: `"rounded"` (default), `"solid"`, `"double"`, `"dashed"`, or `"none"`. */
+  /**
+   * Border around all four sides: `"rounded"` (default), `"thin"`, `"solid"`,
+   * `"heavy"`, `"double"`, `"dashed"`, `"bar"` (solid block), or `"none"`. Use the
+   * per-side props below for a single corner-less edge.
+   */
   border?: string;
+  /** Top edge weight only (overrides `border` for this side); same values as `border`. */
+  borderTop?: string;
+  /** Right edge weight only (overrides `border` for this side). */
+  borderRight?: string;
+  /** Bottom edge weight only (overrides `border` for this side). */
+  borderBottom?: string;
+  /** Left edge weight only (overrides `border` for this side) — e.g. a chat-message accent bar. */
+  borderLeft?: string;
   /** Border color: hex, named, or `$token`. */
   borderColor?: string;
   /** Child flow direction / mode: vertical, horizontal, dock, or grid. */
@@ -455,12 +468,45 @@ export class Widget extends DOMNode {
     return Spacing.ZERO;
   }
 
-  /** Border thickness as a {@link Spacing} — 1 on each side when a border is set, else zero. */
+  /**
+   * The border weight for one side — its per-side prop, else the all-sides
+   * `border`. Returns `undefined` when that side has no border (`"none"` or
+   * unset). `protected` so subclasses (e.g. {@link BoxWidget} titles) can ask.
+   */
+  protected borderWeightForSide(side: BorderSide): string | undefined {
+    const cs = this.computedStyle;
+    const per =
+      side === "top"
+        ? cs.borderTop
+        : side === "right"
+          ? cs.borderRight
+          : side === "bottom"
+            ? cs.borderBottom
+            : cs.borderLeft;
+    // An explicit per-side value wins (incl. "none" to drop that side); else fall
+    // back to the all-sides `border`.
+    const weight = per !== undefined ? per : cs.border;
+    return hasBorderWeight(weight) ? weight : undefined;
+  }
+
+  /** Whether any side has a border. */
+  protected hasBorder(): boolean {
+    return (
+      this.borderWeightForSide("top") !== undefined ||
+      this.borderWeightForSide("right") !== undefined ||
+      this.borderWeightForSide("bottom") !== undefined ||
+      this.borderWeightForSide("left") !== undefined
+    );
+  }
+
+  /** Border thickness as a {@link Spacing} — 1 per side that has a border, else zero. */
   public get borderSize(): Spacing {
-    if (this.computedStyle.border && this.computedStyle.border !== "none") {
-      return new Spacing(1, 1, 1, 1);
-    }
-    return Spacing.ZERO;
+    return new Spacing(
+      this.borderWeightForSide("top") ? 1 : 0,
+      this.borderWeightForSide("right") ? 1 : 0,
+      this.borderWeightForSide("bottom") ? 1 : 0,
+      this.borderWeightForSide("left") ? 1 : 0,
+    );
   }
 
   /** The region inside the margin (the widget's visible box, border included). */
@@ -683,7 +729,7 @@ export class Widget extends DOMNode {
     }
 
     // Draw border
-    if (this.computedStyle.border && this.computedStyle.border !== "none") {
+    if (this.hasBorder()) {
       this.drawBorder(buffer, client, style);
     }
 
@@ -692,43 +738,45 @@ export class Widget extends DOMNode {
   }
 
   private drawBorder(buffer: ScreenBuffer, rect: Region, style: Style): void {
-    const type = this.computedStyle.border;
-    // Rounded corners are the default (matches Textual's "round"): solid edges,
-    // rounded corner glyphs.
-    let chars = ["╭", "─", "╮", "│", "╯", "╰"];
-
-    if (type === "double") {
-      chars = ["╔", "═", "╗", "║", "╝", "╚"];
-    } else if (type === "dashed") {
-      // Rounded corners with dashed edges (corners themselves aren't dashed).
-      chars = ["╭", "╌", "╮", "┆", "╯", "╰"];
-    } else if (type === "solid" || type === "single") {
-      chars = ["┌", "─", "┐", "│", "┘", "└"];
-    }
-
-    const [tl, h, tr, v, br, bl] = chars;
+    const top = this.borderWeightForSide("top");
+    const right = this.borderWeightForSide("right");
+    const bottom = this.borderWeightForSide("bottom");
+    const left = this.borderWeightForSide("left");
 
     const borderStyle = this.computedStyle.borderColor
       ? style.merge({ color: this.computedStyle.borderColor })
       : style;
 
-    // Corners
-    buffer.setCell(rect.x, rect.y, tl, borderStyle);
-    buffer.setCell(rect.right - 1, rect.y, tr, borderStyle);
-    buffer.setCell(rect.right - 1, rect.bottom - 1, br, borderStyle);
-    buffer.setCell(rect.x, rect.bottom - 1, bl, borderStyle);
-
-    // Horizontal edges
-    for (let x = rect.x + 1; x < rect.right - 1; x++) {
-      buffer.setCell(x, rect.y, h, borderStyle);
-      buffer.setCell(x, rect.bottom - 1, h, borderStyle);
+    // A corner glyph is drawn only where two adjacent sides meet; uniform
+    // weights give the right corner, mixed weights take the horizontal side's.
+    if (top && left) buffer.setCell(rect.x, rect.y, borderCorner(top, "tl"), borderStyle);
+    if (top && right) {
+      buffer.setCell(rect.right - 1, rect.y, borderCorner(top, "tr"), borderStyle);
+    }
+    if (bottom && right) {
+      buffer.setCell(rect.right - 1, rect.bottom - 1, borderCorner(bottom, "br"), borderStyle);
+    }
+    if (bottom && left) {
+      buffer.setCell(rect.x, rect.bottom - 1, borderCorner(bottom, "bl"), borderStyle);
     }
 
-    // Vertical edges
-    for (let y = rect.y + 1; y < rect.bottom - 1; y++) {
-      buffer.setCell(rect.x, y, v, borderStyle);
-      buffer.setCell(rect.right - 1, y, v, borderStyle);
-    }
+    // Each edge spans the full side, minus the corner cells owned by an adjacent
+    // side — so a lone side is a clean corner-less bar across the whole edge.
+    const drawH = (weight: string, y: number, side: BorderSide): void => {
+      const x0 = left ? rect.x + 1 : rect.x;
+      const x1 = right ? rect.right - 2 : rect.right - 1;
+      for (let x = x0; x <= x1; x++) buffer.setCell(x, y, borderEdge(weight, side), borderStyle);
+    };
+    const drawV = (weight: string, x: number, side: BorderSide): void => {
+      const y0 = top ? rect.y + 1 : rect.y;
+      const y1 = bottom ? rect.bottom - 2 : rect.bottom - 1;
+      for (let y = y0; y <= y1; y++) buffer.setCell(x, y, borderEdge(weight, side), borderStyle);
+    };
+
+    if (top) drawH(top, rect.y, "top");
+    if (bottom) drawH(bottom, rect.bottom - 1, "bottom");
+    if (left) drawV(left, rect.x, "left");
+    if (right) drawV(right, rect.right - 1, "right");
   }
 
   /**

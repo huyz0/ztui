@@ -71,9 +71,27 @@ Both take a number (all sides), a `{ top, right, bottom, left }` object, or a
 </VBox>
 ```
 
-A `border` (`"rounded"`, `"solid"`, `"double"`, `"dashed"`, or `"none"`) draws a
-one-cell frame and shrinks the content box accordingly. Color it with
-`borderColor`.
+A `border` draws a one-cell frame on all four sides and shrinks the content box
+accordingly. Color it with `borderColor`. The weight is the box-drawing style:
+`"rounded"` (default), `"thin"`, `"solid"`, `"heavy"`, `"double"`, `"dashed"`,
+`"bar"` (solid block), or `"none"`.
+
+### Per-side borders
+
+`borderTop`, `borderRight`, `borderBottom`, and `borderLeft` set a single edge
+(same weight values) and override `border` for that side. A lone side is a clean
+**corner-less bar** that only insets layout on that side — handy for a chat
+bubble whose colored bar says who a message is from and how important it is, the
+same way `Toast` uses color for info/warn/error:
+
+```tsx
+// user: a thick teal bar; assistant: a thin muted bar; alert: a solid red bar
+<VBox style={{ borderLeft: "heavy", borderColor: "$primary", padding: { left: 1 } }}>…</VBox>
+<VBox style={{ borderLeft: "thin",  borderColor: "$dimmed",  padding: { left: 1 } }}>…</VBox>
+<VBox style={{ borderLeft: "bar",   borderColor: "$error",   padding: { left: 1 } }}>…</VBox>
+```
+
+Set a side to `"none"` to drop just that edge of an all-sides `border`.
 
 ## Alignment
 

@@ -23,8 +23,8 @@ export class BoxWidget extends Widget {
    */
   private drawTitle(buffer: ScreenBuffer): void {
     if (!this.title) return;
-    const border = this.computedStyle.border;
-    if (!border || border === "none") return;
+    // The title is painted onto the top border row, so it needs a top edge.
+    if (!this.borderWeightForSide("top")) return;
 
     const rect = this.getClientRect();
     // Reserve the two corners plus one border cell of padding on each side.

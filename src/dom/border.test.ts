@@ -64,4 +64,70 @@ describe("widget border styles", () => {
   test("unrecognized border type defaults to rounded corners", () => {
     expect(corners("fancy")).toEqual(corners("rounded"));
   });
+
+  test("heavy border uses heavy corners and edges", () => {
+    const c = corners("heavy");
+    expect(c.tl).toBe("┏");
+    expect(c.tr).toBe("┓");
+    expect(c.bl).toBe("┗");
+    expect(c.br).toBe("┛");
+    expect(c.top).toBe("━");
+    expect(c.left).toBe("┃");
+  });
+});
+
+/** Render a 5×4 widget with arbitrary border styles. */
+function build(styles: Record<string, unknown>) {
+  const w = new Widget("box");
+  Object.assign(w.style, { width: 5, height: 4 }, styles);
+  w.region = new Region(Offset.ORIGIN, new Size(5, 4));
+  const buffer = new ScreenBuffer(5, 4);
+  w.render(buffer);
+  return { w, buffer };
+}
+
+describe("per-side & heavy borders", () => {
+  test("a single side draws a corner-less bar across the whole edge", () => {
+    const { buffer } = build({ borderLeft: "heavy" });
+    // The left column is a full-height heavy bar — no corner glyphs.
+    expect(charAt(buffer, 0, 0)).toBe("┃");
+    expect(charAt(buffer, 0, 1)).toBe("┃");
+    expect(charAt(buffer, 0, 3)).toBe("┃");
+    // No other edges.
+    expect(charAt(buffer, 1, 0)).not.toBe("─");
+    expect(charAt(buffer, 4, 1)).not.toBe("┃");
+  });
+
+  test("a single side only insets layout on that side", () => {
+    const { w } = build({ borderLeft: "thin" });
+    const cr = w.getContentRect();
+    const client = w.getClientRect();
+    expect(cr.x).toBe(client.x + 1); // left is inset by the bar
+    expect(cr.y).toBe(client.y); // top is not
+    expect(cr.width).toBe(client.width - 1);
+    expect(cr.height).toBe(client.height);
+  });
+
+  test("bar border uses solid block edges", () => {
+    const { buffer } = build({ border: "bar" });
+    expect(charAt(buffer, 1, 0)).toBe("▀"); // top
+    expect(charAt(buffer, 1, 3)).toBe("▄"); // bottom
+    expect(charAt(buffer, 0, 1)).toBe("▌"); // left
+    expect(charAt(buffer, 4, 1)).toBe("▐"); // right
+  });
+
+  test("a per-side weight overrides the all-sides border for its side", () => {
+    const { buffer } = build({ border: "thin", borderTop: "heavy" });
+    expect(charAt(buffer, 1, 0)).toBe("━"); // heavy top edge
+    expect(charAt(buffer, 1, 3)).toBe("─"); // thin bottom edge
+    expect(charAt(buffer, 0, 0)).toBe("┏"); // corner takes the top side's weight
+  });
+
+  test('a per-side "none" drops that side of an all-sides border', () => {
+    const { w, buffer } = build({ border: "solid", borderTop: "none" });
+    expect(charAt(buffer, 1, 0)).not.toBe("─"); // no top edge
+    expect(charAt(buffer, 0, 1)).toBe("│"); // left edge still there
+    expect(w.borderSize.top).toBe(0);
+    expect(w.borderSize.left).toBe(1);
+  });
 });

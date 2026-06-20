@@ -6,6 +6,7 @@ import { borderDemo } from "../border_demo.tsx";
 import { boxTitleDemo } from "../box_title_demo.tsx";
 import { buttonDemo } from "../button_demo.tsx";
 import { chartDemo } from "../chart_demo.tsx";
+import { chatBubblesDemo } from "../chat_bubbles_demo.tsx";
 import { chatDemo } from "../chat_demo.tsx";
 import { checkboxDemo } from "../checkbox_demo.tsx";
 import { clipboardDemo } from "../clipboard_demo.tsx";
@@ -88,6 +89,7 @@ export const demos: Demo[] = [
   clipboardDemo,
   borderDemo,
   boxTitleDemo,
+  chatBubblesDemo,
   collapsibleDemo,
   splitviewDemo,
   tabsDemo,
