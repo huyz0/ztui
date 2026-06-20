@@ -708,19 +708,9 @@ export class Widget extends DOMNode {
       bgForStyle = rgbStr(mix(base.bg, parsedBg.rgb, parsedBg.alpha));
     }
 
-    const style = new Style({
-      color: fg,
-      background: bgForStyle,
-      bold: this.computedStyle.bold,
-      italic: this.computedStyle.italic,
-      underline: this.computedStyle.underline,
-      reverse: this.computedStyle.reverse,
-      dim: this.computedStyle.dim,
-      strikethrough: this.computedStyle.strikethrough,
-      link: this.computedStyle.link,
-    });
+    const style = this.cachedRenderStyle(fg, bgForStyle);
 
-    if (!translucent) {
+    if (!translucent && this.needsBackgroundFill()) {
       for (let y = client.y; y < client.bottom; y++) {
         for (let x = client.x; x < client.right; x++) {
           buffer.setCell(x, y, " ", style);
@@ -735,6 +725,83 @@ export class Widget extends DOMNode {
 
     // Render children
     this.renderChildren(buffer);
+  }
+
+  /**
+   * Whether this widget must paint its background cells, or can skip the fill
+   * because the cells beneath already hold the exact background it would write.
+   *
+   * The bulk of per-frame `setCell` work is redundant overdraw: a widget with no
+   * own opaque background resolves `bg` from an ancestor and re-fills its whole
+   * rect with that colour — but the ancestor (or the initial buffer clear)
+   * already painted those same cells with that same colour. Skipping the fill in
+   * that case is invisible. We keep the fill when:
+   *
+   * - the widget has its **own** opaque background (it must actually paint it), or
+   * - it is `position: absolute` — it can float over cells an ancestor never
+   *   painted, so it can't assume the inherited colour is already there, or
+   * - it carries an attribute that *is* visible on a blank space — `underline`,
+   *   `reverse`, or `strikethrough` (plain colour/bold/italic/dim/link are not).
+   */
+  protected needsBackgroundFill(): boolean {
+    const cs = this.computedStyle;
+    const own = cs.background;
+    const hasOwnOpaqueBg = !!own && own !== "default" && own !== "transparent";
+    if (hasOwnOpaqueBg) return true;
+    if (cs.position === "absolute") return true;
+    if (cs.underline || cs.reverse || cs.strikethrough) return true;
+    // Inherited background, in normal flow, nothing visible on blank cells: the
+    // ancestor that owns `bg` already filled these cells with it.
+    return false;
+  }
+
+  /** Last {@link cachedRenderStyle} result; reused while the inputs are unchanged. */
+  private renderStyleCache?: Style;
+
+  /**
+   * The {@link Style} this widget paints its background and border with, **reused
+   * across frames** whenever its fields are unchanged.
+   *
+   * Cells store a style by reference and {@link ScreenBuffer.copyTo} carries that
+   * reference into the prev-frame buffer, so the render diff's identity fast path
+   * (`a === b`) only fires when the *same* Style instance reappears. Allocating a
+   * fresh `new Style` here every frame defeated that — structurally-identical
+   * styles compared unequal by reference, forcing a full field-by-field
+   * `Style.equals` on every cell of every frame. Returning the cached instance
+   * while the inputs match makes a no-op repaint diff to a pointer compare, and a
+   * new instance is built only when something actually changed — exactly when the
+   * cells *should* be detected as dirty.
+   */
+  private cachedRenderStyle(color: string, background: string): Style {
+    const cs = this.computedStyle;
+    const c = this.renderStyleCache;
+    if (
+      c !== undefined &&
+      c.color === color &&
+      c.background === background &&
+      c.bold === !!cs.bold &&
+      c.italic === !!cs.italic &&
+      c.underline === !!cs.underline &&
+      c.reverse === !!cs.reverse &&
+      c.dim === !!cs.dim &&
+      c.strikethrough === !!cs.strikethrough &&
+      c.link === cs.link
+    ) {
+      return c;
+    }
+    const style = new Style({
+      color,
+      background,
+      bold: cs.bold,
+      italic: cs.italic,
+      underline: cs.underline,
+      reverse: cs.reverse,
+      dim: cs.dim,
+      strikethrough: cs.strikethrough,
+      link: cs.link,
+    });
+    this.renderStyleCache = style;
+    return style;
   }
 
   private drawBorder(buffer: ScreenBuffer, rect: Region, style: Style): void {
