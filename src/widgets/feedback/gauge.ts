@@ -1,9 +1,9 @@
-import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { resolveColor } from "../resolve-color.ts";
 
 /** Horizontal eighth-blocks (1/8 → 8/8) for sub-cell fill precision. */
 const HBARS = ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"] as const;
@@ -14,14 +14,6 @@ export interface GaugeThreshold {
   at: number;
   /** Band colour (theme `$var` or literal). */
   color: string;
-}
-
-function resolveColor(widget: Widget, color: string | undefined, fallback: string): string {
-  if (!color) return fallback;
-  if (color.startsWith("$")) {
-    return (widget.app ?? App.instance)?.cssResolver.resolveVariable(widget, color) || fallback;
-  }
-  return color;
 }
 
 /** Compact number for the readout: integers as-is, else one decimal. */

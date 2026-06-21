@@ -1,10 +1,10 @@
-import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { truncate, wrapText } from "../../render/text-wrap.ts";
+import { resolveColor } from "../resolve-color.ts";
 
 /** One `term → description` pair in a {@link DescriptionListWidget}. */
 export interface DescriptionItem {
@@ -16,14 +16,6 @@ export interface DescriptionItem {
 
 /** Default cap on the auto-sized term column, so one long key can't dominate. */
 const TERM_CAP = 24;
-
-function resolveColor(widget: Widget, color: string | undefined, fallback: string): string {
-  if (!color) return fallback;
-  if (color.startsWith("$")) {
-    return (widget.app ?? App.instance)?.cssResolver.resolveVariable(widget, color) || fallback;
-  }
-  return color;
-}
 
 /**
  * A two-column `term : description` list — the terminal analogue of an HTML

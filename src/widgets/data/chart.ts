@@ -1,10 +1,10 @@
-import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { truncate } from "../../render/text-wrap.ts";
+import { resolveColor } from "../resolve-color.ts";
 
 /** Horizontal eighth-blocks (1/8 → 8/8) for sub-cell bar precision. */
 const HBARS = ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"] as const;
@@ -14,14 +14,6 @@ function fmtNum(n: number): string {
   if (!Number.isFinite(n)) return "";
   if (Number.isInteger(n)) return String(n);
   return n.toFixed(1);
-}
-
-function resolveColor(widget: Widget, color: string | undefined, fallback: string): string {
-  if (!color) return fallback;
-  if (color.startsWith("$")) {
-    return (widget.app ?? App.instance)?.cssResolver.resolveVariable(widget, color) || fallback;
-  }
-  return color;
 }
 
 /** One bar in a {@link BarChartWidget}. */
