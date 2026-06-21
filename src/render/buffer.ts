@@ -1,7 +1,7 @@
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
-import { styleToEscapeCodes } from "./ansi-style.ts";
+import { styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
 import { mix, parseColor, type RGB, rgbStr } from "./color.ts";
 import type { Segment } from "./segment.ts";
 import { charWidth, isControlChar, splitGraphemes, stringWidth } from "./segment.ts";
@@ -481,19 +481,26 @@ export class ScreenBuffer {
     if (!cursor || cursor.y !== y || cursor.x !== x) {
       out += `\x1b[${y + 1};${x + 1}H`;
     }
-    // Sticky SGR: only (re)issue style codes when the pen actually changes from
-    // what we last emitted. A leading full reset clears any attribute the
-    // previous run set that this one omits; the matching trailing reset is
-    // deferred to the end of the frame. Runs that repeat a style emit no SGR at
-    // all — the bulk of a frame's escape bytes used to be this redundant reset +
-    // re-set between same-style runs.
-    if (lastStyle === null || !style.equals(lastStyle)) {
-      // Close a hyperlink the previous run left open before we reset — `\x1b[0m`
-      // is SGR and does not terminate an OSC-8 link, so it would otherwise bleed
-      // onto this run. The new style's `start` re-opens its own link if any.
-      if (lastStyle?.link && lastStyle.link !== style.link) out += "\x1b]8;;\x1b\\";
+    // Sticky SGR with minimal transitions: only (re)issue style codes when the
+    // pen actually changes, and then emit just the *delta*. Runs that repeat a
+    // style emit no SGR at all; runs that differ emit only the attributes that
+    // changed instead of a full reset + re-set (which was the bulk of a frame's
+    // escape bytes).
+    if (lastStyle === null) {
+      // Pen unknown (frame start, or after an inline graphic/icon cleared the
+      // tracked style): emit a full reset + establish. `start` re-opens the
+      // style's OSC-8 link if any.
       const { start } = styleToEscapeCodes(style);
       out += `\x1b[0m${start}`;
+    } else if (!style.equals(lastStyle)) {
+      // Pen is known to be `lastStyle`: transition the OSC-8 link explicitly
+      // (`\x1b[0m` does not terminate a link, and the delta carries no link),
+      // then emit the minimal SGR diff to reach `style`.
+      if (lastStyle.link !== style.link) {
+        if (lastStyle.link) out += "\x1b]8;;\x1b\\";
+        if (style.link) out += `\x1b]8;;${style.link}\x1b\\`;
+      }
+      out += styleTransition(lastStyle, style);
     }
     out += content;
     return {

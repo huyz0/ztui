@@ -131,6 +131,81 @@ function computeEscapeCodes(style: Style): { start: string; end: string } {
   return { start, end };
 }
 
+/**
+ * The minimal SGR needed to move the terminal pen from `from` to `to`, assuming
+ * the pen currently reflects `from` exactly. Emits only the attributes that
+ * actually differ — turning one off (e.g. `\x1b[22m`), flipping a colour, adding
+ * an underline — instead of the full `\x1b[0m` + complete re-set the sticky path
+ * used between every differing run. Style codes were 43–55% of a full repaint's
+ * bytes, mostly that redundant reset/re-set churn; a delta collapses an attribute
+ * toggle to a couple of bytes. The resulting pen is identical to what
+ * `\x1b[0m` + `styleToEscapeCodes(to).start` would produce (minus the OSC-8 link,
+ * which the diff transitions separately) — the replay backstop asserts this.
+ *
+ * Only valid when the caller *knows* the current pen (it tracked `from`); when the
+ * pen is unknown (frame start, after an inline graphic/icon) the diff still emits
+ * a full reset instead.
+ */
+export function styleTransition(from: Style, to: Style): string {
+  const useColor = colorMode.enabled;
+  let out = "";
+
+  // Bold and dim share the single reset SGR 22, so turning either off clears
+  // both — re-add whichever must stay on. (A plain add needs no reset.)
+  const boldDimOff = (from.bold && !to.bold) || (from.dim && !to.dim);
+  if (boldDimOff) {
+    out += "\x1b[22m";
+    if (to.bold) out += "\x1b[1m";
+    if (to.dim) out += "\x1b[2m";
+  } else {
+    if (to.bold && !from.bold) out += "\x1b[1m";
+    if (to.dim && !from.dim) out += "\x1b[2m";
+  }
+
+  if (from.italic && !to.italic) out += "\x1b[23m";
+  else if (to.italic && !from.italic) out += "\x1b[3m";
+
+  // Underline carries a sub-style (4:n) and an independent colour (58/59); both
+  // are scoped to underline being on, and SGR 24 (off) clears all of it.
+  if (from.underline && !to.underline) {
+    out += "\x1b[24m";
+    if (useColor && from.underlineColor) out += "\x1b[59m";
+  } else if (to.underline) {
+    const fromSub = from.underline ? (from.underlineStyle ?? "single") : undefined;
+    const toSub = to.underlineStyle ?? "single";
+    if (fromSub !== toSub) out += `\x1b[4:${UNDERLINE_SGR[toSub]}m`;
+    if (useColor) {
+      const fromUc = from.underline ? from.underlineColor : undefined;
+      if (to.underlineColor !== fromUc) {
+        const c = to.underlineColor ? parseColor(to.underlineColor)?.rgb : undefined;
+        if (c) out += `\x1b[58:2::${c.r}:${c.g}:${c.b}m`;
+        else if (fromUc) out += "\x1b[59m";
+      }
+    }
+  }
+
+  if (from.strikethrough && !to.strikethrough) out += "\x1b[29m";
+  else if (to.strikethrough && !from.strikethrough) out += "\x1b[9m";
+
+  if (from.reverse && !to.reverse) out += "\x1b[27m";
+  else if (to.reverse && !from.reverse) out += "\x1b[7m";
+
+  // Compare colours by their *emitted* SGR (depth-aware, NO_COLOR-aware) so an
+  // unparseable or default colour transitions to the right pen: a differing
+  // target emits its code, and dropping to no colour emits the default (39/49).
+  if (useColor) {
+    const fromFg = from.color ? parseColorToAnsi(from.color, false) : null;
+    const toFg = to.color ? parseColorToAnsi(to.color, false) : null;
+    if (fromFg !== toFg) out += toFg ?? "\x1b[39m";
+
+    const fromBg = from.background ? parseColorToAnsi(from.background, true) : null;
+    const toBg = to.background ? parseColorToAnsi(to.background, true) : null;
+    if (fromBg !== toBg) out += toBg ?? "\x1b[49m";
+  }
+
+  return out;
+}
+
 // Map RGB values to the closest basic 16-colour index by Euclidean distance.
 function getClosestBasicColor(r: number, g: number, b: number): number {
   const ansiRGBs = [
