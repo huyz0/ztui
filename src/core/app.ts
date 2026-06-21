@@ -36,6 +36,37 @@ interface ClipboardWidget {
 }
 
 /**
+ * A structured record of one render-pipeline run, surfaced by
+ * {@link App.getLastFrame} for deterministic frame-scheduling tests. It captures
+ * *what work a frame did* — whether it relaid out, how it was scoped, and whether
+ * it actually emitted — without going through React's (racy) commit timing. This
+ * is the assertion vocabulary for damage-scoping / dirty-tracking work: a change
+ * should produce a frame whose `damageY0..damageY1` covers only the affected rows,
+ * and a no-op should produce a frame with `emitted: false` (or, once dirty
+ * tracking lands, no pipeline run at all — see {@link App.framePipelineRunCount}).
+ */
+export interface FrameSummary {
+  /** Pipeline-run index (1-based) this summary describes. */
+  seq: number;
+  /** A full frame re-resolved styles + measured + laid out; false = paint-only repaint. */
+  full: boolean;
+  /** Layout (measure + region assignment) recomputed this frame. */
+  relayout: boolean;
+  /** Styles were re-resolved this frame. */
+  restyle: boolean;
+  /** First row (inclusive) the frame rendered + diffed. */
+  damageY0: number;
+  /** Last row (exclusive) the frame rendered + diffed. */
+  damageY1: number;
+  /** Whether the diff produced output — false means a redundant (no-op) frame. */
+  emitted: boolean;
+  /** Bytes written to the driver (0 when not emitted). */
+  bytes: number;
+  /** The render reasons coalesced into this frame. */
+  reasons: string[];
+}
+
+/**
  * Owns a running ztui application: the {@link Driver}, the screen stack, focus,
  * input dispatch, theming, and the frame scheduler. Construct one, `render()`
  * your tree onto {@link activeScreen}, then call {@link run}.
@@ -102,6 +133,16 @@ export class App extends DOMNode {
   private inspectorServer: InspectorServer | null = null;
   private resizeTimeout: ReturnType<typeof setTimeout> | null = null;
   private frameCount = 0;
+  // Number of times the render pipeline actually ran (full or paint-only),
+  // whether or not it emitted bytes. Differs from frameCount, which counts only
+  // frames that wrote output. The gap (ran but emitted nothing) is the
+  // redundant-frame cost that subtree-damage dirty tracking aims to eliminate, so
+  // tests assert on this to prove a change scheduled — or skipped — real work.
+  private framePipelineRuns = 0;
+  // Render reasons coalesced into the frame currently being rendered (snapshot of
+  // pendingRenderReasons taken when the frame starts), surfaced on the frame log.
+  private currentFrameReasons: string[] = [];
+  private _lastFrame: FrameSummary | null = null;
   /** Unsubscribe from the global theme manager; called on {@link stop}. */
   private themeUnsubscribe: (() => void) | null = null;
   private _pointerShapes = true;
@@ -793,7 +834,28 @@ export class App extends DOMNode {
     for (const reason of this.pendingRenderReasons) {
       this.renderReasonStats[reason] = (this.renderReasonStats[reason] ?? 0) + 1;
     }
+    // Snapshot for the frame log before clearing — these are the reasons the
+    // about-to-run frame is servicing.
+    this.currentFrameReasons = [...this.pendingRenderReasons];
     this.pendingRenderReasons.clear();
+  }
+
+  /**
+   * The {@link FrameSummary} of the most recent render-pipeline run, or null
+   * before the first. For deterministic frame-scheduling tests — inspect it after
+   * flushing a frame to assert how the frame was scoped and whether it emitted.
+   */
+  public getLastFrame(): FrameSummary | null {
+    return this._lastFrame;
+  }
+
+  /**
+   * Total render-pipeline runs so far (full or paint-only), regardless of whether
+   * they emitted. Tests diff this across an action to assert a frame ran — or, for
+   * a no-op, that none did.
+   */
+  public get framePipelineRunCount(): number {
+    return this.framePipelineRuns;
   }
 
   /** Invoke user/widget event code without letting a throw kill the event loop. */
@@ -824,6 +886,7 @@ export class App extends DOMNode {
   }
 
   private layoutAndRenderUnsafe(): void {
+    this.framePipelineRuns++;
     const screen = this.activeScreen;
 
     // Capture and clear the layout-dirty flag up front: a re-entrant queueRender
@@ -1035,11 +1098,19 @@ export class App extends DOMNode {
       );
     }
     frameProfiler.record("write", tWrite);
-    frameProfiler.frame({
+    const bytes = emitted ? graphicsResetSeq.length + ansiDiff.length : 0;
+    frameProfiler.frame({ full, emitted, bytes });
+    this._lastFrame = {
+      seq: this.framePipelineRuns,
       full,
+      relayout: doLayout,
+      restyle,
+      damageY0: dmgY0,
+      damageY1: dmgY1,
       emitted,
-      bytes: emitted ? graphicsResetSeq.length + ansiDiff.length : 0,
-    });
+      bytes,
+      reasons: this.currentFrameReasons,
+    };
   }
 
   private resolveAllStyles(node: DOMNode): void {
