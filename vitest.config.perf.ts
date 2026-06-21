@@ -10,6 +10,12 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     globals: true,
+    // Ratio guards run many iterations (warmup + samples × inner loop) over a
+    // real workload, so the heaviest — a full 10k-cell repaint serialization —
+    // can take several seconds on a slow CI runner, past vitest's 5s default.
+    // The ratio, not wall-clock, is the signal here; give the suite ample room
+    // so it never times out mid-measurement.
+    testTimeout: 30_000,
     // Only the ratio-guard tests run under `vitest run` (`bun run perf`). The
     // `.bench.ts` files use `bench()`, which is valid only under `vitest bench`
     // (`bun run bench`) — including them here would error in run mode. They're
