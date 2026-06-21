@@ -109,7 +109,7 @@ export class ProgressBarWidget extends Widget {
       buffer.drawSegment(
         contentRect.x + trackWidth,
         y,
-        new Segment(text, new Style({ color: primaryColor, background: bg })),
+        new Segment(text, this.cachedStyle({ color: primaryColor, background: bg })),
         contentRect,
       );
     }

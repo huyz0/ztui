@@ -3,7 +3,6 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class CheckboxWidget extends Widget {
@@ -106,7 +105,7 @@ export class CheckboxWidget extends Widget {
       labelColor = pair.fg;
       markerColor = labelColor;
       const client = this.getClientRect();
-      const bandStyle = new Style({ background: rowBg });
+      const bandStyle = this.cachedStyle({ background: rowBg });
       for (let y = client.y; y < client.bottom; y++) {
         for (let x = client.x; x < client.right; x++) buffer.setCell(x, y, " ", bandStyle);
       }
@@ -114,9 +113,12 @@ export class CheckboxWidget extends Widget {
 
     const markerSeg = new Segment(
       `${marker} `,
-      new Style({ color: markerColor, background: rowBg }),
+      this.cachedStyle({ color: markerColor, background: rowBg }),
     );
-    const labelSeg = new Segment(this.label, new Style({ color: labelColor, background: rowBg }));
+    const labelSeg = new Segment(
+      this.label,
+      this.cachedStyle({ color: labelColor, background: rowBg }),
+    );
     buffer.drawSegment(contentRect.x, contentRect.y, markerSeg, contentRect);
     buffer.drawSegment(
       contentRect.x + stringWidth(`${marker} `),

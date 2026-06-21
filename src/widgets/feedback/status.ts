@@ -3,7 +3,6 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 
 /**
  * The lifecycle states a status indicator can report. One shared vocabulary is
@@ -150,7 +149,7 @@ export class StatusDotWidget extends Widget {
       rect.x,
       rect.y,
       this.glyph,
-      new Style({ color, background: bg, bold: this.computedStyle.bold }),
+      this.cachedStyle({ color, background: bg, bold: this.computedStyle.bold }),
     );
   }
 }
@@ -221,7 +220,7 @@ export class StatusBadgeWidget extends Widget {
     buffer.drawSegment(
       rect.x,
       rect.y,
-      new Segment(glyph, new Style({ color: stateColor, background: bg, bold: true })),
+      new Segment(glyph, this.cachedStyle({ color: stateColor, background: bg, bold: true })),
       rect,
     );
     buffer.drawSegment(
@@ -229,7 +228,7 @@ export class StatusBadgeWidget extends Widget {
       rect.y,
       new Segment(
         this.text,
-        new Style({ color: labelColor, background: bg, bold: this.computedStyle.bold }),
+        this.cachedStyle({ color: labelColor, background: bg, bold: this.computedStyle.bold }),
       ),
       rect,
     );
@@ -327,21 +326,27 @@ export class StatusListWidget extends Widget {
         y,
         new Segment(
           statusGlyph(item.state, this.glyphSet),
-          new Style({ color: stateColor, background: bg, bold: true }),
+          this.cachedStyle({ color: stateColor, background: bg, bold: true }),
         ),
         rect,
       );
       buffer.drawSegment(
         rect.x + glyphW + 1,
         y,
-        new Segment(item.label, new Style({ color: labelColor || stateColor, background: bg })),
+        new Segment(
+          item.label,
+          this.cachedStyle({ color: labelColor || stateColor, background: bg }),
+        ),
         rect,
       );
       if (item.detail) {
         buffer.drawSegment(
           detailX,
           y,
-          new Segment(item.detail, new Style({ color: detailColor, background: bg, dim: true })),
+          new Segment(
+            item.detail,
+            this.cachedStyle({ color: detailColor, background: bg, dim: true }),
+          ),
           rect,
         );
       }

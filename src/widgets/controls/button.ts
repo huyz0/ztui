@@ -4,7 +4,6 @@ import { Spacing } from "../../geometry/spacing.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { contrastText } from "../../render/color.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { isFormWidget } from "./form.ts";
 
 export class ButtonWidget extends Widget {
@@ -104,7 +103,7 @@ export class ButtonWidget extends Widget {
       fg = glowFg ?? contrastText(bg);
     }
 
-    const style = new Style({
+    const style = this.cachedStyle({
       color: fg,
       background: bg,
       // Bold only when *not* focused: the breathing focus fill already carries the
@@ -117,7 +116,7 @@ export class ButtonWidget extends Widget {
     // Paint the whole button surface with `bg`, not just the text cells, so the
     // focus accent (and its breathing) fills the entire control rather than
     // highlighting only the label.
-    const fillStyle = new Style({ background: bg });
+    const fillStyle = this.cachedStyle({ background: bg });
     const fillRect = this.getClientRect();
     for (let fy = fillRect.y; fy < fillRect.bottom; fy++) {
       for (let fx = fillRect.x; fx < fillRect.right; fx++) {

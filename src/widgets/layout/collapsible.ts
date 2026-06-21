@@ -2,7 +2,6 @@ import { Widget } from "../../dom/widget.ts";
 import type { KeyEvent, MouseEvent } from "../../driver/driver.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 
 /** @internal Disclosure-triangle glyphs per set (collapsed, expanded). */
 const MARKERS = {
@@ -97,8 +96,11 @@ export class CollapsibleWidget extends Widget {
     const fg = this.computedStyle.color || "default";
     const accent = this.computedStyle.borderColor || "$primary";
 
-    const markerStyle = new Style({ color: accent, background: this.findResolvedBackground() });
-    const titleStyle = new Style({
+    const markerStyle = this.cachedStyle({
+      color: accent,
+      background: this.findResolvedBackground(),
+    });
+    const titleStyle = this.cachedStyle({
       color: fg,
       background: this.findResolvedBackground(),
       bold: true,

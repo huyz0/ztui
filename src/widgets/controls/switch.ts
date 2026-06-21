@@ -3,7 +3,6 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class SwitchWidget extends Widget {
@@ -103,14 +102,20 @@ export class SwitchWidget extends Widget {
       labelColor = pair.fg;
       trackColor = labelColor;
       const client = this.getClientRect();
-      const bandStyle = new Style({ background: rowBg });
+      const bandStyle = this.cachedStyle({ background: rowBg });
       for (let y = client.y; y < client.bottom; y++) {
         for (let x = client.x; x < client.right; x++) buffer.setCell(x, y, " ", bandStyle);
       }
     }
 
-    const trackSeg = new Segment(`${track} `, new Style({ color: trackColor, background: rowBg }));
-    const labelSeg = new Segment(this.label, new Style({ color: labelColor, background: rowBg }));
+    const trackSeg = new Segment(
+      `${track} `,
+      this.cachedStyle({ color: trackColor, background: rowBg }),
+    );
+    const labelSeg = new Segment(
+      this.label,
+      this.cachedStyle({ color: labelColor, background: rowBg }),
+    );
     buffer.drawSegment(contentRect.x, contentRect.y, trackSeg, contentRect);
     buffer.drawSegment(
       contentRect.x + stringWidth(`${track} `),

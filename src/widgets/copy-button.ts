@@ -1,7 +1,6 @@
 import { App } from "../core/app.ts";
 import { Widget } from "../dom/widget.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
-import { Style } from "../render/style.ts";
 
 /** Idle glyph (two overlapping pages) and the post-copy acknowledgement. */
 const COPY_GLYPH = "⧉";
@@ -78,7 +77,7 @@ export class CopyButtonWidget extends Widget {
     const underBg = buffer.cells[box.y]?.[box.x]?.style.background;
     const bg = this.hovered ? resolve("$panel") : underBg;
     const fgVar = this.copied ? "$success" : this.hovered ? "$accent" : "$dimmed";
-    const cellStyle = new Style({
+    const cellStyle = this.cachedStyle({
       color: resolve(fgVar),
       background: bg,
       dim: !this.hovered && !this.copied,

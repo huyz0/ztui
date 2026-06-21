@@ -2,7 +2,6 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { isValidatableField, type ValidatableField } from "./validation.ts";
 
 /**
@@ -82,7 +81,7 @@ export class FieldErrorWidget extends Widget {
     buffer.drawSegment(
       rect.x,
       rect.y,
-      new Segment(text, new Style({ color, background: bg })),
+      new Segment(text, this.cachedStyle({ color, background: bg })),
       rect,
     );
   }

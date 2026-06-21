@@ -2,7 +2,6 @@ import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { Style } from "../../render/style.ts";
 
 export type SplitterOrientation = "vertical" | "horizontal";
 
@@ -89,7 +88,7 @@ export class SplitterWidget extends Widget {
     const color = active
       ? App.instance?.cssResolver.resolveVariable(this, "$primary") || "#4daafc"
       : App.instance?.cssResolver.resolveVariable(this, "$border") || "#3c3c3c";
-    const style = new Style({
+    const style = this.cachedStyle({
       color,
       background: this.findResolvedBackground(),
       bold: active,

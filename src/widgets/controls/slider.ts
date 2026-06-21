@@ -3,7 +3,6 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 export class SliderWidget extends Widget {
@@ -144,15 +143,15 @@ export class SliderWidget extends Widget {
 
     // Colors. Focused: the *whole* filled bar (not just the knob) glows with the
     // breathing $focus accent, so the value reads as actively focused.
-    const activeStyle = new Style({
+    const activeStyle = this.cachedStyle({
       color: disabled ? disabledColor : this.focused ? displayColor : primaryColor,
       background: sliderBg,
     });
-    const inactiveStyle = new Style({
+    const inactiveStyle = this.cachedStyle({
       color: disabled ? disabledColor : this.focused ? "lightgray" : "gray",
       background: sliderBg,
     });
-    const knobStyle = new Style({
+    const knobStyle = this.cachedStyle({
       // Focused: the handle breathes with the $focus accent (displayColor); the
       // knob stays bold as the value's anchor point.
       color: disabled ? disabledColor : this.focused ? displayColor : primaryColor,
@@ -163,7 +162,7 @@ export class SliderWidget extends Widget {
     // Draw horizontal track background if focused
     if (this.focused) {
       for (let x = contentRect.x; x < contentRect.right; x++) {
-        buffer.setCell(x, contentRect.y, " ", new Style({ background: selectBg }));
+        buffer.setCell(x, contentRect.y, " ", this.cachedStyle({ background: selectBg }));
       }
     }
 
@@ -189,7 +188,7 @@ export class SliderWidget extends Widget {
       contentRect.y,
       new Segment(
         pctText,
-        new Style({
+        this.cachedStyle({
           color: this.focused ? selectFg : displayColor,
           background: sliderBg,
         }),

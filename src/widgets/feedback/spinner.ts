@@ -3,7 +3,6 @@ import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { BLACK, mix, parseRgb, type RGB, rgbStr } from "../../render/color.ts";
-import { Style } from "../../render/style.ts";
 
 /**
  * A waiting indicator confined to a single cell. The visible glyph is chosen
@@ -110,7 +109,7 @@ export class SpinnerWidget extends Widget {
       rect.x,
       rect.y,
       char,
-      new Style({
+      this.cachedStyle({
         color,
         background: bg,
         bold: this.computedStyle.bold,

@@ -8,7 +8,6 @@ import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 
 /** Chevron drawn on rows that open a submenu. */
 const SUBMENU_GLYPH = "▸";
@@ -316,7 +315,7 @@ export class MenuListWidget extends Widget {
       const item = this._items[i];
 
       if (item.separator) {
-        const s = new Style({ color: sepColor, background: bg });
+        const s = this.cachedStyle({ color: sepColor, background: bg });
         for (let x = rect.x; x < rect.right; x++) buffer.setCell(x, y, "─", s);
         continue;
       }
@@ -325,7 +324,7 @@ export class MenuListWidget extends Widget {
       const baseColor = item.disabled ? dimmed : item.danger ? danger : fg;
       const rowBg = highlighted ? accent : bg;
       const rowFg = highlighted ? bg : baseColor;
-      const rowStyle = new Style({ color: rowFg, background: rowBg, bold: highlighted });
+      const rowStyle = this.cachedStyle({ color: rowFg, background: rowBg, bold: highlighted });
 
       // Paint the full row background first so the highlight spans edge to edge.
       for (let x = rect.x; x < rect.right; x++) buffer.setCell(x, y, " ", rowStyle);
@@ -341,7 +340,7 @@ export class MenuListWidget extends Widget {
         buffer.setCell(rect.right - 1, y, SUBMENU_GLYPH, rowStyle);
       } else if (item.shortcut) {
         const sw = stringWidth(item.shortcut);
-        const scStyle = new Style({
+        const scStyle = this.cachedStyle({
           color: highlighted ? bg : dimmed,
           background: rowBg,
           bold: highlighted,

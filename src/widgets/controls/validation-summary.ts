@@ -3,7 +3,6 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { type FormWidget, isFormWidget } from "./form.ts";
 import { isValidatableField, type ValidatableField } from "./validation.ts";
 
@@ -138,7 +137,10 @@ export class ValidationSummaryWidget extends Widget {
       buffer.drawSegment(
         rect.x,
         y,
-        new Segment(this.title, new Style({ color: errorColor, background: bg, bold: true })),
+        new Segment(
+          this.title,
+          this.cachedStyle({ color: errorColor, background: bg, bold: true }),
+        ),
         rect,
       );
       y += 1;
@@ -151,7 +153,7 @@ export class ValidationSummaryWidget extends Widget {
       const color = field.validation.resolveColor() || errorColor;
       if (selected) {
         for (let x = rect.x; x < rect.right; x++)
-          buffer.setCell(x, y, " ", new Style({ background: rowBg }));
+          buffer.setCell(x, y, " ", this.cachedStyle({ background: rowBg }));
       }
       let text = `${this.bullet}${field.validation.message ?? ""}`;
       if (stringWidth(text) > rect.width) {
@@ -161,7 +163,7 @@ export class ValidationSummaryWidget extends Widget {
       buffer.drawSegment(
         rect.x,
         y,
-        new Segment(text, new Style({ color, background: rowBg })),
+        new Segment(text, this.cachedStyle({ color, background: rowBg })),
         rect,
       );
     }

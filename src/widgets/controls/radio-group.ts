@@ -3,7 +3,7 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
+import type { Style } from "../../render/style.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 /** A {@link RadioGroup} choice with a display label distinct from its value. */
@@ -178,9 +178,9 @@ export class RadioGroupWidget extends Widget {
 
         let style: Style;
         if (isHovered && this.focused) {
-          style = new Style({ color: selectFg, background: selectBg, bold: true });
+          style = this.cachedStyle({ color: selectFg, background: selectBg, bold: true });
         } else {
-          style = new Style({
+          style = this.cachedStyle({
             color: disabled ? disabledColor : isSelected ? primaryColor : fg,
             background: bg,
           });
@@ -209,9 +209,9 @@ export class RadioGroupWidget extends Widget {
 
         let style: Style;
         if (isHovered && this.focused) {
-          style = new Style({ color: selectFg, background: selectBg, bold: true });
+          style = this.cachedStyle({ color: selectFg, background: selectBg, bold: true });
         } else {
-          style = new Style({
+          style = this.cachedStyle({
             color: disabled ? disabledColor : isSelected ? primaryColor : fg,
             background: bg,
           });

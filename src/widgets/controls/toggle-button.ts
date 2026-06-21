@@ -4,7 +4,6 @@ import { Spacing } from "../../geometry/spacing.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 
 export class ToggleButtonWidget extends Widget {
   protected override defaultCursor() {
@@ -103,7 +102,7 @@ export class ToggleButtonWidget extends Widget {
       bg = App.instance.cssResolver.resolveVariable(this, bgVar);
     }
 
-    const style = new Style({
+    const style = this.cachedStyle({
       color: fg,
       background: bg,
       // Breathing focus fill carries the emphasis; drop bold while focused.
@@ -114,7 +113,7 @@ export class ToggleButtonWidget extends Widget {
 
     // Fill the whole control with `bg` (not just the label cells) so the focus
     // glow breathes across the entire toggle.
-    const fillStyle = new Style({ background: bg });
+    const fillStyle = this.cachedStyle({ background: bg });
     const fillRect = this.getClientRect();
     for (let fy = fillRect.y; fy < fillRect.bottom; fy++) {
       for (let fx = fillRect.x; fx < fillRect.right; fx++) {

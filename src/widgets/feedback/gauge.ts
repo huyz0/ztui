@@ -154,7 +154,7 @@ export class GaugeWidget extends Widget {
       buffer.drawSegment(
         x,
         y,
-        new Segment(label, new Style({ color: labelColor, background: bg })),
+        new Segment(label, this.cachedStyle({ color: labelColor, background: bg })),
         rect,
       );
       x += labelW + 1;
@@ -183,7 +183,7 @@ export class GaugeWidget extends Widget {
           new Style({ color: this.bandColor(this.value, base), background: bg }),
         );
       } else {
-        buffer.setCell(x + c, y, "░", new Style({ color: trackColor, background: bg }));
+        buffer.setCell(x + c, y, "░", this.cachedStyle({ color: trackColor, background: bg }));
       }
     }
 
@@ -193,7 +193,7 @@ export class GaugeWidget extends Widget {
         y,
         new Segment(
           this.readout,
-          new Style({ color: this.computedStyle.color || base, background: bg }),
+          this.cachedStyle({ color: this.computedStyle.color || base, background: bg }),
         ),
         rect,
       );
