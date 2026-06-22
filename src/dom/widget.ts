@@ -62,6 +62,8 @@ export interface WidgetApp {
   queueRender(reason?: string): void;
   /** Paint-only re-render that reuses the current layout; an optional region scopes the damage. */
   queueRepaint(region?: { y: number; bottom: number } | null, reason?: string): void;
+  /** Repaint one widget, scoped to its region when a fresh layout confirms nothing moved (else full). */
+  queueRepaintWidget(widget: Widget, reason?: string): void;
   activeScreen: { focusWidget(widget: Widget): void };
   cssResolver: {
     resolveVariable(widget: Widget, value: string): string;
@@ -272,6 +274,13 @@ export class Widget extends DOMNode {
   }
   /** This widget's rectangle in terminal cells, assigned by the layout engine. */
   public region: Region = Region.EMPTY;
+  /**
+   * The {@link region} as of the last laid-out frame, for geometry-stability
+   * detection: a `queueRepaintWidget` may scope a frame to one widget only when a
+   * fresh layout leaves every region equal to its `prevRegion` (nothing moved).
+   * Updated by the App after each layout pass.
+   */
+  public prevRegion: Region = Region.EMPTY;
   /** Intrinsic width from the last `measure`, before layout distributes space. */
   public measuredWidth = 0;
   /** Intrinsic height from the last `measure`. */

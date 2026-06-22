@@ -44,7 +44,10 @@ export class CheckboxWidget extends Widget {
 
     if (ev.type === "press" && ev.button === "left") {
       this.toggle();
-      App.instance?.queueRender();
+      // The marker is a fixed-width glyph swap (☑/☐) — geometry-stable — so a
+      // scoped repaint re-renders just this checkbox, not the whole tree. The
+      // verification falls back to a full frame if a :checked rule ever resizes it.
+      (this.app ?? App.instance)?.queueRepaintWidget(this, "checkbox:toggle");
     }
   }
 

@@ -83,6 +83,10 @@ export class App extends DOMNode {
   private repaintFull = true;
   private damageTop = Number.POSITIVE_INFINITY;
   private damageBottom = Number.NEGATIVE_INFINITY;
+  // Widgets that requested a geometry-verified scoped repaint this tick (see
+  // queueRepaintWidget). Drained each frame: if a fresh layout leaves geometry
+  // unchanged, the frame is scoped to the union of their regions, else it's full.
+  private dirtyWidgets = new Set<Widget>();
   // Last full frame's graphic-position signature; a change means a graphic was
   // added/moved/removed, triggering a full graphics wipe + re-emit to clear
   // orphaned placements (see ScreenBuffer.graphicSignature).
@@ -336,6 +340,26 @@ export class App extends DOMNode {
     this.scheduleRender();
   }
 
+  /**
+   * Repaint a single widget whose *content* changed, scoping the frame to its
+   * region — but only after a fresh layout confirms nothing moved. Unlike
+   * {@link queueRepaint} (caller asserts geometry is stable, e.g. the caret), this
+   * is safe for a change that *might* resize: the frame re-measures and re-lays
+   * out (cheap), and if any region shifted it transparently falls back to a full
+   * frame. When the layout is unchanged it re-renders only this widget's subtree
+   * instead of the whole tree — the subtree-damage win.
+   *
+   * Multiple widgets dirtied in one tick union their regions; a concurrent
+   * {@link queueRender} or an open overlay/selection escalates to full.
+   */
+  public queueRepaintWidget(widget: Widget, reason = "unknown"): void {
+    this.noteRenderReason(`widget:${reason}`);
+    this.dirtyWidgets.add(widget);
+    // A fresh layout is required to *verify* the change didn't move anything.
+    this.needsLayout = true;
+    this.scheduleRender();
+  }
+
   private scheduleRender(): void {
     if (this.renderQueued) return;
     this.renderQueued = true;
@@ -434,22 +458,24 @@ export class App extends DOMNode {
 
     // Decide full vs. partial (damage-tracked) repaint, capturing and clearing the
     // dirty state up front so a re-entrant request re-dirties for the next frame.
-    let full = doLayout || this.repaintFull;
-    const damageTop = this.damageTop;
-    const damageBottom = this.damageBottom;
+    const wasRepaintFull = this.repaintFull;
+    let full = doLayout || wasRepaintFull;
+    let damageTop = this.damageTop;
+    let damageBottom = this.damageBottom;
+    const dirtyWidgets = this.dirtyWidgets;
+    this.dirtyWidgets = new Set();
     this.repaintFull = false;
     this.damageTop = Number.POSITIVE_INFINITY;
     this.damageBottom = Number.NEGATIVE_INFINITY;
-    // Be conservative: a partial frame composites over the retained buffer, which
-    // is only valid when nothing outside the damaged rows changed. Overlays
-    // (dropdowns/dialogs) and an active text selection can both touch arbitrary
-    // rows, so fall back to a full frame whenever either is present.
-    if (this.activeScreen.overlays.length > 0 || this.selection.active) full = true;
-    // Inline graphics (icons/images) are a separate terminal layer that only the
-    // full-buffer diff clears and redraws correctly; a damage-scoped partial
-    // frame would leave stale images behind. If the last frame drew any, stay
-    // full until they're gone.
-    if (this.currentBuffer.containsGraphics) full = true;
+    // Whether the frame must stay full regardless of layout stability: an explicit
+    // full repaint (queueRender / queueRepaint()), an overlay or selection that can
+    // touch arbitrary rows, or inline graphics (a separate terminal layer only the
+    // full-buffer diff clears). A geometry-verified scoped repaint may only
+    // downgrade a frame that became full *solely* because it relaid out.
+    let forcedFull = wasRepaintFull;
+    if (this.activeScreen.overlays.length > 0 || this.selection.active) forcedFull = true;
+    if (this.currentBuffer.containsGraphics) forcedFull = true;
+    if (forcedFull) full = true;
     if (!full && (damageTop === Number.POSITIVE_INFINITY || damageBottom <= damageTop)) {
       full = true;
     }
@@ -495,6 +521,32 @@ export class App extends DOMNode {
         t = frameProfiler.now();
         this.resolveAllLayouts(overlay);
         frameProfiler.record("layout", t);
+      }
+    }
+
+    // Geometry-verified scoped repaint. We relaid out above; refresh prevRegion
+    // (so the next frame has a fresh baseline) and learn whether anything moved.
+    // When this frame relaid out *only* to service queueRepaintWidget requests
+    // (not a forced-full reason) and nothing moved, downgrade it to a repaint
+    // scoped to the union of those widgets' regions — re-rendering just their
+    // subtrees instead of the whole tree. If any region shifted, stay full so a
+    // real layout change is never dropped.
+    if (doLayout) {
+      const layoutChanged = this.refreshPrevRegions();
+      if (full && !forcedFull && dirtyWidgets.size > 0 && !layoutChanged) {
+        let top = Number.POSITIVE_INFINITY;
+        let bot = Number.NEGATIVE_INFINITY;
+        for (const w of dirtyWidgets) {
+          if (w.region.height > 0 && this.isInActiveTree(w)) {
+            top = Math.min(top, w.region.y);
+            bot = Math.max(bot, w.region.bottom);
+          }
+        }
+        if (bot > top) {
+          full = false;
+          damageTop = Math.min(damageTop, top);
+          damageBottom = Math.max(damageBottom, bot);
+        }
       }
     }
 
@@ -667,6 +719,35 @@ export class App extends DOMNode {
       widgetsRendered: renderedWidgetCount,
       reasons: this.currentFrameReasons,
     };
+  }
+
+  /**
+   * Walk the active tree comparing each widget's freshly-laid-out `region` to its
+   * `prevRegion`, update `prevRegion`, and return whether any region moved. The
+   * geometry-stability oracle for {@link queueRepaintWidget}; O(tree) rect compares
+   * (cheap vs. a render), run after every layout to keep the baseline current.
+   */
+  private refreshPrevRegions(): boolean {
+    let changed = false;
+    const visit = (node: DOMNode): void => {
+      if (node instanceof Widget && !node.region.equals(node.prevRegion)) {
+        changed = true;
+        node.prevRegion = node.region;
+      }
+      for (const child of node.children) visit(child);
+    };
+    visit(this.activeScreen);
+    return changed;
+  }
+
+  /** Whether `w` is still attached under the active screen (not a stale/unmounted node). */
+  private isInActiveTree(w: Widget): boolean {
+    let node: DOMNode | null = w;
+    while (node) {
+      if (node === this.activeScreen) return true;
+      node = node.parent;
+    }
+    return false;
   }
 
   private resolveAllStyles(node: DOMNode): void {
