@@ -167,7 +167,7 @@ describe("subtree-damage: geometry-verified queueRepaintWidget", () => {
     expect(f?.widgetsRendered).toBeLessThan(10); // not the whole 11-widget tree
   });
 
-  test("a fixed-size control toggled by mouse repaints scoped (rollout)", async () => {
+  test("a mouse press on a fixed-size control scopes end-to-end (focus + handle)", async () => {
     const t = await mountApp(
       <VBox>
         <Switch />
@@ -180,12 +180,18 @@ describe("subtree-damage: geometry-verified queueRepaintWidget", () => {
     await t.settle();
     const sw = findWidgets(t.app.activeScreen, "switch")[0];
 
-    // Drive the widget's own mouse handler (a fixed-size on/off slide).
-    sw.handleMouse({ type: "press", button: "left", x: sw.region.x, y: sw.region.y });
+    // Drive a real press through the app: this runs focus:mouse-press AND the
+    // widget's handler — both of which now scope rather than force a full frame.
+    t.app.input.handleMouse({
+      type: "press",
+      button: "left",
+      x: sw.region.x,
+      y: sw.region.y,
+    });
     await flush();
 
     const f = t.app.getLastFrame();
     expect(f?.full).toBe(false);
-    expect(f?.widgetsRendered).toBeLessThan(10);
+    expect(f?.widgetsRendered).toBeLessThan(10); // not the whole 11-widget tree
   });
 });

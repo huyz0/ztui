@@ -401,14 +401,20 @@ export class AppInput {
               () => `onMouseDown on ${target.describe()}`,
               () => target.onMouseDown?.(ev),
             );
-            this.host.queueRender("mouse:down");
+            this.host.queueRepaintWidget(target, "mouse:down");
           }
         }
         if (!ev.handled && ev.type === "press" && ev.button === "left") {
           if (hitWidget.focusable) {
+            const prevFocused = this.host.activeScreen.focusedWidget;
             this.host.activeScreen.focusWidget(hitWidget);
             this.log(() => `Focused via click -> ${hitWidget.describe()}`);
-            this.host.queueRender("focus:mouse-press");
+            // Focus moves the ring between two fixed-size widgets — repaint both
+            // (old loses the ring, new gains it), scoped + geometry-verified.
+            if (prevFocused instanceof Widget && prevFocused !== hitWidget) {
+              this.host.queueRepaintWidget(prevFocused, "focus:mouse-press");
+            }
+            this.host.queueRepaintWidget(hitWidget, "focus:mouse-press");
           }
           // onClick bubbles to the nearest ancestor handler too.
           const target = this.findAncestorHandler(hitWidget, "onClick");
@@ -418,7 +424,10 @@ export class AppInput {
               () => `onClick on ${target.describe()}`,
               () => target.onClick?.(ev),
             );
-            this.host.queueRender("mouse:click");
+            // The click's own visual is local; any app-state cascade an onClick
+            // triggers routes through React's full queueRender, so this can't hide
+            // a wider change.
+            this.host.queueRepaintWidget(target, "mouse:click");
           }
         } else if (ev.type === "scroll_up" || ev.type === "scroll_down") {
           let current: DOMNode | null = hitWidget;
@@ -432,7 +441,9 @@ export class AppInput {
                   () => w.handleScroll(ev),
                 );
                 if (ev.handled) {
-                  this.host.queueRender("mouse:scroll-handled");
+                  // Scrolling shifts content within the widget's fixed region
+                  // (scrollOffset isn't layout) — scope the repaint to it.
+                  this.host.queueRepaintWidget(w, "mouse:scroll-handled");
                   break;
                 }
               }
@@ -441,7 +452,9 @@ export class AppInput {
           }
         }
       } else {
-        this.host.queueRender("mouse:handled");
+        // The hit widget consumed the event (e.g. a toggle/slider/custom control);
+        // its change is local to its subtree, so scope + verify.
+        this.host.queueRepaintWidget(hitWidget, "mouse:handled");
       }
     }
   }
