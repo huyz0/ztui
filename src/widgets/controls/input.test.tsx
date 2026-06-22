@@ -131,6 +131,25 @@ describe("InputWidget — selection & clipboard", () => {
     expect(w.value).toBe("");
   });
 
+  test("double-click selects the word under the cursor", async () => {
+    const t = await mountApp(<Input id="in" value="hello world" />, { cols: 30, rows: 3 });
+    const w = t.findById<InputWidget>("in")!;
+    await t.settle();
+    const r = w.getContentRect();
+    // col 7 falls inside "world" (h e l l o ␠ w[6] o[7] ...)
+    w.handleMouse({ type: "press", button: "left", x: r.x + 7, y: r.y, clickCount: 2 } as any);
+    expect(w.copySelection()).toBe("world");
+  });
+
+  test("triple-click selects the whole value", async () => {
+    const t = await mountApp(<Input id="in" value="hello world" />, { cols: 30, rows: 3 });
+    const w = t.findById<InputWidget>("in")!;
+    await t.settle();
+    const r = w.getContentRect();
+    w.handleMouse({ type: "press", button: "left", x: r.x + 3, y: r.y, clickCount: 3 } as any);
+    expect(w.copySelection()).toBe("hello world");
+  });
+
   test("insertText replaces the selection and flattens newlines", () => {
     const w = new InputWidget();
     w.value = "abXYef";

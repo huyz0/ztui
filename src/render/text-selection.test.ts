@@ -7,6 +7,7 @@ import {
   insertAt,
   normalizeRange,
   orderPair,
+  wordRangeAt,
 } from "./text-selection.ts";
 
 describe("text-selection — linear helpers", () => {
@@ -27,6 +28,30 @@ describe("text-selection — linear helpers", () => {
     const chars = [..."a😀b"]; // 3 graphemes
     expect(chars.length).toBe(3);
     expect(extractLinear(chars, 0, 2)).toBe("a😀");
+  });
+
+  describe("wordRangeAt (double-click word bounds)", () => {
+    const chars = [..."the quick  fox"]; // two spaces between quick and fox
+    const word = (col: number) => extractLinear(chars, ...wordRangeAt(chars, col));
+
+    test("a click inside a word selects that whole word", () => {
+      expect(word(0)).toBe("the");
+      expect(word(2)).toBe("the");
+      expect(word(4)).toBe("quick");
+      expect(word(8)).toBe("quick");
+    });
+
+    test("a click in whitespace selects the whitespace run, not a word", () => {
+      expect(word(9)).toBe("  ");
+    });
+
+    test("a click at the end belongs to the last word", () => {
+      expect(word(chars.length)).toBe("fox");
+    });
+
+    test("empty input yields an empty range", () => {
+      expect(wordRangeAt([], 0)).toEqual([0, 0]);
+    });
   });
 });
 

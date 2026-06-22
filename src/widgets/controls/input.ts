@@ -5,7 +5,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
-import { normalizeRange } from "../../render/text-selection.ts";
+import { normalizeRange, wordRangeAt } from "../../render/text-selection.ts";
 import { blendCaretColors, CaretBlink, smoothCaretIntensity } from "./internal/caret.ts";
 import { FieldValidation, type ValidatableField, type ValidationResult } from "./validation.ts";
 
@@ -313,6 +313,24 @@ export class InputWidget extends Widget implements ValidatableField {
 
     if (ev.button === "left" && (ev.type === "press" || ev.type === "drag")) {
       const col = this.colAtX(ev.x);
+      if (ev.type === "press" && ev.clickCount === 3) {
+        // Triple-click selects the whole value.
+        this.selectAll();
+        this.caret.visible = true;
+        this.startBlinking();
+        App.instance?.queueRender();
+        return;
+      }
+      if (ev.type === "press" && ev.clickCount === 2) {
+        // Double-click selects the word under the cursor.
+        const [start, end] = wordRangeAt(splitGraphemes(this.value), col);
+        this.selectionAnchor = start;
+        this.cursorCol = end;
+        this.caret.visible = true;
+        this.startBlinking();
+        App.instance?.queueRender();
+        return;
+      }
       if (ev.type === "press") {
         // Begin a (possibly empty) selection anchored at the click point.
         this.cursorCol = col;

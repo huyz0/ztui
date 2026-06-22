@@ -11,6 +11,7 @@ import {
   insertAt,
   orderPair,
   type Pos,
+  wordRangeAt,
 } from "../../render/text-selection.ts";
 import { blendCaretColors, CaretBlink, smoothCaretIntensity } from "./internal/caret.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
@@ -400,6 +401,19 @@ export class TextAreaWidget extends Widget {
 
     if (ev.button === "left" && (ev.type === "press" || ev.type === "drag")) {
       const pos = this.posAtXY(ev.x, ev.y);
+      if (ev.type === "press" && (ev.clickCount === 2 || ev.clickCount === 3)) {
+        const line = splitGraphemes(this.value.split(/\r?\n/)[pos.row] ?? "");
+        // Double-click selects the word under the cursor; triple selects the
+        // whole line.
+        const [start, end] = ev.clickCount === 3 ? [0, line.length] : wordRangeAt(line, pos.col);
+        this.selectionAnchor = { row: pos.row, col: start };
+        this.cursorRow = pos.row;
+        this.cursorCol = end;
+        this.caret.visible = true;
+        this.startBlinking();
+        App.instance?.queueRender();
+        return;
+      }
       if (ev.type === "press") {
         // Begin a (possibly empty) selection anchored at the click point.
         this.cursorRow = pos.row;

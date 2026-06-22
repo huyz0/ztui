@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { DOMNode } from "../dom/dom.ts";
-import { TextNode } from "../dom/text-node.ts";
+import type { DOMNode } from "../dom/dom.ts";
+import type { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
 import { HBox, Input, Label, Switch, VBox } from "../react.ts";
 import { mountApp } from "../test/harness.tsx";

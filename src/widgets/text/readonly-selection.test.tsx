@@ -77,6 +77,35 @@ describe("read-only selection — RichText", () => {
   });
 });
 
+describe("read-only selection — double/triple click", () => {
+  test("double-click selects the word under the cursor", async () => {
+    const { findById, driver, settle } = await mountApp(
+      <RichText id="rt">the quick fox</RichText>,
+      { cols: 40, rows: 5 },
+    );
+    const rt = findById("rt");
+    await settle();
+    const r = rt.getContentRect();
+    // col 5 falls inside "quick"; the matching release copies the word.
+    rt.handleMouse({ type: "press", button: "left", x: r.x + 5, y: r.y, clickCount: 2 });
+    rt.handleMouse({ type: "release", button: "left", x: r.x + 5, y: r.y });
+    expect(await driver.clipboard.get()).toBe("quick");
+  });
+
+  test("triple-click selects the whole content line", async () => {
+    const { findById, driver, settle } = await mountApp(
+      <RichText id="rt">the quick fox</RichText>,
+      { cols: 40, rows: 5 },
+    );
+    const rt = findById("rt");
+    await settle();
+    const r = rt.getContentRect();
+    rt.handleMouse({ type: "press", button: "left", x: r.x + 5, y: r.y, clickCount: 3 });
+    rt.handleMouse({ type: "release", button: "left", x: r.x + 5, y: r.y });
+    expect(await driver.clipboard.get()).toBe("the quick fox");
+  });
+});
+
 describe("read-only selection — Syntax", () => {
   test("copies code without the line-number gutter", async () => {
     const { findById, driver, settle } = await mountApp(

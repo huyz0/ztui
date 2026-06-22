@@ -29,6 +29,12 @@ export interface MouseEvent {
   type: "press" | "release" | "drag" | "move" | "scroll_up" | "scroll_down";
   /** Which button (or `"none"` for moves/scroll). */
   button: "left" | "right" | "middle" | "none";
+  /**
+   * Consecutive-click count on a `press`, synthesized by the input layer from
+   * press timing + position (terminals don't report it): 1 = single, 2 = double
+   * (select word), 3 = triple (select line/all). Undefined on non-press events.
+   */
+  clickCount?: number;
   /** Set true to mark the event consumed. */
   handled?: boolean;
 }

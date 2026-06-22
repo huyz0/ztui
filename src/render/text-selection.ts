@@ -27,6 +27,30 @@ export function extractLinear(chars: string[], start: number, end: number): stri
   return chars.slice(start, end).join("");
 }
 
+/** A grapheme counts as part of a word if it is not whitespace. */
+function isWordChar(g: string): boolean {
+  return g.length > 0 && !/^\s$/.test(g);
+}
+
+/**
+ * The `[start, end)` grapheme range of the "word" around `col` in `chars`, the
+ * unit a double-click selects. A click inside a run of non-whitespace selects
+ * that run; a click inside whitespace selects the whitespace run instead (so a
+ * double-click never collapses to nothing). `col` is clamped into range; an
+ * empty line yields `[0, 0)`.
+ */
+export function wordRangeAt(chars: string[], col: number): [number, number] {
+  if (chars.length === 0) return [0, 0];
+  // A click at the very end (col === length) belongs to the last grapheme.
+  const i = Math.max(0, Math.min(chars.length - 1, col));
+  const wordy = isWordChar(chars[i]);
+  let start = i;
+  let end = i + 1;
+  while (start > 0 && isWordChar(chars[start - 1]) === wordy) start--;
+  while (end < chars.length && isWordChar(chars[end]) === wordy) end++;
+  return [start, end];
+}
+
 // ── 2D ───────────────────────────────────────────────────────────────────────
 
 export interface Pos {

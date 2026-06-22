@@ -1,7 +1,10 @@
 import { App } from "../core/app.ts";
+import type { SelectableWidget } from "../core/selection.ts";
 import { Widget } from "../dom/widget.ts";
 import type { MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
+import { splitGraphemes } from "../render/segment.ts";
+import { wordRangeAt } from "../render/text-selection.ts";
 
 /**
  * Mouse-drag text selection for read-only display widgets. Press anchors a
@@ -76,6 +79,21 @@ export function handleReadonlySelectionMouse(widget: Widget, ev: MouseEvent): vo
     stopAutoScroll();
     const pt = app.selection.pointFromScreen(ev.x, ev.y);
     if (!pt) return; // nothing selectable rendered at all
+    // Double-click selects the word under the cursor; triple-click selects the
+    // whole content line. The matching release copies it (same path as a drag).
+    if (ev.clickCount === 2 || ev.clickCount === 3) {
+      const lines = (pt.widget as unknown as SelectableWidget).selectableLines?.() ?? [];
+      const lineChars = splitGraphemes(lines[pt.line] ?? "");
+      const [start, end] =
+        ev.clickCount === 3 ? [0, lineChars.length] : wordRangeAt(lineChars, pt.col);
+      app.selection.active = {
+        group: root,
+        anchor: { widget: pt.widget, line: pt.line, col: start },
+        caret: { widget: pt.widget, line: pt.line, col: end },
+      };
+      app.queueRender();
+      return;
+    }
     // A press on chrome snaps to the closest content, so the user doesn't have
     // to land exactly on a glyph; a bare click still selects nothing until a
     // drag moves the caret.

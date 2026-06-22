@@ -65,6 +65,16 @@ export class AppInput {
   private lastMouseX = -1;
   private lastMouseY = -1;
 
+  // Multi-click synthesis: terminals report each press independently, so the
+  // input layer tracks the previous left-press to derive a 1/2/3 click count
+  // (single/double/triple) for word- and line-select. A press resets the run
+  // when it is too slow or lands on a different cell.
+  private lastPressAt = 0;
+  private lastPressX = -1;
+  private lastPressY = -1;
+  private clickRun = 0;
+  private static readonly MULTI_CLICK_MS = 400;
+
   // Pointer-motion throttling state (see handleMouse).
   private pendingMove: MouseEvent | null = null;
   private moveScheduled = false;
@@ -301,11 +311,24 @@ export class AppInput {
     }
     if (ev.type === "press") {
       this.activeDragWidget = hit;
-      // A new left-press drops any prior read-only selection; the hit widget's
-      // handleMouse re-establishes one if it is selectable.
-      if (ev.button === "left" && this.host.selection.active) {
-        this.host.selection.active = null;
-        this.host.queueRender("selection:clear-readonly-press");
+      if (ev.button === "left") {
+        // Derive the consecutive-click count (1/2/3, cycling) so widgets can
+        // word- and line-select. A slow press or one on a different cell starts
+        // a fresh run.
+        const now = Date.now();
+        const fast = now - this.lastPressAt <= AppInput.MULTI_CLICK_MS;
+        const sameCell = ev.x === this.lastPressX && ev.y === this.lastPressY;
+        this.clickRun = fast && sameCell ? Math.min(3, this.clickRun + 1) : 1;
+        this.lastPressAt = now;
+        this.lastPressX = ev.x;
+        this.lastPressY = ev.y;
+        ev.clickCount = this.clickRun;
+        // A new left-press drops any prior read-only selection; the hit widget's
+        // handleMouse re-establishes one if it is selectable.
+        if (this.host.selection.active) {
+          this.host.selection.active = null;
+          this.host.queueRender("selection:clear-readonly-press");
+        }
       }
     }
 

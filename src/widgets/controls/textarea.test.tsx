@@ -234,6 +234,37 @@ describe("TextArea — selection & clipboard", () => {
     expect(t.copySelection()).toBe("hello");
   });
 
+  test("double-click selects the word on the clicked line", async () => {
+    const { findById, settle } = await mountApp(
+      <TextArea id="t" value={"alpha bravo\ncharlie"} />,
+      {
+        cols: 40,
+        rows: 6,
+      },
+    );
+    const t = findById("t");
+    await settle();
+    const r = t.getContentRect();
+    // row 1, inside "charlie"
+    t.handleMouse({ type: "press", button: "left", x: r.x + 3, y: r.y + 1, clickCount: 2 });
+    expect(t.copySelection()).toBe("charlie");
+  });
+
+  test("triple-click selects the whole clicked line, not the whole value", async () => {
+    const { findById, settle } = await mountApp(
+      <TextArea id="t" value={"alpha bravo\ncharlie"} />,
+      {
+        cols: 40,
+        rows: 6,
+      },
+    );
+    const t = findById("t");
+    await settle();
+    const r = t.getContentRect();
+    t.handleMouse({ type: "press", button: "left", x: r.x + 2, y: r.y, clickCount: 3 });
+    expect(t.copySelection()).toBe("alpha bravo");
+  });
+
   test("shift+down selects across lines and copy joins with newline", async () => {
     const { findById } = await mountApp(<TextArea id="t" value={"abc\ndef\nghi"} />, {
       cols: 40,
