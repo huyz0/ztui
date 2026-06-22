@@ -44,7 +44,7 @@ export class SwitchWidget extends Widget {
 
     if (ev.type === "press" && ev.button === "left") {
       this.toggle();
-      App.instance?.queueRender();
+      (this.app ?? App.instance)?.queueRepaintWidget(this, "switch:toggle");
     }
   }
 

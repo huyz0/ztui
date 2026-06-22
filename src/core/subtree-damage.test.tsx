@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { DOMNode } from "../dom/dom.ts";
 import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
-import { HBox, Input, Label, VBox } from "../react.ts";
+import { HBox, Input, Label, Switch, VBox } from "../react.ts";
 import { mountApp } from "../test/harness.tsx";
 import { flush } from "../tools/app-mount.tsx";
 
@@ -165,5 +165,27 @@ describe("subtree-damage: geometry-verified queueRepaintWidget", () => {
     const f = t.app.getLastFrame();
     expect(f?.full).toBe(false); // the keystroke scoped to the input
     expect(f?.widgetsRendered).toBeLessThan(10); // not the whole 11-widget tree
+  });
+
+  test("a fixed-size control toggled by mouse repaints scoped (rollout)", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Switch />
+        {rows.slice(0, 10).map((r) => (
+          <Label key={r}>{r}</Label>
+        ))}
+      </VBox>,
+      { cols: 30, rows: 12 },
+    );
+    await t.settle();
+    const sw = findWidgets(t.app.activeScreen, "switch")[0];
+
+    // Drive the widget's own mouse handler (a fixed-size on/off slide).
+    sw.handleMouse({ type: "press", button: "left", x: sw.region.x, y: sw.region.y });
+    await flush();
+
+    const f = t.app.getLastFrame();
+    expect(f?.full).toBe(false);
+    expect(f?.widgetsRendered).toBeLessThan(10);
   });
 });

@@ -59,7 +59,9 @@ export class SliderWidget extends Widget {
     this.value = newValue;
     this.onChange?.(newValue);
     this.validation.maybeValidate("change");
-    App.instance?.queueRender();
+    // The thumb moves within a fixed-size track — geometry-stable, so scope the
+    // repaint to the slider (verified; falls back to full if a label resized it).
+    (this.app ?? App.instance)?.queueRepaintWidget(this, "slider:change");
   }
 
   public override handleMouse(ev: any): void {

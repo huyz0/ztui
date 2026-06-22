@@ -29,7 +29,7 @@ export class ToggleButtonWidget extends Widget {
           this.onClick(ev);
         }
         ev.handled = true;
-        App.instance?.queueRender();
+        (this.app ?? App.instance)?.queueRepaintWidget(this, "toggle-button:toggle");
       }
     };
   }
@@ -44,7 +44,7 @@ export class ToggleButtonWidget extends Widget {
       if (this.onClick) {
         this.onClick(ev);
       }
-      App.instance?.queueRender();
+      (this.app ?? App.instance)?.queueRepaintWidget(this, "toggle-button:toggle");
       ev.handled = true;
     }
   }

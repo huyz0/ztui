@@ -93,7 +93,7 @@ export class RadioGroupWidget extends Widget {
         if (clickY >= 0 && clickY < resolved.length) {
           this.hoveredIndex = clickY;
           this.commit(resolved[clickY].value);
-          App.instance?.queueRender();
+          (this.app ?? App.instance)?.queueRepaintWidget(this, "radio-group:select");
         }
       } else {
         // Horizontal click hit-testing based on option widths
@@ -107,7 +107,7 @@ export class RadioGroupWidget extends Widget {
           if (ev.x >= currentX && ev.x < currentX + textLen) {
             this.hoveredIndex = i;
             this.commit(option.value);
-            App.instance?.queueRender();
+            (this.app ?? App.instance)?.queueRepaintWidget(this, "radio-group:select");
             break;
           }
           currentX += textLen;
