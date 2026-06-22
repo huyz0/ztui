@@ -172,6 +172,27 @@ describe("read-only selection — Markdown blocks", () => {
     expect(await driver.clipboard.get()).toBe("hello");
   });
 
+  test("a click on the second line of a multi-line blockquote anchors on that line", async () => {
+    // A blockquote's two `>` lines share one RichText leaf as a soft-break pair.
+    // Pressing the second rendered row must anchor on line 1, not snap to an
+    // adjacent block — the regression behind "the drag starts from outside".
+    const { app, screen, settle } = await mountApp(
+      <Markdown id="md">{"> first quote line\n> second quote line\n\nafter the quote"}</Markdown>,
+      { cols: 40, rows: 10 },
+    );
+    await settle();
+    // The quote body leaf carries both lines; row 1 is its second rendered row.
+    const quote = richLeaves(screen).find(
+      (w) => typeof w.selectableLines === "function" && w.selectableLines().length === 2,
+    );
+    expect(quote).toBeDefined();
+    const r = quote.getContentRect();
+    app.input.handleMouse({ type: "press", button: "left", x: r.x + 3, y: r.y + 1 });
+    const anchor = app.selection.active?.anchor;
+    expect(anchor?.widget).toBe(quote);
+    expect(anchor?.line).toBe(1); // the clicked second line, not the next block
+  });
+
   test("dragging across blocks copies both, full interior block included", async () => {
     const { driver, screen, settle } = await mountApp(
       <Markdown id="md">{"alpha\n\nbravo\n\ncharlie"}</Markdown>,

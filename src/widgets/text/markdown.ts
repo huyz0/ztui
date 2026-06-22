@@ -17,6 +17,7 @@ import { logger } from "../../utils/logger.ts";
 import { CopyButtonWidget } from "../copy-button.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 import { parsePartialJson } from "./json-ui.ts";
+import { QuoteBarWidget } from "./quote-bar.ts";
 import { RichTextWidget } from "./rich-text.ts";
 import { SyntaxWidget } from "./syntax.ts";
 
@@ -367,11 +368,10 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
     const container = new Widget("blockquote");
     container.style.layout = "horizontal";
 
-    const bar = new RichTextWidget();
-    bar.selectable = false; // the quote bar is chrome, not content
+    const bar = new QuoteBarWidget(); // chrome bar that spans the body's height
     bar.style.color = barColor;
+    bar.style.width = 2; // "▌" + a column of breathing room
     if (dimBar) bar.style.dim = true;
-    bar.appendChild(new TextNode("▌ "));
     container.appendChild(bar);
 
     const body = new Widget("blockquote_body");
@@ -381,6 +381,10 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       const w = this.buildWidgetFromToken(childToken);
       if (w) body.appendChild(w);
     }
+    // Drop the trailing block's bottom margin so the accent bar (stretched to the
+    // body's height) ends with the text instead of trailing a glyph onto the gap.
+    const last = body.children[body.children.length - 1];
+    if (last instanceof Widget) last.style.margin = new Spacing(0, 0, 0, 0);
     container.appendChild(body);
 
     return container;
