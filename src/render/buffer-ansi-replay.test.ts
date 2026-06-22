@@ -110,12 +110,27 @@ function canon(pen: Pen): string {
 }
 
 /** Replay a diff stream onto a grid; each written cell records its char + pen. */
-function replay(diff: string, w: number, h: number): { char: string; pen: string }[][] {
-  const grid: { char: string; pen: string }[][] = Array.from({ length: h }, () =>
-    Array.from({ length: w }, () => ({ char: " ", pen: "" })),
+function replay(
+  diff: string,
+  w: number,
+  h: number,
+  initial?: ScreenBuffer,
+): { char: string; pen: string }[][] {
+  // Seed the grid with the terminal's prior content when given (a scroll frame
+  // shifts that content), else start blank like a fresh screen.
+  const grid: { char: string; pen: string }[][] = Array.from({ length: h }, (_, gy) =>
+    Array.from({ length: w }, (_, gx) =>
+      initial
+        ? { char: initial.cells[gy][gx].char, pen: expectedPen(initial.cells[gy][gx].style) }
+        : { char: " ", pen: "" },
+    ),
   );
   let x = 0;
   let y = 0;
+  // Scroll region (DECSTBM), inclusive zero-based rows; full screen by default.
+  let regionTop = 0;
+  let regionBot = h - 1;
+  const blank = () => ({ char: " ", pen: "" });
   const pen: Pen = {};
   let i = 0;
   while (i < diff.length) {
@@ -137,6 +152,30 @@ function replay(diff: string, w: number, h: number): { char: string; pen: string
         else if (final === "D") x -= n;
         else if (final === "B") y += n;
         else y -= n;
+      } else if (final === "r") {
+        // DECSTBM: set scroll margins (empty = full screen) and home the cursor.
+        if (body === "") {
+          regionTop = 0;
+          regionBot = h - 1;
+        } else {
+          const [t, b] = body.split(";").map((n) => Number(n) || 1);
+          regionTop = t - 1;
+          regionBot = b - 1;
+        }
+        x = 0;
+        y = 0;
+      } else if (final === "S" || final === "T") {
+        // Scroll the region up (S) / down (T) by n, blanking the revealed rows.
+        const n = Number(body) || 1;
+        if (final === "S") {
+          for (let r = regionTop; r <= regionBot - n; r++) grid[r] = grid[r + n];
+          for (let r = regionBot - n + 1; r <= regionBot; r++)
+            grid[r] = Array.from({ length: w }, blank);
+        } else {
+          for (let r = regionBot; r >= regionTop + n; r--) grid[r] = grid[r - n];
+          for (let r = regionTop; r <= regionTop + n - 1; r++)
+            grid[r] = Array.from({ length: w }, blank);
+        }
       }
       i = j + 1;
       continue;
@@ -236,6 +275,93 @@ describe("render diff ANSI replays to the source buffer", () => {
       const cell = buf.cells[y][x];
       expect(grid[y][x].char, `char at ${x},${y}`).toBe(cell.char);
       expect(grid[y][x].pen, `style at ${x},${y}`).toBe(expectedPen(cell.style));
+    }
+  });
+
+  test("a vertical scroll emits a scroll-region op and replays to the new frame", () => {
+    const prev = variedBuffer(); // what the terminal currently shows
+    const next = new ScreenBuffer(20, 6);
+    // next = prev scrolled up by 2: rows 0..3 are prev rows 2..5; rows 4..5 new.
+    for (let y = 0; y <= 3; y++) {
+      for (let x = 0; x < 20; x++) {
+        const c = prev.cells[y + 2][x];
+        next.setCell(x, y, c.char, c.style);
+      }
+    }
+    for (let y = 4; y <= 5; y++) {
+      for (let x = 0; x < 20; x++) {
+        next.setCell(
+          x,
+          y,
+          String.fromCharCode(97 + ((x + y) % 26)),
+          new Style({ color: "#33ccff" }),
+        );
+      }
+    }
+
+    const prevSeed = new ScreenBuffer(20, 6);
+    prev.copyTo(prevSeed); // renderDiff mutates `prev` (shiftRowsForScroll); keep a clean seed
+    const diff = next.renderDiff(prev, undefined, 20, 6, 0, true);
+
+    // It must take the scroll path (DECSTBM + SU), not re-emit all six rows.
+    expect(diff, "expected a scroll-up op").toMatch(/\x1b\[\d+;\d+r\x1b\[\d+S/);
+
+    const grid = replay(diff, 20, 6, prevSeed);
+    for (let y = 0; y < 6; y++) {
+      for (let x = 0; x < 20; x++) {
+        const cell = next.cells[y][x];
+        expect(grid[y][x].char, `char at ${x},${y}`).toBe(cell.char);
+        expect(grid[y][x].pen, `style at ${x},${y}`).toBe(expectedPen(cell.style));
+      }
+    }
+  });
+
+  test("a scroll-down emits SD and replays to the new frame", () => {
+    const prev = variedBuffer();
+    const next = new ScreenBuffer(20, 6);
+    // next = prev scrolled down by 2: rows 2..5 are prev rows 0..3; rows 0..1 new.
+    for (let y = 2; y <= 5; y++) {
+      for (let x = 0; x < 20; x++) {
+        const c = prev.cells[y - 2][x];
+        next.setCell(x, y, c.char, c.style);
+      }
+    }
+    for (let y = 0; y <= 1; y++) {
+      for (let x = 0; x < 20; x++) {
+        next.setCell(x, y, String.fromCharCode(48 + ((x + y) % 10)), new Style({ bold: true }));
+      }
+    }
+    const prevSeed = new ScreenBuffer(20, 6);
+    prev.copyTo(prevSeed);
+    const diff = next.renderDiff(prev, undefined, 20, 6, 0, true);
+    expect(diff, "expected a scroll-down op").toMatch(/\x1b\[\d+;\d+r\x1b\[\d+T/);
+    const grid = replay(diff, 20, 6, prevSeed);
+    for (let y = 0; y < 6; y++) {
+      for (let x = 0; x < 20; x++) {
+        const cell = next.cells[y][x];
+        expect(grid[y][x].char, `char at ${x},${y}`).toBe(cell.char);
+        expect(grid[y][x].pen, `pen at ${x},${y}`).toBe(expectedPen(cell.style));
+      }
+    }
+  });
+
+  test("scattered edits never take the scroll path (no false positive)", () => {
+    const prev = variedBuffer();
+    const next = variedBuffer();
+    next.setCell(3, 1, "Z", new Style({ color: "#ffff00", bold: true }));
+    next.setCell(10, 4, "Q", new Style({ background: "#ff00ff" }));
+    const prevSeed = new ScreenBuffer(20, 6);
+    prev.copyTo(prevSeed);
+    const diff = next.renderDiff(prev, undefined, 20, 6, 0, true);
+    // Not a clean shift → must stay on the per-cell path, no scroll-region op.
+    expect(diff).not.toMatch(/\x1b\[\d+;\d+r/);
+    const grid = replay(diff, 20, 6, prevSeed);
+    for (let y = 0; y < 6; y++) {
+      for (let x = 0; x < 20; x++) {
+        const cell = next.cells[y][x];
+        expect(grid[y][x].char, `char at ${x},${y}`).toBe(cell.char);
+        expect(grid[y][x].pen, `pen at ${x},${y}`).toBe(expectedPen(cell.style));
+      }
     }
   });
 });

@@ -258,6 +258,24 @@ export function cursorMove(
   return best;
 }
 
+/**
+ * Escape sequence that scrolls a horizontal band of rows in place using the
+ * terminal's own scroll region, so the diff need not re-emit every shifted row —
+ * only the freshly revealed ones. `top`/`bottom` are zero-based, inclusive rows;
+ * `delta > 0` scrolls the band *up* by `delta` (content rises, blank rows open at
+ * the bottom), `delta < 0` scrolls it *down* (blank rows open at the top).
+ *
+ * Sets the scroll region (DECSTBM), issues SU/SD, then resets the region to the
+ * full screen (which also homes the cursor — harmless, the diff repositions every
+ * run from a cleared cursor). VT100-universal; gated on `scrollRegion` capability.
+ */
+export function scrollRegionSeq(top: number, bottom: number, delta: number): string {
+  if (delta === 0 || bottom < top) return "";
+  const region = `\x1b[${top + 1};${bottom + 1}r`;
+  const op = delta > 0 ? `\x1b[${delta}S` : `\x1b[${-delta}T`;
+  return `${region}${op}\x1b[r`;
+}
+
 // Map RGB values to the closest basic 16-colour index by Euclidean distance.
 function getClosestBasicColor(r: number, g: number, b: number): number {
   const ansiRGBs = [

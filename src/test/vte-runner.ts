@@ -36,6 +36,7 @@ export class VTEDriver extends Driver {
       mouseHover: true,
       hyperlinks: true,
       synchronizedUpdates: true,
+      scrollRegion: true,
       glyphProtocol: true,
       clipboard: true,
       notifications: true,

@@ -49,6 +49,7 @@ export function getBaselineCapabilities(): TerminalCapabilities {
     mouseHover,
     hyperlinks,
     synchronizedUpdates: false,
+    scrollRegion: true,
     glyphProtocol: false,
     clipboard: true,
     notifications: true,

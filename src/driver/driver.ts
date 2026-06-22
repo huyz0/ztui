@@ -99,6 +99,8 @@ export interface TerminalCapabilities {
   hyperlinks: boolean;
   /** Synchronized output (flicker-free frames). */
   synchronizedUpdates: boolean;
+  /** Scroll-region (DECSTBM) + SU/SD, so the diff can scroll shifted rows in place. */
+  scrollRegion: boolean;
   /** Terminal Glyph Protocol for crisp icons. */
   glyphProtocol: boolean;
   /** OSC 52 clipboard read/write. */

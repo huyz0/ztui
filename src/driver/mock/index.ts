@@ -21,6 +21,7 @@ export class MockDriver extends Driver {
       mouseHover: false,
       hyperlinks: true,
       synchronizedUpdates: false,
+      scrollRegion: false,
       glyphProtocol: false,
       clipboard: true,
       notifications: true,

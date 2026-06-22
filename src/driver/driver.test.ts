@@ -563,6 +563,7 @@ describe("BunDriver Capability Probing", () => {
       public capabilities: TerminalCapabilities = {
         truecolor: false,
         color256: false,
+        scrollRegion: false,
         kittyKeyboard: false,
         mouseTracking: false,
         mouseHover: false,

@@ -1,7 +1,7 @@
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
-import { cursorMove, styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
+import { cursorMove, scrollRegionSeq, styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
 import { mix, parseColor, type RGB, rgbStr } from "./color.ts";
 import type { Segment } from "./segment.ts";
 import { charWidth, isControlChar, splitGraphemes, stringWidth } from "./segment.ts";
@@ -312,6 +312,10 @@ export class ScreenBuffer {
     // First row to scan. With damage-tracked partial repaint, only the changed
     // band of rows is diffed; rows above `yStart` are known unchanged this frame.
     yStart = 0,
+    // When set, try to express the frame as a terminal scroll of a row band so
+    // shifted content is moved by the terminal instead of re-emitted. Only valid
+    // for a full-frame diff on a scroll-region-capable terminal (the App gates it).
+    allowScroll = false,
   ): string {
     let output = "";
     const limitW = clipW !== undefined ? Math.min(clipW, this.width) : this.width;
@@ -326,6 +330,25 @@ export class ScreenBuffer {
         for (let x = 0; x < this.width; x++) {
           oldBuffer.cells[y][x].char = "";
         }
+      }
+    }
+
+    // Scroll optimization: when the entire frame is being diffed (not a damage
+    // band) and the new frame is a clean vertical shift of the previous one, let
+    // the terminal scroll the shared rows in place via its scroll region and
+    // redraw only the revealed band. We mutate `oldBuffer` to mirror the post-
+    // scroll screen, so the per-cell diff below naturally emits just those rows.
+    if (
+      allowScroll &&
+      y0 === 0 &&
+      limitH === this.height &&
+      limitW === this.width &&
+      !this.containsGraphics
+    ) {
+      const scroll = this.detectScroll(oldBuffer);
+      if (scroll) {
+        output += scrollRegionSeq(scroll.top, scroll.bottom, scroll.delta);
+        oldBuffer.shiftRowsForScroll(scroll.top, scroll.bottom, scroll.delta);
       }
     }
 
@@ -513,6 +536,182 @@ export class ScreenBuffer {
       cursor: { x: x + stringWidth(content), y },
       lastStyle: style,
     };
+  }
+
+  /** True when row `y` of this buffer is cell-for-cell identical to row `oy` of `old`. */
+  private rowEqTo(old: ScreenBuffer, y: number, oy: number): boolean {
+    const a = this.cells[y];
+    const b = old.cells[oy];
+    for (let x = 0; x < this.width; x++) {
+      const c = a[x];
+      const d = b[x];
+      if (
+        c.char !== d.char ||
+        c.wideContinuation !== d.wideContinuation ||
+        c.icon !== d.icon ||
+        !graphicsEqual(c.graphic, d.graphic) ||
+        !c.style.equals(d.style)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Detect a clean vertical scroll between `old` (previous frame) and this (new
+   * frame): a single contiguous band of rows that is identical after shifting by
+   * `delta` (`> 0` = scrolled up / revealed at the bottom, `< 0` = scrolled down /
+   * revealed at the top). Returns null when no worthwhile shift explains the
+   * change — the common case, so the boundary rows are checked first to bail fast.
+   *
+   * Conservative by design: it only fires on an *exact* shift of the changed band,
+   * so anything subtler (a shift plus an in-band edit) falls back to the normal
+   * per-cell diff. Static chrome above/below the scrolling viewport is naturally
+   * excluded because it sits outside the changed band.
+   */
+  private detectScroll(old: ScreenBuffer): { top: number; bottom: number; delta: number } | null {
+    if (old.width !== this.width || old.height !== this.height) return null;
+    const H = this.height;
+
+    let top = -1;
+    for (let y = 0; y < H; y++) {
+      if (!this.rowEqTo(old, y, y)) {
+        top = y;
+        break;
+      }
+    }
+    if (top < 0) return null; // frames identical — nothing to scroll
+
+    let bot = -1;
+    for (let y = H - 1; y >= 0; y--) {
+      if (!this.rowEqTo(old, y, y)) {
+        bot = y;
+        break;
+      }
+    }
+
+    const bandH = bot - top + 1;
+    // Too small a band can't save more than the scroll op costs.
+    if (bandH < 3) return null;
+    // At least this many rows must be shifted-and-shared (vs. redrawn) to bother.
+    const MIN_SAVE = 2;
+
+    // Scroll up by d: new[y] == old[y+d] across [top, bot-d]; reveal [bot-d+1, bot].
+    for (let d = 1; d <= bandH - 1; d++) {
+      if (!this.rowEqTo(old, top, top + d)) continue; // boundary mismatch — not this d
+      let ok = true;
+      for (let y = top; y <= bot - d; y++) {
+        if (!this.rowEqTo(old, y, y + d)) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok) continue;
+      // Smallest clean shift found; if even this one doesn't pay, none will.
+      return bandH - d >= MIN_SAVE && this.scrollSavesBytes(old, top, bot, d)
+        ? { top, bottom: bot, delta: d }
+        : null;
+    }
+
+    // Scroll down by d: new[y] == old[y-d] across [top+d, bot]; reveal [top, top+d-1].
+    for (let d = 1; d <= bandH - 1; d++) {
+      if (!this.rowEqTo(old, bot, bot - d)) continue;
+      let ok = true;
+      for (let y = top + d; y <= bot; y++) {
+        if (!this.rowEqTo(old, y, y - d)) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok) continue;
+      return bandH - d >= MIN_SAVE && this.scrollSavesBytes(old, top, bot, -d)
+        ? { top, bottom: bot, delta: -d }
+        : null;
+    }
+
+    return null;
+  }
+
+  /**
+   * Whether scrolling the band by `delta` emits fewer cells than the plain diff.
+   * The plain diff re-emits every cell that differs between new[y] and old[y]
+   * (unshifted) across the band; the scroll path emits only the non-blank cells
+   * of the revealed rows (the shifted rows match exactly, so cost nothing). When
+   * adjacent rows are near-identical the plain diff is already cheap and scrolling
+   * would *lose* — this guard keeps the optimization to a strict byte win.
+   */
+  private scrollSavesBytes(old: ScreenBuffer, top: number, bottom: number, delta: number): boolean {
+    let plain = 0;
+    for (let y = top; y <= bottom; y++) {
+      const a = this.cells[y];
+      const b = old.cells[y];
+      for (let x = 0; x < this.width; x++) {
+        if (a[x].char !== b[x].char || !a[x].style.equals(b[x].style)) plain++;
+      }
+    }
+    const revTop = delta > 0 ? bottom - delta + 1 : top;
+    const revBot = delta > 0 ? bottom : top - delta - 1;
+    let scroll = 0;
+    for (let y = revTop; y <= revBot; y++) {
+      const row = this.cells[y];
+      for (let x = 0; x < this.width; x++) {
+        if (row[x].char !== " " || row[x].style !== Style.DEFAULT) scroll++;
+      }
+    }
+    return scroll < plain;
+  }
+
+  /** Copy every cell field from row `from` to row `to` (in place, no realloc). */
+  private copyRow(from: number, to: number): void {
+    const src = this.cells[from];
+    const dst = this.cells[to];
+    for (let x = 0; x < this.width; x++) {
+      const s = src[x];
+      const d = dst[x];
+      d.char = s.char;
+      d.style = s.style;
+      d.wideContinuation = s.wideContinuation;
+      d.icon = s.icon;
+      d.graphic = s.graphic;
+    }
+  }
+
+  /**
+   * Mirror a terminal scroll on this buffer (used on the prev-frame buffer after
+   * emitting {@link scrollRegionSeq}): shift the band's rows by `delta` and mark
+   * the revealed rows so the per-cell diff redraws exactly them. The revealed
+   * rows get a sentinel char (never equal to a real cell) rather than blanks, so
+   * the redraw is correct regardless of what fill colour SU/SD left behind.
+   */
+  public shiftRowsForScroll(top: number, bottom: number, delta: number): void {
+    if (delta > 0) {
+      for (let y = top; y <= bottom - delta; y++) this.copyRow(y + delta, y);
+      for (let y = bottom - delta + 1; y <= bottom; y++) this.invalidateRow(y);
+    } else if (delta < 0) {
+      const d = -delta;
+      for (let y = bottom; y >= top + d; y--) this.copyRow(y - d, y);
+      for (let y = top; y <= top + d - 1; y++) this.invalidateRow(y);
+    }
+  }
+
+  /**
+   * Reset row `y` to a default blank — what SU/SD leaves in the revealed band.
+   * The terminal pen is default when the scroll op runs (every frame ends with an
+   * SGR reset), so the scrolled-in rows are default-background blanks; mirroring
+   * that here lets the per-cell diff re-emit only the genuinely non-blank cells of
+   * the new content instead of the whole row.
+   */
+  private invalidateRow(y: number): void {
+    const row = this.cells[y];
+    for (let x = 0; x < this.width; x++) {
+      const c = row[x];
+      c.char = " ";
+      c.style = Style.DEFAULT;
+      c.wideContinuation = false;
+      c.icon = undefined;
+      c.graphic = undefined;
+    }
   }
 
   /**
