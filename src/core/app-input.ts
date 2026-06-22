@@ -34,6 +34,7 @@ export interface InputHost {
   /** Whether widget `cursor` styles drive the pointer shape (App.pointerShapes). */
   readonly pointerShapes: boolean;
   queueRender(reason?: string): void;
+  queueRepaintWidget(widget: Widget, reason?: string): void;
   copyActiveSelection(): string | null;
   stop(): void;
 }
@@ -217,7 +218,9 @@ export class AppInput {
           () => `handleKey (tab) on ${focused.describe()}`,
           () => focused.handleKey(ev),
         );
-        this.host.queueRender("key:widget-handled");
+        // A focused widget consuming the key (e.g. accepting a completion) is a
+        // self-contained change — repaint scoped to it, verified for layout.
+        this.host.queueRepaintWidget(focused, "key:widget-handled");
         return;
       }
       screen.focusNext(ev.shift);
@@ -250,7 +253,12 @@ export class AppInput {
     }
     if (handledBy) {
       this.log(() => `Key "${ev.key}" handled by ${handledBy.describe()}`);
-      this.host.queueRender("key:widget-handled");
+      // Typing/editing in the focused control is local: repaint scoped to the
+      // handler's subtree (which contains the focused descendant). The geometry
+      // check upgrades to a full frame if the keystroke actually resized it (a
+      // growing textarea, reflowed content), and any app-state cascade routes
+      // through React's own queueRender, so this never hides a wider change.
+      this.host.queueRepaintWidget(handledBy, "key:widget-handled");
       return;
     }
 

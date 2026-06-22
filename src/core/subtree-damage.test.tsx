@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { DOMNode } from "../dom/dom.ts";
 import { TextNode } from "../dom/text-node.ts";
 import { Widget } from "../dom/widget.ts";
-import { HBox, Label, VBox } from "../react.ts";
+import { HBox, Input, Label, VBox } from "../react.ts";
 import { mountApp } from "../test/harness.tsx";
 import { flush } from "../tools/app-mount.tsx";
 
@@ -142,5 +142,28 @@ describe("subtree-damage: geometry-verified queueRepaintWidget", () => {
 
     expect(b.region.x).not.toBe(bxBefore); // it genuinely moved
     expect(t.app.getLastFrame()?.full).toBe(true); // so we did NOT scope
+  });
+
+  test("typing into a focused fixed-width input repaints scoped, not full", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Input style={{ width: 20 }} />
+        {rows.slice(0, 10).map((r) => (
+          <Label key={r}>{r}</Label>
+        ))}
+      </VBox>,
+      { cols: 30, rows: 12 },
+    );
+    await t.settle();
+    const input = findWidgets(t.app.activeScreen, "input")[0];
+    t.app.activeScreen.focusWidget(input);
+
+    // Drive a character through the real key path (app → focused widget).
+    t.app.input.handleKey({ key: "a", name: "a", ctrl: false, meta: false, shift: false });
+    await flush();
+
+    const f = t.app.getLastFrame();
+    expect(f?.full).toBe(false); // the keystroke scoped to the input
+    expect(f?.widgetsRendered).toBeLessThan(10); // not the whole 11-widget tree
   });
 });
