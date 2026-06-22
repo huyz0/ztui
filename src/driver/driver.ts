@@ -101,6 +101,8 @@ export interface TerminalCapabilities {
   synchronizedUpdates: boolean;
   /** Scroll-region (DECSTBM) + SU/SD, so the diff can scroll shifted rows in place. */
   scrollRegion: boolean;
+  /** REP (`\x1b[nb`) repeat-last-char, so long identical runs (borders/fills) compress. */
+  repeatChar: boolean;
   /** Terminal Glyph Protocol for crisp icons. */
   glyphProtocol: boolean;
   /** OSC 52 clipboard read/write. */

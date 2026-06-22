@@ -619,6 +619,7 @@ export class App extends DOMNode {
       dmgY1,
       dmgY0,
       this.driver.capabilities.scrollRegion,
+      this.driver.capabilities.repeatChar,
     );
     frameProfiler.record("diff", tDiff);
 

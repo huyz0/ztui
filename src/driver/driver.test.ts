@@ -564,6 +564,7 @@ describe("BunDriver Capability Probing", () => {
         truecolor: false,
         color256: false,
         scrollRegion: false,
+        repeatChar: false,
         kittyKeyboard: false,
         mouseTracking: false,
         mouseHover: false,

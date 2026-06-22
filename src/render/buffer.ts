@@ -90,6 +90,41 @@ function isSpaces(s: string): boolean {
 }
 
 /**
+ * Rewrite runs of an identical character using REP (`\x1b[nb`, "repeat the last
+ * graphic char n times") — collapsing borders, rules and solid fills (`─`, `█`,
+ * `░`, …) that would otherwise stream the same multi-byte glyph hundreds of times.
+ * Only single-unit, single-width, printable chars are eligible (surrogate pairs
+ * and wide glyphs are left intact), and only when REP is actually shorter than
+ * writing the run out, so the result is never larger. Gated on the `repeatChar`
+ * capability — never called on terminals that don't support REP.
+ */
+function compressRepeats(content: string): string {
+  let out = "";
+  let i = 0;
+  const len = content.length;
+  while (i < len) {
+    const ch = content[i];
+    let j = i + 1;
+    while (j < len && content[j] === ch) j++;
+    const run = j - i;
+    const code = ch.charCodeAt(0);
+    if (run >= 3 && code >= 0x20 && charWidth(ch) === 1) {
+      const repeats = run - 1;
+      const rep = `\x1b[${repeats}b`;
+      const charBytes = code < 0x80 ? 1 : code < 0x800 ? 2 : 3;
+      if (rep.length < charBytes * repeats) {
+        out += ch + rep; // one real glyph, then REP for the rest
+        i = j;
+        continue;
+      }
+    }
+    out += content.slice(i, j);
+    i = j;
+  }
+  return out;
+}
+
+/**
  * Whether a per-cell graphics-erase must be emitted before drawing this cell:
  * the previous frame held an icon/graphic here that is now different or gone.
  *
@@ -137,6 +172,10 @@ export class ScreenBuffer {
    * (not a damage-scoped partial repaint) whenever this is set.
    */
   public containsGraphics = false;
+  // Transient: whether the current renderDiff may use REP to compress identical
+  // runs (set from the `allowRepeat` argument, read by flushRun). Diffs are not
+  // re-entrant, so a plain field is safe.
+  private diffRepeat = false;
   /**
    * Order-independent hash of the cells that hold an inline graphic this frame.
    * When it changes between full frames a graphic was added/moved/removed, so the
@@ -337,7 +376,11 @@ export class ScreenBuffer {
     // shifted content is moved by the terminal instead of re-emitted. Only valid
     // for a full-frame diff on a scroll-region-capable terminal (the App gates it).
     allowScroll = false,
+    // When set, collapse identical-char runs with REP (`\x1b[nb`); the App passes
+    // the terminal's `repeatChar` capability so it is only used where supported.
+    allowRepeat = false,
   ): string {
+    this.diffRepeat = allowRepeat;
     let output = "";
     const limitW = clipW !== undefined ? Math.min(clipW, this.width) : this.width;
     const limitH = clipH !== undefined ? Math.min(clipH, this.height) : this.height;
@@ -569,7 +612,10 @@ export class ScreenBuffer {
       return { out, cursor: { x, y }, lastStyle: style };
     }
 
-    out += content;
+    // REP-compress identical runs (borders/fills) where supported. The cursor
+    // still advances by the run's visual width — REP moves it exactly as the
+    // glyphs would — so positioning is unchanged.
+    out += this.diffRepeat ? compressRepeats(content) : content;
     return {
       out,
       cursor: { x: x + stringWidth(content), y },

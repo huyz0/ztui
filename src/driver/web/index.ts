@@ -52,6 +52,7 @@ export class WebDriver extends Driver {
       hyperlinks: true,
       synchronizedUpdates: false,
       scrollRegion: false,
+      repeatChar: false,
       glyphProtocol: false,
       clipboard: true,
       notifications: false,

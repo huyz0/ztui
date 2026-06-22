@@ -127,6 +127,8 @@ function replay(
   );
   let x = 0;
   let y = 0;
+  // Last graphic char written, for REP (`\x1b[nb`).
+  let lastChar = " ";
   // Scroll region (DECSTBM), inclusive zero-based rows; full screen by default.
   let regionTop = 0;
   let regionBot = h - 1;
@@ -164,6 +166,13 @@ function replay(
         }
         x = 0;
         y = 0;
+      } else if (final === "b") {
+        // REP: repeat the last written graphic char n times (advancing x).
+        const n = Number(body) || 1;
+        for (let k = 0; k < n; k++) {
+          if (y >= 0 && y < h && x >= 0 && x < w) grid[y][x] = { char: lastChar, pen: canon(pen) };
+          x++;
+        }
       } else if (final === "K") {
         // EL: clear from the cursor to the end of the line (mode 0 / empty) to a
         // default blank — ztui only emits it with a default pen.
@@ -204,6 +213,7 @@ function replay(
       continue;
     }
     if (y >= 0 && y < h && x >= 0 && x < w) grid[y][x] = { char: diff[i], pen: canon(pen) };
+    lastChar = diff[i];
     x++;
     i++;
   }
@@ -370,6 +380,29 @@ describe("render diff ANSI replays to the source buffer", () => {
       const cell = next.cells[1][x];
       expect(grid[1][x].char, `char at ${x}`).toBe(cell.char);
       expect(grid[1][x].pen, `pen at ${x}`).toBe(expectedPen(cell.style));
+    }
+  });
+
+  test("a long identical run compresses with REP and replays correctly", () => {
+    const next = new ScreenBuffer(60, 2);
+    const blank = new ScreenBuffer(60, 2);
+    const line = new Style({ color: "#8888ff" });
+    // A solid box-drawing rule across the row — the canonical REP case.
+    for (let x = 0; x < 60; x++) {
+      next.setCell(x, 0, "─", line);
+      next.setCell(x, 1, "█", new Style({ color: "#00ff00" }));
+    }
+    // allowScroll=false, allowRepeat=true.
+    const diff = next.renderDiff(blank, undefined, 60, 2, 0, false, true);
+    expect(diff, "expected a REP op").toMatch(/\x1b\[\d+b/);
+
+    const grid = replay(diff, 60, 2);
+    for (let y = 0; y < 2; y++) {
+      for (let x = 0; x < 60; x++) {
+        const cell = next.cells[y][x];
+        expect(grid[y][x].char, `char at ${x},${y}`).toBe(cell.char);
+        expect(grid[y][x].pen, `pen at ${x},${y}`).toBe(expectedPen(cell.style));
+      }
     }
   });
 

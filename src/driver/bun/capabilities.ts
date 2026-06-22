@@ -25,6 +25,21 @@ export function getBaselineCapabilities(): TerminalCapabilities {
     termProgram === "iTerm.app" || lcTerminal === "iTerm2" || !!process.env.ITERM_SESSION_ID;
   const isFoot = term === "foot" || term.includes("foot");
   const isSixelTerm = term.includes("sixel");
+  const isXterm = term.includes("xterm");
+
+  // REP (CSI Pn b) is ECMA-48 and supported across the modern emulators we can
+  // identify; left off for unknown/legacy TERMs where an unsupported `\x1b[nb`
+  // would drop the repeated glyphs. Conservative on purpose — the diff just
+  // writes the run out in full when this is false.
+  const repeatChar =
+    isWezTerm ||
+    isGhostty ||
+    isKitty ||
+    isITerm ||
+    isWT ||
+    isFoot ||
+    isXterm ||
+    !!process.env.VTE_VERSION;
 
   const hyperlinks =
     isWezTerm || isGhostty || isKitty || isITerm || isWT || !!process.env.VTE_VERSION;
@@ -50,6 +65,7 @@ export function getBaselineCapabilities(): TerminalCapabilities {
     hyperlinks,
     synchronizedUpdates: false,
     scrollRegion: true,
+    repeatChar,
     glyphProtocol: false,
     clipboard: true,
     notifications: true,
