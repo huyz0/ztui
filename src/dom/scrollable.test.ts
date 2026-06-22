@@ -336,6 +336,30 @@ describe("Scrollable Mixin", () => {
     app.stop();
   });
 
+  test("focusWidget({scroll:false}) leaves scrollOffset untouched", () => {
+    const driver = new MockDriver(40, 20);
+    const app = new App(driver);
+    app.run();
+
+    const scrollBox = new ScrollableBox();
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    app.activeScreen.appendChild(scrollBox);
+
+    const child = new Widget("button");
+    child.focusable = true;
+    child.region = new Region(new Offset(0, 15), new Size(5, 1));
+    scrollBox.appendChild(child);
+
+    // Pointer-driven focus must not scroll the viewport: the user clicked a cell
+    // already on screen, so jerking content under the cursor (and any selection
+    // anchor set on the same press) would be wrong.
+    app.activeScreen.focusWidget(child, { scroll: false });
+    expect(scrollBox.scrollOffset.y).toBe(0);
+    expect(app.activeScreen.focusedWidget).toBe(child);
+
+    app.stop();
+  });
+
   test("Overflow styles override scrolling and scrollbar visibility", () => {
     const scrollBox = new ScrollableBox();
     scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));

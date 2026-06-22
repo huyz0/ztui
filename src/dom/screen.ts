@@ -195,8 +195,15 @@ export class Screen extends Widget {
     }
   }
 
-  /** Move keyboard focus to `widget` (or clear focus with `null`). */
-  public focusWidget(widget: Widget | null): void {
+  /**
+   * Move keyboard focus to `widget` (or clear focus with `null`). By default the
+   * widget is scrolled into view, which is what keyboard navigation (Tab) wants.
+   * Pass `scroll: false` for pointer-driven focus: the user clicked a cell that is
+   * already on screen, so scrolling the viewport would jerk content out from under
+   * the cursor — and, for a read-only text selection anchored on the same press,
+   * would shift the just-computed anchor away from where they clicked.
+   */
+  public focusWidget(widget: Widget | null, opts: { scroll?: boolean } = {}): void {
     // A disabled widget can never hold focus.
     if (widget?.isDisabled()) widget = null;
     if (this._focusedWidget === widget) return;
@@ -209,7 +216,7 @@ export class Screen extends Widget {
 
     if (this._focusedWidget) {
       this._focusedWidget.focused = true;
-      this.scrollIntoView(this._focusedWidget);
+      if (opts.scroll !== false) this.scrollIntoView(this._focusedWidget);
     }
   }
 

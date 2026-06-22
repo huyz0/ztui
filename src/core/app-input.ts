@@ -407,7 +407,10 @@ export class AppInput {
         if (!ev.handled && ev.type === "press" && ev.button === "left") {
           if (hitWidget.focusable) {
             const prevFocused = this.host.activeScreen.focusedWidget;
-            this.host.activeScreen.focusWidget(hitWidget);
+            // Pointer focus must not scroll: the user clicked a visible cell, and
+            // a read-only selection may have just anchored on this same press —
+            // scrolling here would shift that anchor off the clicked content.
+            this.host.activeScreen.focusWidget(hitWidget, { scroll: false });
             this.log(() => `Focused via click -> ${hitWidget.describe()}`);
             // Focus moves the ring between two fixed-size widgets — repaint both
             // (old loses the ring, new gains it), scoped + geometry-verified.
