@@ -69,6 +69,27 @@ export function graphicsEqual(a?: GraphicMetadata, b?: GraphicMetadata): boolean
 }
 
 /**
+ * Whether a space in this style can be cleared with EL (`\x1b[K`) instead of
+ * written as spaces. Restricted to the fully-default style: EL clears cells to
+ * the terminal default, so only a default blank reproduces exactly (a foreground
+ * colour is invisible on a blank but would still mismatch the cell's declared
+ * style — and a background/reverse/underline genuinely renders differently). The
+ * frame-cleared blanks behind shrunk text are exactly this, so it covers the
+ * common case while staying provably identical.
+ */
+function isErasableBlank(style: Style): boolean {
+  return style === Style.DEFAULT || style.equals(Style.DEFAULT);
+}
+
+/** True when `s` is non-empty and entirely ASCII spaces. */
+function isSpaces(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    if (s.charCodeAt(i) !== 32) return false;
+  }
+  return s.length > 0;
+}
+
+/**
  * Whether a per-cell graphics-erase must be emitted before drawing this cell:
  * the previous frame held an icon/graphic here that is now different or gone.
  *
@@ -530,12 +551,41 @@ export class ScreenBuffer {
       }
       out += styleTransition(lastStyle, style);
     }
+
+    // Erase-to-end-of-line: when this run is a plain default-background blank and
+    // everything from `x` to the row's end is too, clear it with one EL (`\x1b[K`,
+    // ~4 bytes) instead of writing a long string of spaces. The pen's background
+    // is default here (the run's style is erasable → the transition above left it
+    // default), so EL clears to the right colour. Common whenever a line's content
+    // shrinks or a row blanks out. Only worth it past a few cells.
+    if (
+      content.length > 4 &&
+      isErasableBlank(style) &&
+      isSpaces(content) &&
+      this.tailIsErasableBlank(y, x + content.length)
+    ) {
+      out += "\x1b[K";
+      // EL does not advance the cursor — it stays where the clear began.
+      return { out, cursor: { x, y }, lastStyle: style };
+    }
+
     out += content;
     return {
       out,
       cursor: { x: x + stringWidth(content), y },
       lastStyle: style,
     };
+  }
+
+  /** Whether every new-frame cell in `[fromX, width)` of row `y` is an erasable blank. */
+  private tailIsErasableBlank(y: number, fromX: number): boolean {
+    const row = this.cells[y];
+    for (let x = fromX; x < this.width; x++) {
+      const c = row[x];
+      if (c.char !== " " || c.icon !== undefined || c.graphic !== undefined) return false;
+      if (!isErasableBlank(c.style)) return false;
+    }
+    return true;
   }
 
   /** True when row `y` of this buffer is cell-for-cell identical to row `oy` of `old`. */

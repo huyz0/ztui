@@ -164,6 +164,12 @@ function replay(
         }
         x = 0;
         y = 0;
+      } else if (final === "K") {
+        // EL: clear from the cursor to the end of the line (mode 0 / empty) to a
+        // default blank — ztui only emits it with a default pen.
+        if (body === "" || body === "0") {
+          for (let c = x; c < w; c++) grid[y][c] = { char: " ", pen: "" };
+        }
       } else if (final === "S" || final === "T") {
         // Scroll the region up (S) / down (T) by n, blanking the revealed rows.
         const n = Number(body) || 1;
@@ -342,6 +348,28 @@ describe("render diff ANSI replays to the source buffer", () => {
         expect(grid[y][x].char, `char at ${x},${y}`).toBe(cell.char);
         expect(grid[y][x].pen, `pen at ${x},${y}`).toBe(expectedPen(cell.style));
       }
+    }
+  });
+
+  test("a shrinking line clears its tail with EL and replays blank", () => {
+    const prev = new ScreenBuffer(40, 3);
+    const next = new ScreenBuffer(40, 3);
+    const text = new Style({ color: "#ffffff" });
+    // prev row 1 is full of text; next row 1 keeps only a short prefix.
+    for (let x = 0; x < 40; x++) {
+      prev.setCell(x, 1, "X", text);
+      next.setCell(x, 1, x < 3 ? "h" : " ", x < 3 ? text : Style.DEFAULT);
+    }
+    const prevSeed = new ScreenBuffer(40, 3);
+    prev.copyTo(prevSeed);
+    const diff = next.renderDiff(prev);
+    expect(diff, "expected an EL clear").toContain("\x1b[K");
+
+    const grid = replay(diff, 40, 3, prevSeed);
+    for (let x = 0; x < 40; x++) {
+      const cell = next.cells[1][x];
+      expect(grid[1][x].char, `char at ${x}`).toBe(cell.char);
+      expect(grid[1][x].pen, `pen at ${x}`).toBe(expectedPen(cell.style));
     }
   });
 
