@@ -130,8 +130,21 @@ function replay(diff: string, w: number, h: number): { char: string; pen: string
         x = c - 1;
       } else if (final === "m") {
         applySgr(body, pen);
+      } else if (final === "C" || final === "D" || final === "A" || final === "B") {
+        // Relative cursor moves: CUF/CUB (x±n), CUD/CUU (y±n); empty body = 1.
+        const n = Number(body) || 1;
+        if (final === "C") x += n;
+        else if (final === "D") x -= n;
+        else if (final === "B") y += n;
+        else y -= n;
       }
       i = j + 1;
+      continue;
+    }
+    if (diff[i] === "\r") {
+      // Carriage return: snap to column 0 on the current row.
+      x = 0;
+      i++;
       continue;
     }
     if (diff[i] === "\x1b" && diff[i + 1] === "]") {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
+import { cursorMove, styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
 import { Style } from "./style.ts";
 
 /**
@@ -103,6 +103,48 @@ function expectedPen(to: Style): Pen {
   applyStream(styleToEscapeCodes(to).start, pen);
   return pen;
 }
+
+describe("cursorMove — shortest positioning", () => {
+  const W = 80;
+  test("no move when already at the target", () => {
+    expect(cursorMove(5, 2, 5, 2, W)).toBe("");
+  });
+
+  test("same-row forward uses CUF, beating absolute CUP", () => {
+    expect(cursorMove(10, 3, 15, 3, W)).toBe("\x1b[5C");
+  });
+
+  test("a one-cell step omits the count (CSI default)", () => {
+    expect(cursorMove(10, 3, 11, 3, W)).toBe("\x1b[C");
+    expect(cursorMove(10, 3, 9, 3, W)).toBe("\x1b[D");
+  });
+
+  test("same-column vertical uses CUD/CUU", () => {
+    expect(cursorMove(7, 2, 7, 5, W)).toBe("\x1b[3B");
+    expect(cursorMove(7, 5, 7, 2, W)).toBe("\x1b[3A");
+  });
+
+  test("column 0 of the next row is a bare CR (+ vertical) not a CUP", () => {
+    expect(cursorMove(40, 3, 0, 4, W)).toBe("\r\x1b[B");
+    expect(cursorMove(40, 3, 0, 3, W)).toBe("\r");
+  });
+
+  test("falls back to absolute CUP at the right margin (pending wrap)", () => {
+    // Cursor parked at column == width: relative moves are unreliable, use CUP.
+    expect(cursorMove(W, 3, 4, 4, W)).toBe("\x1b[5;5H");
+  });
+
+  test("never longer than the absolute CUP it replaces", () => {
+    for (let i = 0; i < 2000; i++) {
+      const fromX = Math.floor(Math.random() * W);
+      const fromY = Math.floor(Math.random() * 50);
+      const toX = Math.floor(Math.random() * W);
+      const toY = Math.floor(Math.random() * 50);
+      const cup = `\x1b[${toY + 1};${toX + 1}H`;
+      expect(cursorMove(fromX, fromY, toX, toY, W).length).toBeLessThanOrEqual(cup.length);
+    }
+  });
+});
 
 describe("styleTransition — minimal output", () => {
   test("adding one attribute emits only that attribute", () => {

@@ -206,6 +206,58 @@ export function styleTransition(from: Style, to: Style): string {
   return out;
 }
 
+/**
+ * Shortest escape sequence to move the terminal cursor from `(fromX, fromY)` to
+ * `(toX, toY)`, all zero-based. The diff positions every run with this; emitting
+ * the *minimal* move (a relative `CUU/CUD/CUF/CUB`, a bare `\r`, or nothing when
+ * already there) instead of an absolute `CUP` (`\x1b[y;xH`) trims the per-run
+ * positioning bytes that dominate a scattered (non-contiguous) repaint.
+ *
+ * It is guaranteed never longer than the absolute `CUP` it replaces: the CUP
+ * form is always a candidate and the shortest candidate wins. `width` is the
+ * grid width — when the source cursor sits at the right margin it is in the
+ * terminal's ambiguous "pending wrap" state, where relative moves are unreliable,
+ * so we fall back to the unambiguous absolute `CUP`.
+ */
+export function cursorMove(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  width: number,
+): string {
+  if (fromX === toX && fromY === toY) return "";
+
+  const cup = `\x1b[${toY + 1};${toX + 1}H`;
+  // Pending-wrap (cursor parked past the last column): only CUP is reliable.
+  if (fromX >= width) return cup;
+
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  // A relative step of n: "n" when n > 1, "" when n === 1 (the CSI default).
+  const n = (v: number) => (v === 1 ? "" : String(v));
+
+  const candidates = [cup];
+
+  // Horizontal-only (same row): CUF/CUB keep the row.
+  if (dy === 0) candidates.push(`\x1b[${n(Math.abs(dx))}${dx > 0 ? "C" : "D"}`);
+  // Vertical-only (same column): CUU/CUD keep the column.
+  else if (dx === 0) candidates.push(`\x1b[${n(Math.abs(dy))}${dy > 0 ? "B" : "A"}`);
+
+  // Carriage-return form: `\r` snaps to column 0 (reliable regardless of wrap),
+  // then an optional vertical step, then a forward step to the target column.
+  let cr = "\r";
+  if (dy !== 0) cr += `\x1b[${n(Math.abs(dy))}${dy > 0 ? "B" : "A"}`;
+  if (toX > 0) cr += `\x1b[${n(toX)}C`;
+  candidates.push(cr);
+
+  let best = candidates[0];
+  for (let i = 1; i < candidates.length; i++) {
+    if (candidates[i].length < best.length) best = candidates[i];
+  }
+  return best;
+}
+
 // Map RGB values to the closest basic 16-colour index by Euclidean distance.
 function getClosestBasicColor(r: number, g: number, b: number): number {
   const ansiRGBs = [

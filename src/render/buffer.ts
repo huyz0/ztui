@@ -1,7 +1,7 @@
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
-import { styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
+import { cursorMove, styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
 import { mix, parseColor, type RGB, rgbStr } from "./color.ts";
 import type { Segment } from "./segment.ts";
 import { charWidth, isControlChar, splitGraphemes, stringWidth } from "./segment.ts";
@@ -478,8 +478,13 @@ export class ScreenBuffer {
     lastStyle: Style | null,
   ): { out: string; cursor: { x: number; y: number }; lastStyle: Style } {
     let out = "";
-    if (!cursor || cursor.y !== y || cursor.x !== x) {
+    if (!cursor) {
+      // Pen/position unknown (frame start, or after a special cell): absolute move.
       out += `\x1b[${y + 1};${x + 1}H`;
+    } else {
+      // Known cursor: emit the shortest positioning move (relative/CR/none),
+      // never longer than the absolute CUP it replaces.
+      out += cursorMove(cursor.x, cursor.y, x, y, this.width);
     }
     // Sticky SGR with minimal transitions: only (re)issue style codes when the
     // pen actually changes, and then emit just the *delta*. Runs that repeat a
