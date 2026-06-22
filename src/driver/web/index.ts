@@ -36,6 +36,9 @@ export class WebDriver extends Driver {
   private height: number;
   private lastBuffer: ScreenBuffer | null = null;
   private clipboardText = "";
+  // Frames arrive as the cell grid via presentBuffer; the ANSI bytes are ignored,
+  // so the App skips encoding them and just detects whether the frame changed.
+  public override readonly consumesFrameBytes = false;
 
   constructor(width = 120, height = 50, minWidth = 120, minHeight = 50) {
     super();

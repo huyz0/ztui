@@ -634,6 +634,22 @@ export class ScreenBuffer {
     return true;
   }
 
+  /**
+   * Whether any cell in rows `[yStart, yEnd)` differs from `old` — a cheap change
+   * detector (early-exits, allocates nothing) for backends that re-present the
+   * cell grid rather than consuming the ANSI diff. The encoding-free half of the
+   * render path's change detection.
+   */
+  public differsFrom(old: ScreenBuffer, yStart = 0, yEnd = this.height): boolean {
+    if (old.width !== this.width || old.height !== this.height) return true;
+    const y0 = Math.max(0, yStart);
+    const y1 = Math.min(this.height, yEnd);
+    for (let y = y0; y < y1; y++) {
+      if (!this.rowEqTo(old, y, y)) return true;
+    }
+    return false;
+  }
+
   /** True when row `y` of this buffer is cell-for-cell identical to row `oy` of `old`. */
   private rowEqTo(old: ScreenBuffer, y: number, oy: number): boolean {
     const a = this.cells[y];

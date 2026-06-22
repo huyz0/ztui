@@ -579,54 +579,67 @@ export class App extends DOMNode {
     frameProfiler.record("render", tRender);
 
     const tDiff = frameProfiler.now();
-    const ansiDiff = this.currentBuffer.renderDiff(
-      this.prevBuffer,
-      (cell, oldCell) => {
-        let prefix = "";
-        // Erase a stale image when the cell previously held an icon/graphic that
-        // is now different or gone (continuation cells of a current image are
-        // exempt — see needsGraphicClear). Text/spaces don't clear a terminal's
-        // graphics layer (esp. sixel), so without this an old icon lingers.
-        if (needsGraphicClear(cell, oldCell)) {
-          prefix = this.driver.getGraphicClearSequence(cell.style.background);
-        }
+    // The terminal needs the ANSI encoding; a backend that re-presents the cell
+    // grid (the web canvas) discards it, so for those we only detect whether the
+    // frame changed and skip building a string nobody reads.
+    let ansiDiff = "";
+    let changed: boolean;
+    if (this.driver.consumesFrameBytes) {
+      ansiDiff = this.currentBuffer.renderDiff(
+        this.prevBuffer,
+        (cell, oldCell) => {
+          let prefix = "";
+          // Erase a stale image when the cell previously held an icon/graphic that
+          // is now different or gone (continuation cells of a current image are
+          // exempt — see needsGraphicClear). Text/spaces don't clear a terminal's
+          // graphics layer (esp. sixel), so without this an old icon lingers.
+          if (needsGraphicClear(cell, oldCell)) {
+            prefix = this.driver.getGraphicClearSequence(cell.style.background);
+          }
 
-        // Only rasterized graphics produce a terminal sequence; vector graphics
-        // (web/canvas) carry no pixel buffer and are drawn by the canvas backend.
-        if (cell.graphic?.pixelBuffer) {
-          return (
-            prefix +
-            this.driver.getImageSequence(
-              cell.graphic.pixelBuffer,
-              cell.graphic.pixelWidth ?? 0,
-              cell.graphic.pixelHeight ?? 0,
-              cell.graphic.cellWidth,
-              cell.graphic.cellHeight,
-              cell.graphic.pngBase64,
-              cell.style.background,
-              cell.graphic.zIndex,
-            )
-          );
-        }
-        if (cell.icon) {
-          return (
-            prefix + this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background)
-          );
-        }
-        return prefix + cell.char;
-      },
-      size.width,
-      dmgY1,
-      dmgY0,
-      this.driver.capabilities.scrollRegion,
-      this.driver.capabilities.repeatChar,
-    );
+          // Only rasterized graphics produce a terminal sequence; vector graphics
+          // (web/canvas) carry no pixel buffer and are drawn by the canvas backend.
+          if (cell.graphic?.pixelBuffer) {
+            return (
+              prefix +
+              this.driver.getImageSequence(
+                cell.graphic.pixelBuffer,
+                cell.graphic.pixelWidth ?? 0,
+                cell.graphic.pixelHeight ?? 0,
+                cell.graphic.cellWidth,
+                cell.graphic.cellHeight,
+                cell.graphic.pngBase64,
+                cell.style.background,
+                cell.graphic.zIndex,
+              )
+            );
+          }
+          if (cell.icon) {
+            return (
+              prefix +
+              this.driver.getIconSequence(cell.icon, cell.style.color, cell.style.background)
+            );
+          }
+          return prefix + cell.char;
+        },
+        size.width,
+        dmgY1,
+        dmgY0,
+        this.driver.capabilities.scrollRegion,
+        this.driver.capabilities.repeatChar,
+      );
+      changed = !!(ansiDiff || graphicsResetSeq);
+    } else {
+      changed = this.currentBuffer.differsFrom(this.prevBuffer, dmgY0, dmgY1);
+    }
     frameProfiler.record("diff", tDiff);
 
-    const emitted = !!(ansiDiff || graphicsResetSeq);
+    const emitted = changed;
     const tWrite = frameProfiler.now();
     if (emitted) {
-      this.driver.writeFrame(graphicsResetSeq + ansiDiff);
+      if (this.driver.consumesFrameBytes) {
+        this.driver.writeFrame(graphicsResetSeq + ansiDiff);
+      }
       this.driver.presentBuffer(this.currentBuffer);
       this.currentBuffer.copyTo(this.prevBuffer, dmgY0, dmgY1);
       this.frameCount++;
@@ -636,7 +649,8 @@ export class App extends DOMNode {
       );
     }
     frameProfiler.record("write", tWrite);
-    const bytes = emitted ? graphicsResetSeq.length + ansiDiff.length : 0;
+    const bytes =
+      this.driver.consumesFrameBytes && emitted ? graphicsResetSeq.length + ansiDiff.length : 0;
     frameProfiler.frame({ full, emitted, bytes });
     this._lastFrame = {
       seq: this.framePipelineRuns,

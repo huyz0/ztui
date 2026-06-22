@@ -187,6 +187,13 @@ export interface Clipboard {
 export abstract class Driver extends EventEmitter {
   /** True once capability probing has completed. */
   public capabilitiesResolved = false;
+  /**
+   * Whether this backend consumes the ANSI frame bytes from {@link writeFrame}.
+   * Terminals do; the web canvas re-presents the cell grid via
+   * {@link presentBuffer} and ignores the bytes, so the App skips building the
+   * (discarded) ANSI diff for it and only detects whether the frame changed.
+   */
+  public readonly consumesFrameBytes: boolean = true;
   /** What this backend supports (see {@link TerminalCapabilities}). */
   public abstract readonly capabilities: TerminalCapabilities;
   /** Clipboard access for this backend. */

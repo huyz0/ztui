@@ -114,3 +114,30 @@ describe("graphics tracking", () => {
     expect(d.graphicSignature).toBe(e.graphicSignature);
   });
 });
+
+describe("differsFrom — encoding-free change detection", () => {
+  test("identical buffers do not differ; one changed cell does", () => {
+    const a = new ScreenBuffer(10, 4);
+    const b = new ScreenBuffer(10, 4);
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 10; x++) {
+        const ch = String.fromCharCode(65 + ((x + y) % 26));
+        a.setCell(x, y, ch, Style.DEFAULT);
+        b.setCell(x, y, ch, Style.DEFAULT);
+      }
+    }
+    expect(a.differsFrom(b)).toBe(false);
+
+    b.setCell(4, 2, "Z", new Style({ bold: true }));
+    expect(a.differsFrom(b)).toBe(true);
+    // Scoped to a band that excludes the change → reports no difference.
+    expect(a.differsFrom(b, 0, 2)).toBe(false);
+    expect(a.differsFrom(b, 2, 3)).toBe(true);
+  });
+
+  test("a size mismatch always differs", () => {
+    const a = new ScreenBuffer(10, 4);
+    const b = new ScreenBuffer(12, 4);
+    expect(a.differsFrom(b)).toBe(true);
+  });
+});
