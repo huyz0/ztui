@@ -2,7 +2,7 @@ import { parseTCSS } from "../css/css-parser.ts";
 import { CSSResolver } from "../css/css-resolver.ts";
 import { DOMNode } from "../dom/dom.ts";
 import { Screen } from "../dom/screen.ts";
-import { Widget } from "../dom/widget.ts";
+import { renderedWidgetCount, resetRenderedWidgetCount, Widget } from "../dom/widget.ts";
 import { BunDriver } from "../driver/bun/index.ts";
 import type { Driver } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
@@ -48,6 +48,8 @@ export interface FrameSummary {
   emitted: boolean;
   /** Bytes written to the driver (0 when not emitted). */
   bytes: number;
+  /** Widget `render()` calls this frame — full renders the whole tree, a scoped repaint only the damaged band. */
+  widgetsRendered: number;
   /** The render reasons coalesced into this frame. */
   reasons: string[];
 }
@@ -505,6 +507,7 @@ export class App extends DOMNode {
     const dmgY1 = full ? size.height : Math.min(size.height, Math.ceil(damageBottom));
 
     const tRender = frameProfiler.now();
+    resetRenderedWidgetCount();
     if (full) {
       // Recompute graphics presence/signature from scratch this frame; a full
       // render visits every widget, so they end accurate. (Partial frames leave
@@ -661,6 +664,7 @@ export class App extends DOMNode {
       damageY1: dmgY1,
       emitted,
       bytes,
+      widgetsRendered: renderedWidgetCount,
       reasons: this.currentFrameReasons,
     };
   }

@@ -16,6 +16,19 @@ import { type BorderSide, borderCorner, borderEdge, hasBorderWeight } from "./bo
 import { DOMNode } from "./dom.ts";
 import { TextNode } from "./text-node.ts";
 
+/**
+ * Count of widget `render()` calls since the last reset — the instrument for
+ * subtree-damage skipping. A full frame renders every visible widget; a scoped
+ * repaint should render only those intersecting the damage band. The App snapshots
+ * it per frame ({@link FrameSummary.widgetsRendered}); a benchmark asserts the gap.
+ * A bare counter increment, far cheaper than the render it precedes.
+ */
+export let renderedWidgetCount = 0;
+/** Reset the {@link renderedWidgetCount} (the App calls this at the start of each frame). */
+export function resetRenderedWidgetCount(): void {
+  renderedWidgetCount = 0;
+}
+
 /** A node's paint z-index — only {@link Widget}s carry one; everything else is 0. */
 function zIndexOf(node: DOMNode): number {
   return node instanceof Widget ? (node.computedStyle.zIndex ?? 0) : 0;
@@ -913,6 +926,7 @@ export class Widget extends DOMNode {
         // whole screen. Log the failure once (until it recovers) so it isn't
         // silently swallowed.
         try {
+          renderedWidgetCount++;
           child.render(buffer);
           child._renderErrorLogged = false;
         } catch (err) {
