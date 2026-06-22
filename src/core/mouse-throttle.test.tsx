@@ -6,7 +6,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Last pointer cell the app actually *processed* (updated inside processMouse). */
 function processedX(app: unknown): number {
-  return (app as { lastMouseX: number }).lastMouseX;
+  return (app as { input: { lastMouseX: number } }).input.lastMouseX;
 }
 function emit(t: Awaited<ReturnType<typeof mountApp>>, ev: Record<string, unknown>): void {
   (t.driver as unknown as { emit: (e: string, ev: unknown) => void }).emit("mouse", ev);

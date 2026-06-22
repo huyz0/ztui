@@ -411,7 +411,7 @@ describe("Scrollable Mixin", () => {
     const jumpY = scrollBox.scrollOffset.y;
 
     // 2. Drag the mouse up to y=1
-    // Since mouse drag is captured by app.activeDragWidget, dragging anywhere should update the scrollbar
+    // Since mouse drag is captured by app.input.activeDragWidget, dragging anywhere should update the scrollbar
     driver.simulateMouse(4, 1, "drag", "left");
     await new Promise((resolve) => setTimeout(resolve, 15));
     expect(scrollBox.scrollOffset.y).toBeLessThan(jumpY);
@@ -467,7 +467,7 @@ describe("Scrollable Mixin", () => {
     const jumpX = scrollBox.scrollOffset.x;
 
     // 2. Drag the mouse left to x=1
-    // Since mouse drag is captured by app.activeDragWidget, dragging anywhere should update the scrollbar
+    // Since mouse drag is captured by app.input.activeDragWidget, dragging anywhere should update the scrollbar
     driver.simulateMouse(1, 4, "drag", "left");
     await new Promise((resolve) => setTimeout(resolve, 15));
     expect(scrollBox.scrollOffset.x).toBeLessThan(jumpX);
