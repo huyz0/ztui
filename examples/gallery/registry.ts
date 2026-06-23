@@ -52,6 +52,7 @@ import { textareaDemo } from "../textarea_demo.tsx";
 import { themeCardsDemo } from "../theme_cards_demo.tsx";
 import { themesDemo } from "../theme_explorer.tsx";
 import { toggleButtonDemo } from "../toggle_button_demo.tsx";
+import { toolCallDemo } from "../tool_call_demo.tsx";
 import { tracebackDemo } from "../traceback_demo.tsx";
 import { treeDemo } from "../tree_demo.tsx";
 import { waitingDemo } from "../waiting_demo.tsx";
@@ -86,6 +87,7 @@ export const demos: Demo[] = [
   markdownDemo,
   textareaDemo,
   chatDemo,
+  toolCallDemo,
   clipboardDemo,
   borderDemo,
   boxTitleDemo,

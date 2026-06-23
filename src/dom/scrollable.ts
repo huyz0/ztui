@@ -42,9 +42,35 @@ export function Scrollable<TBase extends Constructor<Widget>>(
     private isDraggingX = false;
     private dragStartOffset = 0;
 
+    /**
+     * Opt-in tail-following: pin to the bottom as content grows, until the user
+     * scrolls up — and resume once they scroll back to the bottom. Off by
+     * default, so ordinary scrollables are unaffected. Used by an agent
+     * transcript / streaming log to stay on the latest output.
+     */
+    public followTail = false;
+    // Whether tail-following is currently pinned (vs. the user has scrolled up).
+    private tailPinned = true;
+
     constructor(...args: any[]) {
       super(...args);
       this.focusable = true;
+    }
+
+    /** Largest vertical scroll offset (content height beyond the viewport). */
+    private maxScrollOffsetY(): number {
+      return Math.max(0, this.getContentSize().height - this.getContentRect().height);
+    }
+
+    /** Whether the view is scrolled to (or past) the bottom. */
+    public isAtBottom(): boolean {
+      return this.scrollOffset.y >= this.maxScrollOffsetY();
+    }
+
+    /** Jump to the bottom and (re)engage tail-following. */
+    public scrollToBottom(): void {
+      this.scrollOffset = new Offset(this.scrollOffset.x, this.maxScrollOffsetY());
+      this.tailPinned = true;
     }
 
     public getContentSize(): Size {
@@ -138,6 +164,17 @@ export function Scrollable<TBase extends Constructor<Widget>>(
     }
 
     override render(buffer: ScreenBuffer): void {
+      // Tail-following: re-pin to the bottom until the user scrolls away.
+      // Children were positioned for the *old* offset this frame, so moving it
+      // needs another layout pass — request one; it converges in a frame or two
+      // (settle flushes them) and then holds steady.
+      if (this.followTail && this.scrollableY && this.tailPinned) {
+        const max = this.maxScrollOffsetY();
+        if (this.scrollOffset.y !== max) {
+          this.scrollOffset = new Offset(this.scrollOffset.x, max);
+          this.app?.queueRender("scrollable:tail");
+        }
+      }
       super.render(buffer);
       // Fade the content's edge rows *before* the scrollbar so the bar stays
       // crisp on top of the gradient.
@@ -198,6 +235,8 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       }
 
       if (scrolled) {
+        // A user scroll detaches the tail; scrolling back to the bottom re-pins.
+        if (this.followTail) this.tailPinned = this.scrollOffset.y >= maxScrollY;
         ev.handled = true;
       }
     }
@@ -269,6 +308,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       }
 
       if (scrolled) {
+        if (this.followTail) this.tailPinned = this.scrollOffset.y >= maxScrollY;
         ev.handled = true;
       }
     }

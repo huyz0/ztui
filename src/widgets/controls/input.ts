@@ -14,6 +14,9 @@ export class InputWidget extends Widget implements ValidatableField {
     return "text" as const;
   }
 
+  /** Fired with the current text when Enter is pressed. */
+  public declare onSubmit?: (value: string) => void;
+
   private _value = "";
   public get value(): string {
     return this._value;
@@ -190,7 +193,15 @@ export class InputWidget extends Widget implements ValidatableField {
         chars.splice(this.cursorCol, 1);
         this._value = chars.join("");
       }
-    } else if (keyName === "enter" || keyName === "tab") {
+    } else if (keyName === "enter") {
+      // Enter doesn't edit text; surface it as a submit so callers can act on it
+      // (a search field, an inline form) without overriding the editing handler.
+      this.onSubmit?.(this.value);
+    } else if (keyName === "escape") {
+      // Escape cancels the field (e.g. close an inline editor) — surfaced as a
+      // dismiss so callers can react without overriding the editing handler.
+      this.onDismiss?.();
+    } else if (keyName === "tab") {
       // ignore control keys
     } else if (ev.key && splitGraphemes(ev.key).length === 1 && !ev.ctrl && !ev.meta) {
       this.deleteSelectionInto(chars);

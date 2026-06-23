@@ -28,7 +28,8 @@
         "noControlCharactersInRegex": "off"
       },
       "a11y": {
-        "useKeyWithClickEvents": "off"
+        "useKeyWithClickEvents": "off",
+        "useValidAriaRole": "off"
       }
     }
   },

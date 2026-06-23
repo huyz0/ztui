@@ -6,6 +6,57 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Agent Kit** — a cohesive set of React components for building terminal AI
+  agents. `Transcript` (a tail-following scrollback), `ChatBubble` (role-accented
+  message bubbles with per-role tints), `Reasoning` (a collapsible "thinking"
+  block with a live spinner), `StreamingText` (text with a blinking caret),
+  `ToolCall` and the `ToolRender` framework (a per-tool renderer registry with
+  built-in Bash/Edit/Write renderers composing `Syntax`/`Diff`/`RichLog`),
+  `ApprovalPrompt` (single- and batch-tool permission gates with pattern matching
+  and a custom-pattern field), `TodoList`, and `UsageMeter` (turn/session token
+  usage, prompt-cache hit/creation ratios, cost, and a context-window bar, with a
+  click-to-expand popover in compact mode). Plus general `Chip`/`Pill` tokens and
+  an agent `FileChip` for clickable citations.
+- **`Input` Enter/Escape callbacks** — `onSubmit(value)` fires on Enter and
+  `onDismiss()` on Escape, so an inline field can submit or cancel without
+  overriding the editing handler.
+- **`Markdown trimTrailingMargin`** — drops the final block's bottom margin so
+  the text ends flush (no trailing blank row) inside an accent-barred container.
+- **Tail-following scrollables** — `followTail` pins a scrollable to the bottom
+  as content grows until the user scrolls up (and re-pins at the bottom); exposes
+  `scrollToBottom()` / `isAtBottom()`.
+- **Word/line mouse selection** — double-click selects the word under the
+  pointer and triple-click selects the whole line (or the entire field, for
+  single-line inputs), matching desktop-editor muscle memory.
+- **Heavier and per-side borders** — a full-cell block border weight plus
+  independent per-side border styling, used for chat-bubble accent bars and the
+  toast level bar.
+- **Frame profiler** — a phase-attributed render profiler (`bun run profile`)
+  that splits each frame into `restyle → measure → layout → render → diff →
+  write` and tracks redundant frames and emitted bytes, for diagnosing render
+  cost.
+
+### Changed
+
+- **Much smaller per-frame terminal output.** The diff now emits only the
+  minimal SGR transitions between cells, sticky/relative cursor moves, scroll-
+  region shifts instead of re-emitting moved rows, `REP` run-compression and
+  `EL` tail-clears where the terminal supports them — and skips ANSI encoding
+  entirely for backends (the web canvas) that re-present the cell grid directly.
+- **Scoped repaints.** Key, mouse, and control-driven changes now repaint only
+  the affected widget's subtree (geometry-verified) instead of the whole screen,
+  and background overdraw is skipped where a widget inherits its parent's fill —
+  cutting redundant cell writes and paint-style recomputation across frames.
+
+### Fixed
+
+- Blockquote lines in streamed Markdown now select correctly (multi-line
+  `RichText`).
+- Pointer-driven focus no longer scrolls the viewport.
+- Clicking a `GalleryView` cell now focuses it so the keyboard takes over.
+
 ## [1.0.8] - 2026-06-20
 
 ### Added

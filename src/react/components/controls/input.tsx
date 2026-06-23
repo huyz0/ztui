@@ -14,6 +14,10 @@ export interface InputProps extends ComponentProps {
   value?: string;
   /** Called with the new text on every edit. */
   onChange?: (val: string) => void;
+  /** Called with the current text when Enter is pressed. */
+  onSubmit?: (val: string) => void;
+  /** Called when Escape is pressed — e.g. to cancel an inline editor. */
+  onDismiss?: () => void;
   /** Hint text shown when empty. */
   placeholder?: string;
   /** Field type — `"password"` masks input, `"email"` adjusts validation/icon. */

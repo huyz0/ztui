@@ -136,6 +136,12 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
   private static readonly COMMITTABLE = new Set(["heading", "paragraph", "hr"]);
   /** Test hook: force a full re-lex each update (disables the streaming cache). */
   public disableStreamingCache = false;
+  /**
+   * Drop the final block's bottom margin so the document ends flush with its
+   * text (no trailing blank row). Useful inside an accent-barred container like
+   * a chat bubble. Off by default to preserve normal block spacing.
+   */
+  public trimTrailingMargin = false;
 
   /** Length of the committed (cached, never-re-lexed) prefix. For tests. */
   public get committedLength(): number {
@@ -298,6 +304,25 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
 
           for (const widget of activeWidgets) {
             widget.parent = this;
+          }
+          // Opt-in: drop the last block's bottom margin so the document ends
+          // flush with its text — no trailing blank row (which an accent bar,
+          // e.g. a chat bubble, would otherwise run a column down into). Off by
+          // default to keep normal/streaming output untouched. Re-set to 1 on
+          // non-last blocks each measure so it survives streaming reconciliation.
+          if (this.trimTrailingMargin) {
+            activeWidgets.forEach((w, i) => {
+              const m = w.style.margin;
+              const top = m instanceof Spacing ? m.top : 0;
+              const right = m instanceof Spacing ? m.right : 0;
+              const left = m instanceof Spacing ? m.left : 0;
+              w.style.margin = new Spacing(
+                top,
+                right,
+                i === activeWidgets.length - 1 ? 0 : 1,
+                left,
+              );
+            });
           }
           this.children = activeWidgets;
           this.attachCopyButton();

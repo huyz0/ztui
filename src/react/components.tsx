@@ -6,6 +6,54 @@ export type {
   Trigger,
   TriggerResult,
 } from "../widgets/controls/chat/types.ts";
+export type {
+  ApprovalAction,
+  ApprovalCall,
+  ApprovalPromptProps,
+  ApprovalTone,
+} from "./components/agent/approval-prompt.tsx";
+export { ApprovalPrompt, DEFAULT_APPROVAL_ACTIONS } from "./components/agent/approval-prompt.tsx";
+export type { ChatBubbleProps } from "./components/agent/chat-bubble.tsx";
+export { ChatBubble } from "./components/agent/chat-bubble.tsx";
+export type { FileChipProps } from "./components/agent/file-chip.tsx";
+export { FileChip } from "./components/agent/file-chip.tsx";
+export type { ReasoningProps } from "./components/agent/reasoning.tsx";
+export { Reasoning } from "./components/agent/reasoning.tsx";
+export type {
+  AccentSide,
+  AccentWeight,
+  MessageAccent,
+  MessageRole,
+} from "./components/agent/roles.ts";
+export {
+  accentStyle,
+  DEFAULT_ROLE_ACCENTS,
+  DEFAULT_ROLE_BACKGROUNDS,
+  resolveAccent,
+} from "./components/agent/roles.ts";
+export type { StreamingTextProps } from "./components/agent/streaming-text.tsx";
+export { StreamingText } from "./components/agent/streaming-text.tsx";
+export type { TodoItem, TodoListProps, TodoStatus } from "./components/agent/todo-list.tsx";
+export { TodoList } from "./components/agent/todo-list.tsx";
+export type { ToolCallProps, ToolCallStatus } from "./components/agent/tool-call.tsx";
+export { ToolCall } from "./components/agent/tool-call.tsx";
+export type {
+  ToolRenderContext,
+  ToolRenderer,
+  ToolRenderProps,
+} from "./components/agent/tool-render.tsx";
+export {
+  bashToolRenderer,
+  DEFAULT_TOOL_RENDERERS,
+  diffToolRenderer,
+  ToolRender,
+  textToolRenderer,
+  writeToolRenderer,
+} from "./components/agent/tool-render.tsx";
+export type { TranscriptProps } from "./components/agent/transcript.tsx";
+export { Transcript } from "./components/agent/transcript.tsx";
+export type { TokenUsage, UsageMeterProps } from "./components/agent/usage-meter.tsx";
+export { UsageMeter } from "./components/agent/usage-meter.tsx";
 export type { ButtonProps } from "./components/controls/button.tsx";
 export { Button } from "./components/controls/button.tsx";
 export type {
@@ -92,6 +140,8 @@ export type {
   BannerVariant,
 } from "./components/feedback/banner.tsx";
 export { Banner } from "./components/feedback/banner.tsx";
+export type { ChipProps, ChipVariant, PillProps } from "./components/feedback/chip.tsx";
+export { Chip, Pill } from "./components/feedback/chip.tsx";
 export type { GaugeProps, GaugeThreshold } from "./components/feedback/gauge.tsx";
 export { Gauge } from "./components/feedback/gauge.tsx";
 export type {
