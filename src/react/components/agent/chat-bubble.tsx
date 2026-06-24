@@ -71,6 +71,15 @@ export function ChatBubble({
   // bubble — bottom padding, not margin, so the accent bar runs through it and
   // the turn reads as a closed block. Tool/system output stays tight.
   const padBottom = role === "user" || role === "assistant" ? 1 : 0;
+  // Plain string/number children are wrapped in a word-wrapping Label so the
+  // documented `<ChatBubble>text</ChatBubble>` shorthand renders (and reflows)
+  // instead of silently dropping a bare text node into a layout box.
+  const body =
+    typeof children === "string" || typeof children === "number" ? (
+      <Label wrap>{children}</Label>
+    ) : (
+      children
+    );
 
   return (
     <VBox
@@ -90,7 +99,7 @@ export function ChatBubble({
           ) : undefined}
         </HBox>
       ) : undefined}
-      {children}
+      {body}
     </VBox>
   );
 }

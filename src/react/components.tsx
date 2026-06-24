@@ -15,6 +15,8 @@ export type {
 export { ApprovalPrompt, DEFAULT_APPROVAL_ACTIONS } from "./components/agent/approval-prompt.tsx";
 export type { ChatBubbleProps } from "./components/agent/chat-bubble.tsx";
 export { ChatBubble } from "./components/agent/chat-bubble.tsx";
+export type { ConversationProps } from "./components/agent/conversation.tsx";
+export { Conversation } from "./components/agent/conversation.tsx";
 export type { FileChipProps } from "./components/agent/file-chip.tsx";
 export { FileChip } from "./components/agent/file-chip.tsx";
 export type { ReasoningProps } from "./components/agent/reasoning.tsx";

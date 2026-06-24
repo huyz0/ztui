@@ -19,6 +19,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   usage, prompt-cache hit/creation ratios, cost, and a context-window bar, with a
   click-to-expand popover in compact mode). Plus general `Chip`/`Pill` tokens and
   an agent `FileChip` for clickable citations.
+- **`Conversation`** — the agent chat shell that ties the kit together: a
+  tail-following `Transcript` of turns (children) with a docked `ChatInput`
+  composer beneath it. It owns the layout and the submit / interrupt / busy /
+  hint-line wiring (no manual hint state or spacer rows), with optional
+  `header`/`footer` slots and a `readOnly` mode for archived transcripts. Stateless
+  by design — the app keeps the message list and busy flag.
 - **`Input` Enter/Escape callbacks** — `onSubmit(value)` fires on Enter and
   `onDismiss()` on Escape, so an inline field can submit or cancel without
   overriding the editing handler.
