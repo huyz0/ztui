@@ -37,4 +37,20 @@ describe("StreamingText", () => {
     expect(t.text()).toContain("Done.");
     expect(hasCaret(t.app)).toBe(false);
   });
+
+  test("a long reply word-wraps instead of clipping", async () => {
+    const long =
+      "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho";
+    const t = await mountApp(<StreamingText streaming={false}>{long}</StreamingText>, OPTS);
+    await t.settle();
+    const lines = t
+      .text()
+      .split("\n")
+      .map((l) => l.trimEnd())
+      .filter((l) => l.length > 0);
+    // 40-col viewport: the text cannot fit on one row, so it spans several.
+    expect(lines.length).toBeGreaterThan(1);
+    // The tail word survived the wrap (it was not clipped off the first row).
+    expect(t.text()).toContain("rho");
+  });
 });

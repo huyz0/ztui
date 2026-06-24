@@ -35,10 +35,15 @@ export function StreamingText({
   children,
   ...rest
 }: StreamingTextProps): ReactElement {
+  const isText = typeof children === "string" || typeof children === "number";
   return (
     <HBox {...rest} style={{ width: "100%", ...rest.style }}>
-      {typeof children === "string" || typeof children === "number" ? (
-        <Label>{children}</Label>
+      {isText ? (
+        // Word-wrap the accumulated text so a long reply reflows to the bubble
+        // width instead of clipping; `flexGrow` lets it take the row's width.
+        <Label wrap style={{ flexGrow: 1 }}>
+          {children}
+        </Label>
       ) : (
         children
       )}

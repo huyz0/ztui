@@ -117,3 +117,32 @@ describe("Label markup", () => {
     expect(text()).toContain("[unclosed");
   });
 });
+
+describe("Label wrap", () => {
+  const long = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi rho";
+
+  test("wrap spans multiple rows and keeps the tail word", async () => {
+    const { findById, settle, text } = await mountApp(
+      <Label id="lb" wrap style={{ width: 20 }}>
+        {long}
+      </Label>,
+      { cols: 40, rows: 10 },
+    );
+    await settle();
+    const lb = findById("lb") as any;
+    expect(lb.measuredHeight).toBeGreaterThan(1);
+    expect(text()).toContain("rho"); // tail not clipped
+  });
+
+  test("without wrap the label stays a single row", async () => {
+    const { findById, settle } = await mountApp(
+      <Label id="lb" style={{ width: 20 }}>
+        {long}
+      </Label>,
+      { cols: 40, rows: 10 },
+    );
+    await settle();
+    const lb = findById("lb") as any;
+    expect(lb.measuredHeight).toBe(1);
+  });
+});

@@ -28,6 +28,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   default; pass `wrap={false}` to keep long lines on one row. `RichText` gained a
   `wrap` flag (with a `wrapWidthHint`) backing this, and the styled word-wrapper
   is shared with `RichLog`.
+- **`Label`/`StreamingText` word-wrap** — `Label` gained an opt-in `wrap` prop
+  that reflows plain text across rows instead of clipping a long line, and
+  `StreamingText` uses it so a long streaming reply wraps to the bubble width
+  (the blinking caret still trails the text).
 - **`Markdown trimTrailingMargin`** — drops the final block's bottom margin so
   the text ends flush (no trailing blank row) inside an accent-barred container.
 - **Tail-following scrollables** — `followTail` pins a scrollable to the bottom

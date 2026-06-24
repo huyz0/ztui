@@ -8,6 +8,12 @@ export interface LabelProps extends ComponentProps {
    * so existing labels render their literal `[...]` text unchanged.
    */
   markup?: boolean;
+  /**
+   * Word-wrap the text to the content width instead of keeping it on one row
+   * (and clipping). Off by default. Applies to plain text only — markup labels
+   * stay single-row.
+   */
+  wrap?: boolean;
 }
 
 /** Styled inline text. */

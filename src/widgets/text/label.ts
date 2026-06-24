@@ -6,15 +6,54 @@ import type { Region } from "../../geometry/region.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
+import { wrapText } from "../../render/text-wrap.ts";
 import { logger } from "../../utils/logger.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
 
 export class LabelWidget extends Widget {
   /** Parse the text as console markup (`[bold red]…[/]`) instead of plain text. */
   public markup = false;
+  /**
+   * Word-wrap the (plain) text to the content width instead of clipping a long
+   * line. Off by default — a label is single-row unless asked otherwise. Markup
+   * labels are not wrapped (they stay single-row).
+   */
+  public wrap = false;
 
   constructor() {
     super("label");
+  }
+
+  /** Content width available for wrapped text, given a measure budget `maxW`. */
+  private wrapWidth(maxW: number): number {
+    const b = this.borderSize;
+    const p = this.padding;
+    const wStyle = this.computedStyle.width;
+    const outer = typeof wStyle === "number" ? wStyle : maxW;
+    return Math.max(0, Math.min(outer, maxW) - b.width - p.width);
+  }
+
+  /** Plain text laid out into wrapped rows for `width` columns. */
+  private wrappedRows(width: number): string[] {
+    const text = this.getTextContent();
+    if (!text) return [];
+    return width > 0 ? wrapText(text, width) : [text];
+  }
+
+  public override measure(maxW: number, maxH: number): void {
+    super.measure(maxW, maxH);
+    if (!this.wrap || this.markup) return;
+    const rows = this.wrappedRows(this.wrapWidth(maxW));
+    if (rows.length <= 1) return; // single-line: the base measure is already right.
+    const b = this.borderSize;
+    const p = this.padding;
+    if (this.computedStyle.height === undefined) {
+      this.measuredHeight = Math.min(rows.length + b.height + p.height, maxH);
+    }
+    if (this.computedStyle.width === undefined) {
+      const widest = rows.reduce((m, l) => Math.max(m, stringWidth(l)), 0);
+      this.measuredWidth = Math.min(widest + b.width + p.width, maxW);
+    }
   }
 
   /** The rendered text with any markup stripped — the copyable "core value". */
@@ -96,6 +135,25 @@ export class LabelWidget extends Widget {
         buffer.drawSegment(currentX, contentRect.y, themed, contentRect);
         currentX += stringWidth(themed.text);
       }
+    } else if (this.wrap) {
+      // Word-wrapped plain text: one drawn row per wrapped line, each its own
+      // selectable line so a drag highlights and copies across the break.
+      const rows = this.wrappedRows(contentRect.width);
+      for (let line = 0; line < rows.length; line++) {
+        const y = contentRect.y + line;
+        if (y >= contentRect.bottom) break; // clipped past the box height
+        const rowText = rows[line];
+        const rowX = this.alignedX(contentRect, stringWidth(rowText));
+        buffer.drawSegment(rowX, y, new Segment(rowText, style), contentRect);
+        if (this.selectable && rowText.length > 0) {
+          const maxCols = Math.max(0, contentRect.right - rowX);
+          const cols = runCols(rowText).slice(0, maxCols);
+          if (cols.length > 0) {
+            App.instance?.selection.addRun({ widget: this, line, y, x: rowX, cols });
+          }
+        }
+      }
+      return;
     } else {
       x = this.alignedX(contentRect, stringWidth(text));
       buffer.drawSegment(x, contentRect.y, new Segment(text, style), contentRect);
