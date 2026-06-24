@@ -284,3 +284,36 @@ describe("Markdown list items", () => {
     expect(raw.some((s) => s.includes("**bold**"))).toBe(true);
   });
 });
+
+describe("Markdown wrapping", () => {
+  const longLine =
+    "Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho.";
+
+  /** The first RichText leaf inside the generated blocks. */
+  function firstLeaf(w: Widget): any {
+    let leaf: any;
+    const visit = (n: any) => {
+      if (n.tagName === "richtext" && leaf === undefined) leaf = n;
+      for (const c of n.children ?? []) visit(c);
+    };
+    visit(w);
+    return leaf;
+  }
+
+  test("a long paragraph wraps to multiple rows by default", () => {
+    const w = md(longLine);
+    const leaf = firstLeaf(w);
+    expect(leaf.wrap).toBe(true);
+    // 88 chars wrapped to a ~76-col viewport → at least two rows.
+    expect(leaf.measuredHeight).toBeGreaterThan(1);
+  });
+
+  test("wrap=false keeps the line on a single row", () => {
+    const w = new MarkdownWidget();
+    w.wrap = false;
+    md(longLine, w);
+    const leaf = firstLeaf(w);
+    expect(leaf.wrap).toBe(false);
+    expect(leaf.measuredHeight).toBe(1);
+  });
+});

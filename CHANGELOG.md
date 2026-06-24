@@ -22,6 +22,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`Input` Enter/Escape callbacks** — `onSubmit(value)` fires on Enter and
   `onDismiss()` on Escape, so an inline field can submit or cancel without
   overriding the editing handler.
+- **Markdown word-wrap** — flowing prose (paragraphs, headings, list and
+  blockquote bodies) now wraps to the viewport width instead of overflowing into
+  a horizontal scroll, so long chat-bubble messages no longer clip. On by
+  default; pass `wrap={false}` to keep long lines on one row. `RichText` gained a
+  `wrap` flag (with a `wrapWidthHint`) backing this, and the styled word-wrapper
+  is shared with `RichLog`.
 - **`Markdown trimTrailingMargin`** — drops the final block's bottom margin so
   the text ends flush (no trailing blank row) inside an accent-barred container.
 - **Tail-following scrollables** — `followTail` pins a scrollable to the bottom

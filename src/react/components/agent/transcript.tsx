@@ -41,6 +41,9 @@ export function Transcript({
         height: "100%",
         layout: "vertical",
         overflowY: "auto",
+        // Vertical scroll only: clamp turns to the viewport width so long
+        // messages word-wrap instead of overflowing into a horizontal scroll.
+        overflowX: "hidden",
         ...rest.style,
       },
     },

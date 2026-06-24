@@ -142,6 +142,13 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
    * a chat bubble. Off by default to preserve normal block spacing.
    */
   public trimTrailingMargin = false;
+  /**
+   * Word-wrap flowing prose (paragraphs, headings, list/quote bodies) to the
+   * viewport width instead of letting a long line overflow into a horizontal
+   * scroll. On by default — the expected behavior for terminal markdown. Code
+   * blocks still keep their own lines (and can scroll horizontally).
+   */
+  public wrap = true;
 
   /** Length of the committed (cached, never-re-lexed) prefix. For tests. */
   public get committedLength(): number {
@@ -352,7 +359,27 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       }
     }
 
+    // The Scrollable base offers children an expanded width (so wide code blocks
+    // can scroll horizontally), but prose should wrap to the *viewport*. Hand the
+    // wrap-enabled RichText leaves the real content width so their measured height
+    // counts the rows they will actually occupy.
+    if (this.wrap) {
+      const hint = Math.max(0, maxW - this.borderSize.width - this.padding.width);
+      this.setWrapHints(this, hint);
+    }
+
     super.measure(maxW, maxH);
+  }
+
+  /** Propagate the viewport wrap width to every wrap-enabled RichText leaf. */
+  private setWrapHints(widget: Widget, hint: number): void {
+    for (const child of widget.children) {
+      if (child instanceof RichTextWidget) {
+        if (child.wrap) child.wrapWidthHint = hint;
+      } else if (child instanceof Widget) {
+        this.setWrapHints(child, hint);
+      }
+    }
   }
 
   public override render(buffer: ScreenBuffer): void {
@@ -435,6 +462,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       container.style.margin = new Spacing(0, 0, 1, 0);
 
       const richText = new RichTextWidget();
+      richText.wrap = this.wrap; // a long heading flows instead of clipping
       richText.style.bold = true;
       richText.style.color = color;
       richText.appendChild(new TextNode(`[bold]${content}[/]`));
@@ -464,6 +492,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       }
 
       const richText = new RichTextWidget();
+      richText.wrap = this.wrap; // body prose word-wraps to the content width
       richText.appendChild(new TextNode(content));
       container.appendChild(richText);
 
