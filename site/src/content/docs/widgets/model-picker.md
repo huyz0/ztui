@@ -58,6 +58,8 @@ of bare `{ id, name }` entries renders as a plain name list.
 - `filterable` — show the text filter box (default `true`); `filterPlaceholder`
   sets its hint and `filterFields` picks which fields it matches (default name +
   provider).
+- `groupByProvider` — group rows by provider with the provider name shown once
+  (bold) at the head of each run (default `true`).
 - `icons` — override the icon-column glyphs: `{ local, remote, reasoning }`
   (Heroicon names; defaults `computer-desktop` / `cloud` / `sparkles`).
 - `extraColumns` — append your own [`TableColumn`](/ztui/widgets/table/)s after

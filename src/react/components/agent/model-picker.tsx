@@ -54,6 +54,11 @@ export interface ModelPickerProps extends ComponentProps {
   filterPlaceholder?: string;
   /** Match the filter against these fields. Default: name + provider. */
   filterFields?: (keyof ModelEntry)[];
+  /**
+   * Group rows by provider — contiguous same-provider rows, with the provider
+   * name shown once (bold) at the head of each group. Default `true`.
+   */
+  groupByProvider?: boolean;
   /** Override the icon-column glyphs. */
   icons?: ModelPickerIcons;
   /** Extra columns appended after the built-ins (kept fully composable). */
@@ -102,6 +107,7 @@ export function ModelPicker({
   filterable = true,
   filterPlaceholder = "Filter models…",
   filterFields = ["name", "provider"],
+  groupByProvider = true,
   icons,
   extraColumns,
   ...rest
@@ -109,6 +115,14 @@ export function ModelPicker({
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
   const glyphs = { ...DEFAULT_ICONS, ...icons };
+
+  // Only show a column when some model actually carries that field.
+  const has = {
+    provider: models.some((m) => m.provider != null),
+    cost: models.some((m) => m.cost != null),
+    reasoning: models.some((m) => m.reasoning != null),
+    location: models.some((m) => m.location != null),
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -122,16 +136,22 @@ export function ModelPicker({
     );
   }, [models, query, filterFields]);
 
-  // Keep the cursor in range as the filtered set shrinks.
-  const cursor = Math.min(index, Math.max(0, filtered.length - 1));
+  // Group by provider: bucket in first-appearance order so same-provider rows
+  // are contiguous (stable within a group). Navigation/marker index into this.
+  const rowsView = useMemo(() => {
+    if (!groupByProvider || !has.provider) return filtered;
+    const groups = new Map<string, ModelEntry[]>();
+    for (const m of filtered) {
+      const key = m.provider ?? "";
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(m);
+      else groups.set(key, [m]);
+    }
+    return Array.from(groups.values()).flat();
+  }, [filtered, groupByProvider, has.provider]);
 
-  // Only show a column when some model actually carries that field.
-  const has = {
-    provider: models.some((m) => m.provider != null),
-    cost: models.some((m) => m.cost != null),
-    reasoning: models.some((m) => m.reasoning != null),
-    location: models.some((m) => m.location != null),
-  };
+  // Keep the cursor in range as the visible set shrinks.
+  const cursor = Math.min(index, Math.max(0, rowsView.length - 1));
 
   const columns: TableColumn<ModelEntry>[] = [
     {
@@ -152,9 +172,20 @@ export function ModelPicker({
             key: "provider",
             header: "Provider",
             width: 12,
-            render: (row: ModelEntry) => (
-              <Label style={{ color: "$dimmed" }}>{row.provider ?? ""}</Label>
-            ),
+            render: (row: ModelEntry, dataIndex: number) => {
+              // With grouping, show the provider once at the head of each run.
+              const head =
+                !groupByProvider ||
+                dataIndex === 0 ||
+                rowsView[dataIndex - 1]?.provider !== row.provider;
+              return head ? (
+                <Label style={{ color: "$dimmed", bold: groupByProvider }}>
+                  {row.provider ?? ""}
+                </Label>
+              ) : (
+                <Label> </Label>
+              );
+            },
           } as TableColumn<ModelEntry>,
         ]
       : []),
@@ -210,8 +241,8 @@ export function ModelPicker({
   return (
     <VBox {...rest} style={{ width: "100%", ...rest.style }}>
       {filterable ? (
-        <HBox style={{ height: 1, padding: { bottom: 0 } }}>
-          <Label style={{ color: "$dimmed", width: 2 }}>🔍</Label>
+        <HBox style={{ height: 1 }}>
+          <Label style={{ color: "$dimmed", width: 3 }}>🔍</Label>
           <Input
             value={query}
             placeholder={filterPlaceholder}
@@ -223,8 +254,10 @@ export function ModelPicker({
           />
         </HBox>
       ) : undefined}
+      {/* A blank line separates the search box from the list. */}
+      {filterable ? <VBox style={{ height: 1 }} /> : undefined}
       <Table<ModelEntry>
-        data={filtered}
+        data={rowsView}
         columns={columns}
         selectedIndex={cursor}
         onSelect={(_row, i) => setIndex(i)}

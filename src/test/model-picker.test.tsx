@@ -78,6 +78,14 @@ describe("ModelPicker", () => {
     expect(picked?.id).toBe("haiku");
   });
 
+  test("groups by provider — each provider name shown once", async () => {
+    const t = await mountApp(<ModelPicker models={MODELS} filterable={false} />, OPTS);
+    await t.settle();
+    const occurrences = (t.text().match(/Anthropic/g) ?? []).length;
+    expect(occurrences).toBe(1); // two Anthropic rows, but the name heads the group once
+    expect(t.text()).toContain("Ollama");
+  });
+
   test("a column is omitted when no model supplies that field", async () => {
     const bare: ModelEntry[] = [
       { id: "a", name: "Model A" },
