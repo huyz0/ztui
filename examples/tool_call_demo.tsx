@@ -10,7 +10,7 @@ import {
   Markdown,
   Reasoning,
   StreamingText,
-  TodoList,
+  TaskTree,
   type ToolCallStatus,
   ToolRender,
   Transcript,
@@ -52,12 +52,19 @@ function ToolCallDemoApp() {
           </ChatBubble>
 
           <ChatBubble role="assistant">
-            <TodoList
+            <TaskTree
               title="Plan"
               items={[
                 {
                   text: "Run the test suite",
                   status: live === "success" ? "completed" : "in_progress",
+                  children: [
+                    {
+                      text: "unit tests",
+                      status: live === "success" ? "completed" : "in_progress",
+                    },
+                    { text: "e2e tests", status: live === "success" ? "completed" : "pending" },
+                  ],
                 },
                 { text: "Clean the build dir (needs approval)", status: "pending" },
               ]}

@@ -35,6 +35,8 @@ export {
 } from "./components/agent/roles.ts";
 export type { StreamingTextProps } from "./components/agent/streaming-text.tsx";
 export { StreamingText } from "./components/agent/streaming-text.tsx";
+export type { TaskNode, TaskTreeProps } from "./components/agent/task-tree.tsx";
+export { TaskTree } from "./components/agent/task-tree.tsx";
 export type { TodoItem, TodoListProps, TodoStatus } from "./components/agent/todo-list.tsx";
 export { TodoList } from "./components/agent/todo-list.tsx";
 export type { ToolCallProps, ToolCallStatus } from "./components/agent/tool-call.tsx";

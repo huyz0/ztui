@@ -19,6 +19,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   usage, prompt-cache hit/creation ratios, cost, and a context-window bar, with a
   click-to-expand popover in compact mode). Plus general `Chip`/`Pill` tokens and
   an agent `FileChip` for clickable citations.
+- **`TaskTree`** — a hierarchical sibling of `TodoList` for nested agent plans:
+  the same status glyphs (`○`/`◐`/`✔`/`✗`, in-progress emphasised, finished
+  struck through) with sub-tasks drawn under dimmed `├─`/`└─` tree connectors,
+  and a `title` heading whose `done/total` count spans the whole tree.
 - **`Conversation`** — the agent chat shell that ties the kit together: a
   tail-following `Transcript` of turns (children) with a docked `ChatInput`
   composer beneath it. It owns the layout and the submit / interrupt / busy /
