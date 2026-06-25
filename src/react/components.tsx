@@ -19,6 +19,13 @@ export type { ConversationProps } from "./components/agent/conversation.tsx";
 export { Conversation } from "./components/agent/conversation.tsx";
 export type { FileChipProps } from "./components/agent/file-chip.tsx";
 export { FileChip } from "./components/agent/file-chip.tsx";
+export type {
+  ModelEntry,
+  ModelLocation,
+  ModelPickerIcons,
+  ModelPickerProps,
+} from "./components/agent/model-picker.tsx";
+export { ModelPicker } from "./components/agent/model-picker.tsx";
 export type { ReasoningProps } from "./components/agent/reasoning.tsx";
 export { Reasoning } from "./components/agent/reasoning.tsx";
 export type {

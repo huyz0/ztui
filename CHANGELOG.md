@@ -28,7 +28,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   composer beneath it. It owns the layout and the submit / interrupt / busy /
   hint-line wiring (no manual hint state or spacer rows), with optional
   `header`/`footer` slots and a `readOnly` mode for archived transcripts. Stateless
-  by design — the app keeps the message list and busy flag.
+  by design — the app keeps the message list and busy flag. The bottom hint row
+  also takes `hintLeading` / `hintTrailing` slots (status glyph on the left, a
+  model badge or `UsageMeter` on the right of the contextual hints).
+- **`ModelPicker`** — a filterable table list for choosing an LLM: each row shows
+  the provider, name, a cost multiplier badge (coloured by magnitude, or a custom
+  string), a reasoning icon, and a local/remote icon (icons, not text). Type to
+  filter; arrow + Enter to choose. Columns appear only when a field is present,
+  and `extraColumns` appends your own.
 - **`Input` Enter/Escape callbacks** — `onSubmit(value)` fires on Enter and
   `onDismiss()` on Escape, so an inline field can submit or cancel without
   overriding the editing handler.

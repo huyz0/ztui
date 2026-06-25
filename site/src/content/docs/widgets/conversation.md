@@ -66,6 +66,26 @@ function Agent() {
 - `readOnly` — hide the composer for an archived, read-only transcript view.
 - `showHints` / `extraHints` — auto-render the composer's contextual hint line
   (on by default); `Conversation` tracks the hints itself.
+- `hintLeading` / `hintTrailing` — slots on the **same row** as the hint line,
+  pinned left and right of the auto hints (a `1fr` spacer pushes the trailing one
+  to the edge). Use them for a status glyph or connection `Pill` on the left and
+  a model badge, [`UsageMeter`](/ztui/widgets/usage-meter/), or token-rate
+  readout on the right.
+
+## Slots
+
+`Conversation` is a composition shell — every region is a slot you fill:
+
+| Slot | Where | Typical content |
+|------|-------|-----------------|
+| `header` | above the transcript | title bar, a model/mode picker |
+| `children` | the transcript | `ChatBubble` / `ToolRender` / `Reasoning` turns |
+| `footer` | between transcript and composer | a `UsageMeter`, a status `HBox` |
+| `composer` | the docked `ChatInput` | triggers, commands, history, suggestions |
+| `hintLeading` / `hintTrailing` | the hint row (bottom) | status glyph · model badge / metrics |
+
+The `footer` and the two `hint*` slots take arbitrary nodes, so a left/right
+split is just an `HBox` with a `width: "1fr"` spacer between the two sides.
 
 ## Transcript
 

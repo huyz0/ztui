@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from "react";
 import type { Attachment } from "../../../widgets/controls/chat/types.ts";
 import type { ChatHint } from "../../../widgets/controls/chat-input.ts";
 import { ChatInput, type ChatInputProps, formatChatHints } from "../controls/chat-input.tsx";
+import { HBox } from "../layout/hbox.tsx";
 import { VBox } from "../layout/vbox.tsx";
 import { Label } from "../text/label.tsx";
 import type { ComponentProps } from "../types.ts";
@@ -42,6 +43,17 @@ export interface ConversationProps extends ComponentProps {
   showHints?: boolean;
   /** Extra hints appended to the auto-rendered hint line. */
   extraHints?: ChatHint[];
+  /**
+   * Slot pinned to the **left** of the hint line, on the same row — for a status
+   * glyph, a connection `Pill`, a mode badge, etc.
+   */
+  hintLeading?: ReactNode;
+  /**
+   * Slot pinned to the **right** of the hint line, on the same row — for a model
+   * name, a `UsageMeter`, a token-rate readout, etc. A `1fr` spacer separates it
+   * from the hints, so it hugs the right edge.
+   */
+  hintTrailing?: ReactNode;
 }
 
 /**
@@ -72,11 +84,17 @@ export function Conversation({
   footer,
   showHints = true,
   extraHints,
+  hintLeading,
+  hintTrailing,
   ...rest
 }: ConversationProps): ReactElement {
   const [hints, setHints] = useState<ChatHint[]>([]);
 
   const hintLine = showHints && !readOnly ? formatChatHints([...hints, ...(extraHints ?? [])]) : "";
+  // The status row exists if the auto hints OR either slot has content.
+  const hasLeading = hintLeading != null && hintLeading !== false;
+  const hasTrailing = hintTrailing != null && hintTrailing !== false;
+  const showStatusRow = !!hintLine || hasLeading || hasTrailing;
 
   return (
     <VBox {...rest} style={{ width: "100%", height: "100%", ...rest.style }}>
@@ -98,10 +116,17 @@ export function Conversation({
           }}
         />
       )}
-      {hintLine ? (
-        <Label markup style={{ height: 1, color: "$dimmed", padding: { left: 1 } }}>
-          {hintLine}
-        </Label>
+      {showStatusRow ? (
+        <HBox style={{ width: "100%", height: 1 }}>
+          {hasLeading ? <HBox style={{ padding: { right: 1 } }}>{hintLeading}</HBox> : undefined}
+          <Label
+            markup
+            style={{ flexGrow: 1, color: "$dimmed", padding: { left: hasLeading ? 0 : 1 } }}
+          >
+            {hintLine}
+          </Label>
+          {hasTrailing ? <HBox style={{ padding: { left: 1 } }}>{hintTrailing}</HBox> : undefined}
+        </HBox>
       ) : undefined}
     </VBox>
   );

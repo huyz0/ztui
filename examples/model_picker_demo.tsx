@@ -1,112 +1,78 @@
 import { useState } from "react";
-import type { TableColumn } from "../src/core.ts";
-import { Dock, Footer, Header, Label, Table } from "../src/react.ts";
+import { Dock, Footer, Header, Label, type ModelEntry, ModelPicker } from "../src/react.ts";
 import { quitHint } from "./exit-button.tsx";
+import type { Demo } from "./gallery/types.ts";
 
-// A "table list": the same Table widget, but with no `sortable` columns. It
-// reads like a list — one highlighted current row — while keeping aligned
-// columns. The canonical use is an LLM model picker, where each row needs a
-// few fields (context window, pricing, tier) lined up for easy scanning.
-interface Model {
-  id: string;
-  name: string;
-  tier: "Frontier" | "Balanced" | "Fast" | "Creative";
-  context: string;
-  price: string;
-}
-
-const MODELS: Model[] = [
+// The Agent Kit `ModelPicker`: a filterable table list of models. Each row shows
+// the provider, name, a cost multiplier badge (coloured by magnitude), a
+// reasoning icon, and a local/remote icon (icons, not text). Type to filter;
+// arrow-navigate and Enter to choose. Columns appear only when a field is
+// present, and `extraColumns` lets you add your own.
+const MODELS: ModelEntry[] = [
   {
-    id: "opus-4.8",
+    id: "opus",
+    provider: "Anthropic",
     name: "Claude Opus 4.8",
-    tier: "Frontier",
-    context: "200K",
-    price: "$15 / $75",
+    cost: 2,
+    reasoning: true,
+    location: "remote",
   },
   {
-    id: "sonnet-4.6",
+    id: "sonnet",
+    provider: "Anthropic",
     name: "Claude Sonnet 4.6",
-    tier: "Balanced",
-    context: "200K",
-    price: "$3 / $15",
+    cost: 1,
+    reasoning: true,
+    location: "remote",
   },
-  { id: "haiku-4.5", name: "Claude Haiku 4.5", tier: "Fast", context: "200K", price: "$1 / $5" },
-  { id: "fable-5", name: "Claude Fable 5", tier: "Creative", context: "200K", price: "$5 / $25" },
+  { id: "haiku", provider: "Anthropic", name: "Claude Haiku 4.5", cost: 1, location: "remote" },
+  {
+    id: "gpt5",
+    provider: "OpenAI",
+    name: "GPT-5",
+    cost: "3×",
+    reasoning: true,
+    location: "remote",
+  },
+  { id: "llama", provider: "Ollama", name: "Llama 3.1 70B", cost: 1, location: "local" },
+  {
+    id: "qwen",
+    provider: "Ollama",
+    name: "Qwen2.5 Coder",
+    cost: 1,
+    reasoning: true,
+    location: "local",
+  },
 ];
 
-const TIER_COLOR: Record<Model["tier"], string> = {
-  Frontier: "$primary",
-  Balanced: "$success",
-  Fast: "$warning",
-  Creative: "$secondary",
-};
-
 function ModelPickerDemo() {
-  // Controlled selection so the highlight bar persists; start on the first row.
-  const [index, setIndex] = useState(0);
-  // The committed selection — distinct from the cursor. Defaults to the first
-  // model so there is always a "currently selected" item to mark.
-  const [chosen, setChosen] = useState<Model>(MODELS[0]);
-
-  // No `sortable` on any column → headers don't sort; it behaves like a list.
-  const columns: TableColumn<Model>[] = [
-    {
-      // A persistent marker on the chosen row, independent of the cursor
-      // highlight. `cell` closes over `chosen`, so it re-renders on selection.
-      key: "marker",
-      header: "",
-      width: 2,
-      align: "center",
-      render: (row) =>
-        row.id === chosen.id ? (
-          <Label style={{ color: "$success", bold: true }}>✔</Label>
-        ) : (
-          <Label> </Label>
-        ),
-    },
-    { key: "name", header: "Model", width: "1fr", minWidth: 16 },
-    {
-      key: "tier",
-      header: "Tier",
-      width: 11,
-      // A widget-bearing cell still works in a "table list".
-      render: (row) => (
-        <Label style={{ color: TIER_COLOR[row.tier], bold: true }}>● {row.tier}</Label>
-      ),
-    },
-    { key: "context", header: "Context", width: 8, align: "right" },
-    { key: "price", header: "In / Out", width: 12, align: "right" },
-  ];
+  const [chosen, setChosen] = useState<ModelEntry>(MODELS[0]);
 
   return (
-    <Dock style={{ background: "$surface" }}>
-      <Header>🤖 ZTUI Model Picker — a non-sortable, multi-column "table list"</Header>
-      <Footer>
-        ↑/↓ move · Enter or double-click to choose{quitHint()} · ✔ selected: {chosen.name} · cursor:{" "}
-        {MODELS[index].name}
-      </Footer>
-
-      <Table
-        style={{ padding: 1 }}
-        data={MODELS}
-        columns={columns}
-        showHeader
-        headerStyle={{ bold: true, dim: true }}
-        selectedIndex={index}
-        onSelect={(_row, viewIndex) => setIndex(viewIndex)}
-        onActivate={(row) => setChosen(row)}
+    <Dock style={{ background: "$background" }}>
+      <Header>🤖 ZTUI Model Picker — filter, then Enter to choose</Header>
+      <ModelPicker
+        models={MODELS}
+        value={chosen.id}
+        onSelect={setChosen}
+        style={{ padding: 1, height: "1fr" }}
       />
+      <Footer>
+        <Label>
+          Selected: <Label style={{ color: "$accent", bold: true }}>{chosen.name}</Label>
+          {quitHint() ? "   ·   Ctrl+C quit" : ""}
+        </Label>
+      </Footer>
     </Dock>
   );
 }
-
-import type { Demo } from "./gallery/types.ts";
 
 export const modelPickerDemo: Demo = {
   id: "model-picker",
   title: "Model Picker",
   group: "Data",
-  description: "Non-sortable multi-column selectable list (table list).",
+  description:
+    "Filterable table list of LLMs: provider, name, cost badge, reasoning + local/remote icons.",
   autoFocusTag: "table",
   Component: ModelPickerDemo,
 };

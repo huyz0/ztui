@@ -132,6 +132,7 @@ export default defineConfig({
               items: [
                 { label: "Conversation", slug: "widgets/conversation" },
                 { label: "Chat Bubble", slug: "widgets/chat-bubble" },
+                { label: "Model Picker", slug: "widgets/model-picker" },
                 { label: "Tool Calls", slug: "widgets/tool-call" },
                 { label: "Approval Prompt", slug: "widgets/approval-prompt" },
                 { label: "Reasoning & Streaming", slug: "widgets/reasoning" },

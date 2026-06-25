@@ -18,6 +18,7 @@ tool-call cards, a permission gate, and the status pieces of a turn.
 
 - [Conversation](/ztui/widgets/conversation/) — the agent chat shell: a tail-following transcript with a docked composer.
 - [Chat Bubble](/ztui/widgets/chat-bubble/) — a message bubble with a sender-coded one-sided accent bar.
+- [Model Picker](/ztui/widgets/model-picker/) — a filterable table list of LLMs with cost badges and reasoning / local-remote icons.
 - [Tool Calls](/ztui/widgets/tool-call/) — collapsible tool-call cards and a per-tool renderer registry.
 - [Approval Prompt](/ztui/widgets/approval-prompt/) — single/batch permission gates with pattern grants.
 - [Reasoning & Streaming](/ztui/widgets/reasoning/) — a collapsible thinking block and a blinking-caret stream.

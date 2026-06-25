@@ -38,6 +38,22 @@ describe("Conversation", () => {
     expect(hasTag(t.app, "chat-input")).toBe(true);
   });
 
+  test("renders hintLeading and hintTrailing on the status row", async () => {
+    const t = await mountApp(
+      <Conversation
+        onSubmit={() => {}}
+        hintLeading={<ChatBubble role="tool">LEAD</ChatBubble>}
+        hintTrailing={<ChatBubble role="tool">TRAIL</ChatBubble>}
+      >
+        <ChatBubble role="assistant">hi</ChatBubble>
+      </Conversation>,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.text()).toContain("LEAD");
+    expect(t.text()).toContain("TRAIL");
+  });
+
   test("readOnly hides the composer", async () => {
     const t = await mountApp(
       <Conversation readOnly>
