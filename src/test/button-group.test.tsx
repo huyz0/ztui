@@ -39,7 +39,7 @@ describe("ButtonGroup", () => {
     expect(focusable.length).toBe(1);
   });
 
-  test("arrow keys move focus between the buttons", async () => {
+  test("arrow keys bubble from the focused button to the group and move focus", async () => {
     const t = await mountApp(
       <ButtonGroup>
         <Button id="a">Cancel</Button>
@@ -51,16 +51,38 @@ describe("ButtonGroup", () => {
     await t.settle();
     const [a, b, c] = buttons(t);
     t.screen.focusWidget(a);
-    const g = group(t);
 
-    g.handleKey({ name: "right", key: "right" } as never);
+    // Drive through the real key pipeline: the focused button must NOT swallow
+    // the arrow (regression: the base handleKey used to mark every key handled),
+    // so it bubbles up to the group which moves focus.
+    const arrow = (name: string) =>
+      t.driver.emit("key", { key: name, name, ctrl: false, meta: false, shift: false });
+
+    arrow("right");
     expect(t.screen.focusedWidget).toBe(b);
-
-    g.handleKey({ name: "right", key: "right" } as never);
+    arrow("right");
     expect(t.screen.focusedWidget).toBe(c);
-
-    g.handleKey({ name: "left", key: "left" } as never);
+    arrow("left");
     expect(t.screen.focusedWidget).toBe(b);
+  });
+
+  test("clicking a button makes it the active/focused one", async () => {
+    const t = await mountApp(
+      <ButtonGroup>
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+        <Button id="c">C</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const [a, , c] = buttons(t);
+    t.screen.focusWidget(a);
+    // Click the third button (not the current tab stop) at its rendered cell.
+    const r = c.region;
+    t.driver.emit("mouse", { type: "press", button: "left", x: r.x, y: r.y });
+    await t.settle();
+    expect(t.screen.focusedWidget).toBe(c);
   });
 
   test("wraps around at the ends by default", async () => {

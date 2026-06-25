@@ -29,6 +29,23 @@ export class ButtonGroupWidget extends Widget {
     super("button-group");
     // The group is a container, not a focus target itself — the active child is.
     this.focusable = false;
+    // A press on a child button bubbles here (buttons define no `onMouseDown`),
+    // so clicking any button — even one that isn't the current tab stop — makes
+    // it the active button and moves focus to it. The button's own `onClick` /
+    // `formAction` still fire from its `handleMouse`.
+    this.onMouseDown = (ev: any) => {
+      const btns = this.enabledButtons();
+      const idx = btns.findIndex((b) => b.region.contains(ev.x, ev.y));
+      if (idx < 0) return;
+      this.focusActive(btns, idx);
+    };
+  }
+
+  /** Make button `idx` the active tab stop and focus it. */
+  private focusActive(btns: ButtonWidget[], idx: number): void {
+    this.activeIndex = idx;
+    for (let i = 0; i < btns.length; i++) btns[i].focusable = i === idx;
+    App.instance?.activeScreen?.focusWidget(btns[idx]);
   }
 
   /** The enabled, visible `Button` children, in order. */
@@ -88,9 +105,7 @@ export class ButtonGroupWidget extends Widget {
       next = (next + btns.length) % btns.length;
     }
 
-    this.activeIndex = next;
-    for (let i = 0; i < btns.length; i++) btns[i].focusable = i === next;
-    App.instance?.activeScreen?.focusWidget(btns[next]);
+    this.focusActive(btns, next);
     ev.handled = true;
   }
 }

@@ -68,6 +68,28 @@ describe("ApprovalPrompt — single", () => {
     expect(ids).toEqual(["allow", "deny"]);
   });
 
+  test("arrow keys move focus across the permission buttons (one Tab stop)", async () => {
+    const t = await mountApp(<ApprovalPrompt id="ap" prompt="Allow?" onAction={() => {}} />, OPTS);
+    await t.settle();
+    const btns: Widget[] = [];
+    let grp: Widget | undefined;
+    t.screen.walk((n) => {
+      const name = (n as Widget).constructor?.name;
+      if (name === "ButtonWidget") btns.push(n as Widget);
+      else if (name === "ButtonGroupWidget") grp = n as Widget;
+    });
+    expect(grp).toBeTruthy();
+    expect(btns.length).toBe(3); // Allow / Deny / Always
+    // Single Tab stop: only one button is focusable at rest.
+    expect(btns.filter((b) => (b as any).focusable).length).toBe(1);
+
+    t.screen.focusWidget(btns[0]);
+    (grp as Widget).handleKey({ name: "right", key: "right" } as never);
+    expect(t.screen.focusedWidget).toBe(btns[1]);
+    (grp as Widget).handleKey({ name: "right", key: "right" } as never);
+    expect(t.screen.focusedWidget).toBe(btns[2]);
+  });
+
   test("clicking a flat action button reports its id", async () => {
     const ids: string[] = [];
     const t = await mountApp(

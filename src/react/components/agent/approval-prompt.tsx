@@ -3,6 +3,7 @@ import { Screen } from "../../../dom/screen.ts";
 import type { Widget } from "../../../dom/widget.ts";
 import type { MenuItem } from "../../../widgets/controls/menu.ts";
 import { Button } from "../controls/button.tsx";
+import { ButtonGroup } from "../controls/button-group.tsx";
 import { Input } from "../controls/input.tsx";
 import { HBox } from "../layout/hbox.tsx";
 import { VBox } from "../layout/vbox.tsx";
@@ -348,7 +349,10 @@ export function ApprovalPrompt({
           />
         </HBox>
       ) : (
-        <HBox style={{ width: "100%", height: 1 }}>
+        // A roving-focus toolbar: the action buttons are one Tab stop and the
+        // arrow keys move between them (Enter/Space activates; single-key
+        // shortcuts and Esc are still caught by the prompt's `onKey`).
+        <ButtonGroup style={{ height: 1 }}>
           {rowActions.map((a) => (
             <Button
               key={a.id}
@@ -361,7 +365,7 @@ export function ApprovalPrompt({
               {actionLabel(a)}
             </Button>
           ))}
-        </HBox>
+        </ButtonGroup>
       )}
 
       <ContextMenu

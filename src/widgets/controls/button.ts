@@ -30,6 +30,17 @@ export class ButtonWidget extends Widget {
     };
   }
 
+  /**
+   * Forward keys to {@link onKey} but only consume the ones it actually acts on
+   * (Enter/Space set `ev.handled`). The base `Widget.handleKey` blanket-marks
+   * every key handled whenever an `onKey` exists — fine for a modal container,
+   * but a focused button must *not* swallow arrows/Tab, or a parent toolbar
+   * (`ButtonGroup`) never receives them to move focus.
+   */
+  public override handleKey(ev: any): void {
+    this.onKey?.(ev);
+  }
+
   public override handleMouse(ev: any): void {
     super.handleMouse(ev);
     if (ev.handled) return;

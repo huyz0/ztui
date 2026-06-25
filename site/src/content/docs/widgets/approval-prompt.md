@@ -8,8 +8,12 @@ description: A permission gate for tool use — single or batch, with hotkeys, i
 `<ApprovalPrompt>` is the permission gate an agent shows before running a tool.
 It comes in two shapes — a **single** prompt with customizable action buttons,
 and a **batch** prompt that resolves several tool calls at once — both built to
-pack tight (bordered, no wasted rows) with hotkeys, Tab navigation, inline
-dropdowns, and a free-text custom-pattern field.
+pack tight (bordered, no wasted rows). The action buttons are a
+[`ButtonGroup`](/ztui/widgets/button-group/): the row is a single Tab stop and
+the **arrow keys** move between Allow / Deny / Always. Single-key shortcuts and
+`Esc` still fire while focus is anywhere in the prompt; an action with sub-actions
+opens an inline `▾` dropdown, and an `input` action opens a free-text
+custom-pattern field.
 
 ## Single prompt
 
