@@ -70,6 +70,7 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number; clip?: 
   image: { cols: 48, rows: 16 },
   // Batch 3 — controls
   button: { cols: 40, rows: 12 },
+  "button-group": { cols: 56, rows: 12 },
   input: { cols: 48, rows: 14 },
   checkbox: { cols: 40, rows: 10 },
   switch: { cols: 40, rows: 8 },

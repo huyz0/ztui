@@ -5,6 +5,7 @@
 import { registerElement } from "../dom/element-registry.ts";
 import { OverlayRootWidget } from "../dom/overlay.ts";
 import { ButtonWidget } from "./controls/button.ts";
+import { ButtonGroupWidget } from "./controls/button-group.ts";
 import { ChatInputWidget } from "./controls/chat-input.ts";
 import { CheckboxWidget } from "./controls/checkbox.ts";
 import { FieldErrorWidget } from "./controls/field-error.ts";
@@ -68,6 +69,7 @@ registerElement("ztui-overlay-root", () => new OverlayRootWidget());
 registerElement("ztui-scrollable-box", () => new ScrollableBoxWidget());
 registerElement("ztui-label", () => new LabelWidget());
 registerElement("ztui-button", () => new ButtonWidget());
+registerElement("ztui-button-group", () => new ButtonGroupWidget());
 registerElement("ztui-input", () => new InputWidget());
 registerElement("ztui-form", () => new FormWidget());
 registerElement("ztui-field-error", () => new FieldErrorWidget());

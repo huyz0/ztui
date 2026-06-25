@@ -29,6 +29,7 @@ tool-call cards, a permission gate, and the status pieces of a turn.
 ## Controls
 
 - [Button](/ztui/widgets/button/) — clickable, focusable button.
+- [Button Group](/ztui/widgets/button-group/) — arrow-navigable toolbar of buttons (a single Tab stop).
 - [Input](/ztui/widgets/input/) — single-line text field with icons and validation.
 - [Checkbox](/ztui/widgets/checkbox/) — labelled boolean checkbox.
 - [Switch](/ztui/widgets/switch/) — on/off toggle switch.

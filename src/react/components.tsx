@@ -67,6 +67,8 @@ export type { TokenUsage, UsageMeterProps } from "./components/agent/usage-meter
 export { UsageMeter } from "./components/agent/usage-meter.tsx";
 export type { ButtonProps } from "./components/controls/button.tsx";
 export { Button } from "./components/controls/button.tsx";
+export type { ButtonGroupProps } from "./components/controls/button-group.tsx";
+export { ButtonGroup } from "./components/controls/button-group.tsx";
 export type {
   ChatHint,
   ChatHintMarkupOptions,

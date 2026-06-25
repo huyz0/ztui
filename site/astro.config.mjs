@@ -64,6 +64,7 @@ export default defineConfig({
               label: "Controls",
               items: [
                 { label: "Button", slug: "widgets/button" },
+                { label: "Button Group", slug: "widgets/button-group" },
                 { label: "Input", slug: "widgets/input" },
                 { label: "Checkbox", slug: "widgets/checkbox" },
                 { label: "Switch", slug: "widgets/switch" },

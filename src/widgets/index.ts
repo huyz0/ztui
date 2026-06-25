@@ -8,6 +8,7 @@ import "./text/register-mermaid.ts";
 import "./text/register-syntax.ts";
 
 export { ButtonWidget } from "./controls/button.ts";
+export { ButtonGroupWidget } from "./controls/button-group.ts";
 export { CheckboxWidget } from "./controls/checkbox.ts";
 export { FieldErrorWidget } from "./controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./controls/form.ts";

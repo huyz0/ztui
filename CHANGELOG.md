@@ -8,6 +8,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`ButtonGroup`** — a roving-focus toolbar around `Button` children: arrow keys
+  (`←`/`→`/`↑`/`↓`, `Home`/`End`) move focus between the buttons and the group is
+  a single `Tab` stop, with disabled buttons skipped. Each child stays a real
+  `Button`, so `onClick`, the focus glow, and `formAction` work natively — a group
+  of `formAction` buttons inside a `<Form>` is an arrow-navigable actions row that
+  still submits/resets on Enter.
 - **Agent Kit** — a cohesive set of React components for building terminal AI
   agents. `Transcript` (a tail-following scrollback), `ChatBubble` (role-accented
   message bubbles with per-role tints), `Reasoning` (a collapsible "thinking"

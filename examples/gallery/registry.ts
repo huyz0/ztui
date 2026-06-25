@@ -5,6 +5,7 @@ import { blendDemo } from "../blend_demo.tsx";
 import { borderDemo } from "../border_demo.tsx";
 import { boxTitleDemo } from "../box_title_demo.tsx";
 import { buttonDemo } from "../button_demo.tsx";
+import { buttonGroupDemo } from "../button_group_demo.tsx";
 import { chartDemo } from "../chart_demo.tsx";
 import { chatBubblesDemo } from "../chat_bubbles_demo.tsx";
 import { chatDemo } from "../chat_demo.tsx";
@@ -104,6 +105,7 @@ export const demos: Demo[] = [
   focusDemo,
   formDemo,
   buttonDemo,
+  buttonGroupDemo,
   inputDemo,
   checkboxDemo,
   switchDemo,
