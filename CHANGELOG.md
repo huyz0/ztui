@@ -14,7 +14,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Button`, so `onClick`, the focus glow, and `formAction` work natively — a group
   of `formAction` buttons inside a `<Form>` is an arrow-navigable actions row that
   still submits/resets on Enter. The Agent Kit's `ApprovalPrompt` now uses it, so
-  its Allow / Deny / Always buttons are one Tab stop with arrow navigation.
+  its Allow / Deny / Always buttons are one Tab stop with arrow navigation, and the
+  gate grabs focus when it appears (`autoFocus`, on by default) so the keyboard is
+  ready without Tabbing in.
 - **Agent Kit** — a cohesive set of React components for building terminal AI
   agents. `Transcript` (a tail-following scrollback), `ChatBubble` (role-accented
   message bubbles with per-role tints), `Reasoning` (a collapsible "thinking"

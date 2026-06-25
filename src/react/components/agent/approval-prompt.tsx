@@ -130,6 +130,21 @@ export interface ApprovalPromptProps extends ComponentProps {
   denyOnEscape?: boolean;
   /** Draw a border around the prompt. Defaults to `true`. */
   bordered?: boolean;
+  /**
+   * Focus the action row as soon as the gate appears, so the keyboard is ready
+   * (arrow between actions, Enter to choose) without Tabbing to it first.
+   * Defaults to `true` — a permission gate is modal. Set `false` to leave focus
+   * where it was (e.g. several gates on screen at once).
+   */
+  autoFocus?: boolean;
+}
+
+/** Walk up from a widget to its `Screen` and focus it there. */
+function focusInScreen(w: Widget | null | undefined): void {
+  if (!w) return;
+  let p: Widget | null = w;
+  while (p && !(p instanceof Screen)) p = p.parent as Widget | null;
+  if (p instanceof Screen) p.focusWidget(w);
 }
 
 /**
@@ -155,6 +170,7 @@ export function ApprovalPrompt({
   onMatch,
   denyOnEscape = true,
   bordered = true,
+  autoFocus = true,
   ...rest
 }: ApprovalPromptProps): ReactElement {
   const isBatch = calls != null;
@@ -170,13 +186,18 @@ export function ApprovalPrompt({
 
   // Focus the field as soon as it appears, so the user can type immediately.
   useEffect(() => {
-    if (!inputAction) return;
-    const w = inputRef.current;
-    if (!w) return;
-    let p: typeof w | null = w;
-    while (p && !(p instanceof Screen)) p = p.parent as typeof w | null;
-    if (p instanceof Screen) p.focusWidget(w);
+    if (inputAction) focusInScreen(inputRef.current);
   }, [inputAction]);
+
+  // Grab focus for the action row when the gate mounts (and after the inline
+  // field closes), so the keyboard is ready without Tabbing in. The first action
+  // button is the group's initial tab stop; focusing it lets arrows take over.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focus the row on mount and when returning from input mode
+  useEffect(() => {
+    if (!autoFocus || inputAction) return;
+    const first = (isBatch ? batchActions : actions)[0];
+    if (first) focusInScreen(btnRefs.current[first.id]);
+  }, [autoFocus, inputAction]);
 
   const resolveAll = (d: "allow" | "deny") =>
     onResolve?.(Object.fromEntries((calls ?? []).map((c) => [c.id, d])));

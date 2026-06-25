@@ -15,6 +15,11 @@ the **arrow keys** move between Allow / Deny / Always. Single-key shortcuts and
 opens an inline `▾` dropdown, and an `input` action opens a free-text
 custom-pattern field.
 
+By default the gate **grabs focus when it appears** (`autoFocus`, on by default —
+a permission gate is modal), so the keyboard is ready immediately: arrow between
+the actions and press Enter, no Tabbing in. Set `autoFocus={false}` to leave focus
+where it was — e.g. when several gates are on screen at once.
+
 ## Single prompt
 
 ```tsx

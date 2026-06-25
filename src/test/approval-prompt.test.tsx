@@ -90,6 +90,23 @@ describe("ApprovalPrompt — single", () => {
     expect(t.screen.focusedWidget).toBe(btns[2]);
   });
 
+  test("autoFocus focuses the first action button when the gate appears", async () => {
+    const t = await mountApp(<ApprovalPrompt prompt="Allow?" onAction={() => {}} />, OPTS);
+    await t.settle();
+    const focused = t.screen.focusedWidget as Widget | null;
+    expect(focused?.constructor?.name).toBe("ButtonWidget");
+    expect(focused?.getTextContent?.()).toContain("Allow");
+  });
+
+  test("autoFocus={false} leaves focus untouched", async () => {
+    const t = await mountApp(
+      <ApprovalPrompt prompt="Allow?" autoFocus={false} onAction={() => {}} />,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.screen.focusedWidget).toBeNull();
+  });
+
   test("clicking a flat action button reports its id", async () => {
     const ids: string[] = [];
     const t = await mountApp(

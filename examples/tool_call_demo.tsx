@@ -129,6 +129,7 @@ function ToolCallDemoApp() {
         {rule == null ? (
           <ApprovalPrompt
             prompt="Allow `ls some/folder`?"
+            autoFocus={false}
             actions={[
               { id: "allow", label: "Allow", icon: "✓", key: "a", tone: "success" },
               { id: "deny", label: "Deny", icon: "✗", key: "d", tone: "danger" },
@@ -165,6 +166,7 @@ function ToolCallDemoApp() {
         {outcome == null ? (
           <ApprovalPrompt
             prompt="Claude wants to run 4 shell commands:"
+            autoFocus={false}
             // `matches` lets "Allow matching ▾" offer per-command grants — all
             // `cd`, all `ls`, a glob, or the "read-only" group — not just "all
             // Bash". The host derives these (here: tool, command head, a group).
