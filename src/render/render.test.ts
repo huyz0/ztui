@@ -52,6 +52,35 @@ describe("rendering system", () => {
     expect(diff.includes("Hello")).toBe(true);
   });
 
+  test("REP run-compression never rewrites an icon/graphic sequence", () => {
+    // A cell carrying an icon/graphic emits a raw terminal sequence (e.g. a sixel
+    // DCS) whose payload has long runs of identical bytes. With REP compression
+    // on (the `repeatChar` capability — Windows Terminal has it), those runs must
+    // NOT be rewritten to `\x1b[Nb`: that escape injected into the DCS aborts it
+    // and the payload prints as on-screen garbage. Regression for that break.
+    const W = 8;
+    const prev = new ScreenBuffer(W, 1);
+    const next = new ScreenBuffer(W, 1);
+    next.cells[0][0].icon = "hero:home";
+    next.cells[0][0].char = "?"; // text fallback under the graphic
+
+    // A stand-in sixel DCS with a run of identical pixel bytes (the `~` row) that
+    // the compressor would otherwise collapse into `~\x1b[Nb`.
+    const sixel = "\x1bPq#0;2;0;0;0~~~~~~~~~~\x1b\\";
+    const diff = next.renderDiff(
+      prev,
+      (cell) => (cell.icon ? sixel : cell.char),
+      W,
+      1,
+      0,
+      false,
+      true, // allowRepeat — REP compression enabled, as on Windows Terminal
+    );
+
+    expect(diff).toContain(sixel); // emitted verbatim, uncorrupted
+    expect(diff).not.toMatch(/\x1bPq[^\\]*\x1b\[\d+b/); // no REP injected into the DCS
+  });
+
   test("renderDiff repositions after a wide glyph instead of streaming across it", () => {
     // When a width-2 glyph (emoji/CJK) is replaced and immediately followed by
     // changed content, the trailing run must NOT be concatenated directly onto

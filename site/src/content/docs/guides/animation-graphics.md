@@ -98,6 +98,14 @@ The right one is chosen automatically from the probe, so an image "just works" a
 simply looks better on a capable terminal. You can force `ansi` (half-block) on the
 `<Image>` / `<SvgImage>` widgets when you want consistency over fidelity.
 
+Detection is conservative: a protocol is only used when the terminal actually
+confirms it (e.g. sixel requires a `4` in the DA1 reply), because emitting a
+graphics escape to a terminal that doesn't understand it prints raw bytes as
+on-screen garbage. Windows Terminal, for example, only added sixel in build 1.22,
+so it's enabled there only when the probe confirms it. If a terminal mis-renders
+graphics anyway, set **`ZTUI_NO_GRAPHICS=1`** to force the Unicode/glyph fallback
+everywhere.
+
 ### Images and icons
 
 - **[`<Image>`](/ztui/widgets/image/)** — raster images from a path or bytes.

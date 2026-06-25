@@ -3,7 +3,7 @@ import { encodeSimpleGlyf } from "../../render/glyf-encode.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { logger } from "../../utils/logger.ts";
 import { type Clipboard, Driver, type KeyEvent, type TerminalCapabilities } from "../driver.ts";
-import { getBaselineCapabilities, parseProbeResponse } from "./capabilities.ts";
+import { getBaselineCapabilities, parseProbeResponse, sixelUsable } from "./capabilities.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
 import { type InputDiagnostics, type MouseParseState, parseInput } from "./input.ts";
 
@@ -309,7 +309,7 @@ export class BunDriver extends Driver {
         const da1Match = data.match(/\x1b\[\?([\d;]+)c/);
         if (!da1Match) break;
         const params = da1Match[1].split(";");
-        if (params.includes("4") && this.capabilities.graphicsProtocol === "none") {
+        if (params.includes("4") && sixelUsable(this.capabilities)) {
           this.capabilities.graphicsProtocol = "sixel";
         }
         data = data.replace(da1Match[0], "");

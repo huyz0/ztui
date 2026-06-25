@@ -72,6 +72,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Icons no longer print as garbage on REP-capable terminals (e.g. Windows
+  Terminal).** The REP run-compression added for plain text was also applied to
+  icon/image cells, whose value is a raw graphics sequence (a sixel DCS); a `REP`
+  escape injected into the middle of that sequence aborted the DCS and printed
+  the payload as on-screen text (and corrupted icon redraws on click — the
+  Workbench/IDE rail, the HeroIcon gallery). Run-compression now skips any
+  content that contains an escape sequence, so graphics emit verbatim.
+- Windows Terminal is no longer assumed to support sixel from its env name; it
+  (like any terminal) gets sixel only when its DA1 probe reports attribute 4. A
+  new `ZTUI_NO_GRAPHICS` environment variable forces text/glyph icon fallback on
+  any terminal that mis-renders the graphics protocols.
 - Blockquote lines in streamed Markdown now select correctly (multi-line
   `RichText`).
 - Pointer-driven focus no longer scrolls the viewport.

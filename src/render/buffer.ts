@@ -99,6 +99,13 @@ function isSpaces(s: string): boolean {
  * capability — never called on terminals that don't support REP.
  */
 function compressRepeats(content: string): string {
+  // Never rewrite content that carries its own escape sequences — an icon/image
+  // cell's value is a raw graphics sequence (e.g. a sixel DCS) whose payload has
+  // long runs of identical bytes. Injecting a REP escape into the middle of that
+  // sequence corrupts it: the terminal aborts the DCS and prints the rest as
+  // literal text. Plain text runs (the only thing we want to compress) never
+  // contain ESC, so this guard is exact.
+  if (content.indexOf("\x1b") !== -1) return content;
   let out = "";
   let i = 0;
   const len = content.length;

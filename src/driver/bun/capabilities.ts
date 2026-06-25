@@ -1,6 +1,17 @@
 import { renderCapabilities } from "../../render/ansi-style.ts";
 import type { TerminalCapabilities } from "../driver.ts";
 
+/**
+ * Whether we may turn on sixel for this terminal when its DA1 reply advertises
+ * it (attribute 4). `ZTUI_NO_GRAPHICS` opts the user out entirely; otherwise we
+ * upgrade only a terminal that is still at `none` (we don't override a richer
+ * protocol like kitty/iterm2 that was already detected).
+ */
+export function sixelUsable(capabilities: TerminalCapabilities): boolean {
+  if (process.env.ZTUI_NO_GRAPHICS) return false;
+  return capabilities.graphicsProtocol === "none";
+}
+
 export function getBaselineCapabilities(): TerminalCapabilities {
   const term = process.env.TERM || "";
   const colorterm = process.env.COLORTERM || "";
@@ -47,14 +58,24 @@ export function getBaselineCapabilities(): TerminalCapabilities {
   const mouseHover =
     isWezTerm || isGhostty || isKitty || isITerm || isWT || !!process.env.VTE_VERSION;
 
+  // Escape hatch: `ZTUI_NO_GRAPHICS` (any value) forces text/glyph fallback for
+  // icons and images, for terminals that mis-render the graphics protocols.
+  const noGraphics = !!process.env.ZTUI_NO_GRAPHICS;
+
   let graphicsProtocol: "kitty" | "iterm2" | "sixel" | "none" = "none";
-  if (isITerm) {
+  if (noGraphics) {
+    graphicsProtocol = "none";
+  } else if (isITerm) {
     graphicsProtocol = "iterm2";
   } else if (isWezTerm || isGhostty || isKitty) {
     graphicsProtocol = "kitty";
-  } else if (isWT || isFoot || isSixelTerm) {
+  } else if (isFoot || isSixelTerm) {
     graphicsProtocol = "sixel";
   }
+  // Windows Terminal is NOT assumed to do sixel from its env name (only builds
+  // ≥ 1.22 support it, and a sixel DCS to one that doesn't prints as garbage).
+  // It's left `none` and upgraded by the DA1 probe only when the terminal
+  // reports attribute 4 — the same "confirm, don't guess" rule as pointer shapes.
 
   return {
     truecolor,
@@ -91,7 +112,7 @@ export function parseProbeResponse(
   const da1Match = leftover.match(/\x1b\[\?([\d;]+)c/);
   if (da1Match) {
     const params = da1Match[1].split(";");
-    if (params.includes("4") && capabilities.graphicsProtocol === "none") {
+    if (params.includes("4") && sixelUsable(capabilities)) {
       capabilities.graphicsProtocol = "sixel";
     }
     leftover = leftover.replace(da1Match[0], "");
