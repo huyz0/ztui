@@ -428,19 +428,25 @@ export class AppInput {
           }
         }
         if (!ev.handled && ev.type === "press" && ev.button === "left") {
-          if (hitWidget.focusable) {
+          // The clicked widget itself, or — when it can't take focus — the first
+          // focusable inside the nearest `focusOnClick` container (so clicking a
+          // form/panel's chrome hands focus to its first field).
+          const focusTarget = hitWidget.focusable
+            ? hitWidget
+            : firstFocusableInClickContainer(hitWidget);
+          if (focusTarget) {
             const prevFocused = this.host.activeScreen.focusedWidget;
             // Pointer focus must not scroll: the user clicked a visible cell, and
             // a read-only selection may have just anchored on this same press —
             // scrolling here would shift that anchor off the clicked content.
-            this.host.activeScreen.focusWidget(hitWidget, { scroll: false });
-            this.log(() => `Focused via click -> ${hitWidget.describe()}`);
+            this.host.activeScreen.focusWidget(focusTarget, { scroll: false });
+            this.log(() => `Focused via click -> ${focusTarget.describe()}`);
             // Focus moves the ring between two fixed-size widgets — repaint both
             // (old loses the ring, new gains it), scoped + geometry-verified.
-            if (prevFocused instanceof Widget && prevFocused !== hitWidget) {
+            if (prevFocused instanceof Widget && prevFocused !== focusTarget) {
               this.host.queueRepaintWidget(prevFocused, "focus:mouse-press");
             }
-            this.host.queueRepaintWidget(hitWidget, "focus:mouse-press");
+            this.host.queueRepaintWidget(focusTarget, "focus:mouse-press");
           }
           // onClick bubbles to the nearest ancestor handler too.
           const target = this.findAncestorHandler(hitWidget, "onClick");
@@ -650,4 +656,25 @@ export class AppInput {
     }
     return null;
   }
+}
+
+/**
+ * For a click that landed on a non-focusable `widget`, find the first focusable
+ * descendant of the nearest ancestor (inclusive) marked `focusOnClick` — so
+ * clicking a `Form`/`Panel`/`Box` chrome hands focus to its first field. Returns
+ * null when no such container is in the chain (the click focuses nothing).
+ */
+function firstFocusableInClickContainer(widget: Widget): Widget | null {
+  let container: DOMNode | null = widget;
+  while (container && !(container instanceof Widget && container.focusOnClick)) {
+    container = container.parent;
+  }
+  if (!(container instanceof Widget)) return null;
+  let found: Widget | null = null;
+  container.walk((node) => {
+    if (!found && node instanceof Widget && node.focusable && node.visible && !node.isDisabled()) {
+      found = node;
+    }
+  });
+  return found;
 }

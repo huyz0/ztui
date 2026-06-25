@@ -289,6 +289,13 @@ export class Widget extends DOMNode {
   public scrollOffset: Offset = Offset.ORIGIN;
   /** Whether this widget can take keyboard focus. */
   public focusable = false;
+  /**
+   * When a click lands on this (non-focusable) container — its padding, border,
+   * or any non-focusable child — move focus to its first focusable descendant.
+   * Lets a `Form`/`Panel`/`Box` act like one click target that hands focus to
+   * its first field. Off by default.
+   */
+  public focusOnClick = false;
   /** True while this widget holds keyboard focus. */
   public focused = false;
   /** Whether this widget renders and participates in layout. */

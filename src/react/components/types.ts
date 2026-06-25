@@ -39,6 +39,12 @@ export interface ComponentProps {
   /** Allow this widget to take keyboard focus. */
   focusable?: boolean;
   /**
+   * When a click lands on this container (its padding, border, or a non-focusable
+   * child), move focus to its first focusable descendant — so clicking a
+   * `Form`/`Panel`/`Box` hands focus to its first field. Off by default.
+   */
+  focusOnClick?: boolean;
+  /**
    * Marks the widget (and its descendants) as inert: not focusable, ignores
    * key/mouse input, and interactive controls render in a muted style. A
    * disabled container propagates to every control inside it.

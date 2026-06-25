@@ -8,6 +8,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`focusOnClick` containers** — set `focusOnClick` on any container (`Box`,
+  `VBox`/`HBox`, `Panel`, `Form`, …) and a click on its chrome (border, padding,
+  or any non-focusable child) moves focus to its first focusable descendant — so
+  clicking a form/panel hands focus to its first field. `ApprovalPrompt` enables
+  it (tied to `autoFocus`), so clicking anywhere in a permission gate focuses its
+  action row.
 - **`ButtonGroup`** — a roving-focus toolbar around `Button` children: arrow keys
   (`←`/`→`/`↑`/`↓`, `Home`/`End`) move focus between the buttons and the group is
   a single `Tab` stop, with disabled buttons skipped. Each child stays a real

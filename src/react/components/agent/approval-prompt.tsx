@@ -326,6 +326,9 @@ export function ApprovalPrompt({
     <VBox
       {...rest}
       onKey={onKey}
+      // A click anywhere in the gate (border/padding included) focuses the action
+      // row, mirroring the mount autoFocus — so the keyboard is always ready.
+      focusOnClick={autoFocus}
       style={{
         ...(bordered ? { border: "rounded" } : {}),
         padding: { left: 1, right: 1 },
