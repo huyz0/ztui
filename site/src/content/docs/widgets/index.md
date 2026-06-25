@@ -8,8 +8,22 @@ on the browser/canvas backend (via `bun run docs:screenshots`) — so the images
 can't drift from the components. Each page links to the full runnable demo in the
 repo.
 
-ztui ships ~66 components across seven categories. This gallery is filling in
-batch by batch; the remaining controls, layout, and media widgets land next.
+ztui ships ~66 components across eight categories, including a dedicated **Agent
+Kit** for building terminal AI agents. This gallery is filling in batch by batch.
+
+## Agent Kit
+
+Composable primitives for terminal AI agents — a chat shell, message bubbles,
+tool-call cards, a permission gate, and the status pieces of a turn.
+
+- [Conversation](/ztui/widgets/conversation/) — the agent chat shell: a tail-following transcript with a docked composer.
+- [Chat Bubble](/ztui/widgets/chat-bubble/) — a message bubble with a sender-coded one-sided accent bar.
+- [Tool Calls](/ztui/widgets/tool-call/) — collapsible tool-call cards and a per-tool renderer registry.
+- [Approval Prompt](/ztui/widgets/approval-prompt/) — single/batch permission gates with pattern grants.
+- [Reasoning & Streaming](/ztui/widgets/reasoning/) — a collapsible thinking block and a blinking-caret stream.
+- [Task List & Tree](/ztui/widgets/task-list/) — a flat checklist and its nested-plan sibling.
+- [Usage Meter](/ztui/widgets/usage-meter/) — token usage, cache ratios, cost, and a context-window bar.
+- [Chips & Pills](/ztui/widgets/agent-chips/) — inline tags, status pills, and clickable file citations.
 
 ## Controls
 

@@ -40,6 +40,10 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number; clip?: 
   markdown: { cols: 72, rows: 22, wait: 8500 }, // streams token-by-token over ~9.2s; capture near the end
   textarea: { cols: 64, rows: 16 },
   chat: { cols: 72, rows: 13 }, // chat composer with a seeded transcript
+  // Agent Kit
+  conversation: { cols: 72, rows: 13 },
+  "tool-call": { cols: 76, rows: 24, wait: 2400 }, // Bash run cycles pending→success over ~2.2s
+  "chat-bubbles": { cols: 72, rows: 20 },
   waiting: { cols: 56, rows: 14, wait: 800 }, // spinners mid-animation
   status: { cols: 56, rows: 16 },
   banner: { cols: 60, rows: 20 },

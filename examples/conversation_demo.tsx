@@ -34,10 +34,22 @@ function ConversationDemoApp() {
       role: "assistant",
       text: "Hi! Ask me anything — try `@` to mention a file or `/` for a command.",
     },
+    { id: 1, role: "user", text: "What does the retry helper in @utils.ts do?" },
+    {
+      id: 2,
+      role: "assistant",
+      text: "It wraps a call in exponential backoff: up to 5 attempts, doubling the delay each time (100ms → 1.6s) and giving up on non-retryable errors.",
+    },
+    { id: 3, role: "user", text: "Add jitter so retries don't thundering-herd." },
+    {
+      id: 4,
+      role: "assistant",
+      text: "Good call — I'll add ±25% random jitter to each delay. Want me to apply it now?",
+    },
   ]);
   const [busy, setBusy] = useState(false);
   const [used, setUsed] = useState(8_200);
-  const nextId = useRef(1);
+  const nextId = useRef(5);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const mention: Trigger = {
