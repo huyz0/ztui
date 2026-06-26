@@ -1,4 +1,5 @@
 import { protocolsDemo } from "../advanced_protocols.tsx";
+import { agentDemo } from "../agent_demo.tsx";
 import { animationDemo } from "../animation_demo.tsx";
 import { bannerDemo } from "../banner_demo.tsx";
 import { blendDemo } from "../blend_demo.tsx";
@@ -88,6 +89,7 @@ export const demos: Demo[] = [
   richDemo,
   markdownDemo,
   textareaDemo,
+  agentDemo,
   chatDemo,
   conversationDemo,
   toolCallDemo,

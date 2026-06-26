@@ -131,6 +131,7 @@ export default defineConfig({
             {
               label: "Agent Kit",
               items: [
+                { label: "Agent (full example)", slug: "widgets/agent" },
                 { label: "Conversation", slug: "widgets/conversation" },
                 { label: "Chat Bubble", slug: "widgets/chat-bubble" },
                 { label: "Model Picker", slug: "widgets/model-picker" },

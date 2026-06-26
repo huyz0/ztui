@@ -8,6 +8,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Agent example** — a flagship `examples/agent_demo.tsx`: a miniature terminal
+  coding agent built entirely from the Agent Kit. The whole screen is one
+  `Conversation` whose transcript mixes `ChatBubble`/`TaskTree`/`Reasoning`/
+  `ToolRender`/`FileChip`/`StreamingText`; the composer carries an `@` file
+  mention and a `/model` command that opens the `ModelPicker` in a `Popover`
+  (also reachable from a model badge in the conversation's `hintTrailing` slot),
+  and a compact `UsageMeter` sits in the footer.
 - **`focusOnClick` containers** — set `focusOnClick` on any container (`Box`,
   `VBox`/`HBox`, `Panel`, `Form`, …) and a click on its chrome (border, padding,
   or any non-focusable child) moves focus to its first focusable descendant — so

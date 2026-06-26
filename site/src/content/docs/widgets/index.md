@@ -16,6 +16,7 @@ Kit** for building terminal AI agents. This gallery is filling in batch by batch
 Composable primitives for terminal AI agents — a chat shell, message bubbles,
 tool-call cards, a permission gate, and the status pieces of a turn.
 
+- [Agent (full example)](/ztui/widgets/agent/) — the whole kit working end to end: a mini coding agent in one `Conversation`.
 - [Conversation](/ztui/widgets/conversation/) — the agent chat shell: a tail-following transcript with a docked composer.
 - [Chat Bubble](/ztui/widgets/chat-bubble/) — a message bubble with a sender-coded one-sided accent bar.
 - [Model Picker](/ztui/widgets/model-picker/) — a filterable table list of LLMs with cost badges and reasoning / local-remote icons.
