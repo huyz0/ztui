@@ -43,6 +43,7 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number; clip?: 
   // Agent Kit
   conversation: { cols: 72, rows: 13 },
   agent: { cols: 80, rows: 26, wait: 1800 },
+  devtools: { cols: 80, rows: 18, wait: 500 },
   "tool-call": { cols: 76, rows: 24, wait: 2400 }, // Bash run cycles pending→success over ~2.2s
   "chat-bubbles": { cols: 72, rows: 20 },
   waiting: { cols: 56, rows: 14, wait: 800 }, // spinners mid-animation

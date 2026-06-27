@@ -8,6 +8,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **DevTools** — a React-DevTools-style inspector (`<DevTools>`): a live
+  widget-tree pane, a per-node detail pane (geometry, flags, resolved style), and
+  a render-profiler strip (scoped-vs-full frame, widgets rendered, bytes, render
+  reasons) from `App.getLastFrame()`. Backed by a small in-process data layer
+  (`serializeDevTree` / `resolveDevNode` / `widgetDetail`) that complements the
+  HTTP `startInspector()` backend. (Phase 1 of the DevTools plan in
+  `docs/devtools-plan.md`.)
 - **Agent example** — a flagship `examples/agent_demo.tsx`: a miniature terminal
   coding agent built entirely from the Agent Kit. The whole screen is one
   `Conversation` whose transcript mixes `ChatBubble`/`TaskTree`/`Reasoning`/

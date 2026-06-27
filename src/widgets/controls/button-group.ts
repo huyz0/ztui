@@ -62,7 +62,8 @@ export class ButtonGroupWidget extends Widget {
     const screen = App.instance?.activeScreen;
     // If a button in the group is focused (Tab landed here, or a click focused
     // it), adopt it as active so the state follows real focus.
-    const focusedIdx = btns.findIndex((b) => b === screen?.focusedWidget);
+    const focused = screen?.focusedWidget;
+    const focusedIdx = focused ? btns.indexOf(focused as ButtonWidget) : -1;
     if (focusedIdx >= 0) this.activeIndex = focusedIdx;
     this.activeIndex = Math.max(0, Math.min(btns.length - 1, this.activeIndex));
     for (let i = 0; i < btns.length; i++) btns[i].focusable = i === this.activeIndex;

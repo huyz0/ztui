@@ -17,6 +17,7 @@ import { contextMenuDemo } from "../contextmenu_demo.tsx";
 import { conversationDemo } from "../conversation_demo.tsx";
 import { kitchenSinkDemo } from "../demo.tsx";
 import { descriptionListDemo } from "../description_list_demo.tsx";
+import { devToolsDemo } from "../devtools_demo.tsx";
 import { diffDemo } from "../diff_demo.tsx";
 import { disabledDemo } from "../disabled_demo.tsx";
 import { fileIconDemo } from "../fileicon_demo.tsx";
@@ -80,6 +81,7 @@ export const demos: Demo[] = [
   treeDemo,
   listviewDemo,
   selectionListDemo,
+  devToolsDemo,
   diffDemo,
   richlogDemo,
   terminalDemo,

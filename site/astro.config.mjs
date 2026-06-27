@@ -88,6 +88,7 @@ export default defineConfig({
                 { label: "Diff", slug: "widgets/diff" },
                 { label: "Rich Log", slug: "widgets/rich-log" },
                 { label: "Terminal View", slug: "widgets/terminal-view" },
+                { label: "DevTools", slug: "widgets/devtools" },
               ],
             },
             {

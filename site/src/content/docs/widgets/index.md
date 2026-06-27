@@ -49,6 +49,7 @@ tool-call cards, a permission gate, and the status pieces of a turn.
 - [Diff](/ztui/widgets/diff/) — unified/split text diff with syntax highlighting.
 - [Rich Log](/ztui/widgets/rich-log/) — append-only, auto-scrolling log view.
 - [Terminal View](/ztui/widgets/terminal-view/) — sandboxed ANSI terminal pane.
+- [DevTools](/ztui/widgets/devtools/) — a React-DevTools-style widget-tree inspector + render profiler.
 
 ## Text & input
 
