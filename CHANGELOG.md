@@ -8,6 +8,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`@huyz0/ztui/testing`** — the framework's own test harness, made public so
+  apps can test their ztui UIs the same way. Runner-agnostic (no test framework
+  imported): `mountApp(ui, opts?)` renders into a real `App` on a headless
+  `VTEDriver` and returns `text()` / `findById` / `cellAt` / `settle` / `driver`;
+  drive input with `driver.emit("key" | "mouse", …)`. `cleanupMountedApps()` (call
+  from your runner's `afterEach`), `waitFor`, `flush`, and `mountTestApp` round it
+  out. The repo's internal harness now re-exports this entry, so it dogfoods
+  exactly what ships. See the new Testing guide.
 - **DevTools** — a React-DevTools-style inspector (`<DevTools>`): a live
   widget-tree pane, a per-node detail pane (geometry, flags, resolved style), and
   a render-profiler strip (scoped-vs-full frame, widgets rendered, bytes, render

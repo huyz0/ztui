@@ -67,6 +67,12 @@
       "import": "./dist/mermaid.js",
       "default": "./dist/mermaid.js"
     },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "bun": "./src/testing.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
