@@ -27,6 +27,8 @@ export interface InspectableApp {
   /** Optional runtime diagnostics surfaced in `GET /state` (present on the real App). */
   getMouseDiagnostics?(): Record<string, number>;
   getRenderReasonStats?(): Record<string, number>;
+  /** The most recent frame summary (profiler), surfaced in `GET /state`. */
+  getLastFrame?(): unknown;
 }
 
 /** @internal Handle to a running inspector server. */
@@ -270,6 +272,7 @@ function dumpAppState(app: InspectableApp): any {
     mouseDiagnostics: app.getMouseDiagnostics ? app.getMouseDiagnostics() : null,
     inputDiagnostics: typeof inputDiag === "function" ? inputDiag.call(driver) : null,
     renderReasons: app.getRenderReasonStats ? app.getRenderReasonStats() : null,
+    lastFrame: app.getLastFrame ? app.getLastFrame() : null,
     log: { file: logger.getFilePath(), level: logger.getLevel() },
   };
 }

@@ -27,6 +27,9 @@ export function devToolsPageHtml(): string {
   #mirror-wrap { flex:1; overflow:auto; padding:12px; position:relative; }
   #mirror { position:relative; width:fit-content; }
   #highlight { position:absolute; border:2px solid var(--accent); pointer-events:none; display:none; box-shadow:0 0 0 9999px rgba(0,0,0,0.18); }
+  #flash { position:absolute; pointer-events:none; background:rgba(203,166,247,0.30); border:1px solid var(--accent); opacity:0; transition:opacity .12s ease-out; }
+  header label { color:var(--dim); cursor:pointer; user-select:none; }
+  #s-spark { font-family:ui-monospace,monospace; letter-spacing:-1px; color:#89b4fa; }
   aside { width:42%; max-width:560px; border-left:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
   #tree { flex:1; overflow:auto; padding:8px; font-family:ui-monospace,monospace; }
   #tree ul { list-style:none; margin:0; padding-left:14px; }
@@ -47,10 +50,13 @@ export function devToolsPageHtml(): string {
   <span class="stat">focus <span id="s-focus">–</span></span>
   <span class="stat">hover <span id="s-hover">–</span></span>
   <span class="stat">theme <span id="s-theme">–</span></span>
+  <span class="stat">frame <span id="s-frame">–</span></span>
+  <span class="stat"><span id="s-spark"></span></span>
+  <label><input type="checkbox" id="hl-updates" /> ⚡ highlight updates</label>
   <span class="stat" id="s-reasons"></span>
 </header>
 <main>
-  <div id="mirror-wrap"><div id="mirror"></div><div id="highlight"></div></div>
+  <div id="mirror-wrap"><div id="mirror"></div><div id="highlight"></div><div id="flash"></div></div>
   <aside>
     <div id="tree"></div>
     <div id="detail"><i style="color:var(--dim)">Select a node…</i></div>
@@ -59,6 +65,39 @@ export function devToolsPageHtml(): string {
 <script>
 const CELL_H = 14, PAD = 10; // mirror grid metrics (font-size 12 × line-height 1.2)
 let selId = null, expanded = new Set();
+let lastSeq = -1; const hist = []; const SPARK = "▁▂▃▄▅▆▇█";
+
+function sparkline(vals) {
+  if (!vals.length) return "";
+  const max = Math.max(1, ...vals);
+  return vals.map(v => SPARK[Math.min(7, Math.round((v / max) * 7))]).join("");
+}
+
+function flashBand(y0, y1) {
+  const f = document.getElementById('flash');
+  const mirrorW = document.getElementById('mirror').offsetWidth || 0;
+  if (mirrorW < 1 || y1 <= y0) return;
+  f.style.left = PAD + 'px';
+  f.style.width = Math.max(0, mirrorW - 2 * PAD) + 'px';
+  f.style.top = (PAD + y0 * CELL_H) + 'px';
+  f.style.height = ((y1 - y0) * CELL_H) + 'px';
+  f.style.opacity = '1';
+  clearTimeout(flashBand.t);
+  flashBand.t = setTimeout(() => { f.style.opacity = '0'; }, 160);
+}
+
+function onFrame(fr) {
+  if (!fr || fr.seq === lastSeq) return;
+  lastSeq = fr.seq;
+  hist.push(fr.widgetsRendered || 0);
+  if (hist.length > 48) hist.shift();
+  document.getElementById('s-frame').textContent =
+    '#' + fr.seq + ' ' + (fr.full ? 'full' : 'scoped') + ' ' + (fr.widgetsRendered || 0) + 'w ' + (fr.bytes || 0) + 'B';
+  document.getElementById('s-spark').textContent = sparkline(hist);
+  if (document.getElementById('hl-updates').checked && !fr.full && fr.damageY1 > fr.damageY0) {
+    flashBand(fr.damageY0, fr.damageY1);
+  }
+}
 
 function pathId(node, prefix) {
   node.__id = prefix;
@@ -145,6 +184,7 @@ async function poll() {
     const rs = state.renderReasons || {};
     const top = Object.entries(rs).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>k+'×'+v).join('  ');
     document.getElementById('s-reasons').textContent = top;
+    onFrame(state.lastFrame);
   } catch (err) { /* server gone; keep last frame */ }
 }
 poll();

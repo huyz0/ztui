@@ -21,7 +21,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `GET /devtools` — a self-contained page (no build step) that polls `/render`,
   `/dom`, and `/state` to show a live screen mirror, the interactive widget tree,
   a per-node detail pane, and a state/profiler header; clicking a node boxes it
-  on the mirror.
+  on the mirror. **Phase 3** deepens the profiler: `/state` now includes the
+  latest frame summary, the browser panel shows a recent-frames sparkline and a
+  **⚡ highlight-updates** toggle that flashes the damaged row band on each scoped
+  frame, and the in-app `<DevTools>` profiler strip gains a frame sparkline.
 - **Agent example** — a flagship `examples/agent_demo.tsx`: a miniature terminal
   coding agent built entirely from the Agent Kit. The whole screen is one
   `Conversation` whose transcript mixes `ChatBubble`/`TaskTree`/`Reasoning`/

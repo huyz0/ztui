@@ -1,4 +1,4 @@
-import { createElement, type ReactElement, useEffect, useMemo, useState } from "react";
+import { createElement, type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import { App } from "../../../core/app.ts";
 import type { DOMNode } from "../../../dom/dom.ts";
 import type { Widget } from "../../../dom/widget.ts";
@@ -18,10 +18,21 @@ import type { ComponentProps } from "../types.ts";
 
 /** A frame summary (subset of `App.getLastFrame()`), shown in the profiler strip. */
 export interface DevToolsFrame {
+  /** Pipeline-run index, used to dedupe history; from `App.getLastFrame()`. */
+  seq?: number;
   full?: boolean;
   widgetsRendered?: number;
   bytes?: number;
   reasons?: string[];
+}
+
+const SPARK = "▁▂▃▄▅▆▇█";
+
+/** A unicode sparkline of recent values, scaled to the max. */
+function sparkline(vals: number[]): string {
+  if (vals.length === 0) return "";
+  const max = Math.max(1, ...vals);
+  return vals.map((v) => SPARK[Math.min(7, Math.round((v / max) * 7))]).join("");
 }
 
 /** Screen rect of an inspected widget, reported to {@link DevToolsProps.onInspect}. */
@@ -101,6 +112,13 @@ export function DevTools({
   const [selected, setSelected] = useState<string | null>(null);
   // `null` = "expand everything" until the user collapses something.
   const [expanded, setExpanded] = useState<string[] | null>(null);
+  // Rolling history of widgets-rendered per frame, for the profiler sparkline.
+  const histRef = useRef<number[]>([]);
+  const lastSeqRef = useRef<number>(-1);
+  if (frame && frame.seq !== lastSeqRef.current) {
+    lastSeqRef.current = frame.seq ?? lastSeqRef.current + 1;
+    histRef.current = [...histRef.current, frame.widgetsRendered ?? 0].slice(-40);
+  }
 
   // Select a node id and report its screen region for the highlight overlay.
   const select = (id: string | null) => {
@@ -146,10 +164,13 @@ export function DevTools({
     return ids;
   }, [tree]);
 
+  const spark = sparkline(histRef.current);
   const profiler = frame
     ? `${frame.full ? "● full" : "○ scoped"}  ${frame.widgetsRendered ?? 0} rendered  ${
         frame.bytes ?? 0
-      }B${frame.reasons?.length ? `  · ${frame.reasons.slice(0, 2).join(", ")}` : ""}`
+      }B${spark ? `  ${spark}` : ""}${
+        frame.reasons?.length ? `  · ${frame.reasons.slice(0, 2).join(", ")}` : ""
+      }`
     : "no frame yet";
 
   return (

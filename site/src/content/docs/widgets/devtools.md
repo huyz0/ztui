@@ -80,9 +80,14 @@ const server = startInspector(app); // http://127.0.0.1:8000
 
 It's a self-contained page (no build step) that polls `/render`, `/dom`, and
 `/state` and shows a **live screen mirror**, the **interactive widget tree**, a
-**per-node detail** pane, and a **state/profiler header** (focus, hover, theme,
-top render reasons). Clicking a node boxes it on the mirror. The inspector binds
-to loopback by default — it has no auth and `POST /input` can drive the app, so
-only expose it on a trusted network.
+**per-node detail** pane, and a **profiler header** — the latest frame
+(`#seq full|scoped Nw bytes`), a sparkline of recent frames' widget-render
+counts, focus/hover/theme, and the top render reasons. Clicking a node boxes it
+on the mirror. Toggle **⚡ highlight updates** to flash the damaged row band on
+each scoped frame — the terminal analogue of React DevTools' "highlight updates"
+(it visualises exactly which rows a repaint touched).
+
+The inspector binds to loopback by default — it has no auth and `POST /input`
+can drive the app, so only expose it on a trusted network.
 
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/devtools_demo.tsx)
