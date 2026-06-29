@@ -144,8 +144,12 @@ export type { TracebackProps } from "./components/data/traceback.tsx";
 export { Traceback } from "./components/data/traceback.tsx";
 export type { TreeProps } from "./components/data/tree.tsx";
 export { Tree } from "./components/data/tree.tsx";
-export type { DevToolsFrame, DevToolsProps } from "./components/devtools/devtools.tsx";
-export { DevTools } from "./components/devtools/devtools.tsx";
+export type {
+  DevToolsFrame,
+  DevToolsProps,
+  DevToolsRegion,
+} from "./components/devtools/devtools.tsx";
+export { DevTools, DevToolsHighlight } from "./components/devtools/devtools.tsx";
 // Custom-widget authoring: build a typed React component bound to a host tag
 // (registered via `registerElement` from `ztui`). See the "Extending ztui" guide.
 export { hostComponent, presetBox } from "./components/factory.tsx";

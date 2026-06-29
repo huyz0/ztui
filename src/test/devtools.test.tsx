@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Widget } from "../dom/widget.ts";
-import { Button, DevTools, Input, Label, VBox } from "../react/components.tsx";
-import { resolveDevNode, serializeDevTree, widgetDetail } from "../tools/devtools.ts";
+import { Button, DevTools, DevToolsHighlight, Input, Label, VBox } from "../react/components.tsx";
+import { findDevId, resolveDevNode, serializeDevTree, widgetDetail } from "../tools/devtools.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -40,6 +40,22 @@ describe("devtools data layer", () => {
     const tree = serializeDevTree(root);
     const resolved = resolveDevNode(root, tree.children[1].id);
     expect(resolved).toBe(t.findById<Widget>("go"));
+  });
+
+  test("findDevId is the inverse of resolveDevNode (widget → id)", async () => {
+    const t = await mountApp(
+      <VBox id="root">
+        <Label>Hi</Label>
+        <Button id="go">Go</Button>
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("root") as Widget;
+    const go = t.findById<Widget>("go") as Widget;
+    const id = findDevId(root, go);
+    expect(id).toBe("0/1");
+    expect(resolveDevNode(root, id as string)).toBe(go);
   });
 
   test("widgetDetail reports identity, geometry and flags", async () => {
@@ -93,5 +109,32 @@ describe("DevTools panel", () => {
     expect(text).toContain("DevTools");
     expect(text).toContain("button");
     expect(text).toContain("scoped"); // profiler strip
+  });
+
+  test("DevToolsHighlight draws a heavy border box at the region", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <DevToolsHighlight region={{ x: 2, y: 1, width: 6, height: 3 }} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.cellAt(2, 1).char).toBe("┏"); // top-left corner
+    expect(t.cellAt(7, 1).char).toBe("┓"); // top-right (x = 2 + 6 - 1)
+    expect(t.cellAt(2, 3).char).toBe("┗"); // bottom-left (y = 1 + 3 - 1)
+    expect(t.cellAt(7, 3).char).toBe("┛");
+    expect(t.cellAt(3, 1).char).toBe("━"); // top edge
+    expect(t.cellAt(2, 2).char).toBe("┃"); // left edge
+  });
+
+  test("null region renders nothing", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <DevToolsHighlight region={null} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.cellAt(2, 1).char).toBe(" ");
   });
 });

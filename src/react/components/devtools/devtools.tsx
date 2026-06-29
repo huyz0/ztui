@@ -1,8 +1,10 @@
-import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { createElement, type ReactElement, useEffect, useMemo, useState } from "react";
+import { App } from "../../../core/app.ts";
 import type { DOMNode } from "../../../dom/dom.ts";
 import type { Widget } from "../../../dom/widget.ts";
 import {
   type DevToolsNode,
+  findDevId,
   resolveDevNode,
   serializeDevTree,
   widgetDetail,
@@ -22,6 +24,14 @@ export interface DevToolsFrame {
   reasons?: string[];
 }
 
+/** Screen rect of an inspected widget, reported to {@link DevToolsProps.onInspect}. */
+export interface DevToolsRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface DevToolsProps extends ComponentProps {
   /** Root widget to inspect (e.g. the inspected app's container, or the screen). */
   root: Widget | null;
@@ -29,6 +39,40 @@ export interface DevToolsProps extends ComponentProps {
   frame?: DevToolsFrame | null;
   /** Re-read the live tree on this interval (ms). Default `400`. */
   refreshMs?: number;
+  /**
+   * Pick mode: track the widget under the pointer (`App.instance.hoveredWidget`)
+   * and select it in the tree — "point at the UI to inspect it". Off by default.
+   */
+  pick?: boolean;
+  /**
+   * Fired when the selected node changes, with its screen region — render a
+   * {@link DevToolsHighlight} at it (under a full-screen root) to box the widget.
+   */
+  onInspect?: (region: DevToolsRegion | null) => void;
+}
+
+/**
+ * A heavy-border box drawn over an inspected widget's screen rect. Pass the
+ * region from {@link DevToolsProps.onInspect} and mount it under a full-screen
+ * root (e.g. the app's `Dock`) so it isn't clipped to a panel. Draws only the
+ * outline — the inspected widget shows through.
+ */
+export function DevToolsHighlight({
+  region,
+}: {
+  region: DevToolsRegion | null;
+}): ReactElement | null {
+  if (!region || region.width < 1 || region.height < 1) return null;
+  return createElement("ztui-devtools-highlight", {
+    style: {
+      position: "absolute",
+      left: region.x,
+      top: region.y,
+      width: region.width,
+      height: region.height,
+      zIndex: 9999,
+    },
+  });
 }
 
 /**
@@ -45,17 +89,41 @@ export interface DevToolsProps extends ComponentProps {
  * <DevTools root={appRootRef.current} frame={app.getLastFrame()} />
  * ```
  */
-export function DevTools({ root, frame, refreshMs = 400, ...rest }: DevToolsProps): ReactElement {
+export function DevTools({
+  root,
+  frame,
+  refreshMs = 400,
+  pick = false,
+  onInspect,
+  ...rest
+}: DevToolsProps): ReactElement {
   const [, setTick] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   // `null` = "expand everything" until the user collapses something.
   const [expanded, setExpanded] = useState<string[] | null>(null);
 
+  // Select a node id and report its screen region for the highlight overlay.
+  const select = (id: string | null) => {
+    setSelected(id);
+    const node = id && root ? resolveDevNode(root as DOMNode, id) : null;
+    const r = node && "region" in node ? (node as Widget).region : null;
+    onInspect?.(r && r.width > 0 ? { x: r.x, y: r.y, width: r.width, height: r.height } : null);
+  };
+
   // The live tree mutates in place, so poll a re-serialize to reflect changes.
+  // In pick mode the same poll tracks the hovered widget into the selection.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: poll re-reads live tree + hover; select/onInspect are stable enough
   useEffect(() => {
-    const h = setInterval(() => setTick((n) => n + 1), refreshMs);
+    const h = setInterval(() => {
+      setTick((n) => n + 1);
+      if (!pick || !root) return;
+      const hovered = App.instance?.hoveredWidget ?? null;
+      if (!hovered) return;
+      const id = findDevId(root as DOMNode, hovered as DOMNode);
+      if (id && id !== selected) select(id);
+    }, refreshMs);
     return () => clearInterval(h);
-  }, [refreshMs]);
+  }, [refreshMs, pick, root, selected]);
 
   // `setTick` forces this to recompute against the current live tree each poll.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-read the mutable tree every tick
@@ -86,14 +154,16 @@ export function DevTools({ root, frame, refreshMs = 400, ...rest }: DevToolsProp
 
   return (
     <VBox {...rest} style={{ width: "100%", height: "100%", ...rest.style }}>
-      <Label style={{ bold: true, color: "$accent", height: 1 }}>🛠 DevTools</Label>
+      <Label style={{ bold: true, color: "$accent", height: 1 }}>
+        🛠 DevTools{pick ? "  ◎ pick" : ""}
+      </Label>
       <HBox style={{ width: "100%", height: "1fr" }}>
         <Tree
           data={tree}
           selectedId={selected}
           expanded={expanded ?? allIds}
           onExpandedChange={setExpanded}
-          onSelect={(n) => setSelected(n.id)}
+          onSelect={(n) => select(n.id)}
           showGuides
           style={{ width: "1fr", height: "100%" }}
         />

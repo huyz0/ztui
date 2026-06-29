@@ -59,6 +59,17 @@ export function serializeDevTree(root: DOMNode, prefix = "0"): DevToolsNode {
   };
 }
 
+/** The path id of `target` within `root`, or null when it isn't in the subtree. */
+export function findDevId(root: DOMNode, target: DOMNode, prefix = "0"): string | null {
+  if (root === target) return prefix;
+  const kids = widgetChildren(root);
+  for (let i = 0; i < kids.length; i++) {
+    const found = findDevId(kids[i], target, `${prefix}/${i}`);
+    if (found) return found;
+  }
+  return null;
+}
+
 /** Resolve a {@link DevToolsNode.id} path back to the live node under `root`. */
 export function resolveDevNode(root: DOMNode, id: string): DOMNode | null {
   const parts = id.split("/");

@@ -7,9 +7,11 @@ description: A React-DevTools-style inspector for ztui — the live widget tree,
 
 `<DevTools>` is an in-app inspector — a React-DevTools analogue for ztui. The
 left pane is the **live widget tree** (`tag #id .class`); selecting a node shows
-its **geometry, flags, and resolved style** on the right; the footer is a
-one-line **render profiler** (scoped vs full frame, widgets rendered, bytes
-emitted, and the reasons the last frame ran). Read-only.
+its **geometry, flags, and resolved style** on the right and **boxes it on
+screen** with a `<DevToolsHighlight>` overlay; the footer is a one-line **render
+profiler** (scoped vs full frame, widgets rendered, bytes emitted, and the
+reasons the last frame ran). In **pick mode** (`pick`), hovering the app selects
+the widget under the pointer — point at the UI to inspect it. Read-only.
 
 ## Usage
 
@@ -44,6 +46,11 @@ function WithDevTools() {
 - `frame` — the latest `App.getLastFrame()` summary; drives the profiler strip
   (`full`, `widgetsRendered`, `bytes`, `reasons`).
 - `refreshMs` — how often to re-read the live (mutating) tree. Default `400`.
+- `pick` — pick mode: track `App.instance.hoveredWidget` and select it (hover the
+  app to inspect). Off by default.
+- `onInspect(region | null)` — fired when the selection changes, with its screen
+  rect; render a `<DevToolsHighlight region={…} />` (under a full-screen root, so
+  it isn't clipped to a panel) to draw the highlight box over the widget.
 
 ## Data layer
 

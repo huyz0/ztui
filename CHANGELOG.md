@@ -14,7 +14,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reasons) from `App.getLastFrame()`. Backed by a small in-process data layer
   (`serializeDevTree` / `resolveDevNode` / `widgetDetail`) that complements the
   HTTP `startInspector()` backend. (Phase 1 of the DevTools plan in
-  `docs/devtools-plan.md`.)
+  `docs/devtools-plan.md`.) **Phase 1.5** adds on-screen highlight
+  (`<DevToolsHighlight>` boxes the selected widget) and a **pick mode** (`pick`)
+  that selects the widget under the pointer as you hover the app.
 - **Agent example** — a flagship `examples/agent_demo.tsx`: a miniature terminal
   coding agent built entirely from the Agent Kit. The whole screen is one
   `Conversation` whose transcript mixes `ChatBubble`/`TaskTree`/`Reasoning`/
