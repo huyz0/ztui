@@ -296,6 +296,12 @@ export class Widget extends DOMNode {
    * its first field. Off by default.
    */
   public focusOnClick = false;
+  /**
+   * This widget (and its subtree) never captures the pointer — hit-testing falls
+   * through to whatever is beneath. For decorative full-screen overlays like the
+   * DevTools highlight. CSS `pointer-events: none`. Off by default.
+   */
+  public pointerTransparent = false;
   /** True while this widget holds keyboard focus. */
   public focused = false;
   /** Whether this widget renders and participates in layout. */

@@ -63,10 +63,12 @@ export interface DevToolsProps extends ComponentProps {
 }
 
 /**
- * A heavy-border box drawn over an inspected widget's screen rect. Pass the
- * region from {@link DevToolsProps.onInspect} and mount it under a full-screen
- * root (e.g. the app's `Dock`) so it isn't clipped to a panel. Draws only the
- * outline — the inspected widget shows through.
+ * A block highlight over an inspected widget's screen rect — it tints the
+ * widget's cells (keeping their glyphs), not a character border. Pass the region
+ * from {@link DevToolsProps.onInspect} and mount it under a full-screen root
+ * (e.g. the app's `Dock`); it's a pointer-transparent, full-screen overlay that
+ * paints at absolute screen coordinates, so clicks fall through and it never
+ * lands in the wrong place.
  */
 export function DevToolsHighlight({
   region,
@@ -75,14 +77,8 @@ export function DevToolsHighlight({
 }): ReactElement | null {
   if (!region || region.width < 1 || region.height < 1) return null;
   return createElement("ztui-devtools-highlight", {
-    style: {
-      position: "absolute",
-      left: region.x,
-      top: region.y,
-      width: region.width,
-      height: region.height,
-      zIndex: 9999,
-    },
+    target: region,
+    style: { position: "absolute", left: 0, top: 0, width: "100%", height: "100%", zIndex: 9999 },
   });
 }
 

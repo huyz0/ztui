@@ -111,30 +111,35 @@ describe("DevTools panel", () => {
     expect(text).toContain("scoped"); // profiler strip
   });
 
-  test("DevToolsHighlight draws a heavy border box at the region", async () => {
+  test("DevToolsHighlight tints the target cells (no destructive border)", async () => {
     const t = await mountApp(
       <VBox style={{ width: "100%", height: "100%" }}>
-        <DevToolsHighlight region={{ x: 2, y: 1, width: 6, height: 3 }} />
+        <Label>abcdefgh</Label>
+        <DevToolsHighlight region={{ x: 2, y: 0, width: 4, height: 1 }} />
       </VBox>,
       OPTS,
     );
     await t.settle();
-    expect(t.cellAt(2, 1).char).toBe("┏"); // top-left corner
-    expect(t.cellAt(7, 1).char).toBe("┓"); // top-right (x = 2 + 6 - 1)
-    expect(t.cellAt(2, 3).char).toBe("┗"); // bottom-left (y = 1 + 3 - 1)
-    expect(t.cellAt(7, 3).char).toBe("┛");
-    expect(t.cellAt(3, 1).char).toBe("━"); // top edge
-    expect(t.cellAt(2, 2).char).toBe("┃"); // left edge
+    // Cells inside the target keep their glyph but gain the accent background.
+    const inside = t.cellAt(2, 0);
+    expect(inside.char).toBe("c"); // glyph preserved (not overwritten by a border)
+    expect(inside.style.background).toBeTruthy();
+    expect(inside.style.background).not.toBe("default");
+    // A cell outside the target keeps its glyph and is not tinted.
+    expect(t.cellAt(6, 0).char).toBe("g");
+    expect(t.cellAt(6, 0).style.background).not.toBe(inside.style.background);
   });
 
   test("null region renders nothing", async () => {
     const t = await mountApp(
       <VBox style={{ width: "100%", height: "100%" }}>
+        <Label>abcdefgh</Label>
         <DevToolsHighlight region={null} />
       </VBox>,
       OPTS,
     );
     await t.settle();
-    expect(t.cellAt(2, 1).char).toBe(" ");
+    // The label is untinted (its default background).
+    expect(t.cellAt(2, 0).char).toBe("c");
   });
 });

@@ -23,6 +23,13 @@ export function hitTest(node: DOMNode, x: number, y: number): Widget | null {
     return null;
   }
 
+  // Pointer-transparent widgets (and their subtree) never capture the pointer —
+  // a full-screen decorative overlay (e.g. the DevTools highlight) paints on top
+  // but clicks fall through to the UI beneath. (CSS `pointer-events: none`.)
+  if (node.pointerTransparent) {
+    return null;
+  }
+
   // Hit-test overlays first if this node is a Screen
   if (node instanceof Screen) {
     // Topmost-first: only allocate a sorted copy when overlays actually carry

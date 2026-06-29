@@ -24,7 +24,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   HTTP `startInspector()` backend. (Phase 1 of the DevTools plan in
   `docs/devtools-plan.md`.) **Phase 1.5** adds on-screen highlight
   (`<DevToolsHighlight>` boxes the selected widget) and a **pick mode** (`pick`)
-  that selects the widget under the pointer as you hover the app. **Phase 2**
+  that selects the widget under the pointer as you hover the app. The in-app
+  highlight is a pointer-transparent, full-screen overlay that **tints the
+  inspected widget's cells** at absolute screen coordinates (keeping their glyphs)
+  — backed by a new `Widget.pointerTransparent` flag (CSS `pointer-events: none`).
+  **Phase 2**
   adds a **browser DevTools panel** served by `startInspector()` at
   `GET /devtools` — a self-contained page (no build step) that polls `/render`,
   `/dom`, and `/state` to show a live screen mirror, the interactive widget tree,
