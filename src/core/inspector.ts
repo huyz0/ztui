@@ -6,6 +6,7 @@ import type { ScreenBuffer } from "../render/buffer.ts";
 import { renderBufferToHTML, renderBufferToText } from "../render/html-renderer.ts";
 import { ThemeManager } from "../theme.ts";
 import { logger } from "../utils/logger.ts";
+import { devToolsPageHtml } from "./devtools-page.ts";
 
 declare const Bun: any;
 
@@ -183,6 +184,14 @@ async function handleRequest(app: InspectableApp, req: Request): Promise<Respons
     });
   }
 
+  // The browser DevTools panel: a self-contained page that polls /render, /dom
+  // and /state to show a live screen mirror, the widget tree, and node detail.
+  if (url.pathname === "/devtools" && req.method === "GET") {
+    return new Response(devToolsPageHtml(), {
+      headers: { "Content-Type": "text/html", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
   if (url.pathname === "/input" && req.method === "POST") {
     try {
       const body: any = await req.json();
@@ -227,7 +236,7 @@ async function handleRequest(app: InspectableApp, req: Request): Promise<Respons
   }
 
   return new Response(
-    "ZTUI Inspector Running. Endpoints: GET /dom, GET /tree, GET /state, GET /log?lines=N, GET /screenshot, GET /render, POST /input",
+    "ZTUI Inspector Running. Endpoints: GET /devtools (browser panel), GET /dom, GET /tree, GET /state, GET /log?lines=N, GET /screenshot, GET /render, POST /input",
     {
       status: 200,
       headers: { "Access-Control-Allow-Origin": "*" },

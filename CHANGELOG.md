@@ -16,7 +16,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   HTTP `startInspector()` backend. (Phase 1 of the DevTools plan in
   `docs/devtools-plan.md`.) **Phase 1.5** adds on-screen highlight
   (`<DevToolsHighlight>` boxes the selected widget) and a **pick mode** (`pick`)
-  that selects the widget under the pointer as you hover the app.
+  that selects the widget under the pointer as you hover the app. **Phase 2**
+  adds a **browser DevTools panel** served by `startInspector()` at
+  `GET /devtools` — a self-contained page (no build step) that polls `/render`,
+  `/dom`, and `/state` to show a live screen mirror, the interactive widget tree,
+  a per-node detail pane, and a state/profiler header; clicking a node boxes it
+  on the mirror.
 - **Agent example** — a flagship `examples/agent_demo.tsx`: a miniature terminal
   coding agent built entirely from the Agent Kit. The whole screen is one
   `Conversation` whose transcript mixes `ChatBubble`/`TaskTree`/`Reasoning`/

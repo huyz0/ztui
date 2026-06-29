@@ -91,4 +91,20 @@ describe("inspector endpoints", () => {
     expect(json).toContain("hello text"); // text node content surfaced
     expect(json).toContain('"focusable":true'); // button is focusable
   });
+
+  test("GET / lists the browser DevTools panel", async () => {
+    const text = await (await fetch(`${BASE}/`)).text();
+    expect(text).toContain("/devtools");
+  });
+
+  test("GET /devtools serves the browser panel HTML", async () => {
+    const res = await fetch(`${BASE}/devtools`);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain("<!doctype html>");
+    expect(html).toContain("ztui DevTools");
+    expect(html).toContain("/render");
+    expect(html).toContain("/dom");
+    expect(html).toContain("/state");
+  });
 });

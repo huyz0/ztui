@@ -64,6 +64,25 @@ to build your own inspector or a remote panel):
   and resolved style.
 
 This complements the HTTP `startInspector()` backend (`/tree`, `/dom`, `/state`,
-`/render`, `/screenshot`) — the same model behind a future browser panel.
+`/render`, `/screenshot`).
+
+## Browser panel
+
+`startInspector(app)` also serves a **browser DevTools panel** at
+`GET /devtools` — open it in any browser pointed at the inspector:
+
+```ts
+import { startInspector } from "@huyz0/ztui";
+
+const server = startInspector(app); // http://127.0.0.1:8000
+// → open http://127.0.0.1:8000/devtools
+```
+
+It's a self-contained page (no build step) that polls `/render`, `/dom`, and
+`/state` and shows a **live screen mirror**, the **interactive widget tree**, a
+**per-node detail** pane, and a **state/profiler header** (focus, hover, theme,
+top render reasons). Clicking a node boxes it on the mirror. The inspector binds
+to loopback by default — it has no auth and `POST /input` can drive the app, so
+only expose it on a trusted network.
 
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/devtools_demo.tsx)
