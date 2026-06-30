@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { TreeNode } from "../../core.ts";
 import { Tree } from "../../react.ts";
-import { mountApp } from "../../test/harness.tsx";
+import { mountApp, waitFor } from "../../test/harness.tsx";
 import type { TreeWidget } from "./tree.ts";
 
 const workspace: TreeNode[] = [
@@ -44,6 +44,8 @@ function bigTree(n: number): TreeNode[] {
 describe("Tree rendering (forest + icons)", () => {
   test("renders top-level forest items with icons; collapsed children hidden", async () => {
     const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    // The Tree virtualizes — its first paint can lag a frame; wait for content.
+    await waitFor(() => t.text().includes("README.md"), { poke: () => t.app.queueRender() });
     const txt = t.text();
     expect(txt).toContain("src");
     expect(txt).toContain("README.md");
@@ -56,6 +58,7 @@ describe("Tree rendering (forest + icons)", () => {
     const t = await mountApp(
       <Tree data={workspace} expanded={["src"]} style={{ height: "100%" }} />,
     );
+    await waitFor(() => t.text().includes("app.ts"), { poke: () => t.app.queueRender() });
     const txt = t.text();
     expect(txt).toContain("app.ts");
     expect(txt).toContain("widgets");
@@ -67,16 +70,23 @@ describe("Tree rendering (forest + icons)", () => {
     const withGuides = await mountApp(
       <Tree data={workspace} expanded={["src"]} showGuides style={{ height: "100%" }} />,
     );
+    await waitFor(() => withGuides.text().includes("┊"), {
+      poke: () => withGuides.app.queueRender(),
+    });
     expect(withGuides.text()).toContain("┊"); // dotted guide glyph rendered
 
     const noGuides = await mountApp(
       <Tree data={workspace} expanded={["src"]} style={{ height: "100%" }} />,
     );
+    await waitFor(() => noGuides.text().includes("app.ts"), {
+      poke: () => noGuides.app.queueRender(),
+    });
     expect(noGuides.text()).not.toContain("┊"); // off by default
   });
 
   test("hideRoot promotes a single root's children to the top level", async () => {
     const t = await mountApp(<Tree data={workspace} hideRoot style={{ height: "100%" }} />);
+    await waitFor(() => t.text().includes("app.ts"), { poke: () => t.app.queueRender() });
     const txt = t.text();
     // src's children become top-level; the "src" root label is hidden.
     expect(txt).toContain("app.ts");
