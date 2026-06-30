@@ -8,7 +8,7 @@ on the browser/canvas backend (via `bun run docs:screenshots`) — so the images
 can't drift from the components. Each page links to the full runnable demo in the
 repo.
 
-ztui ships ~66 components across eight categories, including a dedicated **Agent
+ztui ships ~80 components across eight categories, including a dedicated **Agent
 Kit** for building terminal AI agents. This gallery is filling in batch by batch.
 
 ## Agent Kit
