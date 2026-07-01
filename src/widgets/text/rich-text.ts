@@ -40,16 +40,29 @@ export class RichTextWidget extends Widget {
     return Math.max(0, Math.min(outer, budget) - b.width - p.width);
   }
 
+  // 1-slot memo of the parsed markup. parseMarkup is called two-to-three times a
+  // frame (measure, render, selection), and markup parsing costs ~20µs for a
+  // paragraph — but the raw text almost never changes between frames, so caching
+  // the last (rawText → parsed) pair turns the repeats into a string compare. The
+  // parsed RichText is immutable to callers (they only read `.plain`/`.spans`).
+  private _markupSrc: string | null = null;
+  private _markupParsed: RichText | null = null;
+
   /** Parse this widget's markup, falling back to plain text on bad markup. */
   private parseMarkup(): RichText {
     const raw = this.getTextContent();
     if (!raw) return new RichText("", []);
+    if (this._markupSrc === raw && this._markupParsed) return this._markupParsed;
+    let parsed: RichText;
     try {
-      return RichText.fromMarkup(raw);
+      parsed = RichText.fromMarkup(raw);
     } catch (err) {
       logger.warn("richtext", `invalid markup; rendering as plain text: ${this.describe()}`, err);
-      return new RichText(raw, []);
+      parsed = new RichText(raw, []);
     }
+    this._markupSrc = raw;
+    this._markupParsed = parsed;
+    return parsed;
   }
 
   /**

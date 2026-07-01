@@ -35,6 +35,12 @@ export class MermaidWidget extends Widget {
   private cachedPngBase64 = "";
   private cachedPixels: Uint8Array | null = null;
   private cachedError: string | null = null;
+  // ASCII-fallback memo (non-graphics terminals). renderMermaidASCII is a full
+  // diagram layout (~0.6ms for a small graph) and depends only on the code, but
+  // it sits on the per-frame render path — so cache its output and re-lay out only
+  // when the code changes, not on every repaint.
+  private cachedAsciiCode: string | null = null;
+  private cachedAsciiLines: string[] = [];
   private toggleButton: ButtonWidget;
 
   constructor() {
@@ -155,8 +161,12 @@ export class MermaidWidget extends Widget {
 
     if (!isGraphicsSupported) {
       try {
-        const ascii = renderMermaidASCII(this.code.trim());
-        const lines = ascii.split("\n");
+        const trimmed = this.code.trim();
+        if (this.cachedAsciiCode !== trimmed) {
+          this.cachedAsciiLines = renderMermaidASCII(trimmed).split("\n");
+          this.cachedAsciiCode = trimmed;
+        }
+        const lines = this.cachedAsciiLines;
         let currentY = client.y;
         for (const line of lines) {
           if (currentY >= client.bottom) break;
