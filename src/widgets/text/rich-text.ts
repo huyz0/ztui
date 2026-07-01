@@ -132,7 +132,10 @@ export class RichTextWidget extends Widget {
 
     const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
-    const baseStyle = new Style({
+    // cachedStyle (not `new Style`) so unchanged prose reuses one base-style
+    // instance across frames and its unspanned cells hit the render diff's
+    // identity fast path — see Widget.cachedStyle.
+    const baseStyle = this.cachedStyle({
       color: fg,
       background: bg,
       bold: this.computedStyle.bold,

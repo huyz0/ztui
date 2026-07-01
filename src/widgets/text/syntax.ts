@@ -7,7 +7,6 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Syntax } from "../../render/rich/syntax.ts";
 import { RichText } from "../../render/rich/text.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
 import { logger } from "../../utils/logger.ts";
 import { CopyButtonWidget } from "../copy-button.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
@@ -93,7 +92,10 @@ export class SyntaxWidget extends Widget {
 
     const fg = this.computedStyle.color || "default";
     const bg = this.findResolvedBackground();
-    const baseStyle = new Style({
+    // cachedStyle (not `new Style`) so unchanged code reuses one base-style
+    // instance across frames — its unspanned cells then hit the render diff's
+    // identity fast path (see Widget.cachedStyle).
+    const baseStyle = this.cachedStyle({
       color: fg,
       background: bg,
       bold: this.computedStyle.bold,

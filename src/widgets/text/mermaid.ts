@@ -7,7 +7,7 @@ import { Spacing } from "../../geometry/spacing.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Syntax } from "../../render/rich/syntax.ts";
 import { stringWidth } from "../../render/segment.ts";
-import { Style } from "../../render/style.ts";
+import type { Style } from "../../render/style.ts";
 import { isThemeLight } from "../../theme.ts";
 import { renderSvgSync } from "../../utils/sharp-sync.ts";
 import { ButtonWidget } from "../controls/button.ts";
@@ -125,7 +125,9 @@ export class MermaidWidget extends Widget {
     if (client.width <= 0 || client.height <= 0) return;
 
     const bgHex = this.findResolvedBackground();
-    const style = new Style({
+    // cachedStyle so a static diagram's cells reuse one Style instance across
+    // frames and hit the render diff's identity fast path (see Widget.cachedStyle).
+    const style = this.cachedStyle({
       color: "default",
       background: bgHex,
     });
