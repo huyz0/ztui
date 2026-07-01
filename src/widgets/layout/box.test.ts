@@ -38,11 +38,13 @@ describe("box title", () => {
     expect(top.includes("Hi")).toBe(false);
   });
 
-  test("overlong title is truncated with an ellipsis", () => {
+  test("overlong title is truncated with an ellipsis, staying symmetric", () => {
     const top = rowText(renderBox({ width: 10, title: "Settings panel" }), 0);
+    // The truncated title keeps its trailing space + border dash, so the right
+    // edge reads ` ─╮` mirroring the left's `╭─ ` — the title is not shoved right.
+    expect(top).toBe("╭─ Set… ─╮");
     expect(top.startsWith("╭─ ")).toBe(true);
-    expect(top).toContain("…");
-    expect(top.endsWith("╮")).toBe(true);
+    expect(top.endsWith(" ─╮")).toBe(true);
     expect([...top].length).toBe(10);
   });
 });

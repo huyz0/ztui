@@ -27,11 +27,16 @@ export class BoxWidget extends Widget {
     if (!this.borderWeightForSide("top")) return;
 
     const rect = this.getClientRect();
-    // Reserve the two corners plus one border cell of padding on each side.
+    // The title is painted as `─ <title> ─`: reserve the two corners plus one
+    // border dash on each side (4 cells) for the label, and the label wraps the
+    // text in a leading and trailing space (2 more). Budget the *text* for what
+    // is left, so a truncated title keeps its trailing space and the right edge
+    // reads ` ─╮` symmetrically with the left's `╭─ ` — instead of collapsing to
+    // `…╮` (the trailing space clipped) and looking shoved to the right.
     const available = rect.width - 4;
     if (available <= 0) return;
 
-    const label = ` ${truncateToWidth(this.title, available)} `;
+    const label = ` ${truncateToWidth(this.title, available - 2)} `;
     // Reuse the style of the border edge that super.render() already drew, so
     // the title inherits the box's border color without recomputing it.
     const borderStyle = buffer.cells[rect.y]?.[rect.x + 1]?.style;
