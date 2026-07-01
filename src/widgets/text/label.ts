@@ -33,11 +33,23 @@ export class LabelWidget extends Widget {
     return Math.max(0, Math.min(outer, maxW) - b.width - p.width);
   }
 
+  // Small memo of wrapped rows. wrappedRows runs twice a frame (measure with the
+  // measure budget, render with the content width) and the text rarely changes;
+  // a few slots keyed on (text, width) let both callers hit without re-wrapping.
+  private _rowsCache: { text: string; width: number; rows: string[] }[] = [];
+
   /** Plain text laid out into wrapped rows for `width` columns. */
   private wrappedRows(width: number): string[] {
     const text = this.getTextContent();
     if (!text) return [];
-    return width > 0 ? wrapText(text, width) : [text];
+    const cache = this._rowsCache;
+    for (const e of cache) {
+      if (e.text === text && e.width === width) return e.rows;
+    }
+    const rows = width > 0 ? wrapText(text, width) : [text];
+    cache.push({ text, width, rows });
+    if (cache.length > 4) cache.shift();
+    return rows;
   }
 
   public override measure(maxW: number, maxH: number): void {
