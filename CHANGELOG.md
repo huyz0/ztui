@@ -6,6 +6,28 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-01
+
+### Fixed
+
+- **Box title truncation** — an overlong title on a box's top border kept its
+  leading `╭─ ` but lost the trailing space (` ─╮` collapsed to `…╮`), making the
+  truncated title look shoved to the right. The text is now budgeted for the two
+  spaces it's wrapped in, so a truncated title stays symmetric.
+
+### Performance
+
+- **Syntax highlighting is memoized.** `Syntax.highlight` caches its Prism
+  tokenization by `(theme, language, code)`; the `Syntax`, `Diff` and `Traceback`
+  widgets previously re-tokenized the same code on every full frame (a ~120-line
+  file measured ~2.1 ms uncached vs ~10 µs cached).
+- **Text widgets stop recomputing per frame.** `RichText` caches its parsed
+  markup and laid-out display rows; `Label` caches its wrapped rows; `RichText`,
+  `Syntax` and `Mermaid` reuse one base paint `Style` across frames (via
+  `Widget.cachedStyle`) so unchanged cells hit the render diff's identity fast
+  path; the Mermaid ASCII-fallback layout is cached by diagram source. On the
+  text-heavy profiler demo the redundant-frame measure phase dropped ~78%.
+
 ## [1.1.0] - 2026-06-30
 
 ### Added
