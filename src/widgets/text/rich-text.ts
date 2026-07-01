@@ -82,6 +82,14 @@ export class RichTextWidget extends Widget {
     handleReadonlySelectionMouse(this, ev);
   }
 
+  // Small memo of laid-out rows. displayRows (split + toSegments + wrap) costs
+  // ~17µs for a paragraph and runs twice a frame — once from measure (with
+  // Style.DEFAULT) and once from render (with the cached base style). Keying on
+  // (parsed markup, width, base style) — all now stable instances across frames —
+  // gives measure and render each their own entry, so a static block recomputes
+  // neither. A few slots absorb the two callers plus a width in flux.
+  private _rowsCache: { rich: RichText; width: number; base: Style; rows: Segment[][] }[] = [];
+
   /**
    * Lay the text out into display rows of segments for a content width: hard
    * newlines first, then (when {@link wrap} is on and the width is positive)
@@ -90,6 +98,18 @@ export class RichTextWidget extends Widget {
    */
   private displayRows(width: number, baseStyle: Style): Segment[][] {
     const rich = this.parseMarkup();
+    const cache = this._rowsCache;
+    for (const e of cache) {
+      if (e.rich === rich && e.width === width && e.base === baseStyle) return e.rows;
+    }
+    const rows = this.layoutRows(rich, width, baseStyle);
+    cache.push({ rich, width, base: baseStyle, rows });
+    if (cache.length > 4) cache.shift();
+    return rows;
+  }
+
+  /** The actual split + segment + wrap behind {@link displayRows}'s memo. */
+  private layoutRows(rich: RichText, width: number, baseStyle: Style): Segment[][] {
     const hardLines = splitRichTextIntoLines(rich);
     if (!this.wrap || width <= 0) return hardLines.map((l) => l.toSegments(baseStyle));
     const out: Segment[][] = [];
