@@ -159,14 +159,44 @@ function traverseTokens(
 // biome-ignore lint/complexity/noStaticOnlyClass: aligns with class-based Python rich reference
 export class Syntax {
   /**
+   * Tokenizing with Prism is pure but not cheap, and a widget re-highlights the
+   * *same* code on every full frame (any repaint of a Syntax/Markdown-code block).
+   * The result is theme-independent — spans carry `$token` style references
+   * resolved later at paint — so a bounded memo keyed by (theme, language, code)
+   * turns a per-frame `P.tokenize` into a Map hit. Bounded like the width/grapheme
+   * caches: cleared wholesale past the cap so an adversarial stream of distinct
+   * snippets can't grow it without bound.
+   */
+  private static highlightCache = new Map<string, RichText>();
+  private static readonly HIGHLIGHT_CACHE_CAP = 512;
+
+  /**
    * Highlights code syntax using Prism.js and returns a RichText instance.
    */
   public static highlight(code: string, language: string, _themeName = "theme"): RichText {
     const lang = language.toLowerCase();
+    const cacheKey = `${_themeName}\0${lang}\0${code}`;
+    const cached = Syntax.highlightCache.get(cacheKey);
+    if (cached) return cached;
 
+    const result = Syntax.highlightUncached(code, lang, language, _themeName);
+    if (Syntax.highlightCache.size >= Syntax.HIGHLIGHT_CACHE_CAP) {
+      Syntax.highlightCache.clear();
+    }
+    Syntax.highlightCache.set(cacheKey, result);
+    return result;
+  }
+
+  /** The actual tokenize+span build behind {@link highlight}'s memo. */
+  private static highlightUncached(
+    code: string,
+    lang: string,
+    language: string,
+    themeName: string,
+  ): RichText {
     // Custom diff highlighter
     if (lang === "diff") {
-      return Syntax.highlightDiff(code, _themeName);
+      return Syntax.highlightDiff(code, themeName);
     }
 
     // prismjs is optional: without it, fall back to plain unhighlighted text.

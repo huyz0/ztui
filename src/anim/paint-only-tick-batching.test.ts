@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { requestAnimationTick } from "./animation.ts";
 
 describe("paint-only animation ticks", () => {
@@ -14,8 +14,13 @@ describe("paint-only animation ticks", () => {
     };
     const owner = { app, tagName: "input", region: { y: 1, bottom: 2 } };
 
-    requestAnimationTick(owner as any, 16, true);
-    await new Promise((r) => setTimeout(r, 130));
+    vi.useFakeTimers();
+    try {
+      requestAnimationTick(owner as any, 16, true);
+      await vi.advanceTimersByTimeAsync(130);
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(calls).toBe(1);
     expect(reason).toContain("cosmetic-batch");

@@ -3,6 +3,18 @@ import { describe, expect, test } from "vitest";
 import { Syntax } from "./syntax.ts";
 
 describe("Syntax Highlighting Engine", () => {
+  test("memoizes identical (code, language) so a repainting widget doesn't re-tokenize", () => {
+    const code = "const x = 5;\nconst y = 6;\nconst z = 7;";
+    const a = Syntax.highlight(code, "typescript");
+    const b = Syntax.highlight(code, "typescript");
+    // Same instance returned — the render diff's identity fast path depends on it,
+    // and it proves the (expensive) Prism tokenize ran once, not per call.
+    expect(b).toBe(a);
+    // Different code (or language) must not collide with the cached entry.
+    expect(Syntax.highlight(`${code}\n// more`, "typescript")).not.toBe(a);
+    expect(Syntax.highlight(code, "python")).not.toBe(a);
+  });
+
   test("highlight handles typescript code blocks", () => {
     const code = "const x = 5;\n// comment here\nconst s = 'str';";
     const rich = Syntax.highlight(code, "typescript");

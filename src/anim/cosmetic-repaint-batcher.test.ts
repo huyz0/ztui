@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { COSMETIC_REPAINT_MS, requestCosmeticRepaint } from "./animation.ts";
 
 describe("cosmetic repaint batcher", () => {
@@ -19,9 +19,14 @@ describe("cosmetic repaint batcher", () => {
     const ownerA = { app, tagName: "input", region: { y: 1, bottom: 2 } };
     const ownerB = { app, tagName: "input", region: { y: 1, bottom: 2 } };
 
-    requestCosmeticRepaint(ownerA as any, "caret:input");
-    requestCosmeticRepaint(ownerB as any, "animation:paint-only:input");
-    await new Promise((r) => setTimeout(r, 130));
+    vi.useFakeTimers();
+    try {
+      requestCosmeticRepaint(ownerA as any, "caret:input");
+      requestCosmeticRepaint(ownerB as any, "animation:paint-only:input");
+      await vi.advanceTimersByTimeAsync(130);
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(calls).toBe(1);
     expect(reasons[0]).toContain("cosmetic-batch");

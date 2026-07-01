@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { Markdown, Syntax } from "../react.ts";
 import { mountApp } from "../test/harness.tsx";
 import "../markdown.ts";
@@ -77,14 +77,23 @@ describe("copy button", () => {
     const t = await mountApp(<Syntax language="ts">{"const y = 2;"}</Syntax>);
     await t.settle();
     const g = glyphAt(t);
-    press(t, g.x, g.y);
-    await t.settle();
-    expect(t.cellAt(g.x, g.y).char).toBe("✓"); // acknowledgement shown
 
-    // The 1200ms ack timer reverts the glyph to the idle ⧉.
-    await new Promise((r) => setTimeout(r, 1300));
-    t.app.queueRender();
-    await t.settle();
-    expect(t.cellAt(g.x, g.y).char).toBe("⧉");
+    // Drive the ack timer on fake timers so this test doesn't spend 1.3s of real
+    // wall-clock waiting for the revert. The button's setTimeout is created under
+    // fake timers (press happens after useFakeTimers), and each
+    // `advanceTimersByTimeAsync` also drains the microtask queue that queueRender
+    // schedules the frame on.
+    vi.useFakeTimers();
+    try {
+      press(t, g.x, g.y);
+      await vi.advanceTimersByTimeAsync(0); // flush the paint queued by the click
+      expect(t.cellAt(g.x, g.y).char).toBe("✓"); // acknowledgement shown
+
+      // The 1200ms ack timer reverts the glyph to the idle ⧉.
+      await vi.advanceTimersByTimeAsync(1300);
+      expect(t.cellAt(g.x, g.y).char).toBe("⧉");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
