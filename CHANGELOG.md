@@ -6,6 +6,38 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-13
+
+### Fixed
+
+- **`flexGrow` spacers collapsing to 0 on overflow.** A row/column with a
+  `flexGrow` spacer between two fixed/auto-sized siblings would silently clip
+  the trailing sibling instead of the spacer shrinking to make room, once the
+  siblings' combined size exceeded the container. `BoxLayout` now supports an
+  opt-in `flexShrink` style prop (default `0`, off — back-compat): siblings
+  that set it shrink proportionally, down to their `minWidth`/`minHeight`,
+  before a `flexGrow` sibling is clamped to zero.
+- **`Widget.measure()` ignored a container's own border/padding/explicit
+  size when measuring its children.** Children were always measured against
+  the space offered to their parent, not the parent's real content box, so an
+  `"auto"`-sized child could measure itself larger than the container it
+  actually ends up in and silently overflow (clipped by the default
+  `overflowX: "hidden"`). Children are now measured against the parent's
+  resolved content box.
+- **`GridLayout` left a blank strip on the right/bottom edge** whenever the
+  container's width/height didn't divide evenly by the column/row count
+  (floor division dropped the remainder). The remainder is now distributed
+  across the first N columns/rows so the grid fills its content box exactly.
+- **`DockLayout` let an over-committed fixed-size dock overflow its
+  container** and overlap whatever came after it. A docked child's
+  height/width is now clamped to the space actually remaining.
+
+### Added
+
+- **`flexWrap: "wrap"`** on `BoxLayout` containers — children that overflow
+  the main axis wrap onto a new line/column (stacked along the cross axis)
+  instead of overflowing or relying solely on `flexShrink`.
+
 ## [1.1.1] - 2026-07-01
 
 ### Fixed
