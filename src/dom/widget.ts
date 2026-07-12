@@ -141,8 +141,23 @@ export interface WidgetStyles {
   display?: "flex" | "grid" | "dock";
   /** Flex flow when `display: "flex"`: `"row"` (horizontal) or `"column"` (vertical). */
   flexDirection?: "row" | "column";
+  /**
+   * Whether children that overflow the flow axis wrap onto a new line
+   * instead of overflowing. Defaults to `"nowrap"` (back-compat — a single
+   * line, subject to `flexShrink`/`overflowX`/`overflowY`).
+   */
+  flexWrap?: "nowrap" | "wrap";
   /** Share of leftover space along the flow axis (equivalent to `N fr`). */
   flexGrow?: number;
+  /**
+   * Share of the deficit this widget gives up when siblings overflow the
+   * container along the flow axis. Defaults to `0` — auto/fixed-sized
+   * widgets keep their measured size and the container overflows (subject
+   * to `overflowX`/`overflowY`), matching prior behavior. Set to a positive
+   * number to let this widget shrink instead; use {@link minWidth}/
+   * {@link minHeight} as a floor.
+   */
+  flexShrink?: number;
   /** Bold/bright text. */
   bold?: boolean;
   /** Italic text. */
@@ -980,12 +995,28 @@ export class Widget extends DOMNode {
    * you also have children. Clamp to the offered space so you never overflow.
    */
   public measure(maxW: number, maxH: number): void {
-    // 1. Recursively measure children first (bottom-up). Isolate each child so a
-    // broken measure() degrades that subtree instead of aborting layout.
+    // 1. Recursively measure children first (bottom-up), offering them this
+    // widget's real content box rather than the (possibly much larger) space
+    // this widget was merely offered by its parent. Two adjustments:
+    //  - Subtract this widget's own border/padding.
+    //  - If this widget's own width/height is a concrete (non-auto, non-fr)
+    //    size, that value — not the inherited maxW/maxH — is what layout
+    //    will actually give it, so use it as the budget. Otherwise children
+    //    would measure themselves against a budget that's too generous and
+    //    overflow the real content box once layout runs (silently clipped
+    //    by overflowX/Y).
+    const ownB = this.borderSize;
+    const ownP = this.padding;
+    const ownWVal = parseDimension(this.computedStyle.width, maxW, -1);
+    const ownHVal = parseDimension(this.computedStyle.height, maxH, -1);
+    const effectiveMaxW = typeof ownWVal === "number" && ownWVal !== -1 ? ownWVal : maxW;
+    const effectiveMaxH = typeof ownHVal === "number" && ownHVal !== -1 ? ownHVal : maxH;
+    const childMaxW = Math.max(0, effectiveMaxW - ownB.width - ownP.width);
+    const childMaxH = Math.max(0, effectiveMaxH - ownB.height - ownP.height);
     for (const child of this.children) {
       if (child instanceof Widget && child.visible) {
         try {
-          child.measure(maxW, maxH);
+          child.measure(childMaxW, childMaxH);
           child._measureErrorLogged = false;
         } catch (err) {
           if (!child._measureErrorLogged) {

@@ -24,7 +24,7 @@ export class DockLayout extends Layout {
 
       if (dock === "top") {
         const val = parseDimension(child.computedStyle.height, remaining.height, -1);
-        const height =
+        const requested =
           typeof val === "number"
             ? val === -1
               ? child.computedStyle.height === "auto" || child.computedStyle.height === undefined
@@ -32,6 +32,10 @@ export class DockLayout extends Layout {
                 : 1
               : val
             : remaining.height;
+        // Clamp to what's actually left — an over-committed fixed dock must
+        // not extend past the container and overlap/overflow whatever comes
+        // after it.
+        const height = Math.min(requested, remaining.height);
         child.region = new Region(
           new Offset(remaining.x, remaining.y),
           new Size(remaining.width, height),
@@ -42,7 +46,7 @@ export class DockLayout extends Layout {
         );
       } else if (dock === "bottom") {
         const val = parseDimension(child.computedStyle.height, remaining.height, -1);
-        const height =
+        const requested =
           typeof val === "number"
             ? val === -1
               ? child.computedStyle.height === "auto" || child.computedStyle.height === undefined
@@ -50,6 +54,7 @@ export class DockLayout extends Layout {
                 : 1
               : val
             : remaining.height;
+        const height = Math.min(requested, remaining.height);
         child.region = new Region(
           new Offset(remaining.x, remaining.bottom - height),
           new Size(remaining.width, height),
@@ -60,7 +65,7 @@ export class DockLayout extends Layout {
         );
       } else if (dock === "left") {
         const val = parseDimension(child.computedStyle.width, remaining.width, -1);
-        const width =
+        const requested =
           typeof val === "number"
             ? val === -1
               ? child.computedStyle.width === "auto" || child.computedStyle.width === undefined
@@ -68,6 +73,7 @@ export class DockLayout extends Layout {
                 : 10
               : val
             : remaining.width;
+        const width = Math.min(requested, remaining.width);
         child.region = new Region(
           new Offset(remaining.x, remaining.y),
           new Size(width, remaining.height),
@@ -78,7 +84,7 @@ export class DockLayout extends Layout {
         );
       } else if (dock === "right") {
         const val = parseDimension(child.computedStyle.width, remaining.width, -1);
-        const width =
+        const requested =
           typeof val === "number"
             ? val === -1
               ? child.computedStyle.width === "auto" || child.computedStyle.width === undefined
@@ -86,6 +92,7 @@ export class DockLayout extends Layout {
                 : 10
               : val
             : remaining.width;
+        const width = Math.min(requested, remaining.width);
         child.region = new Region(
           new Offset(remaining.right - width, remaining.y),
           new Size(width, remaining.height),

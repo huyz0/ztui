@@ -186,6 +186,32 @@ describe("DOM and layout resolution", () => {
     expect(child4.region.y).toBe(5);
   });
 
+  test("GridLayout distributes the floor-division remainder instead of leaving a gap", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(80, 10));
+
+    const children = Array.from({ length: 6 }, () => new Widget("button"));
+    for (const c of children) parent.appendChild(c);
+
+    // 3 columns over 80 width: 80 / 3 = 26.67 -> naive floor division gives
+    // cellWidth 26 and only covers 78 of the 80 columns.
+    const layout = new GridLayout(3);
+    layout.resolve(parent);
+
+    const [c0, c1, c2, c3] = children;
+    // The remainder (2) is distributed across the first 2 columns.
+    expect(c0.region.width).toBe(27);
+    expect(c1.region.width).toBe(27);
+    expect(c2.region.width).toBe(26);
+    // Columns must be contiguous and span the full 80-wide row.
+    expect(c1.region.x).toBe(c0.region.x + c0.region.width);
+    expect(c2.region.x).toBe(c1.region.x + c1.region.width);
+    expect(c2.region.x + c2.region.width).toBe(80);
+
+    // Second row starts right after the first row's height, with no gap.
+    expect(c3.region.y).toBe(c0.region.y + c0.region.height);
+  });
+
   test("DockLayout resolution", () => {
     const parent = new Widget("view");
     parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
@@ -246,6 +272,31 @@ describe("DOM and layout resolution", () => {
     expect(centerChild.region.y).toBe(2);
     expect(centerChild.region.width).toBe(6);
     expect(centerChild.region.height).toBe(6);
+  });
+
+  test("DockLayout clamps over-committed fixed docks to the space actually remaining", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(30, 20));
+
+    const top1 = new Widget("box");
+    top1.style.dock = "top";
+    top1.style.height = 15;
+
+    const top2 = new Widget("box");
+    top2.style.dock = "top";
+    top2.style.height = 15;
+
+    parent.appendChild(top1);
+    parent.appendChild(top2);
+
+    new DockLayout().resolve(parent);
+
+    expect(top1.region.height).toBe(15);
+    // top1 already consumed 15 of the 20 available rows; top2 must clamp to
+    // the 5 remaining rather than overflowing the container by 10 rows.
+    expect(top2.region.y).toBe(15);
+    expect(top2.region.height).toBe(5);
+    expect(top2.region.y + top2.region.height).toBe(20);
   });
 
   test("DOM tree insertBefore and removeChild", () => {
