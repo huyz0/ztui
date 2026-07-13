@@ -168,6 +168,8 @@ export class ComboboxWidget extends Widget {
   private cursorCol = 0;
   private overlay: ComboboxOverlayWidget | null = null;
   private overlayScreen: Screen | null = null;
+  /** {@link value} when the dropdown was last opened, for reverting on close. */
+  private valueAtOpen = "";
 
   constructor() {
     super("combobox");
@@ -205,6 +207,7 @@ export class ComboboxWidget extends Widget {
     if (this.isOpen) return;
     this.isOpen = true;
     this.highlightedIndex = 0;
+    this.valueAtOpen = this.value;
 
     const screen = this.getScreen();
     if (!screen) return;
@@ -239,10 +242,17 @@ export class ComboboxWidget extends Widget {
       const exact = filtered.find((o) => o.label.toLowerCase() === this.value.trim().toLowerCase());
       if (exact) {
         this.value = exact.label;
-      } else if (filtered.length > 0) {
-        this.value = filtered[0].label;
       } else {
-        this.value = "";
+        // No exact match for the typed text: revert to the value shown when
+        // the dropdown opened if it was itself a valid option, rather than
+        // silently committing an arbitrary first-filtered-match the user
+        // never picked. Falls back to clearing if there's nothing valid to
+        // revert to.
+        const resolved = this.getResolvedOptions();
+        const openValueValid = resolved.some(
+          (o) => o.label.toLowerCase() === this.valueAtOpen.trim().toLowerCase(),
+        );
+        this.value = openValueValid ? this.valueAtOpen : "";
       }
       this.cursorCol = splitGraphemes(this.value).length;
     }

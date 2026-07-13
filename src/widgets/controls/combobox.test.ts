@@ -40,7 +40,7 @@ describe("ComboboxWidget option logic", () => {
     expect(w.isOpen).toBe(false);
   });
 
-  test("allowCustomValue: false reverts a non-matching typed value to the first match on close", () => {
+  test("allowCustomValue: false clears a typed value with zero matches on close", () => {
     const w = new ComboboxWidget();
     w.options = ["Apple", "Banana"];
     w.allowCustomValue = false;
@@ -48,6 +48,20 @@ describe("ComboboxWidget option logic", () => {
     w.isOpen = true;
     w.closeDropdown();
     expect(w.value).toBe(""); // no matches at all -> cleared
+  });
+
+  test("allowCustomValue: false reverts to the value shown on open, not an arbitrary filtered match", () => {
+    // Regression: closing with some (but no exact) matches used to commit
+    // filtered[0] — an option the user never picked — instead of reverting to
+    // the last valid selection.
+    const w = new ComboboxWidget();
+    w.options = ["Apple", "Apricot", "Banana"];
+    w.allowCustomValue = false;
+    w.value = "Banana";
+    w.openDropdown();
+    w.value = "Ap"; // narrows to Apple/Apricot, matching neither exactly
+    w.closeDropdown();
+    expect(w.value).toBe("Banana");
   });
 
   test("allowCustomValue: true (default) keeps a non-matching typed value on close", () => {
