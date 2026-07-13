@@ -127,6 +127,16 @@ export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";
 export * from "./widgets/controls/validation.ts";
 export { ValidationSummaryWidget } from "./widgets/controls/validation-summary.ts";
 export {
+  AreaChartWidget,
+  type BarChartItem,
+  BarChartWidget,
+  LinePlotWidget,
+  PieChartWidget,
+  type PieSlice,
+  ScatterPlotWidget,
+  type ScatterPoint,
+} from "./widgets/data/chart.ts";
+export {
   type DescriptionItem,
   DescriptionListWidget,
 } from "./widgets/data/description-list.ts";

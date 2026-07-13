@@ -28,6 +28,16 @@ export { TextAreaWidget } from "./controls/textarea.ts";
 export { ToggleButtonWidget } from "./controls/toggle-button.ts";
 export * from "./controls/validation.ts";
 export { ValidationSummaryWidget } from "./controls/validation-summary.ts";
+export {
+  AreaChartWidget,
+  type BarChartItem,
+  BarChartWidget,
+  LinePlotWidget,
+  PieChartWidget,
+  type PieSlice,
+  ScatterPlotWidget,
+  type ScatterPoint,
+} from "./data/chart.ts";
 export { type DescriptionItem, DescriptionListWidget } from "./data/description-list.ts";
 export { type DiffView, DiffWidget } from "./data/diff.ts";
 export type { FileEntry } from "./data/file-tree.ts";

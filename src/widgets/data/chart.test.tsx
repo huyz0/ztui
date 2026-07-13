@@ -1,4 +1,11 @@
 import { describe, expect, test } from "vitest";
+import {
+  AreaChartWidget,
+  BarChartWidget,
+  LinePlotWidget,
+  PieChartWidget,
+  ScatterPlotWidget,
+} from "../../core.ts";
 import { AreaChart, BarChart, LinePlot, PieChart, ScatterPlot, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
@@ -314,5 +321,28 @@ describe("PieChart", () => {
     );
     await empty.settle();
     expect(empty.findById("pie")).toBeTruthy(); // no throw
+  });
+});
+
+describe("chart widget classes are exported from the core entry", () => {
+  test("all five chart widget classes are importable from ztui core", async () => {
+    // Regression test: these widgets were registered (so <BarChart> etc.
+    // worked) but their classes weren't re-exported from core.ts, unlike
+    // every other widget — silently blocking direct import/instanceof use.
+    const t = await mountApp(
+      <VBox>
+        <BarChart id="bar" items={[{ label: "a", value: 1 }]} />
+        <LinePlot id="line" data={[1, 2, 3]} />
+        <ScatterPlot id="scatter" points={[{ x: 1, y: 1 }]} />
+        <AreaChart id="area" data={[1, 2, 3]} />
+        <PieChart id="pie" items={[{ label: "a", value: 1 }]} />
+      </VBox>,
+    );
+    await t.settle();
+    expect(t.findById("bar")).toBeInstanceOf(BarChartWidget);
+    expect(t.findById("line")).toBeInstanceOf(LinePlotWidget);
+    expect(t.findById("scatter")).toBeInstanceOf(ScatterPlotWidget);
+    expect(t.findById("area")).toBeInstanceOf(AreaChartWidget);
+    expect(t.findById("pie")).toBeInstanceOf(PieChartWidget);
   });
 });
