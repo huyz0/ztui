@@ -113,4 +113,42 @@ describe("ColorTween", () => {
       vi.useRealTimers();
     }
   });
+
+  test("re-calling to() every frame with the same target still converges (call-every-frame pattern)", () => {
+    // Regression: a render-loop-driven animation calls `to(target)` on every
+    // frame with the same target — this must be idempotent (like the plain
+    // Tween), not restart the 0->1 progress from scratch each time, or the
+    // color would never advance past the first frame's tiny eased step.
+    vi.useFakeTimers();
+    try {
+      const t = new ColorTween("#000000");
+      t.to("#ffffff", { duration: 100, easing: "linear" });
+      vi.advanceTimersByTime(50);
+      t.to("#ffffff", { duration: 100, easing: "linear" }); // same call, mid-flight
+      vi.advanceTimersByTime(50);
+      t.to("#ffffff", { duration: 100, easing: "linear" });
+      expect(t.value).toBe("#ffffff");
+      expect(t.animating).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("re-calling to() with the same target mid-flight swaps in the new onComplete", () => {
+    vi.useFakeTimers();
+    try {
+      const t = new ColorTween("#000000");
+      const first = vi.fn();
+      const second = vi.fn();
+      t.to("#ffffff", { duration: 100, easing: "linear", onComplete: first });
+      vi.advanceTimersByTime(50);
+      t.to("#ffffff", { duration: 100, easing: "linear", onComplete: second });
+      vi.advanceTimersByTime(60);
+      expect(t.animating).toBe(false);
+      expect(first).not.toHaveBeenCalled();
+      expect(second).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

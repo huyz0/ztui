@@ -137,7 +137,17 @@ export class ColorTween {
 
   /** Aim at a new target color, interpolating from the one shown now. */
   public to(target: string, opts: TweenOptions = {}): void {
-    if (target === this.targetColor && !this.progress.animating) return;
+    // Already heading to (or settled on) this target: a caller re-calling
+    // `to()` every render frame with the same target (the standard
+    // call-every-frame, idempotent-if-unchanged animation pattern) must not
+    // restart the 0→1 progress each time — that would keep resetting to the
+    // first frame's tiny eased step and the color would never converge.
+    // Delegating to the inner Tween's own `to()` gets its no-op/onComplete
+    // handling for free.
+    if (target === this.targetColor) {
+      this.progress.to(1, opts);
+      return;
+    }
     this.fromColor = this.value;
     this.targetColor = target;
     // Restart 0→1 progress; the colour is derived from it on each read.
