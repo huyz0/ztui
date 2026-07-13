@@ -199,6 +199,49 @@ describe("TabContainer Widget Suite", () => {
     expect(reorderCall).toEqual([0, 2]);
   });
 
+  test("tabMetrics reflects the new order immediately after a drag, without waiting for render()", async () => {
+    // Regression: moveTab() reordered the live children, but tabMetrics (used
+    // by handleMouse's hit-testing) was only ever recomputed inside render().
+    // Multiple mouse-move events can coalesce into more than one "drag"
+    // dispatch within a single frame, before a repaint happens — a second
+    // drag step in that window hit-tested against the pre-move header
+    // positions, letting a fast reorder-drag move the wrong tab.
+    const { findById } = await mountApp(
+      <TabContainer id="tabs" activeIndex={0} reorderable>
+        <Box id="pane0" label="A" />
+        <Box id="pane1" label="B" />
+        <Box id="pane2" label="C" />
+        <Box id="pane3" label="D" />
+      </TabContainer>,
+      { cols: 40, rows: 10 },
+    );
+
+    const tabsWidget = findById("tabs");
+    const contentRect = tabsWidget.getContentRect();
+    const [tabA, , tabC] = tabsWidget.tabMetrics;
+
+    tabsWidget.handleMouse({
+      type: "press",
+      button: "left",
+      x: tabA.startX + 1,
+      y: contentRect.y,
+    });
+    tabsWidget.handleMouse({
+      type: "drag",
+      button: "left",
+      x: tabC.startX + 1,
+      y: contentRect.y,
+    });
+
+    // The children did reorder (moveTab itself isn't stale)...
+    const labels = tabsWidget.children.filter((c: any) => c.label).map((c: any) => c.label);
+    expect(labels).toEqual(["B", "C", "A", "D"]);
+    // ...but tabMetrics — what the *next* drag/press event hit-tests
+    // against — must already reflect that same new order, not the pre-drag
+    // A/B/C/D layout, since no render() has run yet to refresh it.
+    expect(tabsWidget.tabMetrics.map((m: any) => m.label)).toEqual(["B", "C", "A", "D"]);
+  });
+
   test("dragging is a no-op when reorderable is not set", async () => {
     const { findById } = await mountApp(
       <TabContainer id="tabs" activeIndex={0}>

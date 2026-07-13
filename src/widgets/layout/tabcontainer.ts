@@ -105,10 +105,18 @@ export class TabContainerWidget extends Widget {
     } else if (ev.type === "drag" && ev.button === "left" && this.draggingIndex !== null) {
       const targetTab = this.tabMetrics.find((m) => ev.x >= m.startX && ev.x < m.startX + m.width);
       if (targetTab && targetTab.index !== this.draggingIndex) {
-        this.moveTab(this.draggingIndex, targetTab.index);
-        this.draggingIndex = targetTab.index;
-        this.activeIndex = targetTab.index;
-        this.hoveredIndex = targetTab.index;
+        const fromIndex = this.draggingIndex;
+        const toIndex = targetTab.index;
+        this.moveTab(fromIndex, toIndex);
+        this.draggingIndex = toIndex;
+        this.activeIndex = toIndex;
+        this.hoveredIndex = toIndex;
+        // Multiple mouse-move events can coalesce into more than one "drag"
+        // dispatch within a single frame, before render() gets a chance to
+        // recompute tabMetrics from the just-reordered children. Reorder the
+        // cached metrics here too so a second drag step in the same frame
+        // hit-tests against the current order instead of the stale one.
+        this.reorderTabMetrics(fromIndex, toIndex);
         App.instance?.queueRender();
       }
       ev.handled = true;
@@ -134,6 +142,34 @@ export class TabContainerWidget extends Widget {
       const after = panels[toIndex + 1];
       if (after) this.insertBefore(dragged, after);
       else this.appendChild(dragged);
+    }
+  }
+
+  /**
+   * Re-derive {@link tabMetrics} immediately after {@link moveTab} reorders
+   * the children, instead of waiting for the next render() to recompute it —
+   * a same-frame second drag event would otherwise hit-test against header
+   * positions from the pre-move order.
+   */
+  private reorderTabMetrics(fromIndex: number, toIndex: number): void {
+    const moved = this.tabMetrics.splice(fromIndex, 1)[0];
+    if (!moved) return;
+    this.tabMetrics.splice(toIndex, 0, moved);
+
+    // Lay the reordered metrics out left-to-right from the content edge,
+    // matching render()'s separator rule: a "│" column between two tabs
+    // neither of which is the active one.
+    let currentX = this.getContentRect().x;
+    for (let i = 0; i < this.tabMetrics.length; i++) {
+      const m = this.tabMetrics[i];
+      if (i > 0) {
+        const isPrevSelected = i - 1 === this.activeIndex;
+        const isCurrentSelected = i === this.activeIndex;
+        if (!isPrevSelected && !isCurrentSelected) currentX += 1;
+      }
+      m.index = i;
+      m.startX = currentX;
+      currentX += m.width;
     }
   }
 
