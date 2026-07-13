@@ -41,13 +41,41 @@ export class ImageWidget extends Widget {
     if (client.width <= 0 || client.height <= 0) return;
 
     const bgHex = this.findResolvedBackground();
-    const bgRgb = parseColorToRGB(
-      bgHex === "default" ? ThemeManager.getInstance().getActiveTheme().colors.background : bgHex,
-    );
     const style = new Style({
       color: "default",
       background: bgHex,
     });
+
+    const app = App.instance;
+    const capabilities = app?.driver.capabilities;
+    const isGraphicsSupported =
+      capabilities && capabilities.graphicsProtocol !== "none" && !this.ansi;
+    const cellSize = capabilities?.cellSize || { width: 10, height: 20 };
+    const pixelWidth = client.width * cellSize.width;
+    const pixelHeight = client.height * cellSize.height;
+
+    // Skip re-reading the file and re-decoding entirely when nothing that
+    // could change the painted output has changed since the last frame —
+    // decodeImage (PNG/GIF/JPEG parsing) is not cheap, and without this an
+    // ImageWidget redrawn every frame (e.g. inside an animated panel) would
+    // re-read and re-decode from disk on every single frame despite `src`
+    // never changing.
+    const isCacheValid =
+      isGraphicsSupported &&
+      this.cachedPixels !== null &&
+      this.lastPixelWidth === pixelWidth &&
+      this.lastPixelHeight === pixelHeight &&
+      this.lastBgHex === bgHex &&
+      this.lastSrc === (this.src || "") &&
+      this.lastBuffer === (this.buffer || null);
+
+    if (isCacheValid) {
+      this.paintGraphic(buffer, client, style, this.cachedPixels!, this.cachedPngBase64, {
+        width: pixelWidth,
+        height: pixelHeight,
+      });
+      return;
+    }
 
     let imageBuffer: Uint8Array | undefined;
     if (this.buffer) {
@@ -89,92 +117,48 @@ export class ImageWidget extends Widget {
       return;
     }
 
-    const app = App.instance;
-    const capabilities = app?.driver.capabilities;
-    const isGraphicsSupported =
-      capabilities && capabilities.graphicsProtocol !== "none" && !this.ansi;
-
-    const cellSize = capabilities?.cellSize || { width: 10, height: 20 };
-
     if (isGraphicsSupported) {
       // 1. Graphics Protocol mode
-      const pixelWidth = client.width * cellSize.width;
-      const pixelHeight = client.height * cellSize.height;
+      const bgRgb = parseColorToRGB(
+        bgHex === "default" ? ThemeManager.getInstance().getActiveTheme().colors.background : bgHex,
+      );
+      const scaledPixels = resizeImage(
+        decoded.pixels,
+        decoded.width,
+        decoded.height,
+        pixelWidth,
+        pixelHeight,
+      );
 
-      const isCacheValid =
-        this.cachedPixels !== null &&
-        this.lastPixelWidth === pixelWidth &&
-        this.lastPixelHeight === pixelHeight &&
-        this.lastBgHex === bgHex &&
-        this.lastSrc === (this.src || "") &&
-        this.lastBuffer === (this.buffer || null);
-
-      let scaledPixels: Uint8Array;
-      let pngBase64: string;
-
-      if (isCacheValid) {
-        scaledPixels = this.cachedPixels!;
-        pngBase64 = this.cachedPngBase64;
-      } else {
-        scaledPixels = resizeImage(
-          decoded.pixels,
-          decoded.width,
-          decoded.height,
-          pixelWidth,
-          pixelHeight,
-        );
-
-        // Blend transparency with the background color
-        for (let i = 0; i < scaledPixels.length; i += 4) {
-          const alpha = scaledPixels[i + 3] / 255;
-          scaledPixels[i] = Math.round(scaledPixels[i] * alpha + bgRgb.r * (1 - alpha));
-          scaledPixels[i + 1] = Math.round(scaledPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
-          scaledPixels[i + 2] = Math.round(scaledPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
-          scaledPixels[i + 3] = 255;
-        }
-
-        pngBase64 = encodePNG(scaledPixels, pixelWidth, pixelHeight);
-
-        // Cache the results
-        this.cachedPixels = scaledPixels;
-        this.cachedPngBase64 = pngBase64;
-        this.lastPixelWidth = pixelWidth;
-        this.lastPixelHeight = pixelHeight;
-        this.lastBgHex = bgHex;
-        this.lastSrc = this.src || "";
-        this.lastBuffer = this.buffer || null;
+      // Blend transparency with the background color
+      for (let i = 0; i < scaledPixels.length; i += 4) {
+        const alpha = scaledPixels[i + 3] / 255;
+        scaledPixels[i] = Math.round(scaledPixels[i] * alpha + bgRgb.r * (1 - alpha));
+        scaledPixels[i + 1] = Math.round(scaledPixels[i + 1] * alpha + bgRgb.g * (1 - alpha));
+        scaledPixels[i + 2] = Math.round(scaledPixels[i + 2] * alpha + bgRgb.b * (1 - alpha));
+        scaledPixels[i + 3] = 255;
       }
 
-      buffer.cells[client.y][client.x] = {
-        char: " ",
-        style,
-        wideContinuation: false,
-        graphic: {
-          type: "image",
-          pixelBuffer: scaledPixels,
-          pixelWidth,
-          pixelHeight,
-          cellWidth: client.width,
-          cellHeight: client.height,
-          pngBase64,
-          zIndex: this.computedStyle.zIndex,
-        },
-      };
-      buffer.noteGraphic(client.x, client.y);
+      const pngBase64 = encodePNG(scaledPixels, pixelWidth, pixelHeight);
 
-      // Mark other cells as wideContinuation so they are skipped by the terminal text renderer
-      for (let dy = 0; dy < client.height; dy++) {
-        for (let dx = 0; dx < client.width; dx++) {
-          if (dy === 0 && dx === 0) continue;
-          buffer.cells[client.y + dy][client.x + dx] = {
-            char: "",
-            style,
-            wideContinuation: true,
-          };
-        }
-      }
+      // Cache the results
+      this.cachedPixels = scaledPixels;
+      this.cachedPngBase64 = pngBase64;
+      this.lastPixelWidth = pixelWidth;
+      this.lastPixelHeight = pixelHeight;
+      this.lastBgHex = bgHex;
+      this.lastSrc = this.src || "";
+      this.lastBuffer = this.buffer || null;
+
+      this.paintGraphic(buffer, client, style, scaledPixels, pngBase64, {
+        width: pixelWidth,
+        height: pixelHeight,
+      });
     } else {
       // 2. ANSI Fallback mode using dynamic character selection
+      const bgRgb = parseColorToRGB(
+        bgHex === "default" ? ThemeManager.getInstance().getActiveTheme().colors.background : bgHex,
+      );
       renderAnsiFallback(
         buffer,
         decoded.pixels,
@@ -184,6 +168,45 @@ export class ImageWidget extends Widget {
         bgRgb,
         bgHex,
       );
+    }
+  }
+
+  /** Write the graphics-protocol cell + wideContinuation span for a scaled/encoded frame. */
+  private paintGraphic(
+    buffer: ScreenBuffer,
+    client: { x: number; y: number; width: number; height: number },
+    style: Style,
+    scaledPixels: Uint8Array,
+    pngBase64: string,
+    pixelSize: { width: number; height: number },
+  ): void {
+    buffer.cells[client.y][client.x] = {
+      char: " ",
+      style,
+      wideContinuation: false,
+      graphic: {
+        type: "image",
+        pixelBuffer: scaledPixels,
+        pixelWidth: pixelSize.width,
+        pixelHeight: pixelSize.height,
+        cellWidth: client.width,
+        cellHeight: client.height,
+        pngBase64,
+        zIndex: this.computedStyle.zIndex,
+      },
+    };
+    buffer.noteGraphic(client.x, client.y);
+
+    // Mark other cells as wideContinuation so they are skipped by the terminal text renderer
+    for (let dy = 0; dy < client.height; dy++) {
+      for (let dx = 0; dx < client.width; dx++) {
+        if (dy === 0 && dx === 0) continue;
+        buffer.cells[client.y + dy][client.x + dx] = {
+          char: "",
+          style,
+          wideContinuation: true,
+        };
+      }
     }
   }
 

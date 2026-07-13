@@ -1,6 +1,15 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+
+// ESM named exports can't be spied in-place ("Module namespace is not
+// configurable") — mock node:fs to wrap the real readFileSync in a vi.fn so
+// the cache-skip regression test below can count calls to it.
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof fs>();
+  return { ...actual, readFileSync: vi.fn(actual.readFileSync) };
+});
+
 import { fullColorRgbaToSixel } from "../../driver/bun/graphics.ts";
 import { reconciler } from "../../react/reconciler.ts";
 import { Image, SvgImage, VBox, View } from "../../react.ts";
@@ -152,6 +161,38 @@ describe("Image & SVG Image Widgets", () => {
         capabilities: { graphicsProtocol: "none" },
       });
       expect([" ", "█"]).toContain(cellAt(0, 0).char);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
+  test("Doesn't re-read/re-decode the file on a repeat render with an unchanged src", async () => {
+    // Regression: fs.readFileSync + decodeImage ran unconditionally at the top
+    // of render(), before the isCacheValid check, so a graphics-mode Image
+    // redrawn every frame re-read and re-decoded from disk every single frame
+    // despite nothing (src, size, background) having changed.
+    const tempFile = path.join(__dirname, "temp_test_image_cache.png");
+    fs.writeFileSync(tempFile, Buffer.from(TINY_PNG_BASE64, "base64"));
+    const readSpy = fs.readFileSync as unknown as ReturnType<typeof vi.fn>;
+    readSpy.mockClear();
+    try {
+      const t = await mountApp(<Image src={tempFile} style={{ width: 4, height: 2 }} />, {
+        cols: 10,
+        rows: 5,
+        capabilities: { graphicsProtocol: "sixel" },
+      });
+      await t.settle();
+      const callsAfterFirstRender = readSpy.mock.calls.filter((c) => c[0] === tempFile).length;
+      expect(callsAfterFirstRender).toBeGreaterThan(0);
+
+      // Force additional renders with nothing about the image changed.
+      t.app.queueRender();
+      await t.settle();
+      t.app.queueRender();
+      await t.settle();
+
+      const callsAfterMoreRenders = readSpy.mock.calls.filter((c) => c[0] === tempFile).length;
+      expect(callsAfterMoreRenders).toBe(callsAfterFirstRender);
     } finally {
       if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
     }
