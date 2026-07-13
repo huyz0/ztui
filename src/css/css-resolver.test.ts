@@ -388,6 +388,28 @@ describe("CSSResolver performance helpers", () => {
     expect(resolver.resolveStyles(w, false).color).toBe("#111111");
   });
 
+  test("chained pseudo-classes require every one of them to match, not just the first", () => {
+    // Regression: parseSelector only kept parts[1] as `pseudo`, discarding a
+    // second (or later) chained pseudo-class entirely — "button:focus:hover"
+    // was parsed as pseudo="focus" alone, matching on focus regardless of
+    // hover state.
+    const resolver = new CSSResolver(
+      parseTCSS("button { color: #111111; } button:focus:hover { color: #ff00ff; }"),
+    );
+    const w = new Widget("button");
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111"); // neither
+    w.focused = true;
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111"); // focus only
+    expect(resolver.resolveStyles(w, true).color).toBe("#ff00ff"); // both
+    w.focused = false;
+    expect(resolver.resolveStyles(w, true).color).toBe("#111111"); // hover only
+  });
+
+  test("hasHoverRules detects :hover even when chained after another pseudo-class", () => {
+    const resolver = new CSSResolver(parseTCSS("button:focus:hover { color: #ff00ff; }"));
+    expect(resolver.hasHoverRules()).toBe(true);
+  });
+
   test("a comma-separated grouped selector styles every part of the group", () => {
     // Regression: parseTCSS never split a grouped selector ("h1, h2 { ... }")
     // on its top-level commas, so the leftover ", " in the single selector

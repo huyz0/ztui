@@ -55,7 +55,7 @@ export class CSSResolver {
   // Parsed-selector cache: `parseSelector` runs once per rule per widget per
   // frame, so memoizing the split keeps re-styling from re-parsing the same
   // strings thousands of times.
-  private selectorCache = new Map<string, { base: string; pseudo?: string }>();
+  private selectorCache = new Map<string, { base: string; pseudos: string[] }>();
   // Whether any rule carries a `:hover` pseudo — lets the app skip a full
   // relayout on pointer hover changes when nothing visual depends on hover.
   private _hasHoverRules: boolean | null = null;
@@ -83,8 +83,8 @@ export class CSSResolver {
   /** True when any loaded rule uses `:hover` (cached; recomputed when rules change). */
   public hasHoverRules(): boolean {
     if (this._hasHoverRules === null) {
-      this._hasHoverRules = this.rules.some(
-        (r) => this.parseSelector(r.selector).pseudo === "hover",
+      this._hasHoverRules = this.rules.some((r) =>
+        this.parseSelector(r.selector).pseudos.includes("hover"),
       );
     }
     return this._hasHoverRules;
@@ -422,9 +422,9 @@ export class CSSResolver {
       const parsed = this.parseSelector(rule.selector);
       if (
         widget.matchesSelector(parsed.base) &&
-        this.pseudoMatches(parsed.pseudo, widget, isHovered)
+        parsed.pseudos.every((p) => this.pseudoMatches(p, widget, isHovered))
       ) {
-        const spec = this.calculateSpecificity(parsed.base, parsed.pseudo);
+        const spec = this.calculateSpecificity(parsed.base, parsed.pseudos);
         matchedRules.push({ specificity: spec, properties: rule.properties });
       }
     }
@@ -471,7 +471,7 @@ export class CSSResolver {
     return computed as WidgetStyles;
   }
 
-  private calculateSpecificity(baseSelector: string, pseudo?: string): number {
+  private calculateSpecificity(baseSelector: string, pseudos: string[]): number {
     let idCount = 0;
     let classCount = 0;
     let tagCount = 0;
@@ -503,9 +503,9 @@ export class CSSResolver {
       }
     }
 
-    if (pseudo) {
-      classCount++;
-    }
+    // Each pseudo-class counts toward specificity like a regular class, so
+    // `a:hover:focus` outranks a plain `a:hover`.
+    classCount += pseudos.length;
 
     return idCount * 100 + classCount * 10 + tagCount;
   }
@@ -531,11 +531,20 @@ export class CSSResolver {
     return false;
   }
 
-  private parseSelector(sel: string): { base: string; pseudo?: string } {
+  private parseSelector(sel: string): { base: string; pseudos: string[] } {
     const cached = this.selectorCache.get(sel);
     if (cached) return cached;
+    // A selector may chain multiple pseudo-classes (e.g. `Button:focus:hover`);
+    // every one after the base must be kept, not just the first, or a rule
+    // like that would silently apply on `:focus` alone.
     const parts = sel.split(":");
-    const parsed = { base: parts[0].trim(), pseudo: parts[1]?.trim() };
+    const parsed = {
+      base: parts[0].trim(),
+      pseudos: parts
+        .slice(1)
+        .map((p) => p.trim())
+        .filter(Boolean),
+    };
     this.selectorCache.set(sel, parsed);
     return parsed;
   }
