@@ -83,6 +83,28 @@ describe("App — clipboard key routing", () => {
     expect(input.value).toBe("abXY");
   });
 
+  test("clipboard shortcuts are ignored once the focused widget is disabled", async () => {
+    // Regression: routeClipboardKey ran before the isDisabled() check used by
+    // normal key bubbling, so a text widget disabled while it still held
+    // focus kept accepting paste/select-all instead of ignoring all input.
+    const { findById, screen, driver } = await mountApp(<Input id="in" />, {
+      cols: 40,
+      rows: 5,
+    });
+    const input = findById("in");
+    input.value = "ab";
+    screen.focusWidget(input);
+    driver.clipboard.set("XY");
+    input.disabled = true;
+
+    driver.emit("key", { key: "ctrl+v", name: "v", ctrl: true, meta: false, shift: false });
+    await flush(10);
+    expect(input.value).toBe("ab"); // paste did not go through
+
+    driver.emit("key", { key: "ctrl+a", name: "a", ctrl: true, meta: false, shift: false });
+    expect(input.hasSelection()).toBe(false); // select-all did not go through
+  });
+
   test("plain Ctrl+C copies the selection (and does not quit) when one exists", async () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
     try {

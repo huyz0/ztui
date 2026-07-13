@@ -570,6 +570,10 @@ export class AppInput {
   private routeClipboardKey(ev: KeyEvent): boolean {
     const focused = this.host.activeScreen.focusedWidget as ClipboardWidget | null;
     if (!focused) return false;
+    // A disabled focused widget (e.g. disabled while it still held focus)
+    // must not accept paste/select-all/copy/cut either — it swallows nothing,
+    // same as the normal key-bubbling guard below.
+    if (focused instanceof Widget && focused.isDisabled()) return false;
 
     if (ev.ctrl && ev.shift && ev.name === "c" && typeof focused.copySelection === "function") {
       this.safeInvoke("copySelection", () => focused.copySelection?.());
