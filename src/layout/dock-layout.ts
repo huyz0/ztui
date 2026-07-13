@@ -8,6 +8,14 @@ export class DockLayout extends Layout {
   public resolve(parent: Widget): void {
     let remaining = parent.getContentRect();
 
+    // Pass 1: shrink `remaining` by every docked (top/bottom/left/right)
+    // child, regardless of where an undocked ("fill") child sits in between
+    // them in source order — a common layout is
+    // `<Header/><MainContent/><Footer/>`, where the fill content is neither
+    // first nor last among its dock siblings, and each dock must still get
+    // its full edge space. The undocked children are resolved in pass 2 below
+    // once every dock has claimed its share.
+    const undocked: Widget[] = [];
     for (const child of parent.children) {
       if (
         !(child instanceof Widget) ||
@@ -18,7 +26,7 @@ export class DockLayout extends Layout {
 
       const dock = child.computedStyle.dock;
       if (!dock) {
-        child.region = remaining.clone();
+        undocked.push(child);
         continue;
       }
 
@@ -103,5 +111,12 @@ export class DockLayout extends Layout {
         );
       }
     }
+
+    // Pass 2: the first undocked child gets whatever space is left after
+    // every dock has claimed its share; any further undocked children get an
+    // empty rect instead of overlapping it.
+    undocked.forEach((child, i) => {
+      child.region = i === 0 ? remaining.clone() : new Region(remaining.offset, new Size(0, 0));
+    });
   }
 }

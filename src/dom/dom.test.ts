@@ -274,6 +274,59 @@ describe("DOM and layout resolution", () => {
     expect(centerChild.region.height).toBe(6);
   });
 
+  test("DockLayout gives the fill rect to only the first undocked child", () => {
+    // Regression: a second undocked ("fill") child got the same full
+    // `remaining` rect as the first instead of an empty one, so it silently
+    // overlapped it.
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+
+    const firstFill = new Widget("box");
+    const secondFill = new Widget("box");
+
+    parent.appendChild(firstFill);
+    parent.appendChild(secondFill);
+
+    new DockLayout().resolve(parent);
+
+    expect(firstFill.region.width).toBe(10);
+    expect(firstFill.region.height).toBe(10);
+    // The second fill child must not also claim the full rect.
+    expect(secondFill.region.width).toBe(0);
+    expect(secondFill.region.height).toBe(0);
+  });
+
+  test("DockLayout resolves docks on both sides of a fill child, regardless of source order", () => {
+    // Regression: an earlier fix attempt shrank `remaining` immediately after
+    // assigning the fill child, which broke the common
+    // <Header/><MainContent/><Footer/> pattern — a dock placed *after* the
+    // fill child in source order must still get its edge space, not zero.
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+
+    const header = new Widget("box");
+    header.style.dock = "top";
+    header.style.height = 2;
+
+    const content = new Widget("box"); // undocked, sits between the two docks
+
+    const footer = new Widget("box");
+    footer.style.dock = "bottom";
+    footer.style.height = 2;
+
+    parent.appendChild(header);
+    parent.appendChild(content);
+    parent.appendChild(footer);
+
+    new DockLayout().resolve(parent);
+
+    expect(header.region).toMatchObject({ y: 0, height: 2 });
+    expect(footer.region).toMatchObject({ y: 8, height: 2 });
+    // The fill child gets everything left after both docks, not just what was
+    // left at its position in iteration order.
+    expect(content.region).toMatchObject({ y: 2, height: 6 });
+  });
+
   test("DockLayout clamps over-committed fixed docks to the space actually remaining", () => {
     const parent = new Widget("view");
     parent.region = new Region(Offset.ORIGIN, new Size(30, 20));
