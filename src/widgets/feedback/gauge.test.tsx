@@ -114,4 +114,24 @@ describe("Gauge", () => {
     expect(findById("g")).toBeDefined();
     expect(() => text()).not.toThrow();
   });
+
+  test("a 1-wide content rect clamps labelW to 0 instead of going negative", async () => {
+    // Defensive: labelW = min(stringWidth(label), rect.width - 2) could go
+    // negative once rect.width dropped to 1 (rect.width - 2 === -1). The
+    // `labelW > 0` checks elsewhere happen to treat -1 the same as 0 today,
+    // so this isn't currently visible in output, but labelW should never be
+    // a negative "width" — clamp it so future changes to this logic (e.g. a
+    // `>= 0` check, or reusing labelW as a slice length) can't regress on it.
+    const { findById, text } = await mountApp(
+      <VBox>
+        <Gauge id="g" label="CPU" style={{ width: 1, height: 1 }} value={50} showValue={false} />
+      </VBox>,
+      { cols: 10, rows: 3 },
+    );
+    expect(findById("g")).toBeDefined();
+    expect(() => text()).not.toThrow();
+    // The label can't fit in a 1-wide bar — it must not appear at all, and
+    // the single cell renders as bar fill/track, not a clipped label glyph.
+    expect(text()).not.toContain("CPU");
+  });
 });

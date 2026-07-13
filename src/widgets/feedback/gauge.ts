@@ -129,7 +129,7 @@ export class GaugeWidget extends Widget {
 
     // Allocate columns: label | bar | value. Shed the value first, then the
     // label, so at least a one-cell bar always survives a tight width.
-    let labelW = this.label ? Math.min(stringWidth(this.label), rect.width - 2) : 0;
+    let labelW = this.label ? Math.max(0, Math.min(stringWidth(this.label), rect.width - 2)) : 0;
     let valueW = this.showValue ? stringWidth(this.readout) : 0;
     const need = () => (labelW ? labelW + 1 : 0) + (valueW ? valueW + 1 : 0);
     let barW = rect.width - need();
