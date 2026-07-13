@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Widget } from "../dom/widget.ts";
 import { Button, DevTools, DevToolsHighlight, Input, Label, VBox } from "../react/components.tsx";
+import { reconciler } from "../react/reconciler.ts";
 import { findDevId, resolveDevNode, serializeDevTree, widgetDetail } from "../tools/devtools.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
@@ -128,6 +129,61 @@ describe("DevTools panel", () => {
     // A cell outside the target keeps its glyph and is not tinted.
     expect(t.cellAt(6, 0).char).toBe("g");
     expect(t.cellAt(6, 0).style.background).not.toBe(inside.style.background);
+  });
+
+  test("onInspect re-reports the selected widget's region on every poll, not only when the selection changes", async () => {
+    // Regression: the polling effect only re-derived the highlighted region
+    // when the hovered widget's *id* changed. If the same widget stayed
+    // selected/hovered across a resize (e.g. right after a layout pass moved
+    // or resized it), the highlight overlay kept painting at the stale rect
+    // from the moment it was first selected, until the user picked a
+    // different widget.
+    let rootRef: Widget | null = null;
+    const reports: unknown[] = [];
+    // `shifted` moves the hovered button via a real style/layout change
+    // (the parent's padding), rather than poking `.region` directly, so the
+    // region change survives the app's own re-layout — same widget instance
+    // (same id, same key), just repositioned, mirroring a real resize.
+    const tree = (shifted: boolean) => (
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <VBox
+          id="inspected"
+          style={{ padding: shifted ? { left: 5, top: 2 } : {} }}
+          ref={(w: Widget | null) => {
+            rootRef = w;
+          }}
+        >
+          <Button id="alpha">Alpha</Button>
+        </VBox>
+        <DevTools root={rootRef} pick refreshMs={10} onInspect={(r) => reports.push(r)} />
+      </VBox>
+    );
+    const t = await mountApp(tree(false), OPTS);
+    await t.settle();
+    // `root` is a plain closure variable, not React state — the first render
+    // captured it as null (refs commit after render). Re-render once now that
+    // rootRef is populated so DevTools actually has a tree to pick from.
+    reconciler.updateContainer(tree(false), t.container, null, () => {});
+    await t.settle();
+
+    // Hover the button so pick-mode selects it.
+    t.driver.simulateMouse(1, 0, "move", "none");
+    await t.settle(30);
+    const reportsAfterHover = reports.length;
+    expect(reportsAfterHover).toBeGreaterThan(0);
+    const firstRegion = reports[reports.length - 1] as { x: number; y: number };
+    expect(firstRegion).toEqual({ x: 0, y: 0, width: expect.any(Number), height: 1 });
+
+    // Re-layout the still-hovered widget (padding shift on its parent)
+    // without changing which widget is hovered/selected.
+    reconciler.updateContainer(tree(true), t.container, null, () => {});
+    await t.settle(30);
+
+    const latestRegion = reports[reports.length - 1] as { x: number; y: number };
+    // Fresh poll ticks must pick up the moved region, not keep repeating the
+    // stale one captured at selection time.
+    expect(latestRegion.x).toBe(firstRegion.x + 5);
+    expect(latestRegion.y).toBe(firstRegion.y + 2);
   });
 
   test("null region renders nothing", async () => {

@@ -130,6 +130,16 @@ export function DevTools({
   useEffect(() => {
     const h = setInterval(() => {
       setTick((n) => n + 1);
+      // Re-report the current selection's region every tick, not just when the
+      // selected id changes — the selected widget's `region` can move (e.g. a
+      // resize lands between polls) while the same widget stays selected, and
+      // only re-deriving on an id change would leave the highlight overlay
+      // painting at a stale rect until the user picks something else.
+      if (selected && root) {
+        const node = resolveDevNode(root as DOMNode, selected);
+        const r = node && "region" in node ? (node as Widget).region : null;
+        onInspect?.(r && r.width > 0 ? { x: r.x, y: r.y, width: r.width, height: r.height } : null);
+      }
       if (!pick || !root) return;
       const hovered = App.instance?.hoveredWidget ?? null;
       if (!hovered) return;
@@ -137,7 +147,7 @@ export function DevTools({
       if (id && id !== selected) select(id);
     }, refreshMs);
     return () => clearInterval(h);
-  }, [refreshMs, pick, root, selected]);
+  }, [refreshMs, pick, root, selected, onInspect]);
 
   // `setTick` forces this to recompute against the current live tree each poll.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-read the mutable tree every tick
