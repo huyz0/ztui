@@ -219,15 +219,21 @@ export class TableWidget<Row = any> extends Widget {
       const col = this.columns.find((c) => c.key === sort.key);
       if (col) {
         const dir = sort.direction === "asc" ? 1 : -1;
-        const cmp =
-          col.compare ??
-          ((a: Row, b: Row): number => {
-            const av = this.sortValue(col, a, 0);
-            const bv = this.sortValue(col, b, 0);
-            if (typeof av === "number" && typeof bv === "number") return av - bv;
-            return String(av).localeCompare(String(bv));
+        if (col.compare) {
+          const compare = col.compare;
+          this.viewIndex.sort((a, b) => dir * compare(this.data[a], this.data[b]));
+        } else {
+          // No custom comparator: fall back to each row's real data index (not
+          // a hardcoded 0) so a `col.cell(row, rowIndex)` accessor that
+          // depends on the row's position sorts correctly for every row, not
+          // just the first.
+          this.viewIndex.sort((a, b) => {
+            const av = this.sortValue(col, this.data[a], a);
+            const bv = this.sortValue(col, this.data[b], b);
+            if (typeof av === "number" && typeof bv === "number") return dir * (av - bv);
+            return dir * String(av).localeCompare(String(bv));
           });
-        this.viewIndex.sort((a, b) => dir * cmp(this.data[a], this.data[b]));
+        }
       }
     }
 

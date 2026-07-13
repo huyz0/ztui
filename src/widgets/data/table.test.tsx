@@ -188,6 +188,42 @@ describe("Table sorting (phase 4)", () => {
     expect(ages[ages.length - 1]).toContain("100");
   });
 
+  test("sorts correctly when a column's cell accessor depends on the row's index, not just row 0", async () => {
+    // Regression: the default comparator hardcoded dataIndex=0 for every
+    // sortValue() call instead of each row's real index, so any column whose
+    // `cell` accessor falls back to the (row, rowIndex) argument sorted using
+    // row 0's value for every comparison — producing garbage/no-op ordering.
+    interface Item {
+      score: number;
+    }
+    const data: Item[] = [{ score: 30 }, { score: 10 }, { score: 20 }];
+    // No `key` match on the row itself: sortValue() always falls through to
+    // col.cell(row, dataIndex), which returns the row's *index-derived* rank
+    // rather than something tied to `row.score` directly — this only produces
+    // a correct sort if the real dataIndex is threaded through per row.
+    const rankColumns: TableColumn<Item>[] = [
+      {
+        key: "rank",
+        header: "Rank",
+        width: 6,
+        sortable: true,
+        cell: (_row, rowIndex) => String(data[rowIndex].score),
+      },
+    ];
+    const t = await mountApp(
+      <Table data={data} columns={rankColumns} style={{ height: "100%" }} />,
+    );
+    const widget = findTable(t);
+    widget.toggleSort("rank");
+    await t.settle();
+    const lines = t
+      .text()
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^\d+$/.test(l));
+    expect(lines).toEqual(["10", "20", "30"]);
+  });
+
   test("clicking a sortable header cell triggers a sort", async () => {
     const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
     const widget = findTable(t);
