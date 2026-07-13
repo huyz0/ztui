@@ -135,6 +135,45 @@ describe("Diff", () => {
     expect(t.text()).not.toContain("row 0");
   });
 
+  test("scroll clamp reflects a view-mode change even before the next render", async () => {
+    // Regression: handleKey/handleScroll clamped scrollTop using the display
+    // rebuilt by the *last* render (ensureModel/rebuildDisplay only ran
+    // inside measure()/render()). Toggling Unified/Split changes the row
+    // count, so a key event landing before the next render clamped against
+    // stale geometry.
+    const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
+    const changed = Array.from({ length: 40 }, (_, i) => `changed ${i}`).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" style={{ height: 8 }} oldText={big} newText={changed} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+
+    // Scroll to the bottom of the unified view.
+    w.handleKey({ name: "end", handled: false } as never);
+    await t.settle();
+    const unifiedMax = (w as any).scrollTop;
+    expect(unifiedMax).toBeGreaterThan(0);
+
+    // Switch to split view (which pairs old/new lines differently, giving a
+    // different row count than unified) directly, without letting a render
+    // run — simulating a key event landing in the same tick as a prop change.
+    w.view = "split";
+    w.handleKey({ name: "end", handled: false } as never);
+
+    // The clamp must reflect the *split* row count immediately. Without the
+    // fix, `display` is still the stale unified array, so re-clamping to
+    // "end" is a no-op and scrollTop stays at unifiedMax; with the fix it
+    // reflects split's own (here, smaller) max.
+    expect((w as any).scrollTop).not.toBe(unifiedMax);
+
+    await t.settle();
+    expect(t.text()).toContain("│"); // split divider actually rendered
+  });
+
   test("split view pads unequal deletion/addition blocks across both panes", async () => {
     const oldText = "keep\ndrop A\ndrop B\ndrop C\ntail";
     const newText = "keep\nadd X\ntail";

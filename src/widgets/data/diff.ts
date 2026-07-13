@@ -131,6 +131,11 @@ export class DiffWidget extends Widget {
   // Built display rows for the width recorded in `displayWidth`.
   private display: DisplayRow[] = [];
   private displayWidth = -1;
+  // Last width actually used to build `display`, kept across an `ensureModel`
+  // reset (which zeroes `displayWidth` to force a rebuild) so scroll/key
+  // handlers can refresh the display on demand without needing to know the
+  // current content width themselves.
+  private lastContentWidth = -1;
 
   constructor() {
     super("diff");
@@ -237,6 +242,7 @@ export class DiffWidget extends Widget {
     const numW = this.lineNumbers ? this.numWidth() : 0;
     this.display = this.view === "split" ? this.buildSplit(numW, width) : this.buildUnified(numW);
     this.displayWidth = width;
+    this.lastContentWidth = width;
   }
 
   private buildUnified(numW: number): DisplayRow[] {
@@ -405,9 +411,23 @@ export class DiffWidget extends Widget {
     return maxRowScrollTop(this.display.length, visibleRows);
   }
 
+  /**
+   * Refresh `display` on demand if a prop change (e.g. toggling Unified/Split)
+   * left it stale — `ensureModel`/`rebuildDisplay` otherwise only run inside
+   * `measure()`/`render()`, so a key or wheel event arriving before the next
+   * render would clamp `scrollTop` against the old view's row count.
+   */
+  private ensureFreshDisplay(): void {
+    this.ensureModel();
+    if (this.displayWidth === -1 && this.lastContentWidth >= 0) {
+      this.rebuildDisplay(this.lastContentWidth);
+    }
+  }
+
   public override handleScroll(ev: any): void {
     super.handleScroll(ev);
     if (ev.handled) return;
+    this.ensureFreshDisplay();
     const next = wheelScrollTop(ev.type, this.scrollTop, this.maxScrollTop(this.lastVisibleRows));
     if (next !== null) {
       this.scrollTop = next;
@@ -419,6 +439,7 @@ export class DiffWidget extends Widget {
   public override handleKey(ev: any): void {
     super.handleKey(ev);
     if (ev.handled) return;
+    this.ensureFreshDisplay();
     const max = this.maxScrollTop(this.lastVisibleRows);
     const next = scrollTopForKey(ev.name || ev.key, this.scrollTop, max, this.lastVisibleRows);
     if (next !== null) {
