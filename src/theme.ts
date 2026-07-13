@@ -163,6 +163,34 @@ export function deriveTheme(
   };
 }
 
+/**
+ * Fill `border`/`focus`/`selectionBg`/`selectionFg` from other required colors
+ * when a theme omits them, so every theme — built-in or user-registered — has
+ * consistent values for these tokens rather than leaving them `undefined` for
+ * whichever component eventually reads them directly.
+ */
+function withColorDefaults(theme: Theme): Theme {
+  const c = theme.colors;
+  if (
+    c.border !== undefined &&
+    c.focus !== undefined &&
+    c.selectionBg !== undefined &&
+    c.selectionFg !== undefined
+  ) {
+    return theme;
+  }
+  return {
+    ...theme,
+    colors: {
+      ...c,
+      border: c.border ?? c.panel ?? c.surface,
+      focus: c.focus ?? c.primary,
+      selectionBg: c.selectionBg ?? c.primary,
+      selectionFg: c.selectionFg ?? c.background,
+    },
+  };
+}
+
 /** Registry of {@link Theme}s and the active selection; changing it re-renders the app. Use the shared {@link ThemeManager.getInstance}. */
 export class ThemeManager {
   private static instance: ThemeManager | null = null;
@@ -184,7 +212,7 @@ export class ThemeManager {
 
   /** Register (or replace) a theme by name. */
   public register(theme: Theme): void {
-    this.themes.set(theme.name, theme);
+    this.themes.set(theme.name, withColorDefaults(theme));
   }
 
   /** Look up a registered theme by name. */
