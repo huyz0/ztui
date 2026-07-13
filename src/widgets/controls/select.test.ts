@@ -55,4 +55,29 @@ describe("SelectWidget option logic", () => {
     // Without a screen to portal into, it can't build the dropdown overlay.
     expect((w as unknown as { overlay: unknown }).overlay).toBeFalsy();
   });
+
+  test("getAccessibleNode reports the resolved label, option count, and open state", () => {
+    const w = new SelectWidget();
+    w.options = ["Apple", "Banana"];
+    w.value = "Banana";
+    let node = w.getAccessibleNode();
+    expect(node?.role).toBe("select");
+    expect(node?.label).toBe("Banana");
+    expect(node?.state).toContain("2 options");
+    expect(node?.state).toContain("collapsed");
+
+    w.isOpen = true;
+    node = w.getAccessibleNode();
+    expect(node?.state).toContain("expanded");
+  });
+
+  test("getAccessibleNode reports every selected label and count for multi-select", () => {
+    const w = new SelectWidget();
+    w.multiple = true;
+    w.options = ["Apple", "Banana", "Cherry"];
+    w.value = ["Apple", "Cherry"];
+    const node = w.getAccessibleNode();
+    expect(node?.label).toBe("Apple, Cherry");
+    expect(node?.state).toContain("2 selected");
+  });
 });

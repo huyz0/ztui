@@ -521,6 +521,24 @@ describe("Table body text selection", () => {
   });
 });
 
+describe("Table accessibility", () => {
+  test("getAccessibleNode reports row/column counts and the selected row's first-column text", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: 8 }} />);
+    const widget = findTable<Person>(t);
+
+    let node = widget.getAccessibleNode();
+    expect(node?.role).toBe("table");
+    expect(node?.state).toContain("3 rows");
+    expect(node?.state).toContain("2 columns");
+    expect(node?.value).toBeUndefined(); // nothing selected yet
+
+    widget.selectedIndex = 1;
+    node = widget.getAccessibleNode();
+    expect(node?.value).toBe("2"); // 1-based
+    expect(node?.label).toBe(people[1].name);
+  });
+});
+
 // --- helpers ---------------------------------------------------------------
 
 function findTable<Row>(t: Awaited<ReturnType<typeof mountApp>>): TableWidget<Row> {

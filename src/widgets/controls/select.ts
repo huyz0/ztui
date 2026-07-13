@@ -1,5 +1,6 @@
 import { App } from "../../core/app.ts";
 import { Screen } from "../../dom/screen.ts";
+import type { AccessibleNode } from "../../dom/widget.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
@@ -345,6 +346,32 @@ export class SelectWidget extends Widget {
   public override onUnmount(): void {
     this.closeDropdown();
     super.onUnmount();
+  }
+
+  public override getAccessibleNode(): AccessibleNode | null {
+    if (!this.visible) return null;
+    const resolved = this.getResolvedOptions();
+    const state: string[] = [];
+    if (this.focused) state.push("focused");
+    if (this.isDisabled()) state.push("disabled");
+    state.push(this.isOpen ? "expanded" : "collapsed");
+    state.push(`${resolved.length} option${resolved.length === 1 ? "" : "s"}`);
+
+    let label: string;
+    let value: string | undefined;
+    if (this.multiple) {
+      const selected = Array.isArray(this.value) ? this.value : [];
+      const labels = selected.map((v) => resolved.find((o) => o.value === v)?.label ?? v);
+      label = labels.length > 0 ? labels.join(", ") : this.placeholder;
+      value = selected.join(",");
+      state.push(`${selected.length} selected`);
+    } else {
+      const opt = resolved.find((o) => o.value === this.value);
+      label = opt ? opt.label : this.value ? String(this.value) : this.placeholder;
+      value = (this.value as string) || undefined;
+    }
+
+    return { role: "select", label, value, state };
   }
 
   // Validation severity wins; else a focused select breathes its border with the

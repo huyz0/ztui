@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import type { AccessibleNode } from "../../dom/widget.ts";
 import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
@@ -93,6 +94,17 @@ export class SliderWidget extends Widget {
 
     this.commit(finalVal);
     ev.handled = true;
+  }
+
+  public override getAccessibleNode(): AccessibleNode | null {
+    const base = super.getAccessibleNode();
+    if (!base) return null;
+    return {
+      ...base,
+      role: "slider",
+      value: String(this.value),
+      state: [...(base.state ?? []), `range ${this.min}-${this.max}`, `step ${this.step}`],
+    };
   }
 
   public override measure(maxW: number, maxH: number): void {

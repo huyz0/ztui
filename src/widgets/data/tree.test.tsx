@@ -307,3 +307,26 @@ describe("Tree selection & toggling", () => {
     expect(tree.expanded).toEqual([]);
   });
 });
+
+describe("Tree accessibility", () => {
+  test("getAccessibleNode reports item count and the selected node's label/level/state", async () => {
+    const t = await mountApp(
+      <Tree data={workspace} expanded={["src"]} style={{ height: "100%" }} />,
+    );
+    const tree = findTree(t);
+
+    let node = tree.getAccessibleNode();
+    expect(node?.role).toBe("tree");
+    expect(node?.state).toContain("4 items"); // src, app.ts, widgets, README.md (src/widgets collapsed)
+
+    tree.selectedId = "src/app.ts";
+    node = tree.getAccessibleNode();
+    expect(node?.label).toBe("app.ts");
+    expect(node?.value).toBe("2"); // 1-based position among visible rows
+    expect(node?.state).toContain("level 2");
+
+    tree.selectedId = "src";
+    node = tree.getAccessibleNode();
+    expect(node?.state).toContain("expanded");
+  });
+});

@@ -2,6 +2,7 @@ import { App } from "../../core/app.ts";
 import { runCols } from "../../core/selection.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
+import type { AccessibleNode } from "../../dom/widget.ts";
 import { Widget } from "../../dom/widget.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
@@ -318,6 +319,28 @@ export class TableWidget<Row = any> extends Widget {
 
   private get rowCount(): number {
     return this.grouped ? this.visualRows().length : this.data.length;
+  }
+
+  public override getAccessibleNode(): AccessibleNode | null {
+    if (!this.visible) return null;
+    const state: string[] = [];
+    if (this.focused) state.push("focused");
+    if (this.isDisabled()) state.push("disabled");
+    state.push(`${this.rowCount} row${this.rowCount === 1 ? "" : "s"}`);
+    state.push(`${this.columns.length} column${this.columns.length === 1 ? "" : "s"}`);
+
+    let label = "";
+    let value: string | undefined;
+    if (this.selectedIndex >= 0) {
+      value = String(this.selectedIndex + 1);
+      const sel = this.rowAtView(this.selectedIndex);
+      if (sel) {
+        const first = this.columns[0];
+        label = first ? this.cellTextFor(first, sel.row, sel.rowIndex) : "";
+      }
+    }
+
+    return { role: "table", label, value, state };
   }
 
   private maxScrollTop(visibleRows: number): number {

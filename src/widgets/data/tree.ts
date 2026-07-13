@@ -2,6 +2,7 @@ import { App } from "../../core/app.ts";
 import { selectionDeltaForKey } from "../../dom/key-nav.ts";
 import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
+import type { AccessibleNode } from "../../dom/widget.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { PointerShape } from "../../driver/driver.ts";
 import { Offset } from "../../geometry/offset.ts";
@@ -184,6 +185,29 @@ export class TreeWidget extends Widget {
   /** Toggle the expanded state of the node with `id`. */
   public toggle(id: string): void {
     this.setExpanded(id, !this.expanded.includes(id));
+  }
+
+  public override getAccessibleNode(): AccessibleNode | null {
+    if (!this.visible) return null;
+    this.ensureFlat();
+
+    const state: string[] = [];
+    if (this.focused) state.push("focused");
+    if (this.isDisabled()) state.push("disabled");
+    state.push(`${this.rowCount} item${this.rowCount === 1 ? "" : "s"}`);
+
+    const idx = this.selectedIndex;
+    let label = "";
+    let value: string | undefined;
+    if (idx >= 0) {
+      const row = this.flat[idx];
+      label = row.node.label;
+      value = String(idx + 1);
+      state.push(`level ${row.depth + 1}`);
+      if (row.expandable) state.push(row.expanded ? "expanded" : "collapsed");
+    }
+
+    return { role: "tree", label, value, state };
   }
 
   // ---- scrolling / selection ------------------------------------------------
