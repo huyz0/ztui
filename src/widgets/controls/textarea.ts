@@ -60,6 +60,11 @@ export class TextAreaWidget extends Widget {
   private cursorCol = 0;
   private scrollX = 0;
   private scrollY = 0;
+
+  /** Undo/redo history: one entry per edit action (not coalesced per-keystroke). */
+  private undoStack: Array<{ value: string; cursorRow: number; cursorCol: number }> = [];
+  private redoStack: Array<{ value: string; cursorRow: number; cursorCol: number }> = [];
+  private readonly maxHistory = 200;
   /** Selection start; null when nothing is selected. The caret end is always
    * {@link cursorRow}/{@link cursorCol}. */
   private selectionAnchor: Pos | null = null;
@@ -111,8 +116,24 @@ export class TextAreaWidget extends Widget {
       this.startBlinking();
     }
 
+    if (ev.key === "ctrl+z" || ev.key === "meta+z") {
+      this.undo();
+      ev.handled = true;
+      return;
+    }
+    if (ev.key === "ctrl+y" || ev.key === "ctrl+shift+z" || ev.key === "meta+shift+z") {
+      this.redo();
+      ev.handled = true;
+      return;
+    }
+
     let lines = this.value.split(/\r?\n/);
     const originalValue = this.value;
+    const preEditSnapshot = {
+      value: originalValue,
+      cursorRow: this.cursorRow,
+      cursorCol: this.cursorCol,
+    };
 
     const contentRect = this.getContentRect();
     const viewportHeight = contentRect.height;
@@ -245,9 +266,50 @@ export class TextAreaWidget extends Widget {
     this.keepCursorInView(lines, viewportHeight, textViewportWidth);
 
     if (this._value !== originalValue) {
+      this.undoStack.push(preEditSnapshot);
+      if (this.undoStack.length > this.maxHistory) this.undoStack.shift();
+      this.redoStack = [];
       this.onChange?.(this._value);
       this.validation.maybeValidate("change");
     }
+  }
+
+  /** Undo the last edit action. Returns true if there was something to undo. */
+  public undo(): boolean {
+    const entry = this.undoStack.pop();
+    if (!entry) return false;
+    this.redoStack.push({
+      value: this._value,
+      cursorRow: this.cursorRow,
+      cursorCol: this.cursorCol,
+    });
+    this._value = entry.value;
+    this.cursorRow = entry.cursorRow;
+    this.cursorCol = entry.cursorCol;
+    this.selectionAnchor = null;
+    this.onChange?.(this._value);
+    this.validation.maybeValidate("change");
+    App.instance?.queueRender();
+    return true;
+  }
+
+  /** Redo the last undone edit action. Returns true if there was something to redo. */
+  public redo(): boolean {
+    const entry = this.redoStack.pop();
+    if (!entry) return false;
+    this.undoStack.push({
+      value: this._value,
+      cursorRow: this.cursorRow,
+      cursorCol: this.cursorCol,
+    });
+    this._value = entry.value;
+    this.cursorRow = entry.cursorRow;
+    this.cursorCol = entry.cursorCol;
+    this.selectionAnchor = null;
+    this.onChange?.(this._value);
+    this.validation.maybeValidate("change");
+    App.instance?.queueRender();
+    return true;
   }
 
   private moveLeft(lines: string[]): void {

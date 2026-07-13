@@ -23,6 +23,69 @@ describe("TextAreaWidget — line editing edge cases", () => {
     expect(w.value).toBe("abcd");
   });
 
+  test("undo reverts the last edit action and its cursor position; redo reapplies it", () => {
+    const w = new TextAreaWidget();
+    w.value = "";
+    press(w, { key: "a" });
+    press(w, { key: "b" });
+    press(w, { key: "c" });
+    expect(w.value).toBe("abc");
+
+    w.undo(); // undoes typing "c"
+    expect(w.value).toBe("ab");
+    w.undo(); // undoes typing "b"
+    expect(w.value).toBe("a");
+
+    w.redo(); // retypes "b"
+    expect(w.value).toBe("ab");
+    w.redo(); // retypes "c"
+    expect(w.value).toBe("abc");
+
+    // A new edit after undoing clears the redo stack (standard undo-tree behavior).
+    w.undo();
+    expect(w.value).toBe("ab");
+    press(w, { key: "z" });
+    expect(w.value).toBe("abz");
+    expect(w.redo()).toBe(false);
+    expect(w.value).toBe("abz");
+  });
+
+  test("undo/redo are no-ops (return false) with nothing to undo/redo", () => {
+    const w = new TextAreaWidget();
+    w.value = "hello";
+    expect(w.undo()).toBe(false);
+    expect(w.value).toBe("hello");
+    expect(w.redo()).toBe(false);
+    expect(w.value).toBe("hello");
+  });
+
+  test("ctrl+z / ctrl+y keys drive undo/redo", () => {
+    const w = new TextAreaWidget();
+    w.value = "";
+    press(w, { key: "a" });
+    press(w, { key: "b" });
+    expect(w.value).toBe("ab");
+
+    press(w, { key: "ctrl+z" });
+    expect(w.value).toBe("a");
+
+    press(w, { key: "ctrl+y" });
+    expect(w.value).toBe("ab");
+  });
+
+  test("undo restores the cursor position, so subsequent typing lands in the right place", () => {
+    const w = new TextAreaWidget();
+    w.value = "ac";
+    press(w, { name: "left" }); // caret between 'a' and 'c'
+    press(w, { key: "b" }); // -> "abc", caret after 'b'
+    expect(w.value).toBe("abc");
+
+    w.undo(); // back to "ac", caret restored between 'a' and 'c'
+    expect(w.value).toBe("ac");
+    press(w, { key: "X" });
+    expect(w.value).toBe("aXc");
+  });
+
   test("up/down + home/end clamp within the document", () => {
     const w = new TextAreaWidget();
     w.value = Array.from({ length: 6 }, (_, i) => `row${i}`).join("\n");
