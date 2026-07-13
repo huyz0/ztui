@@ -145,6 +145,13 @@ export class Segment {
     if (startCell <= 0 && endCell >= this.cellLength) {
       return this;
     }
+    // A zero/negative-width window has no cells to fill, so no padding
+    // should be emitted even when a wide glyph straddles startCell (without
+    // this, the wide-glyph-padding branch below can emit a phantom cell
+    // outside the requested range).
+    if (endCell <= startCell) {
+      return new Segment("", this.style);
+    }
 
     let currentCell = 0;
     let croppedText = "";

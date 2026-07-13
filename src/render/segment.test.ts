@@ -87,4 +87,18 @@ describe("Segment.crop", () => {
     const seg = new Segment(`a${FAMILY}b`);
     expect(seg.crop(0, 3).text).toBe(`a${FAMILY}`);
   });
+
+  it("a zero-width crop window straddling a wide glyph emits no cells at all", () => {
+    // "あ" (width 2) starts before startCell=1 and extends into it, but the
+    // requested window [1,1) is empty — nothing should render, not a stray
+    // padding space outside the requested range.
+    const seg = new Segment("あX");
+    expect(seg.crop(1, 1).text).toBe("");
+    expect(seg.crop(1, 1).cellLength).toBe(0);
+  });
+
+  it("an inverted (negative-width) crop window also emits no cells", () => {
+    const seg = new Segment("あX");
+    expect(seg.crop(2, 1).text).toBe("");
+  });
 });
