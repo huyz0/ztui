@@ -4,7 +4,7 @@ import { App } from "../../core/app.ts";
 import { unmount } from "../../react/reconciler.ts";
 import { Button, Label, render, VBox } from "../../react.ts";
 import { flush } from "../../test/harness.tsx";
-import { translateKeyboardEvent, translateMouseEvent } from "./dom.ts";
+import { attachToDOM, translateKeyboardEvent, translateMouseEvent } from "./dom.ts";
 import { WebDriver } from "./index.ts";
 
 function Counter() {
@@ -186,5 +186,33 @@ describe("DOM event translators", () => {
     expect(translateMouseEvent({ offsetX: 20, offsetY: 20 }, "scroll_down", metrics)).toMatchObject(
       { type: "scroll_down", button: "none" },
     );
+  });
+
+  function fakeHost(): HTMLElement {
+    const listeners = new Map<string, Set<(ev: unknown) => void>>();
+    return {
+      tabIndex: -1,
+      addEventListener: (type: string, fn: (ev: unknown) => void) => {
+        if (!listeners.has(type)) listeners.set(type, new Set());
+        listeners.get(type)?.add(fn);
+      },
+      removeEventListener: (type: string, fn: (ev: unknown) => void) => {
+        listeners.get(type)?.delete(fn);
+      },
+    } as unknown as HTMLElement;
+  }
+
+  test("attachToDOM throws on a second attach without detaching first", () => {
+    const host = fakeHost();
+    const driver = new WebDriver();
+    const detach = attachToDOM(driver, host, { metrics: { cellWidth: 8, cellHeight: 16 } });
+    expect(() => attachToDOM(driver, host, { metrics: { cellWidth: 8, cellHeight: 16 } })).toThrow(
+      /already attached/,
+    );
+    detach();
+    // After detaching, re-attaching the same host is fine.
+    expect(() =>
+      attachToDOM(driver, host, { metrics: { cellWidth: 8, cellHeight: 16 } }),
+    ).not.toThrow();
   });
 });

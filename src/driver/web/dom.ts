@@ -132,16 +132,26 @@ export interface AttachOptions {
   metrics?: CellMetrics;
 }
 
+const ATTACHED_HOSTS = new WeakSet<HTMLElement>();
+
 /**
  * Wire a {@link WebDriver} to a DOM element: frames render as HTML inside it,
  * and its keyboard/mouse/paste events drive the app. Returns a detach
  * function. Browser-only — requires `document`.
+ *
+ * Throws if called twice on the same host without detaching first — a second
+ * attach would register a duplicate listener set (split-brain input dispatch)
+ * and silently clobber the first driver's `onFrame`.
  */
 export function attachToDOM(
   driver: WebDriver,
   host: HTMLElement,
   opts: AttachOptions = {},
 ): () => void {
+  if (ATTACHED_HOSTS.has(host)) {
+    throw new Error("attachToDOM: this host element is already attached to a driver");
+  }
+  ATTACHED_HOSTS.add(host);
   host.tabIndex = host.tabIndex >= 0 ? host.tabIndex : 0; // make focusable for key events
 
   let metrics = opts.metrics ?? null;
@@ -191,6 +201,7 @@ export function attachToDOM(
   host.addEventListener("paste", onPaste);
 
   return () => {
+    ATTACHED_HOSTS.delete(host);
     driver.onFrame = undefined;
     host.removeEventListener("keydown", onKeyDown);
     host.removeEventListener("mousedown", onMouseDown);
