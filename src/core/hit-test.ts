@@ -134,7 +134,10 @@ export function isPointOnScrollbar(widget: Widget, x: number, y: number): boolea
   const showX =
     overflowX === "scroll" || (overflowX === "auto" && contentSize.width > viewport.width);
 
-  if (showY) {
+  // Match drawScrollbars' own guard: a scrollbar isn't painted at all when
+  // the content rect has collapsed to zero height/width, so it must not
+  // swallow clicks either — otherwise an invisible bar still intercepts input.
+  if (showY && content.height > 0) {
     const vScrollbarX = hasBorder ? client.right - 1 : viewport.right - 1;
     const startY = hasBorder ? client.y + 1 : content.y;
     const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
@@ -143,7 +146,7 @@ export function isPointOnScrollbar(widget: Widget, x: number, y: number): boolea
     }
   }
 
-  if (showX) {
+  if (showX && content.width > 0) {
     const hScrollbarY = hasBorder ? client.bottom - 1 : viewport.bottom - 1;
     const startX = hasBorder ? client.x + 1 : content.x;
     const endX = hasBorder ? client.right - 2 : content.right - 1;

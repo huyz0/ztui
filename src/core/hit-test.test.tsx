@@ -6,6 +6,7 @@ import { Size } from "../geometry/size.ts";
 import { Box, Label } from "../react/components.tsx";
 import "../widgets/index.ts";
 import { mountApp } from "../test/harness.tsx";
+import { ScrollableBoxWidget } from "../widgets/layout/box.ts";
 import { hitTest, isPointOnScrollbar } from "./hit-test.ts";
 
 describe("hitTest", () => {
@@ -59,6 +60,23 @@ describe("hitTest", () => {
     await t.settle();
     const w = t.findById("b");
     expect(w && isPointOnScrollbar(w, 0, 0)).toBe(false);
+  });
+
+  test("isPointOnScrollbar matches drawScrollbars' guard when content has collapsed to zero height", () => {
+    // Regression: drawScrollbars skips painting when the content rect has
+    // collapsed to zero height (border + padding leaving nothing), but the
+    // border-only track math (client-based, ignoring padding) can still be
+    // positive — isPointOnScrollbar lacked the matching `content.height > 0`
+    // guard, so an invisible scrollbar could still swallow clicks.
+    const w = new ScrollableBoxWidget();
+    w.style = { width: 10, height: 4, border: "rounded", padding: 2, overflowY: "scroll" };
+    w.region = new Region(new Offset(0, 0), new Size(10, 4));
+
+    const client = w.getClientRect();
+    expect(w.getContentRect().height).toBe(0); // content collapsed
+    // The would-be scrollbar column, one row inside the border — inside the
+    // border-only track range but over a rect that never actually painted.
+    expect(isPointOnScrollbar(w, client.right - 1, client.y + 1)).toBe(false);
   });
 
   test("two overlapping same-z-index overlays hit-test to the most recently added (topmost-painted) one", async () => {
