@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import {
+  Box,
   closeLeaf,
   countLeaves,
   hydrateSplit,
@@ -9,6 +11,7 @@ import {
   SplitView,
   serializeSplit,
   splitLeaf,
+  VBox,
 } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
@@ -205,5 +208,56 @@ describe("SplitView interactive controls", () => {
     t.driver.simulateMouse(x, y, "release", "left");
     await t.settle();
     expect(latest && countLeaves(latest)).toBe(1);
+  });
+
+  test("passing back a cached root reopens a closed pane (controlled reset)", async () => {
+    // Regression: after a leaf closes, SplitView only ever read `root` on
+    // mount — a fresh `root` object passed down later (the documented way to
+    // restore a closed pane) was silently ignored.
+    const original: SplitNode = {
+      type: "split",
+      direction: "row",
+      children: [
+        { type: "leaf", id: "left", content: <Label>LEFT_PANE</Label> },
+        { type: "leaf", id: "right", content: <Label>RIGHT_PANE</Label> },
+      ],
+    };
+
+    function Host() {
+      const [root, setRoot] = useState<SplitNode>(original);
+      return (
+        <VBox style={{ width: "100%", height: "100%" }}>
+          <Label id="reset" onClick={() => setRoot({ ...original })} style={{ height: 1 }}>
+            reset
+          </Label>
+          <Box style={{ width: "100%", flexGrow: 1 }}>
+            <SplitView root={root} controls newPane={() => "new"} />
+          </Box>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<Host />, { cols: 80, rows: 24 });
+    expect(t.text()).toContain("LEFT_PANE");
+    expect(t.text()).toContain("RIGHT_PANE");
+
+    let closeBtn: any;
+    t.screen.walk((n: any) => {
+      if (!closeBtn && n.tagName === "label" && n.getTextContent?.() === "✕") closeBtn = n;
+    });
+    const { x, y } = closeBtn.region;
+    t.driver.simulateMouse(x, y, "press", "left");
+    t.driver.simulateMouse(x, y, "release", "left");
+    await t.settle();
+    expect(t.text()).not.toContain("LEFT_PANE");
+    expect(t.text()).toContain("RIGHT_PANE");
+
+    const reset = t.findById("reset")!;
+    t.driver.simulateMouse(reset.region.x, reset.region.y, "press", "left");
+    t.driver.simulateMouse(reset.region.x, reset.region.y, "release", "left");
+    await t.settle();
+
+    expect(t.text()).toContain("LEFT_PANE"); // the closed pane is back
+    expect(t.text()).toContain("RIGHT_PANE");
   });
 });

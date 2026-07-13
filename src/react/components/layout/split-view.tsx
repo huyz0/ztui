@@ -90,6 +90,15 @@ const MIN_CELLS = 3;
  */
 export function SplitView({ root, onChange, controls, newPane }: SplitViewProps): ReactElement {
   const [tree, setTree] = useState<SplitNode>(root);
+  // Re-sync from a new `root` identity (e.g. the host restoring a previously
+  // closed pane by passing back a cached tree). Without this, `root` is only
+  // ever read on mount and every later prop change is silently ignored —
+  // there'd be no way to reopen/reset short of remounting the whole view.
+  const prevRootRef = useRef(root);
+  if (root !== prevRootRef.current) {
+    prevRootRef.current = root;
+    setTree(root);
+  }
   // Container widgets keyed by node path, so a splitter can read the live pixel
   // size of its parent to convert a cell delta into a weight delta.
   const containers = useRef(new Map<string, Widget>());
