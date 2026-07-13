@@ -803,7 +803,7 @@ export class ScreenBuffer {
     for (let y = revTop; y <= revBot; y++) {
       const row = this.cells[y];
       for (let x = 0; x < this.width; x++) {
-        if (row[x].char !== " " || row[x].style !== Style.DEFAULT) scroll++;
+        if (row[x].char !== " " || !isErasableBlank(row[x].style)) scroll++;
       }
     }
     return scroll < plain;

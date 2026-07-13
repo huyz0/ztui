@@ -332,6 +332,42 @@ describe("render diff ANSI replays to the source buffer", () => {
     }
   });
 
+  test("scrollSavesBytes treats a value-equal (non-singleton) default Style as blank", () => {
+    // Regression test: the revealed-band blank check used to compare
+    // `style !== Style.DEFAULT` by reference, so a freshly-constructed
+    // `new Style({})` (value-equal to the default, but a different object —
+    // exactly what widget re-renders naturally produce) was miscounted as
+    // "non-blank", inflating the scroll-cost estimate and sometimes losing
+    // the `scroll < plain` comparison against an otherwise-cheap scroll.
+    //
+    // scrollSavesBytes is private; called directly (bracket notation) since
+    // reaching this exact comparison through the public renderDiff/
+    // detectScroll pipeline requires fighting unrelated heuristics (the
+    // scroll-band boundary search, MIN_SAVE) that aren't part of what this
+    // bug is about.
+    const buf = new ScreenBuffer(4, 3);
+    // Revealed row (row 2) is genuinely blank, but with a fresh Style
+    // instance rather than the Style.DEFAULT singleton.
+    for (let x = 0; x < 4; x++) buf.setCell(x, 2, " ", new Style({}));
+    // A plain diff cost that only "wins" if the revealed row is correctly
+    // recognized as free (cost 0): a same-sized plain-diff band with 1 cell
+    // of real cost is cheaper than a scroll misreporting 4 cells of cost.
+    const scrollSavesBytes = (
+      buf as unknown as {
+        scrollSavesBytes: (
+          old: ScreenBuffer,
+          top: number,
+          bottom: number,
+          delta: number,
+        ) => boolean;
+      }
+    ).scrollSavesBytes.bind(buf);
+    const old = new ScreenBuffer(4, 3);
+    old.setCell(0, 2, "x", new Style({ color: "#ff0000" })); // 1 real difference in the revealed row
+
+    expect(scrollSavesBytes(old, 0, 2, 2)).toBe(true); // scroll cost (0) < plain cost (1)
+  });
+
   test("a scroll-down emits SD and replays to the new frame", () => {
     const prev = variedBuffer();
     const next = new ScreenBuffer(20, 6);
