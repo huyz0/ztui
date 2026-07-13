@@ -182,6 +182,31 @@ export class BoxLayout extends Layout {
         allocatedLength += rounded - (childSizes[s.i] as number);
         childSizes[s.i] = rounded;
       }
+
+      // Independently rounding each child can round several of them *up*
+      // (e.g. five children each shrunk to x.5), leaving allocatedLength
+      // still over mainLength even though the pre-rounding deficit loop
+      // converged exactly. Phase 2 then clamps remainingLength to 0, but the
+      // fixed children's rounded sizes still sum past the container edge.
+      // Claw back the excess one cell at a time from the largest shrunk
+      // children (down to their floor) so the total fits exactly.
+      let excess = allocatedLength - mainLength;
+      if (excess > 0) {
+        const order = [...shrinkable].sort(
+          (a, b) => (childSizes[b.i] as number) - (childSizes[a.i] as number),
+        );
+        let guard = 0;
+        while (excess > 0 && order.length > 0 && guard < order.length * excess + order.length) {
+          const s = order[guard % order.length];
+          const current = childSizes[s.i] as number;
+          if (current - 1 >= s.min) {
+            childSizes[s.i] = current - 1;
+            allocatedLength -= 1;
+            excess -= 1;
+          }
+          guard++;
+        }
+      }
     }
 
     // Phase 2: Compute fr unit sizes

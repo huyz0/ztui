@@ -48,6 +48,37 @@ describe("BoxLayout shrink", () => {
     expect(right.region.width).toBe(52);
   });
 
+  test("shrunk siblings' rounded widths never sum past the container edge", async () => {
+    // Regression: each shrunk child was rounded independently. Three
+    // equal-weight children shrinking from a 15-wide row down to 14 converge
+    // (via the deficit loop's per-child consumption order) to fractional
+    // sizes that all round *up* to 5, summing to 15 in a 14-wide row — 1 cell
+    // over the edge — even though the pre-rounding deficit loop converged
+    // exactly to a total of 14.
+    // A bare root component's explicit width/height doesn't take effect (the
+    // root always stretches to the screen, and the App floors screen width to
+    // 80), so nest the row inside a full-width root instead of sizing the
+    // root itself.
+    const t = await mountApp(
+      <VBox style={{ width: "100%" }}>
+        <HBox id="row" style={{ width: 14 }}>
+          <HBox id="a" style={{ width: 5, flexShrink: 1 }} />
+          <HBox id="b" style={{ width: 5, flexShrink: 1 }} />
+          <HBox id="c" style={{ width: 5, flexShrink: 1 }} />
+        </HBox>
+      </VBox>,
+    );
+
+    const a = t.findById<Widget>("a")!;
+    const b = t.findById<Widget>("b")!;
+    const c = t.findById<Widget>("c")!;
+    const row = t.findById<Widget>("row")!;
+    const total = a.region.width + b.region.width + c.region.width;
+    expect(total).toBeLessThanOrEqual(14);
+    // The last child's region must not extend past the row.
+    expect(c.region.right).toBeLessThanOrEqual(row.region.right);
+  });
+
   test("flexShrink: 0 keeps a sibling at its measured size", async () => {
     const t = await mountApp(
       <HBox style={{ width: "100%" }}>
