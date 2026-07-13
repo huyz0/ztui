@@ -14,13 +14,21 @@ export function maxRowScrollTop(rowCount: number, visibleRows: number): number {
 }
 
 /**
+ * Rows moved per wheel notch. A terminal sends one `scroll_up`/`scroll_down`
+ * event per physical wheel tick (no delta/line count is reported), so this is
+ * where the step size is decided — 1 row/tick reads as unresponsive next to
+ * keyboard paging and most GUI/terminal wheel conventions (~3 lines/tick).
+ */
+const WHEEL_SCROLL_ROWS = 3;
+
+/**
  * The next `scrollTop` after a mouse-wheel step, clamped to `[0, max]`. Returns
  * `null` when `type` isn't a wheel scroll, so callers can leave the event for
  * other handlers.
  */
 export function wheelScrollTop(type: string, scrollTop: number, max: number): number | null {
-  if (type === "scroll_up") return Math.max(0, scrollTop - 1);
-  if (type === "scroll_down") return Math.min(max, scrollTop + 1);
+  if (type === "scroll_up") return Math.max(0, scrollTop - WHEEL_SCROLL_ROWS);
+  if (type === "scroll_down") return Math.min(max, scrollTop + WHEEL_SCROLL_ROWS);
   return null;
 }
 

@@ -125,7 +125,8 @@ describe("Table virtualization (phase 2)", () => {
       screenStyle: { flexDirection: "column" },
     });
     const widget = findTable(t);
-    for (let i = 0; i < 30; i++) widget.handleScroll({ type: "scroll_down" } as any);
+    // Each wheel tick moves 3 rows.
+    for (let i = 0; i < 10; i++) widget.handleScroll({ type: "scroll_down" } as any);
     await t.settle();
     expect(t.text()).toContain("Row30");
   });

@@ -152,11 +152,12 @@ describe("Scrollable Mixin", () => {
     child.region = new Region(Offset.ORIGIN, new Size(10, 10));
     scrollBox.appendChild(child);
 
-    // scroll down mouse event
+    // scroll down mouse event (content 10 tall, viewport 5 -> maxScrollY 5;
+    // one wheel tick moves 3 rows)
     const scrollDownEv: any = { x: 2, y: 2, type: "scroll_down", button: "none", handled: false };
     scrollBox.handleScroll(scrollDownEv);
     expect(scrollDownEv.handled).toBe(true);
-    expect(scrollBox.scrollOffset.y).toBe(1);
+    expect(scrollBox.scrollOffset.y).toBe(3);
 
     // scroll up mouse event
     const scrollUpEv: any = { x: 2, y: 2, type: "scroll_up", button: "none", handled: false };

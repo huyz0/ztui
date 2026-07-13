@@ -10,11 +10,13 @@ describe("maxRowScrollTop", () => {
 });
 
 describe("wheelScrollTop", () => {
-  test("steps up/down by one row within [0, max]", () => {
-    expect(wheelScrollTop("scroll_up", 5, 20)).toBe(4);
+  test("steps up/down by 3 rows within [0, max]", () => {
+    expect(wheelScrollTop("scroll_up", 5, 20)).toBe(2);
     expect(wheelScrollTop("scroll_up", 0, 20)).toBe(0); // clamps at the top
-    expect(wheelScrollTop("scroll_down", 5, 20)).toBe(6);
+    expect(wheelScrollTop("scroll_up", 1, 20)).toBe(0); // clamps rather than going negative
+    expect(wheelScrollTop("scroll_down", 5, 20)).toBe(8);
     expect(wheelScrollTop("scroll_down", 20, 20)).toBe(20); // clamps at the bottom
+    expect(wheelScrollTop("scroll_down", 19, 20)).toBe(20); // clamps rather than overshooting
   });
 
   test("returns null for a non-wheel event so the caller leaves it alone", () => {

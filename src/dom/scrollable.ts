@@ -11,6 +11,14 @@ import { Widget } from "./widget.ts";
 /** @internal Mixin base constructor type. */
 export type Constructor<T = object> = new (...args: any[]) => T;
 
+/**
+ * Cells moved per wheel notch (see the identical constant/rationale in
+ * `widgets/data/row-scroll.ts`'s `wheelScrollTop` — this mixin scrolls by
+ * pixel/cell offset rather than row index, so the arithmetic can't share that
+ * helper directly, but the step size should match).
+ */
+const WHEEL_SCROLL_CELLS = 3;
+
 /** The members {@link Scrollable} adds to a Widget subclass. */
 export interface ScrollableMembers {
   /** Whether horizontal overflow scrolls (overflowX is `scroll`/`auto`). */
@@ -220,7 +228,10 @@ export function Scrollable<TBase extends Constructor<Widget>>(
 
       let scrolled = false;
       if (ev.type === "scroll_up" && this.scrollableY && this.scrollOffset.y > 0) {
-        this.scrollOffset = new Offset(this.scrollOffset.x, Math.max(0, this.scrollOffset.y - 1));
+        this.scrollOffset = new Offset(
+          this.scrollOffset.x,
+          Math.max(0, this.scrollOffset.y - WHEEL_SCROLL_CELLS),
+        );
         scrolled = true;
       } else if (
         ev.type === "scroll_down" &&
@@ -229,7 +240,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       ) {
         this.scrollOffset = new Offset(
           this.scrollOffset.x,
-          Math.min(maxScrollY, this.scrollOffset.y + 1),
+          Math.min(maxScrollY, this.scrollOffset.y + WHEEL_SCROLL_CELLS),
         );
         scrolled = true;
       }

@@ -116,7 +116,8 @@ describe("Tree scrolling & paging", () => {
     const tree = findTree(t);
     t.screen.focusWidget(tree);
 
-    for (let i = 0; i < 30; i++) tree.handleScroll({ type: "scroll_down" } as any);
+    // Each wheel tick moves 3 rows.
+    for (let i = 0; i < 10; i++) tree.handleScroll({ type: "scroll_down" } as any);
     await t.settle();
     expect(t.text()).toContain("item-30");
 
