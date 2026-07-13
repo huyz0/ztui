@@ -32,8 +32,12 @@ export function hitTest(node: DOMNode, x: number, y: number): Widget | null {
 
   // Hit-test overlays first if this node is a Screen
   if (node instanceof Screen) {
-    // Topmost-first: only allocate a sorted copy when overlays actually carry
-    // differing z-indices (rare); otherwise walk newest-first in place.
+    // Topmost-first: `overlays` is oldest-first (appended via push, painted in
+    // that order so later entries paint over earlier ones), so newest-first
+    // is the reverse of array order — never a plain forward walk. Only
+    // allocate a sorted copy when z-indices actually differ (rare); a
+    // same-z-index tie still resolves newest-first (higher original index
+    // wins), matching paint order.
     const overlays = node.overlays;
     let needsSort = false;
     for (let i = 1; i < overlays.length; i++) {
@@ -42,10 +46,16 @@ export function hitTest(node: DOMNode, x: number, y: number): Widget | null {
         break;
       }
     }
-    const sortedOverlays = needsSort
-      ? [...overlays].sort((a, b) => (b.computedStyle.zIndex ?? 0) - (a.computedStyle.zIndex ?? 0))
-      : overlays;
-    for (const overlay of sortedOverlays) {
+    const orderedOverlays = needsSort
+      ? overlays
+          .map((o, i) => ({ o, i }))
+          .sort((a, b) => {
+            const dz = (b.o.computedStyle.zIndex ?? 0) - (a.o.computedStyle.zIndex ?? 0);
+            return dz !== 0 ? dz : b.i - a.i;
+          })
+          .map((entry) => entry.o)
+      : [...overlays].reverse();
+    for (const overlay of orderedOverlays) {
       const match = hitTest(overlay, x, y);
       if (match) {
         // A sticky pass-through layer only captures clicks that land on its

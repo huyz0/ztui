@@ -1,4 +1,8 @@
 import { describe, expect, test } from "vitest";
+import { Widget } from "../dom/widget.ts";
+import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
+import { Size } from "../geometry/size.ts";
 import { Box, Label } from "../react/components.tsx";
 import "../widgets/index.ts";
 import { mountApp } from "../test/harness.tsx";
@@ -55,5 +59,22 @@ describe("hitTest", () => {
     await t.settle();
     const w = t.findById("b");
     expect(w && isPointOnScrollbar(w, 0, 0)).toBe(false);
+  });
+
+  test("two overlapping same-z-index overlays hit-test to the most recently added (topmost-painted) one", async () => {
+    const t = await mountApp(<Box style={{ width: 20, height: 6 }} />);
+    await t.settle();
+
+    const overlayA = new Widget("overlay-a");
+    overlayA.region = new Region(new Offset(0, 0), new Size(10, 4));
+    const overlayB = new Widget("overlay-b");
+    overlayB.region = new Region(new Offset(0, 0), new Size(10, 4));
+
+    // addOverlay appends (paints later == on top), matching real usage —
+    // opening dialog A then dialog B should make B topmost.
+    t.screen.addOverlay(overlayA);
+    t.screen.addOverlay(overlayB);
+
+    expect(hitTest(t.screen, 1, 1)).toBe(overlayB);
   });
 });
