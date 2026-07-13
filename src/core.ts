@@ -108,6 +108,7 @@ export { Style } from "./render/style.ts";
 export type { Theme } from "./theme.ts";
 export { adjustLightness, deriveTheme, ThemeManager } from "./theme.ts";
 export { type LogLevel, logger } from "./utils/logger.ts";
+export { ChatInputWidget } from "./widgets/controls/chat-input.ts";
 export { CheckboxWidget } from "./widgets/controls/checkbox.ts";
 export { ComboboxOverlayWidget, ComboboxWidget } from "./widgets/controls/combobox.ts";
 export {
@@ -118,14 +119,20 @@ export {
 } from "./widgets/controls/date-picker.ts";
 export { FieldErrorWidget } from "./widgets/controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./widgets/controls/form.ts";
+export { MenuListWidget } from "./widgets/controls/menu.ts";
 export { RadioGroupWidget, type RadioOption } from "./widgets/controls/radio-group.ts";
-export { type SelectOption, SelectWidget } from "./widgets/controls/select.ts";
+export {
+  DropdownOverlayWidget,
+  type SelectOption,
+  SelectWidget,
+} from "./widgets/controls/select.ts";
 export { SliderWidget } from "./widgets/controls/slider.ts";
 export { SwitchWidget } from "./widgets/controls/switch.ts";
 export { TextAreaWidget } from "./widgets/controls/textarea.ts";
 export { ToggleButtonWidget } from "./widgets/controls/toggle-button.ts";
 export * from "./widgets/controls/validation.ts";
 export { ValidationSummaryWidget } from "./widgets/controls/validation-summary.ts";
+export { CopyButtonWidget } from "./widgets/copy-button.ts";
 export {
   AreaChartWidget,
   type BarChartItem,
@@ -160,6 +167,7 @@ export { TerminalViewWidget } from "./widgets/data/terminal-view.ts";
 export { TracebackWidget } from "./widgets/data/traceback.ts";
 export type { TreeNode } from "./widgets/data/tree.ts";
 export { TreeWidget } from "./widgets/data/tree.ts";
+export { DevToolsHighlightWidget } from "./widgets/devtools/highlight.ts";
 export type { BannerGlyphSet, BannerVariant } from "./widgets/feedback/banner.ts";
 export { BannerWidget } from "./widgets/feedback/banner.ts";
 export { type GaugeThreshold, GaugeWidget } from "./widgets/feedback/gauge.ts";
@@ -201,6 +209,7 @@ export {
 } from "./widgets/media/seti/seti-loader.ts";
 export { SvgImageWidget } from "./widgets/media/svg-image.ts";
 export { JSONUIWidget } from "./widgets/text/json-ui.ts";
+export { QuoteBarWidget } from "./widgets/text/quote-bar.ts";
 export { RichTextWidget } from "./widgets/text/rich-text.ts";
 
 // Register core widget elements with the element registry.

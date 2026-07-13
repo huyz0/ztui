@@ -9,6 +9,7 @@ import "./text/register-syntax.ts";
 
 export { ButtonWidget } from "./controls/button.ts";
 export { ButtonGroupWidget } from "./controls/button-group.ts";
+export { ChatInputWidget } from "./controls/chat-input.ts";
 export { CheckboxWidget } from "./controls/checkbox.ts";
 export { ComboboxOverlayWidget, ComboboxWidget } from "./controls/combobox.ts";
 export {
@@ -20,14 +21,16 @@ export {
 export { FieldErrorWidget } from "./controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./controls/form.ts";
 export { InputWidget } from "./controls/input.ts";
+export { MenuListWidget } from "./controls/menu.ts";
 export { RadioGroupWidget } from "./controls/radio-group.ts";
-export { SelectWidget } from "./controls/select.ts";
+export { DropdownOverlayWidget, SelectWidget } from "./controls/select.ts";
 export { SliderWidget } from "./controls/slider.ts";
 export { SwitchWidget } from "./controls/switch.ts";
 export { TextAreaWidget } from "./controls/textarea.ts";
 export { ToggleButtonWidget } from "./controls/toggle-button.ts";
 export * from "./controls/validation.ts";
 export { ValidationSummaryWidget } from "./controls/validation-summary.ts";
+export { CopyButtonWidget } from "./copy-button.ts";
 export {
   AreaChartWidget,
   type BarChartItem,
@@ -53,6 +56,7 @@ export { TerminalViewWidget } from "./data/terminal-view.ts";
 export { TracebackWidget } from "./data/traceback.ts";
 export type { TreeNode } from "./data/tree.ts";
 export { TreeWidget } from "./data/tree.ts";
+export { DevToolsHighlightWidget } from "./devtools/highlight.ts";
 export type { BannerGlyphSet, BannerVariant } from "./feedback/banner.ts";
 export { BannerWidget } from "./feedback/banner.ts";
 export { type GaugeThreshold, GaugeWidget } from "./feedback/gauge.ts";
@@ -93,5 +97,6 @@ export { JSONUIWidget } from "./text/json-ui.ts";
 export { LabelWidget } from "./text/label.ts";
 export { MarkdownWidget } from "./text/markdown.ts";
 export { MermaidWidget } from "./text/mermaid.ts";
+export { QuoteBarWidget } from "./text/quote-bar.ts";
 export { RichTextWidget } from "./text/rich-text.ts";
 export { SyntaxWidget } from "./text/syntax.ts";
