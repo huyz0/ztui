@@ -116,8 +116,11 @@ export interface CanvasRenderOptions {
   requestRepaint?: () => void;
 }
 
-// Decoded vector-icon cache, keyed by the tinted SVG markup. Lives module-level
-// so it survives across frames; entries are cheap (one <img> per distinct icon).
+// Decoded-image cache shared by drawSvgCell (keyed by tinted SVG markup) and
+// drawImageCell (keyed by raw `src`). Lives module-level so it survives across
+// frames; entries are cheap (one <img> per distinct icon/image). Keys are
+// namespaced ("svg:"/"img:") so a tinted-markup string can never collide with
+// an unrelated image `src` that happens to equal it.
 const svgImageCache = new Map<string, HTMLImageElement>();
 
 /**
@@ -138,12 +141,13 @@ function drawSvgCell(
 ): void {
   if (typeof Image === "undefined") return;
   const tinted = svg.replace(/currentColor/g, color);
-  let img = svgImageCache.get(tinted);
+  const key = `svg:${tinted}`;
+  let img = svgImageCache.get(key);
   if (!img) {
     img = new Image();
     img.onload = () => requestRepaint?.();
     img.src = `data:image/svg+xml,${encodeURIComponent(tinted)}`;
-    svgImageCache.set(tinted, img);
+    svgImageCache.set(key, img);
   }
   if (img.complete && img.naturalWidth > 0) {
     // Center a square (icons are square) within the cell box.
@@ -173,12 +177,13 @@ function drawImageCell(
   requestRepaint?: () => void,
 ): void {
   if (typeof Image === "undefined") return;
-  let img = svgImageCache.get(src);
+  const key = `img:${src}`;
+  let img = svgImageCache.get(key);
   if (!img) {
     img = new Image();
     img.onload = () => requestRepaint?.();
     img.src = src;
-    svgImageCache.set(src, img);
+    svgImageCache.set(key, img);
   }
   if (img.complete && img.naturalWidth > 0) {
     const c = ctx as CanvasRenderingContext2D;

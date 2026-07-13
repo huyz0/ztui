@@ -222,6 +222,51 @@ describe("renderBufferToCanvas", () => {
     }
   });
 
+  test("SVG-icon and inline-image caches don't collide on an equal cache key", () => {
+    // Regression: drawSvgCell cached by tinted SVG markup and drawImageCell
+    // cached by raw `src` used to share one Map — a tinted markup string equal
+    // to an unrelated image `src` would incorrectly reuse the other's cached
+    // <img> element instead of loading its own source.
+    class FakeImage {
+      onload: (() => void) | null = null;
+      complete = true;
+      naturalWidth = 16;
+      _src = "";
+      set src(v: string) {
+        this._src = v;
+        srcAssignments.push(v);
+      }
+      get src() {
+        return this._src;
+      }
+    }
+    const srcAssignments: string[] = [];
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = FakeImage;
+    try {
+      const { ctx } = mockCtx();
+      ctx.drawImage = () => {};
+      // No `currentColor` token, so drawSvgCell's tint is a no-op — the cache
+      // key candidate before namespacing would be this literal string.
+      const COLLIDING = "<svg>same-string</svg>";
+      const cells: any[][] = [
+        [
+          { c: "•", svg: COLLIDING, fg: "red" },
+          { c: " ", img: COLLIDING, gw: 1, gh: 1 },
+        ],
+      ];
+      renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      // Each path must have created (and assigned .src to) its own Image —
+      // the svg path gets a data:image/svg+xml URI, the image path gets the
+      // raw string as-is. Two distinct assignments, not one shared/skipped.
+      expect(srcAssignments).toHaveLength(2);
+      expect(srcAssignments[0]).toContain("data:image/svg+xml");
+      expect(srcAssignments[1]).toBe(COLLIDING);
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
+  });
+
   test("snaps cell boundaries so a filled run has no sub-pixel gap", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(3, 1);
