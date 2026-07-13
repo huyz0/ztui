@@ -101,4 +101,27 @@ describe("event handler isolation", () => {
 
     app.stop();
   });
+
+  test("App.stop() detaches its driver listeners so a stopped app can't react to later events", () => {
+    // Regression: run() registered driver.on("resize"/"key"/"mouse"/"paste"/
+    // "capabilities_resolved", ...) closures over `this`, but stop() only
+    // called driver.stop() — it never detached these from the driver's own
+    // event emitter. A driver reused (or with buffered events) after stop()
+    // could still invoke the dead app's handlers.
+    const driver = new MockDriver(40, 5);
+    const app = new App(driver);
+    app.run();
+    expect(driver.listenerCount("key")).toBeGreaterThan(0);
+
+    app.stop();
+
+    expect(driver.listenerCount("key")).toBe(0);
+    expect(driver.listenerCount("mouse")).toBe(0);
+    expect(driver.listenerCount("paste")).toBe(0);
+    expect(driver.listenerCount("resize")).toBe(0);
+    expect(driver.listenerCount("capabilities_resolved")).toBe(0);
+
+    // Even if something still emits on this driver post-stop, nothing fires.
+    expect(() => driver.simulateKey("enter", "enter")).not.toThrow();
+  });
 });

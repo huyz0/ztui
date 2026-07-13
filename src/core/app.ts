@@ -4,7 +4,7 @@ import { DOMNode } from "../dom/dom.ts";
 import { Screen } from "../dom/screen.ts";
 import { renderedWidgetCount, resetRenderedWidgetCount, Widget } from "../dom/widget.ts";
 import { BunDriver } from "../driver/bun/index.ts";
-import type { Driver } from "../driver/driver.ts";
+import type { Driver, KeyEvent, MouseEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
@@ -127,6 +127,12 @@ export class App extends DOMNode {
   private _lastFrame: FrameSummary | null = null;
   /** Unsubscribe from the global theme manager; called on {@link stop}. */
   private themeUnsubscribe: (() => void) | null = null;
+  // Bound driver listeners registered in `run()`, detached in `stop()` so a
+  // stopped app's handlers can't fire again if the driver is reused (or has
+  // buffered events) — `driver.stop()` alone only tears down the low-level
+  // stdin/process wiring, not this app's own subscriptions on the driver's
+  // event emitter.
+  private driverListeners: Array<{ event: string; fn: (...args: any[]) => void }> = [];
   private _pointerShapes = true;
 
   /**
@@ -237,7 +243,7 @@ export class App extends DOMNode {
     log(`Initial screen bounds resolved: ${size.width}x${size.height}`);
     this.layoutAndRender();
 
-    this.driver.on("resize", (newSize) => {
+    const onResize = (newSize: { width: number; height: number }) => {
       log(`Resize event: ${newSize.width}x${newSize.height}`);
       if (this.resizeTimeout) {
         clearTimeout(this.resizeTimeout);
@@ -254,21 +260,35 @@ export class App extends DOMNode {
         this.driver.clearScreen();
         this.queueRender("driver:resize");
       }, 30);
-    });
+    };
 
-    this.driver.on("capabilities_resolved", () => {
+    const onCapabilitiesResolved = () => {
       log(
         `Capabilities resolved event received from driver. Cell size: ${JSON.stringify(this.driver.capabilities.cellSize)}, Graphics: ${this.driver.capabilities.graphicsProtocol}`,
       );
       this.queueRender("driver:capabilities-resolved");
-    });
+    };
 
     // All keyboard, pointer and paste handling lives in AppInput; the driver
     // events delegate straight to it. Pointer-motion throttling is internal to
     // handleMouse.
-    this.driver.on("key", (ev) => this.input.handleKey(ev));
-    this.driver.on("mouse", (ev) => this.input.handleMouse(ev));
-    this.driver.on("paste", (text) => this.input.handlePaste(text));
+    const onKey = (ev: KeyEvent) => this.input.handleKey(ev);
+    const onMouse = (ev: MouseEvent) => this.input.handleMouse(ev);
+    const onPaste = (text: string) => this.input.handlePaste(text);
+
+    this.driver.on("resize", onResize);
+    this.driver.on("capabilities_resolved", onCapabilitiesResolved);
+    this.driver.on("key", onKey);
+    this.driver.on("mouse", onMouse);
+    this.driver.on("paste", onPaste);
+
+    this.driverListeners = [
+      { event: "resize", fn: onResize },
+      { event: "capabilities_resolved", fn: onCapabilitiesResolved },
+      { event: "key", fn: onKey },
+      { event: "mouse", fn: onMouse },
+      { event: "paste", fn: onPaste },
+    ];
   }
 
   /** Stop the loop and restore the backend; releases timers, the inspector, and the singleton. */
@@ -290,6 +310,14 @@ export class App extends DOMNode {
     if (App.instance === this) {
       App.instance = null;
     }
+    // Detach this app's own subscriptions from the driver's event emitter —
+    // driver.stop() only tears down the low-level stdin/process wiring, so
+    // without this a reused (or still-flushing) driver could keep firing key/
+    // mouse events into this now-stopped app's handlers.
+    for (const { event, fn } of this.driverListeners) {
+      this.driver.off(event as any, fn as any);
+    }
+    this.driverListeners = [];
     this.driver.stop();
   }
 
