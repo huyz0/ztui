@@ -50,15 +50,24 @@ export function translateKeyboardEvent(ev: {
   const shift = !!ev.shiftKey;
   const named = DOM_KEY_NAMES[ev.key];
   if (named) return { key: named, name: named, ctrl, meta, shift };
+  // Single-char and space keys get a full modifier prefix (ctrl+/meta+/shift+,
+  // in that order) so Cmd+Z (meta+z), Ctrl+Shift+Z, etc. are distinguishable —
+  // previously only `ctrl` was ever embedded here, so e.g. Cmd+Z produced the
+  // same `key` as a bare "z" and Alt+Space produced the same `key` as a bare
+  // space. Only built when ctrl/meta is held: a bare Shift+letter must stay
+  // the browser's own shifted char (e.g. "A"), not "shift+a", or typing
+  // capitals would break.
+  const prefix =
+    ctrl || meta ? `${ctrl ? "ctrl+" : ""}${meta ? "meta+" : ""}${shift ? "shift+" : ""}` : "";
   if (ev.key === " ") {
     const name = ctrl || meta ? "space" : " ";
-    return { key: ctrl ? "ctrl+space" : " ", name, ctrl, meta, shift };
+    return { key: prefix ? `${prefix}space` : " ", name, ctrl, meta, shift };
   }
   // Printable character (single code point; surrogate pairs are length 2).
   if ([...ev.key].length === 1) {
     const char = ev.key;
-    const key = ctrl ? `ctrl+${char.toLowerCase()}` : char;
-    return { key, name: ctrl ? char.toLowerCase() : char, ctrl, meta, shift };
+    const key = prefix ? `${prefix}${char.toLowerCase()}` : char;
+    return { key, name: prefix ? char.toLowerCase() : char, ctrl, meta, shift };
   }
   return null;
 }

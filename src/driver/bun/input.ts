@@ -111,7 +111,20 @@ export function parseInput(
             keyStr = keyStr.toUpperCase();
           }
 
-          if (ctrl && !keyStr.startsWith("ctrl+")) {
+          // Single-char and space keys get a full modifier prefix (ctrl+/meta+/
+          // shift+, in that order) so Cmd+Z (meta+z), Ctrl+Shift+Z, etc. are
+          // distinguishable — not just ctrl, which was the only modifier ever
+          // embedded here before. Named multi-char keys (arrows, enter, ...) keep
+          // the existing ctrl-only prefix to avoid changing established bindings
+          // like "ctrl+j" for Ctrl+Enter.
+          const canHaveFullPrefix = keyName.length === 1 || keyName === "space";
+          if (canHaveFullPrefix && (ctrl || meta)) {
+            let prefix = "";
+            if (ctrl) prefix += "ctrl+";
+            if (meta) prefix += "meta+";
+            if (shift) prefix += "shift+";
+            keyStr = `${prefix}${keyName.length === 1 ? keyName.toLowerCase() : keyName}`;
+          } else if (ctrl && !keyStr.startsWith("ctrl+")) {
             keyStr = `ctrl+${keyStr}`;
           }
 

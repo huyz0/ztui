@@ -139,7 +139,7 @@ describe("BunDriver Capability Probing", () => {
     // Simulate Ctrl+Shift+A (key 97, modifier 6 = 1 + 1 (shift) + 4 (ctrl) = 6, event type 1 = press)
     stdin.emit("data", "\x1b[97;6u");
     expect(emittedKeys[emittedKeys.length - 1]).toEqual({
-      key: "ctrl+A",
+      key: "ctrl+shift+a",
       name: "a",
       ctrl: true,
       meta: false,

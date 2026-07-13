@@ -211,6 +211,49 @@ describe("Ctrl+Space", () => {
   });
 });
 
+describe("parseInput — Kitty meta/ctrl+shift combos", () => {
+  test("Cmd/Alt+Z (meta) embeds a meta+ prefix", () => {
+    // keycode 122 = 'z', modifiers = modVal(2, meta) + 1 = 3
+    const ev = firstKey("\x1b[122;3u");
+    expect(ev?.key).toBe("meta+z");
+    expect(ev?.meta).toBe(true);
+    expect(ev?.ctrl).toBe(false);
+  });
+
+  test("Ctrl+Shift+Z embeds both modifiers in order", () => {
+    // modVal(1 shift + 4 ctrl) + 1 = 6
+    const ev = firstKey("\x1b[122;6u");
+    expect(ev?.key).toBe("ctrl+shift+z");
+    expect(ev?.ctrl).toBe(true);
+    expect(ev?.shift).toBe(true);
+  });
+
+  test("Meta+Shift+Z embeds both modifiers in order", () => {
+    // modVal(1 shift + 2 meta) + 1 = 4
+    const ev = firstKey("\x1b[122;4u");
+    expect(ev?.key).toBe("meta+shift+z");
+    expect(ev?.meta).toBe(true);
+    expect(ev?.shift).toBe(true);
+  });
+
+  test("Meta+Space embeds a meta+ prefix on the named space key", () => {
+    // modVal(2 meta) + 1 = 3
+    const ev = firstKey("\x1b[32;3u");
+    expect(ev?.key).toBe("meta+space");
+    expect(ev?.name).toBe("space");
+    expect(ev?.meta).toBe(true);
+  });
+
+  test("plain Shift+Z stays uppercase with no prefix (unchanged behavior)", () => {
+    // modVal(1 shift) + 1 = 2
+    const ev = firstKey("\x1b[122;2u");
+    expect(ev?.key).toBe("Z");
+    expect(ev?.shift).toBe(true);
+    expect(ev?.ctrl).toBe(false);
+    expect(ev?.meta).toBe(false);
+  });
+});
+
 describe("parseInput — Enter vs. Ctrl+J (CR vs. LF)", () => {
   test("CR (\\r) is a plain Enter that sends", () => {
     const ev = firstKey("\r");

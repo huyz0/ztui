@@ -138,6 +138,34 @@ describe("DOM event translators", () => {
     expect(translateKeyboardEvent({ key: " ", ctrlKey: true })).toMatchObject({ name: "space" });
   });
 
+  test("meta and ctrl+shift combos embed a full modifier prefix", () => {
+    expect(translateKeyboardEvent({ key: "z", metaKey: true })).toMatchObject({
+      key: "meta+z",
+      ctrl: false,
+      meta: true,
+    });
+    expect(translateKeyboardEvent({ key: "Z", ctrlKey: true, shiftKey: true })).toMatchObject({
+      key: "ctrl+shift+z",
+      ctrl: true,
+      shift: true,
+    });
+    expect(translateKeyboardEvent({ key: "Z", metaKey: true, shiftKey: true })).toMatchObject({
+      key: "meta+shift+z",
+      meta: true,
+      shift: true,
+    });
+    // Alt is treated as meta.
+    expect(translateKeyboardEvent({ key: " ", altKey: true })).toMatchObject({
+      key: "meta+space",
+      meta: true,
+    });
+    // Bare Shift+letter must stay the browser's own shifted char, not a "shift+" prefix.
+    expect(translateKeyboardEvent({ key: "A", shiftKey: true })).toMatchObject({
+      key: "A",
+      shift: true,
+    });
+  });
+
   test("non-terminal keys return null", () => {
     expect(translateKeyboardEvent({ key: "F5" })).toBeNull();
     expect(translateKeyboardEvent({ key: "Shift" })).toBeNull();
