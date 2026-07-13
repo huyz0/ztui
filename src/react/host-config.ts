@@ -48,6 +48,22 @@ const KNOWN_HANDLER_PROPS = [
   "onDismiss",
 ] as const satisfies readonly (keyof Widget)[];
 
+// Structural DOMNode/Widget internals that must never be silently overwritten
+// by the generic prop mirror below — `key in instance` walks the prototype
+// chain, so a JSX prop whose name coincidentally matched one of these (e.g. a
+// custom widget exposing a `region` or `parent` prop) would otherwise corrupt
+// the tree instead of erroring. Functions (methods) are excluded from the
+// mirror separately, by type, so they don't need listing here.
+const INTERNAL_FIELDS = new Set<string>([
+  "parent",
+  "children",
+  "region",
+  "prevRegion",
+  "app",
+  "tagName",
+  "classes",
+]);
+
 function applyProps(instance: DOMNode, props: Record<string, any>, oldProps?: Record<string, any>) {
   if (instance instanceof Widget) {
     // Clear props that existed in the previous render but are now absent, so a
@@ -95,11 +111,12 @@ function applyProps(instance: DOMNode, props: Record<string, any>, oldProps?: Re
         key === "style" ||
         key === "id" ||
         key === "className" ||
-        key.startsWith("on")
+        key.startsWith("on") ||
+        INTERNAL_FIELDS.has(key)
       ) {
         continue;
       }
-      if (key in instance && props[key] !== undefined) {
+      if (key in instance && props[key] !== undefined && typeof writable[key] !== "function") {
         writable[key] = props[key];
       }
     }

@@ -96,4 +96,35 @@ describe("custom widget extension surface (public API)", () => {
     expect((captured as unknown as BarWidget).char).toBe("*");
     app.stop();
   });
+
+  test("a JSX prop named after a DOMNode/Widget internal is not silently mirrored onto it", async () => {
+    // Regression: the generic prop mirror in host-config.ts used `key in
+    // instance` (which walks the prototype chain) with no denylist, so a JSX
+    // prop coincidentally named "tagName"/"classes"/etc. would overwrite that
+    // internal field instead of erroring or being ignored. tagName/classes
+    // aren't touched by layout after mount, so a corruption here would stick
+    // (unlike e.g. `region`, which layout recomputes every frame regardless).
+    registerElement("ztui-bar", () => new BarWidget());
+    const driver = new MockDriver(8, 2);
+    const app = new App(driver);
+    let captured: BarWidget | null = null;
+    render(
+      createElement(Bar as any, {
+        char: "*",
+        tagName: "corrupted", // collides with DOMNode.tagName
+        classes: "corrupted", // collides with DOMNode.classes (a Set)
+        ref: (w: Widget | null) => {
+          captured = w as BarWidget;
+        },
+      }),
+      app.activeScreen,
+    );
+    app.run();
+    await new Promise((r) => setTimeout(r, 15));
+    expect(captured).not.toBeNull();
+    const w = captured as unknown as BarWidget;
+    expect(w.tagName).not.toBe("corrupted");
+    expect(w.classes).toBeInstanceOf(Set);
+    app.stop();
+  });
 });
