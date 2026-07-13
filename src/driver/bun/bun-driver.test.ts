@@ -243,6 +243,32 @@ describe("BunDriver clipboard", () => {
     expect(await pending).toBe("kept");
   });
 
+  test("get() coalesces concurrent calls into a single OSC 52 query", async () => {
+    // Regression: rapid repeated get() calls (e.g. key-repeat-triggered paste
+    // checks) each queued their own resolver and OSC 52 write/500ms timer
+    // instead of sharing one in-flight query.
+    driver.clipboard.set("shared");
+    const before = stdout.written.length;
+    const a = driver.clipboard.get();
+    const b = driver.clipboard.get();
+    const c = driver.clipboard.get();
+    expect(a).toBe(b);
+    expect(b).toBe(c);
+    // Only one new OSC 52 query write, not three.
+    const written = stdout.written.slice(before);
+    expect(written.filter((s) => s === "\x1b]52;c;?\x07")).toHaveLength(1);
+
+    const b64 = Buffer.from("from-terminal").toString("base64");
+    stdin.emit("data", `\x1b]52;c;${b64}\x07`);
+    expect(await a).toBe("from-terminal");
+
+    // A subsequent get() after the prior one settled issues a fresh query.
+    const after = driver.clipboard.get();
+    expect(after).not.toBe(a);
+    await vi.advanceTimersByTimeAsync(600);
+    expect(await after).toBe("shared");
+  });
+
   test("exitOnSignal:false surfaces a 'signal' event instead of exiting", () => {
     const optOut = new BunDriver({ stdin, stdout, exitOnSignal: false });
     optOut.start();

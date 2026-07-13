@@ -21,9 +21,17 @@ export class BunDriver extends Driver {
    * even when the terminal won't answer a read.
    */
   private lastClipboard = "";
+  /**
+   * The in-flight `get()` query, if any. Callers that call `get()` again while
+   * one is already outstanding (e.g. rapid key-repeat-triggered paste checks)
+   * share this promise instead of each queuing their own resolver and OSC 52
+   * write/500ms timer — the terminal gets one query per round-trip, not N.
+   */
+  private pendingClipboardGet: Promise<string> | null = null;
   public override readonly clipboard: Clipboard = {
     get: (): Promise<string> => {
-      return new Promise<string>((resolve) => {
+      if (this.pendingClipboardGet) return this.pendingClipboardGet;
+      const promise = new Promise<string>((resolve) => {
         // Wrap the resolver so a blocked terminal — which commonly answers an
         // OSC 52 read with an *empty* payload rather than staying silent — falls
         // back to our local mirror instead of returning "". A genuine non-empty
@@ -40,6 +48,11 @@ export class BunDriver extends Driver {
           }
         }, 500);
       });
+      this.pendingClipboardGet = promise;
+      promise.finally(() => {
+        if (this.pendingClipboardGet === promise) this.pendingClipboardGet = null;
+      });
+      return promise;
     },
     set: (text: string): void => {
       this.lastClipboard = text;
