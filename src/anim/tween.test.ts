@@ -64,6 +64,35 @@ describe("Tween", () => {
       vi.useRealTimers();
     }
   });
+
+  test("re-calling to() with the same target mid-flight swaps in the new onComplete instead of dropping it", () => {
+    vi.useFakeTimers();
+    try {
+      const stale = vi.fn();
+      const fresh = vi.fn();
+      const t = new Tween(0);
+      t.to(10, { duration: 100, easing: "linear", onComplete: stale });
+      vi.advanceTimersByTime(50);
+      // Same target re-targeted mid-flight (e.g. a re-render passing a fresh
+      // closure) must not silently keep the stale callback.
+      t.to(10, { duration: 100, easing: "linear", onComplete: fresh });
+      vi.advanceTimersByTime(60);
+      expect(t.animating).toBe(false);
+      expect(fresh).toHaveBeenCalledTimes(1);
+      expect(stale).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("re-calling to() with the same target after settling fires the new onComplete immediately", () => {
+    const t = new Tween(10);
+    t.set(10); // already settled at 10
+    const done = vi.fn();
+    t.to(10, { onComplete: done });
+    expect(done).toHaveBeenCalledTimes(1);
+    expect(t.animating).toBe(false);
+  });
 });
 
 describe("ColorTween", () => {

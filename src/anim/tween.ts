@@ -54,8 +54,17 @@ export class Tween {
    * non-positive duration snaps immediately.
    */
   public to(target: number, opts: TweenOptions = {}): void {
-    // Already settled on, or already heading to, this target: nothing to do.
-    if (target === this.target) return;
+    // Already settled on, or already heading to, this target: the motion
+    // itself doesn't change, but a caller re-calling `to()` with a fresh
+    // `onComplete` (e.g. a new closure from a re-render) must still get it
+    // invoked — not silently dropped in favor of a stale one.
+    if (target === this.target) {
+      if (opts.onComplete) {
+        if (this.settled) opts.onComplete();
+        else this.onComplete = opts.onComplete;
+      }
+      return;
+    }
 
     this.from = this.value;
     this.target = target;
