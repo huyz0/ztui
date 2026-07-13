@@ -89,7 +89,11 @@ export class SliderWidget extends Widget {
     const clickCol = ev.x - contentRect.x;
     const pct = Math.max(0, Math.min(1, clickCol / (trackWidth - 1)));
     const rawVal = this.min + pct * (this.max - this.min);
-    const steppedVal = Math.round(rawVal / this.step) * this.step;
+    // A zero (or negative) step has no meaningful snapping — treat it as
+    // "no stepping" instead of dividing by it, which would set `value` to
+    // NaN and corrupt every subsequent render/onChange until the widget is
+    // recreated.
+    const steppedVal = this.step > 0 ? Math.round(rawVal / this.step) * this.step : rawVal;
     const finalVal = Math.max(this.min, Math.min(this.max, steppedVal));
 
     this.commit(finalVal);
