@@ -139,6 +139,8 @@ export interface WidgetStyles {
   zIndex?: number;
   /** Layout mode alias: `"flex"` (use `flexDirection`), `"grid"`, or `"dock"`. */
   display?: "flex" | "grid" | "dock";
+  /** Number of equal-width columns when `display: "grid"`. Defaults to `2`. */
+  gridColumns?: number;
   /** Flex flow when `display: "flex"`: `"row"` (horizontal) or `"column"` (vertical). */
   flexDirection?: "row" | "column";
   /**

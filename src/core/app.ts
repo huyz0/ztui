@@ -803,7 +803,7 @@ export class App extends DOMNode {
     } else if (layoutType === "dock") {
       new DockLayout().resolve(parent);
     } else if (layoutType === "grid") {
-      new GridLayout(2).resolve(parent);
+      new GridLayout(parent.computedStyle.gridColumns ?? 2).resolve(parent);
     } else {
       const inner = parent.getContentRect();
       for (const child of parent.children) {
