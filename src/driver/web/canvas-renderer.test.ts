@@ -4,6 +4,7 @@ import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import {
+  _imageCacheSizeForTest,
   type CanvasMetrics,
   measureCellFromBlock,
   renderBufferToCanvas,
@@ -262,6 +263,39 @@ describe("renderBufferToCanvas", () => {
       expect(srcAssignments).toHaveLength(2);
       expect(srcAssignments[0]).toContain("data:image/svg+xml");
       expect(srcAssignments[1]).toBe(COLLIDING);
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
+  });
+
+  test("shared image cache evicts the oldest entry once past its size cap", () => {
+    // Regression: svgImageCache was an unbounded module-level Map — a session
+    // that cycles through many distinct image sources (e.g. a per-frame
+    // data-URI, or an icon tinted through many colors) would retain every
+    // decoded <img> forever.
+    class FakeImage {
+      onload: (() => void) | null = null;
+      complete = true;
+      naturalWidth = 16;
+      set src(_v: string) {}
+    }
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = FakeImage;
+    try {
+      const { ctx } = mockCtx();
+      ctx.drawImage = () => {};
+      const sizeBefore = _imageCacheSizeForTest();
+      // One more than the cache's cap, each a distinct `img` source so every
+      // cell forces a fresh cache entry.
+      const CAP_PLUS_ONE = 257;
+      for (let i = 0; i < CAP_PLUS_ONE; i++) {
+        const cells: any[][] = [[{ c: " ", img: `evict-test:${i}`, gw: 1, gh: 1 }]];
+        renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      }
+      // The cache must not have grown by the full count added — it stayed
+      // capped, evicting the oldest entries as new ones came in.
+      expect(_imageCacheSizeForTest() - sizeBefore).toBeLessThan(CAP_PLUS_ONE);
+      expect(_imageCacheSizeForTest()).toBeLessThanOrEqual(256);
     } finally {
       (globalThis as any).Image = prevImage;
     }

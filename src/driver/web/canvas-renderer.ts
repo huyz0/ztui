@@ -121,7 +121,36 @@ export interface CanvasRenderOptions {
 // frames; entries are cheap (one <img> per distinct icon/image). Keys are
 // namespaced ("svg:"/"img:") so a tinted-markup string can never collide with
 // an unrelated image `src` that happens to equal it.
+//
+// Capped LRU: a long session that cycles through many distinct data-URIs
+// (e.g. an animated/tweened icon color, or a widget generating a fresh PNG
+// per frame) would otherwise retain every decoded <img> forever. Map
+// preserves insertion order, so re-inserting on access marks an entry
+// most-recently-used and the oldest key is the one to evict.
+const IMAGE_CACHE_LIMIT = 256;
 const svgImageCache = new Map<string, HTMLImageElement>();
+
+function cacheGet(key: string): HTMLImageElement | undefined {
+  const img = svgImageCache.get(key);
+  if (img) {
+    svgImageCache.delete(key);
+    svgImageCache.set(key, img);
+  }
+  return img;
+}
+
+function cacheSet(key: string, img: HTMLImageElement): void {
+  svgImageCache.set(key, img);
+  if (svgImageCache.size > IMAGE_CACHE_LIMIT) {
+    const oldestKey = svgImageCache.keys().next().value;
+    if (oldestKey !== undefined) svgImageCache.delete(oldestKey);
+  }
+}
+
+/** Test-only accessor for the shared image cache's current size. */
+export function _imageCacheSizeForTest(): number {
+  return svgImageCache.size;
+}
 
 /**
  * Draw a vector icon into a cell box, rasterized natively by the browser. The
@@ -142,12 +171,12 @@ function drawSvgCell(
   if (typeof Image === "undefined") return;
   const tinted = svg.replace(/currentColor/g, color);
   const key = `svg:${tinted}`;
-  let img = svgImageCache.get(key);
+  let img = cacheGet(key);
   if (!img) {
     img = new Image();
     img.onload = () => requestRepaint?.();
     img.src = `data:image/svg+xml,${encodeURIComponent(tinted)}`;
-    svgImageCache.set(key, img);
+    cacheSet(key, img);
   }
   if (img.complete && img.naturalWidth > 0) {
     // Center a square (icons are square) within the cell box.
@@ -178,12 +207,12 @@ function drawImageCell(
 ): void {
   if (typeof Image === "undefined") return;
   const key = `img:${src}`;
-  let img = svgImageCache.get(key);
+  let img = cacheGet(key);
   if (!img) {
     img = new Image();
     img.onload = () => requestRepaint?.();
     img.src = src;
-    svgImageCache.set(key, img);
+    cacheSet(key, img);
   }
   if (img.complete && img.naturalWidth > 0) {
     const c = ctx as CanvasRenderingContext2D;
