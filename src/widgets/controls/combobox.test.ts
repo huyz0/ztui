@@ -1,4 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
+import { Screen } from "../../dom/screen.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { ComboboxOverlayWidget, ComboboxWidget } from "./combobox.ts";
 
 describe("ComboboxWidget option logic", () => {
@@ -131,5 +135,34 @@ describe("ComboboxWidget highlightedIndex stays valid as the filtered list shrin
     };
     w.onKey?.({ key: "enter", name: "enter", handled: false });
     expect(selected).toBeDefined();
+  });
+});
+
+describe("ComboboxWidget overlay placement when neither direction fits", () => {
+  test("overlay height shrinks to available space instead of overflowing the screen", () => {
+    // Regression: the "flip above" branch only checked spaceBelow < overlayHeight
+    // && spaceAbove > spaceBelow, with no re-check that spaceAbove actually
+    // fits either. When both directions are smaller than the natural overlay
+    // height, it opened at the natural height anyway and overflowed the screen.
+    const screen = new Screen();
+    screen.region = new Region(Offset.ORIGIN, new Size(20, 10));
+
+    const w = new ComboboxWidget();
+    // Enough options that the natural overlay height (rows+2, capped at 10)
+    // exceeds either the space above or below a combobox near mid-screen.
+    w.options = Array.from({ length: 20 }, (_, i) => `opt${i}`);
+    screen.appendChild(w);
+    // Combobox sits at y=4, height=1 -> spaceAbove=4, spaceBelow=10-5=5. Natural
+    // height is min(20,8)+2=10, which fits neither side.
+    w.region = new Region(new Offset(0, 4), new Size(10, 1));
+
+    w.openDropdown();
+    const overlay = (w as unknown as { overlay: any }).overlay;
+    expect(overlay).toBeTruthy();
+
+    // The overlay must end within the screen in both directions.
+    expect(overlay.overlayY).toBeGreaterThanOrEqual(0);
+    // biome-ignore lint/complexity/useLiteralKeys: intentional bracket access to a private method for testing
+    expect(overlay.overlayY + overlay["overlayHeight"]()).toBeLessThanOrEqual(screen.region.height);
   });
 });

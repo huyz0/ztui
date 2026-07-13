@@ -19,6 +19,13 @@ export class ComboboxOverlayWidget extends Widget {
     public overlayX: number,
     public overlayY: number,
     public overlayWidth: number,
+    /**
+     * Caps the painted height below the natural row count when the screen
+     * doesn't have room in either direction — otherwise the overlay would
+     * still overflow past the screen edge even after {@link ComboboxWidget.openDropdown}
+     * picked the side with more (but still insufficient) space.
+     */
+    private maxHeight = Infinity,
   ) {
     super("combobox-overlay");
     this.focusable = false;
@@ -33,12 +40,19 @@ export class ComboboxOverlayWidget extends Widget {
   }
 
   private overlayHeight(): number {
-    return Math.min(Math.max(this.combobox.getFilteredOptions().length, 1), MAX_VISIBLE_ROWS) + 2;
+    const natural =
+      Math.min(Math.max(this.combobox.getFilteredOptions().length, 1), MAX_VISIBLE_ROWS) + 2;
+    return Math.max(3, Math.min(natural, this.maxHeight));
+  }
+
+  /** Rows actually drawn, given the (possibly space-clamped) overlay height. */
+  private visibleRows(filtered: SelectOption[]): number {
+    return Math.min(filtered.length, MAX_VISIBLE_ROWS, this.overlayHeight() - 2);
   }
 
   /** First filtered-option index shown on row 0, mirroring the scroll math in {@link render}. */
   private scrollTop(filtered: SelectOption[]): number {
-    const visible = Math.min(filtered.length, MAX_VISIBLE_ROWS);
+    const visible = this.visibleRows(filtered);
     return this.combobox.highlightedIndex >= visible
       ? this.combobox.highlightedIndex - visible + 1
       : 0;
@@ -100,7 +114,7 @@ export class ComboboxOverlayWidget extends Widget {
       return;
     }
 
-    const visible = Math.min(filtered.length, MAX_VISIBLE_ROWS);
+    const visible = this.visibleRows(filtered);
     const top = this.scrollTop(filtered);
     const innerWidth = w - 2;
     for (let i = 0; i < visible; i++) {
@@ -227,19 +241,28 @@ export class ComboboxWidget extends Widget {
 
     const clientRect = this.getClientRect();
     const overlayWidth = clientRect.width;
-    const overlayHeight =
+    const naturalHeight =
       Math.min(Math.max(this.getFilteredOptions().length, 1), MAX_VISIBLE_ROWS) + 2;
 
     const screenHeight = screen.region.height;
     const spaceBelow = screenHeight - clientRect.bottom;
     const spaceAbove = clientRect.y;
 
-    let overlayY = clientRect.bottom;
-    if (spaceBelow < overlayHeight && spaceAbove > spaceBelow) {
-      overlayY = Math.max(0, clientRect.y - overlayHeight);
-    }
+    // Prefer the side with more room; if neither side fits the natural
+    // height, shrink to whichever side has more space rather than opening at
+    // the natural height and overflowing past the screen edge.
+    const below = spaceBelow >= naturalHeight || spaceBelow >= spaceAbove;
+    const available = below ? spaceBelow : spaceAbove;
+    const overlayHeight = Math.max(1, Math.min(naturalHeight, available));
+    const overlayY = below ? clientRect.bottom : Math.max(0, clientRect.y - overlayHeight);
 
-    this.overlay = new ComboboxOverlayWidget(this, clientRect.x, overlayY, overlayWidth);
+    this.overlay = new ComboboxOverlayWidget(
+      this,
+      clientRect.x,
+      overlayY,
+      overlayWidth,
+      overlayHeight,
+    );
     screen.addOverlay(this.overlay);
     this.overlayScreen = screen;
     App.instance?.queueRender();
