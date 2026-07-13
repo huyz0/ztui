@@ -12,6 +12,9 @@ const TINY_PNG_BASE64 =
 const TINY_GIF_BASE64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const TINY_JPEG_BASE64 =
   "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAP/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJgA/9k=";
+// 1x1 solid-red WebP, generated with `sharp({ create: {...} }).webp().toBuffer()`.
+const TINY_WEBP_BASE64 =
+  "UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoBAAEAAUAmJaACdLoB+AADsAD+8ut//NgVzXPv9//S4P0uD9Lg/9KQAAA=";
 
 const TINY_SVG = `
 <svg viewBox="0 0 10 10" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
@@ -34,6 +37,13 @@ describe("Image & SVG Image Widgets", () => {
   test("Throws an error when decoding invalid image formats", () => {
     expect(() => decodeImage(new Uint8Array([1, 2, 3, 4]))).toThrow();
   });
+
+  test("Decodes WebP images via the sharp fallback", () => {
+    const decoded = decodeImage(new Uint8Array(Buffer.from(TINY_WEBP_BASE64, "base64")));
+    expect(decoded.width).toBe(1);
+    expect(decoded.height).toBe(1);
+    expect(decoded.pixels.length).toBe(4);
+  }, 15000);
 
   test("Correctly resizes pixel buffers using bilinear filter", () => {
     const src = new Uint8Array([

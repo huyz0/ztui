@@ -12,32 +12,30 @@ export interface SyncRenderResult {
   height: number;
 }
 
-export function renderSvgSync(options: {
-  svg: string;
-  width: number;
-  height: number;
-  isIcon: boolean;
-  color?: string;
-  bgHex?: string;
-  fit?: "fill" | "contain" | "cover" | "inside" | "outside";
-}): SyncRenderResult {
-  const payload = JSON.stringify(options);
-  const scriptPath = join(__dirname, "sharp-render-sync.ts");
+/**
+ * Runs a `sharp-*-sync.ts` helper script in a subprocess and returns its
+ * parsed `data` payload. Shared by {@link renderSvgSync} and
+ * {@link decodeRasterViaSharp} — sharp is an optional dependency, so this is
+ * also where "sharp isn't installed" is turned into one actionable error
+ * message instead of a raw module-resolution stack trace.
+ */
+function runSharpScript(scriptName: string, payload: string, forFeature: string): any {
+  const scriptPath = join(__dirname, scriptName);
 
   const res = spawnSync("bun", ["run", scriptPath], {
     input: payload,
     encoding: "utf-8",
-    maxBuffer: 1024 * 1024 * 16,
+    maxBuffer: 1024 * 1024 * 64,
   });
 
   if (!res) {
     throw new Error(
-      "Failed to spawn sharp-render-sync: spawnSync returned undefined (possibly mocked)",
+      `Failed to spawn ${scriptName}: spawnSync returned undefined (possibly mocked)`,
     );
   }
 
   if (res.error) {
-    throw new Error(`Failed to spawn sharp-render-sync: ${res.error.message}`);
+    throw new Error(`Failed to spawn ${scriptName}: ${res.error.message}`);
   }
 
   // sharp is an optional dependency: if it isn't installed the subprocess
@@ -48,8 +46,8 @@ export function renderSvgSync(options: {
     (res.status !== 0 && !res.stdout.trim() && /sharp/.test(stderr));
   if (sharpMissing) {
     throw new Error(
-      "SVG rasterization requires the optional 'sharp' dependency, which is not installed. " +
-        "Install it to enable SVG/Mermaid rendering: `bun add sharp` (or `npm i sharp`).",
+      `${forFeature} requires the optional 'sharp' dependency, which is not installed. ` +
+        "Install it to enable this: `bun add sharp` (or `npm i sharp`).",
     );
   }
 
@@ -58,7 +56,7 @@ export function renderSvgSync(options: {
     result = JSON.parse(res.stdout.trim());
   } catch (err: any) {
     throw new Error(
-      `Failed to parse sharp-render-sync output: ${res.stdout || ""}. Stderr: ${res.stderr || ""}. Error: ${err.message}`,
+      `Failed to parse ${scriptName} output: ${res.stdout || ""}. Stderr: ${res.stderr || ""}. Error: ${err.message}`,
     );
   }
 
@@ -66,10 +64,44 @@ export function renderSvgSync(options: {
     throw new Error(`Sharp sync render error: ${result.error}`);
   }
 
+  return result.data;
+}
+
+export function renderSvgSync(options: {
+  svg: string;
+  width: number;
+  height: number;
+  isIcon: boolean;
+  color?: string;
+  bgHex?: string;
+  fit?: "fill" | "contain" | "cover" | "inside" | "outside";
+}): SyncRenderResult {
+  const payload = JSON.stringify(options);
+  const data = runSharpScript("sharp-render-sync.ts", payload, "SVG/Mermaid rendering");
+
   return {
-    pngBase64: result.data.pngBase64,
-    pixels: new Uint8Array(Buffer.from(result.data.pixelsBase64, "base64")),
-    width: result.data.width,
-    height: result.data.height,
+    pngBase64: data.pngBase64,
+    pixels: new Uint8Array(Buffer.from(data.pixelsBase64, "base64")),
+    width: data.width,
+    height: data.height,
+  };
+}
+
+/**
+ * Decodes a raster image (WebP, AVIF, TIFF, or anything else sharp reads) at
+ * its native resolution — no resize, unlike {@link renderSvgSync}. Used as a
+ * fallback in {@link import("../widgets/media/image.ts").decodeImage} for
+ * formats the pure-JS PNG/JPEG/GIF decoders don't handle.
+ */
+export function decodeRasterViaSharp(
+  buffer: Uint8Array,
+): Pick<SyncRenderResult, "pixels" | "width" | "height"> {
+  const payload = JSON.stringify({ bufferBase64: Buffer.from(buffer).toString("base64") });
+  const data = runSharpScript("sharp-decode-sync.ts", payload, "WebP/AVIF image decoding");
+
+  return {
+    pixels: new Uint8Array(Buffer.from(data.pixelsBase64, "base64")),
+    width: data.width,
+    height: data.height,
   };
 }

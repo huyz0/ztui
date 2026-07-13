@@ -67,7 +67,7 @@ describe("sharp-sync", () => {
         height: 20,
         isIcon: false,
       });
-    }).toThrow("Failed to spawn sharp-render-sync: spawn failed");
+    }).toThrow("Failed to spawn sharp-render-sync.ts: spawn failed");
   });
 
   test("renderSvgSync handles invalid JSON stdout", () => {
@@ -84,7 +84,9 @@ describe("sharp-sync", () => {
         height: 20,
         isIcon: false,
       });
-    }).toThrow("Failed to parse sharp-render-sync output: invalid-json. Stderr: some stderr logs");
+    }).toThrow(
+      "Failed to parse sharp-render-sync.ts output: invalid-json. Stderr: some stderr logs",
+    );
   });
 
   test("renderSvgSync handles success: false response", () => {

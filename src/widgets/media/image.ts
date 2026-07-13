@@ -10,6 +10,7 @@ import { Style } from "../../render/style.ts";
 import { ThemeManager } from "../../theme.ts";
 import { logger } from "../../utils/logger.ts";
 import { encodePNG } from "../../utils/png.ts";
+import { decodeRasterViaSharp } from "../../utils/sharp-sync.ts";
 import { renderAnsiFallback, resizeImage } from "./image-renderers.ts";
 
 export class ImageWidget extends Widget {
@@ -220,6 +221,31 @@ export class ImageWidget extends Widget {
   }
 }
 
+/** RIFF....WEBP container (bytes 0-3 "RIFF", bytes 8-11 "WEBP"). */
+function isWebP(buffer: Uint8Array): boolean {
+  return (
+    buffer.length >= 12 &&
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  );
+}
+
+/** ISOBMFF `ftyp` box (bytes 4-7) with an "avif"/"avis" major brand (bytes 8-11). */
+function isAvif(buffer: Uint8Array): boolean {
+  if (buffer.length < 12) return false;
+  if (buffer[4] !== 0x66 || buffer[5] !== 0x74 || buffer[6] !== 0x79 || buffer[7] !== 0x70) {
+    return false;
+  }
+  const brand = String.fromCharCode(buffer[8], buffer[9], buffer[10], buffer[11]);
+  return brand === "avif" || brand === "avis";
+}
+
 export function decodeImage(buffer: Uint8Array): {
   pixels: Uint8Array;
   width: number;
@@ -247,6 +273,12 @@ export function decodeImage(buffer: Uint8Array): {
     };
   }
 
+  // WebP/AVIF: not covered by the pure-JS decoders above, so fall back to the
+  // optional `sharp` dependency (already used for SVG rasterization).
+  if (isWebP(buffer) || isAvif(buffer)) {
+    return decodeRasterViaSharp(buffer);
+  }
+
   // Fallback to JPEG
   try {
     const raw = jpeg.decode(buffer, { useTArray: true });
@@ -260,7 +292,7 @@ export function decodeImage(buffer: Uint8Array): {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join(" ");
     throw new Error(
-      `Unsupported or invalid image format (must be PNG, JPEG, or GIF). ` +
+      `Unsupported or invalid image format (must be PNG, JPEG, GIF, WebP, or AVIF). ` +
         `Got ${buffer.length} bytes starting with: ${magic || "(empty)"}`,
     );
   }
