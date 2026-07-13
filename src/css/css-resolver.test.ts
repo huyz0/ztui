@@ -387,4 +387,18 @@ describe("CSSResolver performance helpers", () => {
     const w = new Widget("button");
     expect(resolver.resolveStyles(w, false).color).toBe("#111111");
   });
+
+  test("a comma-separated grouped selector styles every part of the group", () => {
+    // Regression: parseTCSS never split a grouped selector ("h1, h2 { ... }")
+    // on its top-level commas, so the leftover ", " in the single selector
+    // string could never fully-consume-match any widget — the rule silently
+    // styled nothing at all.
+    const rules = parseTCSS("label, box { color: #00ff00; }");
+    expect(rules.length).toBe(2);
+    expect(rules.map((r) => r.selector)).toEqual(["label", "box"]);
+
+    const resolver = new CSSResolver(rules);
+    expect(resolver.resolveStyles(new Widget("label"), false).color).toBe("#00ff00");
+    expect(resolver.resolveStyles(new Widget("box"), false).color).toBe("#00ff00");
+  });
 });

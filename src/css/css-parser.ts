@@ -46,7 +46,14 @@ export function parseTCSS(content: string): TCSSParsedRules {
     }
 
     if (selector && Object.keys(properties).length > 0) {
-      rules.push({ selector, properties });
+      // A grouped selector ("h1, h2 { ... }") must become one rule per
+      // comma-separated part — matching requires consuming the *entire*
+      // selector string, so a bare comma left in place would make every
+      // part of the group fail to match anything.
+      for (const part of selector.split(",")) {
+        const single = part.trim();
+        if (single) rules.push({ selector: single, properties });
+      }
     }
   }
 
