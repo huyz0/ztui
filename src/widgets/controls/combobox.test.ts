@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { ComboboxWidget } from "./combobox.ts";
+import { ComboboxOverlayWidget, ComboboxWidget } from "./combobox.ts";
 
 describe("ComboboxWidget option logic", () => {
   test("resolves string and object options to a uniform shape", () => {
@@ -64,5 +64,25 @@ describe("ComboboxWidget option logic", () => {
     w.options = ["a"];
     w.openDropdown();
     expect((w as unknown as { overlay: unknown }).overlay).toBeFalsy();
+  });
+});
+
+describe("ComboboxOverlayWidget click hit-testing when the list is scrolled", () => {
+  test("clicking a visible row selects the option actually drawn there, not the unscrolled one", () => {
+    // Regression: render() offsets by `scrollTop` once the highlighted option
+    // scrolls past the visible window, but handleMouse used to index straight
+    // into `filtered` with the raw row number, selecting the wrong option.
+    const w = new ComboboxWidget();
+    w.options = Array.from({ length: 12 }, (_, i) => `opt${i}`);
+    w.highlightedIndex = 9; // scrolls the 8-row window so row 0 shows opt2
+    const overlay = new ComboboxOverlayWidget(w, 0, 0, 20);
+
+    let selected: unknown;
+    w.selectOption = (opt: unknown) => {
+      selected = opt;
+    };
+    // Row 0 of the overlay body is at overlayY + 1.
+    overlay.handleMouse({ type: "press", button: "left", x: 5, y: 1 });
+    expect((selected as { label: string }).label).toBe("opt2");
   });
 });

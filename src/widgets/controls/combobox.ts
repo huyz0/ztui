@@ -36,6 +36,14 @@ export class ComboboxOverlayWidget extends Widget {
     return Math.min(Math.max(this.combobox.getFilteredOptions().length, 1), MAX_VISIBLE_ROWS) + 2;
   }
 
+  /** First filtered-option index shown on row 0, mirroring the scroll math in {@link render}. */
+  private scrollTop(filtered: SelectOption[]): number {
+    const visible = Math.min(filtered.length, MAX_VISIBLE_ROWS);
+    return this.combobox.highlightedIndex >= visible
+      ? this.combobox.highlightedIndex - visible + 1
+      : 0;
+  }
+
   public override handleMouse(ev: any): void {
     if (ev.type !== "press" || ev.button !== "left") return;
 
@@ -48,8 +56,8 @@ export class ComboboxOverlayWidget extends Widget {
       return;
     }
 
-    const rowIndex = ev.y - this.overlayY - 1;
     const filtered = this.combobox.getFilteredOptions();
+    const rowIndex = this.scrollTop(filtered) + (ev.y - this.overlayY - 1);
     if (rowIndex >= 0 && rowIndex < filtered.length) {
       this.combobox.selectOption(filtered[rowIndex]);
     }
@@ -93,10 +101,7 @@ export class ComboboxOverlayWidget extends Widget {
     }
 
     const visible = Math.min(filtered.length, MAX_VISIBLE_ROWS);
-    let top = 0;
-    if (this.combobox.highlightedIndex >= visible) {
-      top = this.combobox.highlightedIndex - visible + 1;
-    }
+    const top = this.scrollTop(filtered);
     const innerWidth = w - 2;
     for (let i = 0; i < visible; i++) {
       const idx = top + i;
