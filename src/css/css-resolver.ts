@@ -420,10 +420,10 @@ export class CSSResolver {
 
     for (const rule of this.rules) {
       const parsed = this.parseSelector(rule.selector);
-      if (widget.matchesSelector(parsed.base)) {
-        if (parsed.pseudo === "hover" && !isHovered) continue;
-        if (parsed.pseudo === "focus" && !widget.focused) continue;
-
+      if (
+        widget.matchesSelector(parsed.base) &&
+        this.pseudoMatches(parsed.pseudo, widget, isHovered)
+      ) {
         const spec = this.calculateSpecificity(parsed.base, parsed.pseudo);
         matchedRules.push({ specificity: spec, properties: rule.properties });
       }
@@ -508,6 +508,27 @@ export class CSSResolver {
     }
 
     return idCount * 100 + classCount * 10 + tagCount;
+  }
+
+  /**
+   * Whether a rule's pseudo-class (if any) matches the widget's current
+   * state. Unset `pseudo` always matches. `:hover`/`:focus` are gated on the
+   * live pointer/focus state passed in; `:disabled`/`:checked` read the
+   * widget's own state. Any *other* pseudo-class fails closed (never
+   * matches) rather than applying unconditionally — a stylesheet with an
+   * unsupported pseudo-class (e.g. a typo, or one not implemented yet)
+   * should silently do nothing, not silently apply everywhere.
+   */
+  private pseudoMatches(pseudo: string | undefined, widget: Widget, isHovered: boolean): boolean {
+    if (pseudo === undefined) return true;
+    if (pseudo === "hover") return isHovered;
+    if (pseudo === "focus") return widget.focused;
+    if (pseudo === "disabled") return widget.isDisabled();
+    if (pseudo === "checked") {
+      const checked = (widget as unknown as { checked?: unknown }).checked;
+      return typeof checked === "boolean" && checked;
+    }
+    return false;
   }
 
   private parseSelector(sel: string): { base: string; pseudo?: string } {

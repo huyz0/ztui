@@ -353,4 +353,38 @@ describe("CSSResolver performance helpers", () => {
     expect(resolver.resolveStyles(w, true).color).toBe("#222222");
     expect(resolver.resolveStyles(w, false).color).toBe("#111111");
   });
+
+  test(":disabled only applies to a disabled widget", () => {
+    const resolver = new CSSResolver(
+      parseTCSS("button { color: #111111; } button:disabled { color: #999999; }"),
+    );
+    const w = new Widget("button");
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111");
+    w.disabled = true;
+    expect(resolver.resolveStyles(w, false).color).toBe("#999999");
+  });
+
+  test(":checked only applies to a widget whose `checked` field is true", () => {
+    const resolver = new CSSResolver(
+      parseTCSS("checkbox { color: #111111; } checkbox:checked { color: #00ff00; }"),
+    );
+    const w = new Widget("checkbox") as Widget & { checked?: boolean };
+    // No `checked` field at all: :checked must not match.
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111");
+    w.checked = false;
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111");
+    w.checked = true;
+    expect(resolver.resolveStyles(w, false).color).toBe("#00ff00");
+  });
+
+  test("an unrecognized pseudo-class fails closed instead of matching unconditionally", () => {
+    // Regression test: :checked/:disabled/:active etc. used to have no gate
+    // at all, so any pseudo-class other than :hover/:focus silently applied
+    // to every matching widget regardless of state.
+    const resolver = new CSSResolver(
+      parseTCSS("button { color: #111111; } button:active { color: #ff0000; }"),
+    );
+    const w = new Widget("button");
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111");
+  });
 });
