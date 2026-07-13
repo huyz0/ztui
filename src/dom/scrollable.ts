@@ -29,6 +29,11 @@ export interface ScrollableMembers {
   getContentSize(): Size;
   /** The full inner box ignoring the scrollbar gutter (where the bar is drawn). */
   getViewportRect(): Region;
+  /**
+   * Opt-in tail-following: pin to the bottom as content grows, until the user
+   * scrolls up — and resume once they scroll back to the bottom.
+   */
+  followTail: boolean;
 }
 
 /** Mixin adding scroll behavior to a Widget subclass. */
@@ -366,6 +371,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
             this.scrollOffset = new Offset(this.scrollOffset.x, targetScrollY);
             this.isDraggingY = true;
             this.dragStartOffset = Math.floor(thumbHeight / 2);
+            if (this.followTail) this.tailPinned = targetScrollY >= maxScrollY;
           }
           ev.handled = true;
         } else if (
@@ -407,6 +413,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
           const ratio = trackHeight > thumbHeight ? thumbStart / (trackHeight - thumbHeight) : 0;
           const targetScrollY = Math.max(0, Math.min(maxScrollY, Math.round(ratio * maxScrollY)));
           this.scrollOffset = new Offset(this.scrollOffset.x, targetScrollY);
+          if (this.followTail) this.tailPinned = targetScrollY >= maxScrollY;
           ev.handled = true;
         } else if (this.isDraggingX && trackWidth > 0) {
           const thumbWidth = Math.max(

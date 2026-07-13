@@ -509,4 +509,42 @@ describe("Scrollable Mixin", () => {
 
     app.stop();
   });
+
+  test("dragging the scrollbar thumb unpins followTail so render() doesn't snap back", () => {
+    // Regression: handleMouse's scrollbar press/drag paths never cleared
+    // tailPinned, so a followTail box (e.g. a streaming log) fought the drag —
+    // render() re-pinned to the bottom every frame, and the thumb never moved.
+    const scrollBox = new ScrollableBox();
+    scrollBox.followTail = true;
+    // 5x5 container; content is 10 tall -> maxScrollY = 5.
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    scrollBox.appendChild(child);
+
+    // Start pinned to the bottom, as followTail content normally is.
+    scrollBox.render(new ScreenBuffer(5, 5)); // let followTail pin it itself
+    const bottom = scrollBox.scrollOffset.y;
+    expect(bottom).toBeGreaterThan(0);
+
+    // Press directly on the track above the thumb (jump-scroll away from the bottom).
+    const press: any = { x: 4, y: 0, type: "press", button: "left", handled: false };
+    scrollBox.handleMouse(press);
+    expect(press.handled).toBe(true);
+    expect(scrollBox.scrollOffset.y).toBeLessThan(bottom);
+    const afterPress = scrollBox.scrollOffset.y;
+
+    // render() must not snap the offset back to the bottom now that the user
+    // has actively dragged away from it.
+    scrollBox.render(new ScreenBuffer(5, 5));
+    expect(scrollBox.scrollOffset.y).toBe(afterPress);
+
+    // A subsequent drag further up should likewise stick.
+    const drag: any = { x: 4, y: 1, type: "drag", button: "left", handled: false };
+    scrollBox.handleMouse(drag);
+    const afterDrag = scrollBox.scrollOffset.y;
+    scrollBox.render(new ScreenBuffer(5, 5));
+    expect(scrollBox.scrollOffset.y).toBe(afterDrag); // no snap-back
+    expect(scrollBox.scrollOffset.y).toBeLessThan(bottom);
+  });
 });
