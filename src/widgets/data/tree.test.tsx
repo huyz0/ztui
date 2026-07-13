@@ -330,3 +330,26 @@ describe("Tree accessibility", () => {
     expect(node?.state).toContain("expanded");
   });
 });
+
+describe("Tree ensureFlat memoization", () => {
+  test("an empty (or fully collapsed-to-nothing) tree still hits the flatten cache", async () => {
+    // Regression: the cache-hit guard required `flat.length > 0` on top of
+    // the data/expansion/hideRoot signature match, so whenever the flattened
+    // list legitimately has zero rows (empty data, or a hideRoot tree whose
+    // single root has no children) it rebuilt — walking `roots` and
+    // reallocating `expandedSet` — on every single call, defeating the
+    // memoization for that state.
+    const t = await mountApp(<Tree data={[]} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+
+    tree.render(t.buffer);
+    const flatAfterFirst = (tree as any).flat;
+    tree.render(t.buffer);
+    const flatAfterSecond = (tree as any).flat;
+
+    // Same array instance means ensureFlat's cache-hit branch returned early
+    // instead of rebuilding — reference equality is the proxy for "no rebuild
+    // happened" here, since a rebuild always allocates a fresh array.
+    expect(flatAfterSecond).toBe(flatAfterFirst);
+  });
+});

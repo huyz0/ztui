@@ -124,11 +124,17 @@ export class TreeWidget extends Widget {
 
   private ensureFlat(): void {
     const expSig = this.expanded.join("\0");
+    // `lastData` is only ever `this.data` here once a build has actually run
+    // for it (it starts `null`, and `invalidate()` resets it to `null`), so
+    // this alone is a valid "cache still fresh" signal — checking
+    // `flat.length > 0` on top of it wrongly forced a full rebuild on every
+    // call whenever the tree legitimately flattens to nothing (empty data, or
+    // everything filtered/collapsed away), defeating the memoization for
+    // that state.
     if (
       this.lastData === this.data &&
       this.lastExpandedSig === expSig &&
-      this.lastHideRoot === this.hideRoot &&
-      this.flat.length > 0
+      this.lastHideRoot === this.hideRoot
     ) {
       return;
     }
