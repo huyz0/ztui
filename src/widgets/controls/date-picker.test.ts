@@ -24,9 +24,27 @@ describe("DatePickerWidget", () => {
     w.viewMonth = new Date(2026, 6, 1); // July 2026 — starts on a Wednesday
     const firstRow = [0, 1, 2, 3, 4, 5, 6].map((col) => w.dayAt(0, col));
     // Days before the 1st (Su, Mo, Tu) come from June; Wed 1 starts July.
-    expect(firstRow[3]!.getMonth()).toBe(6);
-    expect(firstRow[3]!.getDate()).toBe(1);
-    expect(firstRow[0]!.getMonth()).toBe(5); // June
+    expect(firstRow[3].getMonth()).toBe(6);
+    expect(firstRow[3].getDate()).toBe(1);
+    expect(firstRow[0].getMonth()).toBe(5); // June
+  });
+
+  test("dayAt always resolves to a real date across the full displayed grid, never null", () => {
+    // Regression: the doc comment used to promise `| null` "past the shown
+    // range", but week/col are always caller-supplied within the fixed
+    // WEEKS_SHOWN x 7 grid, so there was no reachable null case — dead code
+    // that misled callers into guarding against something that couldn't
+    // happen. dayAt's signature is now a plain Date; this exercises every
+    // cell of the grid to confirm none of them are ever invalid.
+    const w = new DatePickerWidget();
+    w.viewMonth = new Date(2026, 1, 1); // Feb 2026
+    for (let week = 0; week < 6; week++) {
+      for (let col = 0; col < 7; col++) {
+        const day = w.dayAt(week, col);
+        expect(day).toBeInstanceOf(Date);
+        expect(Number.isNaN(day.getTime())).toBe(false);
+      }
+    }
   });
 
   test("commitDay sets value, fires onChange, and closes", () => {

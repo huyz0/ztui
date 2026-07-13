@@ -255,8 +255,14 @@ export class DatePickerWidget extends Widget {
     return this.value ? parseISODate(this.value) : null;
   }
 
-  /** The date at `(week, col)` in the currently displayed month grid, or `null` past the shown range. */
-  public dayAt(week: number, col: number): Date | null {
+  /**
+   * The date at `(week, col)` in the currently displayed month grid. `week`
+   * and `col` are always caller-supplied within the fixed {@link WEEKS_SHOWN}
+   * x 7 grid, so this always resolves to a real date (the grid overflows into
+   * the adjacent months at the start/end of the displayed month, same as any
+   * calendar UI) — it never has an out-of-range case to signal.
+   */
+  public dayAt(week: number, col: number): Date {
     const first = this.viewMonth;
     const firstWeekday = first.getDay();
     const offset = week * 7 + col - firstWeekday;
