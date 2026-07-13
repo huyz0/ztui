@@ -109,6 +109,13 @@ export type { Theme } from "./theme.ts";
 export { adjustLightness, deriveTheme, ThemeManager } from "./theme.ts";
 export { type LogLevel, logger } from "./utils/logger.ts";
 export { CheckboxWidget } from "./widgets/controls/checkbox.ts";
+export { ComboboxOverlayWidget, ComboboxWidget } from "./widgets/controls/combobox.ts";
+export {
+  CalendarOverlayWidget,
+  DatePickerWidget,
+  formatISODate,
+  parseISODate,
+} from "./widgets/controls/date-picker.ts";
 export { FieldErrorWidget } from "./widgets/controls/field-error.ts";
 export { type FormMessageMode, FormWidget } from "./widgets/controls/form.ts";
 export { RadioGroupWidget, type RadioOption } from "./widgets/controls/radio-group.ts";
@@ -124,6 +131,8 @@ export {
   DescriptionListWidget,
 } from "./widgets/data/description-list.ts";
 export { type DiffView, DiffWidget } from "./widgets/data/diff.ts";
+export type { FileEntry } from "./widgets/data/file-tree.ts";
+export { buildFileTree, iconForEntry } from "./widgets/data/file-tree.ts";
 export type { GroupedRow, RowGroup } from "./widgets/data/grouping.ts";
 export type { ListItem } from "./widgets/data/list-view.ts";
 export { ListViewWidget } from "./widgets/data/list-view.ts";
