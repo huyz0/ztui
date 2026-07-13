@@ -784,6 +784,10 @@ export class ChatInputWidget extends Widget {
         return;
       }
     }
+    // No trigger is active — invalidate any in-flight completion request so a
+    // late-arriving response can't reopen the popup after the trigger text
+    // (e.g. "@mention") has already been deleted.
+    this.completionReq++;
     this.closePopup();
   }
 

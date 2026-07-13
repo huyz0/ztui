@@ -596,6 +596,23 @@ describe("ChatInput async completion/suggestion races", () => {
     await t.settle();
     expect(t.text()).not.toContain("-stale");
   });
+
+  test("a completion resolving after its trigger text is deleted does not reopen the popup", async () => {
+    const resolvers: Array<(items: Array<{ label: string }>) => void> = [];
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => new Promise((res) => resolvers.push(res)),
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@a"); // in-flight completion request for "@a"
+    key(w, "backspace");
+    key(w, "backspace"); // trigger text fully deleted before the request resolves
+    await t.settle();
+    resolvers[resolvers.length - 1]([{ label: "auth.ts" }]); // late arrival
+    await t.settle();
+    expect(t.text()).not.toContain("auth.ts");
+  });
 });
 
 describe("ChatInput wrapping, scrolling, history-edge", () => {
