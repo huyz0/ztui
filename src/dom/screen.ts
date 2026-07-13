@@ -191,8 +191,25 @@ export class Screen extends Widget {
     // attached to the tree (the previously-focused widget may have unmounted).
     if (layer.modal && !this.topModalLayer) {
       const prev = layer.previousFocus;
-      this.focusWidget(prev?.parent ? prev : null);
+      this.focusWidget(prev && this.isAttached(prev) ? prev : null);
     }
+  }
+
+  /**
+   * Whether `node` is reachable by walking up `.parent` links from this
+   * screen — i.e. actually part of *this* screen's live tree, not merely
+   * non-null. A widget can carry a stale `.parent` pointer to a different
+   * screen (e.g. after a `pushScreen`/`popScreen` while a modal was open on
+   * the previous one), and a bare `prev.parent` truthiness check can't tell
+   * the difference.
+   */
+  private isAttached(node: DOMNode): boolean {
+    let current: DOMNode | null = node;
+    while (current) {
+      if (current === this) return true;
+      current = current.parent;
+    }
+    return false;
   }
 
   /**
