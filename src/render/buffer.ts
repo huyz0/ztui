@@ -258,6 +258,32 @@ export class ScreenBuffer {
     }
   }
 
+  /**
+   * If `row[x]` is currently one half of a wide (2-cell) glyph, blank the
+   * *other* half so it doesn't survive as a stale orphan once `row[x]` itself
+   * is overwritten below — a continuation cell without its main (or a main
+   * cell without its continuation) would otherwise leave the buffer
+   * self-inconsistent within the same frame (e.g. an overlay painting one
+   * column of a wide glyph a widget drew underneath it).
+   */
+  private static clearWideOrphan(row: Cell[], x: number, width: number): void {
+    const cell = row[x];
+    if (cell.wideContinuation) {
+      let mainX = x - 1;
+      while (mainX >= 0 && row[mainX].wideContinuation) mainX--;
+      if (mainX >= 0) {
+        row[mainX].char = " ";
+        row[mainX].wideContinuation = false;
+      }
+    } else if (charWidth(cell.char) === 2 && x + 1 < width) {
+      const cont = row[x + 1];
+      if (cont.wideContinuation) {
+        cont.char = " ";
+        cont.wideContinuation = false;
+      }
+    }
+  }
+
   /** Write one styled character at `(x, y)`. Out-of-bounds and clipped writes are ignored; wide glyphs occupy two cells. */
   public setCell(x: number, y: number, char: string, style: Style): void {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
@@ -276,6 +302,7 @@ export class ScreenBuffer {
     // the GC every frame. `clear()` already resets in place, so this is
     // consistent — and the diff/copyTo paths read fields, never object identity.
     const row = this.cells[y];
+    ScreenBuffer.clearWideOrphan(row, x, this.width);
     if (w === 2) {
       // A wide glyph occupies two columns. If the second column is off-buffer or
       // outside the active clip, drawing the glyph would spill past the boundary
@@ -291,6 +318,7 @@ export class ScreenBuffer {
         cell.graphic = undefined;
         return;
       }
+      ScreenBuffer.clearWideOrphan(row, x + 1, this.width);
       const main = row[x];
       main.char = safeChar;
       main.style = style;

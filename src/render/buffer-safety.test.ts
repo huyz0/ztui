@@ -49,6 +49,36 @@ describe("wide characters never spill past a boundary", () => {
     expect(buf.cells[0][1].char).toBe("世");
     expect(buf.cells[0][2].wideContinuation).toBe(true);
   });
+
+  test("overwriting a wide glyph's continuation cell clears the orphaned main cell", () => {
+    const buf = new ScreenBuffer(10, 1);
+    buf.setCell(2, 0, "世", Style.DEFAULT); // main at 2, continuation at 3
+    buf.setCell(3, 0, "X", Style.DEFAULT); // an overlay repaints just column 3
+    expect(buf.cells[0][2].char).toBe(" ");
+    expect(buf.cells[0][2].wideContinuation).toBe(false);
+    expect(buf.cells[0][3].char).toBe("X");
+    expect(buf.cells[0][3].wideContinuation).toBe(false);
+  });
+
+  test("overwriting a wide glyph's main cell with a narrow char clears the orphaned continuation cell", () => {
+    const buf = new ScreenBuffer(10, 1);
+    buf.setCell(2, 0, "世", Style.DEFAULT); // main at 2, continuation at 3
+    buf.setCell(2, 0, "y", Style.DEFAULT); // an overlay repaints just column 2
+    expect(buf.cells[0][2].char).toBe("y");
+    expect(buf.cells[0][2].wideContinuation).toBe(false);
+    expect(buf.cells[0][3].char).toBe(" ");
+    expect(buf.cells[0][3].wideContinuation).toBe(false);
+  });
+
+  test("writing a new wide glyph over an old one's continuation clears the old main", () => {
+    const buf = new ScreenBuffer(10, 1);
+    buf.setCell(2, 0, "世", Style.DEFAULT); // main at 2, continuation at 3
+    buf.setCell(3, 0, "界", Style.DEFAULT); // a new wide glyph starts where the old continuation was
+    expect(buf.cells[0][2].char).toBe(" ");
+    expect(buf.cells[0][2].wideContinuation).toBe(false);
+    expect(buf.cells[0][3].char).toBe("界");
+    expect(buf.cells[0][4].wideContinuation).toBe(true);
+  });
 });
 
 describe("buffer cell reuse (allocation-free)", () => {
