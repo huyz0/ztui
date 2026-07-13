@@ -21,8 +21,21 @@ export class RadioGroupWidget extends Widget {
 
   /** Choices (strings or {value,label}). */
   public options: (string | RadioOption)[] = [];
+
+  private _value = "";
   /** Selected value. */
-  public value = "";
+  public get value(): string {
+    return this._value;
+  }
+  public set value(val: string) {
+    this._value = val;
+    // Keep the keyboard-highlighted option in sync so pressing Enter/Space
+    // without first moving with arrow keys commits the actual current
+    // selection rather than silently reverting to options[0].
+    const idx = this.getResolvedOptions().findIndex((o) => o.value === val);
+    if (idx >= 0) this.hoveredIndex = idx;
+  }
+
   /** Layout direction. */
   public orientation: "horizontal" | "vertical" = "vertical";
   public declare onChange?: (val: string) => void;
