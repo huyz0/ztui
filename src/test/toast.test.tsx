@@ -76,6 +76,30 @@ describe("ToastManager", () => {
     expect(pinged).toBe(1);
     unsub();
   });
+
+  test("shrinking maxVisible demotes the overflow instead of leaving it visible forever", () => {
+    // Regression: the setter only called promote() (fills empty slots from
+    // pending); it never trimmed already-visible toasts when the cap shrank
+    // below the current visible count, so a burst raised under a loose cap
+    // stayed visible forever — the cap only applied to toasts raised after.
+    const mgr = ToastManager.getInstance();
+    mgr.notify({ message: "a" });
+    mgr.notify({ message: "b" });
+    mgr.notify({ message: "c" });
+    mgr.notify({ message: "d" });
+    mgr.notify({ message: "e" });
+    expect(mgr.getToasts()).toHaveLength(5);
+
+    mgr.maxVisible = 2;
+    expect(mgr.getToasts().map((t) => t.message)).toEqual(["a", "b"]);
+    expect(mgr.pendingCount).toBe(3);
+
+    // The demoted toasts resume the queue in their original order and
+    // promote normally as slots free up.
+    mgr.dismiss(mgr.getToasts()[0].id);
+    expect(mgr.getToasts().map((t) => t.message)).toEqual(["b", "c"]);
+    expect(mgr.pendingCount).toBe(2);
+  });
 });
 
 describe("ToastHost", () => {

@@ -71,6 +71,18 @@ export class ToastManager {
   }
   public set maxVisible(n: number) {
     this._maxVisible = n >= 1 ? Math.floor(n) : 1;
+    // Shrinking the cap below the current visible count must demote the
+    // overflow back to the queue — otherwise a burst raised while the cap
+    // was unlimited (or larger) stays visible forever, and the cap only
+    // takes effect for toasts raised afterward.
+    if (this._toasts.length > this._maxVisible) {
+      const keep = this._toasts.slice(0, this._maxVisible);
+      const demoted = this._toasts.slice(this._maxVisible);
+      this._toasts = keep;
+      this._pending = [...demoted, ...this._pending];
+      this.emit();
+      return;
+    }
     const before = this._toasts.length;
     this.promote();
     if (this._toasts.length !== before) this.emit();
