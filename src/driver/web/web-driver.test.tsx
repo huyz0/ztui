@@ -188,6 +188,23 @@ describe("DOM event translators", () => {
     );
   });
 
+  test("mouse pixels are clamped to the driver's column/row bounds when given", () => {
+    // Regression: only the lower bound (Math.max(0, x)) was ever clamped — a
+    // host element with padding/border wider than an exact multiple of the
+    // cell size could report coordinates past the last visible column/row,
+    // which widgets don't expect (they assume x < cols, y < rows).
+    const metrics = { cellWidth: 8, cellHeight: 16 };
+    const bounds = { cols: 10, rows: 5 };
+    // Pixel position lands one full cell past the last valid column/row.
+    expect(
+      translateMouseEvent({ offsetX: 8 * 12, offsetY: 16 * 7 }, "press", metrics, bounds),
+    ).toMatchObject({ x: 9, y: 4 }); // clamped to cols-1 / rows-1
+    // In-bounds coordinates pass through unchanged.
+    expect(
+      translateMouseEvent({ offsetX: 8 * 3, offsetY: 16 * 2 }, "press", metrics, bounds),
+    ).toMatchObject({ x: 3, y: 2 });
+  });
+
   function fakeHost(): HTMLElement {
     const listeners = new Map<string, Set<(ev: unknown) => void>>();
     return {

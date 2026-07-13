@@ -86,15 +86,26 @@ export interface CellMetrics {
 
 /**
  * Map a DOM mouse event (pixel coordinates relative to the host element) to a
- * ztui {@link MouseEvent} in cell units.
+ * ztui {@link MouseEvent} in cell units. `bounds`, when given (the driver's
+ * current column/row count), clamps the result to a valid cell — a host
+ * element with padding/border wider than an exact multiple of the cell size
+ * would otherwise report coordinates past the last visible column/row that
+ * widgets don't expect.
  */
 export function translateMouseEvent(
   ev: { offsetX: number; offsetY: number; button?: number },
   type: ZtuiMouseEvent["type"],
   metrics: CellMetrics,
+  bounds?: { cols: number; rows: number },
 ): ZtuiMouseEvent {
-  const x = Math.floor((ev.offsetX - (metrics.offsetX ?? 0)) / metrics.cellWidth);
-  const y = Math.floor((ev.offsetY - (metrics.offsetY ?? 0)) / metrics.cellHeight);
+  let x = Math.floor((ev.offsetX - (metrics.offsetX ?? 0)) / metrics.cellWidth);
+  let y = Math.floor((ev.offsetY - (metrics.offsetY ?? 0)) / metrics.cellHeight);
+  x = Math.max(0, x);
+  y = Math.max(0, y);
+  if (bounds) {
+    x = Math.min(x, Math.max(0, bounds.cols - 1));
+    y = Math.min(y, Math.max(0, bounds.rows - 1));
+  }
   const button =
     type === "move" || type === "scroll_up" || type === "scroll_down"
       ? "none"
@@ -103,7 +114,7 @@ export function translateMouseEvent(
         : ev.button === 1
           ? "middle"
           : "left";
-  return { x: Math.max(0, x), y: Math.max(0, y), type, button };
+  return { x, y, type, button };
 }
 
 /**
@@ -171,8 +182,12 @@ export function attachToDOM(
     ev.preventDefault();
     driver.dispatchKey(key);
   };
+  const bounds = () => {
+    const size = driver.getSize();
+    return { cols: size.width, rows: size.height };
+  };
   const mouse = (type: ZtuiMouseEvent["type"]) => (ev: MouseEvent) => {
-    driver.dispatchMouse(translateMouseEvent(ev, type, measure()));
+    driver.dispatchMouse(translateMouseEvent(ev, type, measure(), bounds()));
   };
   const onMouseDown = mouse("press");
   const onMouseUp = mouse("release");
@@ -181,7 +196,7 @@ export function attachToDOM(
   };
   const onWheel = (ev: WheelEvent) => {
     driver.dispatchMouse(
-      translateMouseEvent(ev, ev.deltaY < 0 ? "scroll_up" : "scroll_down", measure()),
+      translateMouseEvent(ev, ev.deltaY < 0 ? "scroll_up" : "scroll_down", measure(), bounds()),
     );
     ev.preventDefault();
   };
