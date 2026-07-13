@@ -192,6 +192,19 @@ export class ComboboxWidget extends Widget {
     return resolved.filter((o) => o.label.toLowerCase().includes(needle));
   }
 
+  /**
+   * Keep {@link highlightedIndex} pointing at a real row after the filtered
+   * list shrinks (e.g. backspacing narrows the match count) — otherwise Enter
+   * would index past the array and silently do nothing instead of selecting
+   * the row still visibly highlighted in the overlay.
+   */
+  private clampHighlightedIndex(): void {
+    const count = this.getFilteredOptions().length;
+    if (this.highlightedIndex > count - 1) {
+      this.highlightedIndex = Math.max(0, count - 1);
+    }
+  }
+
   /** Commit `option` as the value, close the popover, and fire onChange/onSelect. */
   public selectOption(option: SelectOption): void {
     this.value = option.label;
@@ -300,11 +313,13 @@ export class ComboboxWidget extends Widget {
         chars.splice(this.cursorCol - 1, 1);
         this.value = chars.join("");
         this.cursorCol--;
+        this.clampHighlightedIndex();
       }
     } else if (keyName === "delete") {
       if (this.cursorCol < chars.length) {
         chars.splice(this.cursorCol, 1);
         this.value = chars.join("");
+        this.clampHighlightedIndex();
       }
     } else if (keyName === "down") {
       if (!this.isOpen) {

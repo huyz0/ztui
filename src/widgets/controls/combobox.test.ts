@@ -100,3 +100,36 @@ describe("ComboboxOverlayWidget click hit-testing when the list is scrolled", ()
     expect((selected as { label: string }).label).toBe("opt2");
   });
 });
+
+describe("ComboboxWidget highlightedIndex stays valid as the filtered list shrinks", () => {
+  test("delete clamps highlightedIndex so Enter still selects the visibly-highlighted row, not nothing", () => {
+    // Regression: highlightedIndex was never re-clamped when backspace/delete
+    // narrowed the filtered list, so Enter would index past the (now shorter)
+    // array and fall through to closeDropdown() instead of selecting anything.
+    const w = new ComboboxWidget();
+    w.options = ["ax", "ay"]; // "a" matches both; "az" (typed below) matches neither
+    w.value = "a";
+    w.isOpen = true;
+    (w as any).cursorCol = 1;
+    expect(w.getFilteredOptions().length).toBe(2);
+    w.highlightedIndex = 1; // highlight the last (2nd) match
+
+    // Type "z": narrows the filter to zero matches, well below highlightedIndex=1.
+    w.onKey?.({ key: "z", name: "z", handled: false });
+    expect(w.getFilteredOptions().length).toBe(0);
+    // Typing already resets highlightedIndex to 0 — exercise the other path:
+    // delete the "z" back out via backspace, re-narrowing again.
+    w.highlightedIndex = 5; // force out-of-range as if content changed elsewhere
+    w.onKey?.({ key: "backspace", name: "backspace", handled: false });
+    // Back to "a", 2 matches — highlightedIndex must be a valid index again.
+    expect(w.getFilteredOptions().length).toBe(2);
+    expect(w.highlightedIndex).toBeLessThan(w.getFilteredOptions().length);
+
+    let selected: unknown;
+    w.selectOption = (opt: unknown) => {
+      selected = opt;
+    };
+    w.onKey?.({ key: "enter", name: "enter", handled: false });
+    expect(selected).toBeDefined();
+  });
+});
