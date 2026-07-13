@@ -77,6 +77,8 @@ export type {
 export { ChatInput, formatChatHints } from "./components/controls/chat-input.tsx";
 export type { CheckboxProps } from "./components/controls/checkbox.tsx";
 export { Checkbox } from "./components/controls/checkbox.tsx";
+export type { ComboboxProps } from "./components/controls/combobox.tsx";
+export { Combobox } from "./components/controls/combobox.tsx";
 export type { DatePickerProps } from "./components/controls/date-picker.tsx";
 export { DatePicker } from "./components/controls/date-picker.tsx";
 export type { FieldErrorProps } from "./components/controls/field-error.tsx";

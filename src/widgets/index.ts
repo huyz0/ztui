@@ -10,6 +10,7 @@ import "./text/register-syntax.ts";
 export { ButtonWidget } from "./controls/button.ts";
 export { ButtonGroupWidget } from "./controls/button-group.ts";
 export { CheckboxWidget } from "./controls/checkbox.ts";
+export { ComboboxOverlayWidget, ComboboxWidget } from "./controls/combobox.ts";
 export {
   CalendarOverlayWidget,
   DatePickerWidget,
