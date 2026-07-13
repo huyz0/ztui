@@ -22,8 +22,22 @@ export class TabContainerWidget extends Widget {
   public activeIndex = 0;
   /** Index of the highlighted tab. */
   public hoveredIndex = 0;
+  /** Allow dragging a tab header to reorder tabs. Defaults to `false`. */
+  public reorderable = false;
   public declare onChange?: (index: number) => void;
+  /**
+   * Fired once when a drag-to-reorder ends at a different position than it
+   * started. The tab headers (and this widget's children) are already
+   * reordered live during the drag for immediate visual feedback — call
+   * this to reorder your own tab data source so the new order survives the
+   * next render (otherwise a re-render with the old order snaps it back).
+   */
+  public declare onReorder?: (fromIndex: number, toIndex: number) => void;
   private tabMetrics: TabMetric[] = [];
+  /** Index the dragged tab started at this drag gesture (for the onReorder event). */
+  private dragOriginIndex: number | null = null;
+  /** Index the dragged tab currently occupies (updated live as it crosses siblings). */
+  private draggingIndex: number | null = null;
 
   constructor() {
     super("tabcontainer");
@@ -77,6 +91,10 @@ export class TabContainerWidget extends Widget {
             }
             this.onChange?.(this.activeIndex);
           }
+          if (this.reorderable) {
+            this.dragOriginIndex = clickedTab.index;
+            this.draggingIndex = clickedTab.index;
+          }
           if (this.focusable) {
             App.instance?.activeScreen.focusWidget(this);
           }
@@ -84,6 +102,38 @@ export class TabContainerWidget extends Widget {
           ev.handled = true;
         }
       }
+    } else if (ev.type === "drag" && ev.button === "left" && this.draggingIndex !== null) {
+      const targetTab = this.tabMetrics.find((m) => ev.x >= m.startX && ev.x < m.startX + m.width);
+      if (targetTab && targetTab.index !== this.draggingIndex) {
+        this.moveTab(this.draggingIndex, targetTab.index);
+        this.draggingIndex = targetTab.index;
+        this.activeIndex = targetTab.index;
+        this.hoveredIndex = targetTab.index;
+        App.instance?.queueRender();
+      }
+      ev.handled = true;
+    } else if (ev.type === "release" && this.draggingIndex !== null) {
+      if (this.dragOriginIndex !== null && this.dragOriginIndex !== this.draggingIndex) {
+        this.onReorder?.(this.dragOriginIndex, this.draggingIndex);
+      }
+      this.dragOriginIndex = null;
+      this.draggingIndex = null;
+      ev.handled = true;
+    }
+  }
+
+  /** Move the panel at `fromIndex` to `toIndex` in the children order (live drag feedback). */
+  private moveTab(fromIndex: number, toIndex: number): void {
+    const panels = this.children.filter((c): c is Widget => c instanceof Widget);
+    const dragged = panels[fromIndex];
+    if (!dragged) return;
+
+    if (toIndex < fromIndex) {
+      this.insertBefore(dragged, panels[toIndex]);
+    } else {
+      const after = panels[toIndex + 1];
+      if (after) this.insertBefore(dragged, after);
+      else this.appendChild(dragged);
     }
   }
 

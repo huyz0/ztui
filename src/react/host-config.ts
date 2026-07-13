@@ -36,6 +36,7 @@ const KNOWN_HANDLER_PROPS = [
   "onViewChange",
   "onToggle",
   "onExpandedChange",
+  "onReorder",
   "onValidate",
   "onSubmit",
   "onResize",

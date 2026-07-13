@@ -148,4 +148,74 @@ describe("TabContainer Widget Suite", () => {
     expect(w.measuredWidth).toBe(40); // explicit width within [30,50]
     expect(w.measuredHeight).toBe(8);
   });
+
+  test("dragging a tab header reorders tabs and fires onReorder once on release", async () => {
+    let reorderCall: [number, number] | null = null;
+    const { findById, settle } = await mountApp(
+      <TabContainer
+        id="tabs"
+        activeIndex={0}
+        reorderable
+        onReorder={(from, to) => {
+          reorderCall = [from, to];
+        }}
+      >
+        <Box id="pane0" label="A" />
+        <Box id="pane1" label="B" />
+        <Box id="pane2" label="C" />
+      </TabContainer>,
+      { cols: 40, rows: 10 },
+    );
+
+    const tabsWidget = findById("tabs");
+    await settle();
+    const contentRect = tabsWidget.getContentRect();
+    const [tabA, , tabC] = tabsWidget.tabMetrics;
+
+    // Press on tab A (index 0) to start dragging it.
+    tabsWidget.handleMouse({
+      type: "press",
+      button: "left",
+      x: tabA.startX + 1,
+      y: contentRect.y,
+    });
+    expect(tabsWidget.activeIndex).toBe(0);
+
+    // Drag over tab C (index 2): A should live-swap to that position.
+    tabsWidget.handleMouse({
+      type: "drag",
+      button: "left",
+      x: tabC.startX + 1,
+      y: contentRect.y,
+    });
+    const labelsAfterDrag = tabsWidget.children
+      .filter((c: any) => c.label)
+      .map((c: any) => c.label);
+    expect(labelsAfterDrag).toEqual(["B", "C", "A"]);
+    expect(tabsWidget.activeIndex).toBe(2); // dragged tab follows the pointer
+
+    // Release: fires onReorder once with the original -> final index.
+    tabsWidget.handleMouse({ type: "release", button: "left" });
+    expect(reorderCall).toEqual([0, 2]);
+  });
+
+  test("dragging is a no-op when reorderable is not set", async () => {
+    const { findById } = await mountApp(
+      <TabContainer id="tabs" activeIndex={0}>
+        <Box id="pane0" label="A" />
+        <Box id="pane1" label="B" />
+      </TabContainer>,
+      { cols: 40, rows: 10 },
+    );
+
+    const tabsWidget = findById("tabs");
+    const contentRect = tabsWidget.getContentRect();
+    const [tabA, tabB] = tabsWidget.tabMetrics;
+
+    tabsWidget.handleMouse({ type: "press", button: "left", x: tabA.startX + 1, y: contentRect.y });
+    tabsWidget.handleMouse({ type: "drag", button: "left", x: tabB.startX + 1, y: contentRect.y });
+
+    const labels = tabsWidget.children.filter((c: any) => c.label).map((c: any) => c.label);
+    expect(labels).toEqual(["A", "B"]); // unchanged — reorderable defaults to false
+  });
 });
