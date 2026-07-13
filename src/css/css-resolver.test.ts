@@ -296,6 +296,25 @@ describe("CSSResolver value coercion and glow", () => {
     expect(resolver.resolveStyles(w, false).left).toBe("auto"); // NaN -> passthrough
   });
 
+  test("an unparseable minWidth/minHeight/maxWidth/maxHeight doesn't poison layout with NaN", () => {
+    // Regression: unlike margin/padding (fall back to 0) and left/right/top/
+    // bottom/zIndex (fall back to the raw string), these four keys had no
+    // NaN guard at all — a keyword-like value ("auto") produced a bare NaN,
+    // which then poisons Math.max(measuredWidth, NaN)/Math.min(..., NaN) in
+    // widget.ts permanently (NaN propagates through every subsequent layout).
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    w.style.minWidth = "auto" as never;
+    w.style.maxWidth = "auto" as never;
+    w.style.minHeight = "auto" as never;
+    w.style.maxHeight = "auto" as never;
+    const s = resolver.resolveStyles(w, false);
+    expect(s.minWidth).toBeUndefined();
+    expect(s.maxWidth).toBeUndefined();
+    expect(s.minHeight).toBeUndefined();
+    expect(s.maxHeight).toBeUndefined();
+  });
+
   test("an unresolved variable token is returned unchanged", () => {
     const resolver = new CSSResolver([]);
     const w = new Widget("div");
