@@ -331,6 +331,28 @@ export function parseInput(
         i++;
         continue;
       }
+
+      // Alt+<printable>: ESC immediately followed by an ordinary character
+      // (not another escape, and not a bracket sequence — those are all
+      // handled above). This is how most terminals send Alt/Option combos
+      // without the Kitty keyboard protocol. Without this branch, none of the
+      // patterns above match, so execution fell through to the plain-character
+      // path with `char` still the ESC byte itself — emitting a bogus raw-ESC
+      // key event and leaving the following character to be parsed as an
+      // unrelated, separate keypress next iteration.
+      const next = remaining[1];
+      if (next !== "\x1b" && next.charCodeAt(0) >= 32 && next.charCodeAt(0) <= 126) {
+        const shift = next !== next.toLowerCase() && next === next.toUpperCase();
+        onKey({
+          key: `meta+${next.toLowerCase()}`,
+          name: next.toLowerCase(),
+          ctrl: false,
+          meta: true,
+          shift,
+        });
+        i += 2;
+        continue;
+      }
     }
 
     const char = data[i];

@@ -122,6 +122,21 @@ describe("parseInput — character input", () => {
     );
     expect(keys.map((k) => k.key)).toEqual(["🎉", "a"]);
   });
+
+  test("Alt+letter (ESC followed by a plain char) decodes as one meta+ combo, not a stray ESC", () => {
+    // Regression: none of the escape-sequence patterns matched ESC+letter, so
+    // execution fell through to the plain-character path with `char` still
+    // the ESC byte — emitting a bogus raw-ESC key event and leaving the
+    // following letter to be parsed as a separate, unrelated keypress.
+    const keys: KeyEvent[] = [];
+    parseInput(
+      "\x1bf",
+      (k) => keys.push(k),
+      () => {},
+    );
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatchObject({ key: "meta+f", name: "f", meta: true, ctrl: false });
+  });
 });
 
 describe("parseInput — navigation keys", () => {
