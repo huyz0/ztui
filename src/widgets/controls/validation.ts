@@ -188,7 +188,14 @@ export class FieldValidation {
     const sev = this.severity;
     if (!sev) return null;
     const token = sev === "error" ? "$error" : sev === "warning" ? "$warning" : "$success";
-    return App.instance?.cssResolver.resolveVariable(this.field, token) || "red";
+    // Resolve against the field's own app (falling back to the App.instance
+    // singleton only when it isn't mounted yet) — App.instance is just
+    // whichever App was constructed/started most recently, so with multiple
+    // App instances alive this would resolve against the wrong app's
+    // stylesheet overrides.
+    return (
+      (this.field.app ?? App.instance)?.cssResolver.resolveVariable(this.field, token) || "red"
+    );
   }
 }
 

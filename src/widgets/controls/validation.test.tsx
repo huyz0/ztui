@@ -182,6 +182,31 @@ describe("Form widget integration", () => {
     expect(input.validation.resolveColor()).toBeTruthy(); // error color resolved
   });
 
+  test("resolveColor resolves against the field's own app, not whichever App is currently the global instance", async () => {
+    // Regression: resolveColor() always used App.instance (whichever App was
+    // constructed/started most recently) instead of this.field.app. With two
+    // App instances alive, validating a field that belongs to the first app
+    // while the second app is the live App.instance pulled the second app's
+    // stylesheet override instead of the field's own.
+    const first = await mountApp(
+      <Form id="form">
+        <Input id="a" validators={[required()]} validateOn="submit" />
+      </Form>,
+    );
+    first.app.loadStyles("$error: #111111;");
+    const input = first.findById<InputWidget>("a")!;
+    first.findById<FormWidget>("form")!.validate();
+    expect(input.validation.resolveColor()).toBe("#111111");
+
+    // Mounting a second app makes it the new App.instance.
+    const second = await mountApp(<Form id="form2" />);
+    second.app.loadStyles("$error: #222222;");
+
+    // The first field's color must still resolve against its own app's
+    // override, unaffected by the second app now being App.instance.
+    expect(input.validation.resolveColor()).toBe("#111111");
+  });
+
   test("values are keyed by field id", async () => {
     const { findById } = await mountApp(
       <Form id="form">
