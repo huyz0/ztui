@@ -99,8 +99,11 @@ describe("ZTUI ProgressBar Widget Suite", () => {
     expect(litCells(cellAt)).toBe(0);
 
     setV?.(100);
-    // Mid-flight: the painted fill has grown off empty but not yet filled the bar.
-    await settle(40);
+    // Mid-flight: the painted fill has grown off empty but not yet filled the
+    // bar. The tween's follow-up frames are paint-only, batched onto the
+    // shared ~100ms cosmetic-repaint clock (see COSMETIC_REPAINT_MS), so wait
+    // past at least one batch before sampling.
+    await settle(150);
     const mid = litCells(cellAt);
     expect(mid).toBeGreaterThan(0);
     expect(mid).toBeLessThan(10);
@@ -153,5 +156,32 @@ describe("ZTUI ProgressBar Widget Suite", () => {
     setV?.(80);
     await settle(10);
     expect(findById<ProgressBarWidget>("pb")?.value).toBe(80);
+  });
+
+  test("an animated value tween's own follow-up frames are paint-only, not full relayouts", async () => {
+    // Regression: animate() booked requestAnimationTick(this, 16) with no
+    // paint-only flag, so every frame of the tween (only ever a fill color,
+    // never geometry) forced a full re-measure/re-layout of the whole tree —
+    // unlike every other feedback widget's cosmetic ticks.
+    let setV: ((n: number) => void) | undefined;
+    function Probe() {
+      const [v, setVal] = useState(10);
+      setV = setVal;
+      return (
+        <HBox>
+          <ProgressBar id="pb" value={v} animate={300} style={{ width: 10 }} />
+        </HBox>
+      );
+    }
+    const { app, settle } = await mountApp(<Probe />, { cols: 20, rows: 3 });
+    await settle();
+    setV?.(90); // this React commit is a real prop change -> a full frame is fine
+    await settle(10);
+    // The tween is now mid-flight; its own follow-up tick (booked by
+    // animate() with no further prop change) must be paint-only. It's
+    // batched onto the shared ~100ms cosmetic-repaint clock.
+    await settle(150);
+    const frame = app.getLastFrame();
+    expect(frame?.full).toBe(false);
   });
 });

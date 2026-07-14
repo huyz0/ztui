@@ -620,8 +620,13 @@ export class Widget extends DOMNode {
    * A non-positive `duration` (or `opts` omitted with a default of 0 from the
    * caller) snaps immediately, so animation can be turned off by passing
    * `duration: 0`.
+   *
+   * Pass `paintOnly: true` when the tweened value only changes appearance
+   * (e.g. a fill color/width painted within an already-sized box) and never
+   * geometry — this books a paint-only repaint instead of a full relayout
+   * tick, the same distinction {@link animateColor} already makes.
    */
-  public animate(key: string, target: number, opts?: TweenOptions): number {
+  public animate(key: string, target: number, opts?: TweenOptions, paintOnly = false): number {
     this._tweens ??= new Map();
     const map = this._tweens;
     let tween = map.get(key);
@@ -634,7 +639,10 @@ export class Widget extends DOMNode {
     }
     tween.to(target, opts);
     const value = tween.value;
-    if (tween.animating) requestAnimationTick(this, 16);
+    if (tween.animating) {
+      if (paintOnly) requestCosmeticRepaint(this, `animation:paint-only:${this.tagName}`);
+      else requestAnimationTick(this, 16);
+    }
     return value;
   }
 

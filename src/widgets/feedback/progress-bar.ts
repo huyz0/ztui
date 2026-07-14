@@ -89,10 +89,12 @@ export class ProgressBarWidget extends Widget {
     // (the widget books its own frames), or `value` verbatim when snapping.
     const shown =
       this.animateMs > 0 && !this.indeterminate
-        ? this.animate("value", this.value, {
-            duration: this.animateMs,
-            easing: this.animateEasing,
-          })
+        ? this.animate(
+            "value",
+            this.value,
+            { duration: this.animateMs, easing: this.animateEasing },
+            true, // paint-only: the fill never changes the bar's geometry
+          )
         : this.value;
 
     if (this.indeterminate) {
