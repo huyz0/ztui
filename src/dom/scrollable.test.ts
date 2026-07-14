@@ -63,6 +63,29 @@ describe("Scrollable Mixin", () => {
     expect(contentSize.height).toBe(18);
   });
 
+  test("positionFixed children are excluded from content size, since their region is never scroll-shifted", () => {
+    // Regression: getContentSize() reconstructed each child's unscrolled
+    // extent as `child.region.right/bottom + scrollOffset`, which is only
+    // valid for children whose region was shifted by -scrollOffset during
+    // layout. The layout pass explicitly skips that shift for positionFixed
+    // children (e.g. a pinned CopyButton), so adding scrollOffset back onto
+    // an already-unshifted region inflated the reported content size once
+    // the view was scrolled.
+    const scrollBox = new ScrollableBox();
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    scrollBox.scrollOffset = new Offset(0, 50);
+
+    const fixedChild = new Widget("pinned");
+    fixedChild.positionFixed = true;
+    fixedChild.region = new Region(new Offset(8, 0), new Size(2, 1));
+    scrollBox.appendChild(fixedChild);
+
+    const contentSize = scrollBox.getContentSize();
+    // Only the fixed child is present, so with no real flow content the
+    // reported content size should be 0 — not inflated by scrollOffset.
+    expect(contentSize.height).toBe(0);
+  });
+
   test("key scroll event handling", () => {
     const scrollBox = new ScrollableBox();
     scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));

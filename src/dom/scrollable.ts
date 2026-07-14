@@ -90,7 +90,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       let maxR = 0;
       let maxB = 0;
       for (const child of this.children) {
-        if (child instanceof Widget && child.visible) {
+        if (child instanceof Widget && child.visible && !child.positionFixed) {
           const right = child.region.right + this.scrollOffset.x;
           const bottom = child.region.bottom + this.scrollOffset.y;
           if (right > maxR) maxR = right;
