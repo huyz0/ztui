@@ -26,13 +26,21 @@ export interface InputDiagnostics {
   moveEventsDroppedInChunk: number;
 }
 
+/**
+ * Parses one chunk of raw stdin bytes into key/mouse events. Returns any
+ * trailing bytes that look like the start of an escape/CSI sequence cut off
+ * by the chunk boundary (e.g. a stdin read landing between `\x1b[` and the
+ * arrow key's final byte) — the caller should prepend this to the next
+ * chunk before parsing it, rather than treating the truncated introducer as
+ * a standalone Alt+key press or generic escape sequence.
+ */
 export function parseInput(
   data: string,
   onKeyRaw: (ev: KeyEvent) => void,
   onMouseRaw: (ev: MouseEvent) => void,
   mouseState: MouseParseState = { buttonDown: false, pressedAt: 0 },
   diagnostics?: InputDiagnostics,
-): void {
+): string {
   if (diagnostics) diagnostics.chunks += 1;
   // Coalesce pointer motion within a single chunk: hover-capable terminals
   // (Ghostty) stream a move per pixel, and a fast sweep packs many into one read.
@@ -337,6 +345,18 @@ export function parseInput(
         continue;
       }
 
+      // Incomplete CSI/SS3 introducer cut off at the chunk boundary (e.g. a
+      // read landing between "\x1b[" and an arrow key's final byte, or mid
+      // Kitty-protocol parameter string). None of the specific patterns above
+      // matched, and there's nothing left in this chunk to disambiguate it
+      // from a real Alt+key press or a genuinely complete-but-unrecognized
+      // sequence — buffer it and let the caller retry once more bytes arrive,
+      // rather than misparsing the bare introducer as `meta+[`/`meta+o` (see
+      // the Alt+<printable> branch below) or an unrelated escape_sequence.
+      if (i + remaining.length === data.length && /^\x1b(\[[0-9;:<]*|O)$/.test(remaining)) {
+        return remaining;
+      }
+
       // Generic Escape sequences
       const miscMatch = remaining.match(/^\x1b\[([a-zA-Z0-9;]+)/);
       if (miscMatch) {
@@ -457,4 +477,5 @@ export function parseInput(
   }
   // Emit any trailing coalesced move at the end of the chunk.
   flushMove();
+  return "";
 }

@@ -68,6 +68,9 @@ export class BunDriver extends Driver {
   private probeTimeout: any = null;
   /** Persisted across input chunks so motion can be classified against held buttons. */
   private mouseParseState: MouseParseState = { buttonDown: false, pressedAt: 0 };
+  // Escape/CSI bytes left over from the previous chunk that looked truncated
+  // (see parseInput's return value) — prepended to the next chunk before parsing.
+  private pendingEscapeBuffer = "";
   private inputDiagnostics: InputDiagnostics = {
     chunks: 0,
     keyEvents: 0,
@@ -502,6 +505,11 @@ export class BunDriver extends Driver {
   }
 
   private processInput(data: string): void {
+    if (this.pendingEscapeBuffer) {
+      data = this.pendingEscapeBuffer + data;
+      this.pendingEscapeBuffer = "";
+    }
+
     // Ctrl+C arrives as the raw byte 0x03 (raw mode disables ISIG). Emit it as a
     // normal key first so the focused widget can claim it — e.g. copy an active
     // selection (the only copy path that survives on terminals without the Kitty
@@ -528,7 +536,7 @@ export class BunDriver extends Driver {
     }
 
     try {
-      parseInput(
+      this.pendingEscapeBuffer = parseInput(
         data,
         (ev) => this.emit("key", ev),
         (ev) => this.emit("mouse", ev),

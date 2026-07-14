@@ -199,6 +199,22 @@ describe("parseInput — navigation keys", () => {
     expect(firstKey("\x1b[2~")?.name).toBe("insert");
     expect(firstKey("\x1b[3~")?.name).toBe("delete");
   });
+
+  test("an arrow key split across two stdin chunks decodes as one 'up', not meta+[ plus a stray letter", () => {
+    // Regression: a CSI introducer ("\x1b[") landing at the very end of one
+    // chunk, with the final byte ("A") arriving in the next, used to fall
+    // through to the Alt+<printable> branch and emit a bogus `meta+[`, then
+    // parse "A" on its own as a separate keypress.
+    const keys: KeyEvent[] = [];
+    const onKey = (ev: KeyEvent) => keys.push(ev);
+    const onMouse = () => {};
+    const leftover = parseInput("\x1b[", onKey, onMouse);
+    expect(leftover).toBe("\x1b[");
+    expect(keys).toHaveLength(0);
+    parseInput(`${leftover}A`, onKey, onMouse);
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatchObject({ key: "up", name: "up", meta: false });
+  });
 });
 
 describe("parseInput — modified arrows / navigation", () => {
