@@ -295,6 +295,27 @@ describe("Table sorting (phase 4)", () => {
     expect(lines).toEqual(["1. a1", "2. a2", "1. b1", "2. b2"]);
   });
 
+  test("auto-width column sampling uses each row's real index, not row 0, so index-dependent text isn't truncated", async () => {
+    // Regression: resolveColumnWidths() sampled every visible row's cell text
+    // with rowIndex hardcoded to 0, so an index-dependent column (e.g. row
+    // numbering) had its auto-width sized as if every sampled row were row 0.
+    // Row 10's "#10 x" (5 wide) got measured as "#1 x" (4 wide), truncating
+    // it once actually rendered.
+    interface Item {
+      name: string;
+    }
+    const items: Item[] = Array.from({ length: 10 }, () => ({ name: "x" }));
+    const numberedColumns: TableColumn<Item>[] = [
+      { key: "name", header: "Name", cell: (row, rowIndex) => `#${rowIndex + 1} ${row.name}` },
+    ];
+    const t = await mountApp(
+      <Table data={items} columns={numberedColumns} style={{ height: "100%", width: 20 }} />,
+    );
+    await t.settle();
+    expect(t.text()).toContain("#10 x");
+    expect(t.text()).not.toContain("…");
+  });
+
   test("clicking a sortable header cell triggers a sort", async () => {
     const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
     const widget = findTable(t);

@@ -635,10 +635,10 @@ export class TableWidget<Row = any> extends Widget {
 
     const first = this.scrollTop;
     const last = Math.min(this.rowCount, first + visibleRows);
-    const sampleRows: Row[] = [];
+    const sampleRows: { row: Row; rowIndex: number }[] = [];
     for (let v = first; v < last; v++) {
       const sel = this.rowAtView(v);
-      if (sel) sampleRows.push(sel.row);
+      if (sel) sampleRows.push(sel);
     }
 
     const bodyW = this.bodyWidth();
@@ -714,7 +714,10 @@ export class TableWidget<Row = any> extends Widget {
   }
 
   /** Resolve per-column cell widths to fit `avail`, given a sample of rows. */
-  private resolveColumnWidths(avail: number, sampleRows: Row[]): number[] {
+  private resolveColumnWidths(
+    avail: number,
+    sampleRows: { row: Row; rowIndex: number }[],
+  ): number[] {
     const n = this.columns.length;
     const widths = new Array<number>(n).fill(0);
     const frParts: Array<{ i: number; fr: number }> = [];
@@ -732,8 +735,8 @@ export class TableWidget<Row = any> extends Widget {
       } else {
         // auto (also the default): widest of header + sampled cells
         let cw = stringWidth(col.header) + (col.sortable ? 2 : 0);
-        for (const row of sampleRows) {
-          cw = Math.max(cw, stringWidth(this.cellTextFor(col, row, 0)));
+        for (const { row, rowIndex } of sampleRows) {
+          cw = Math.max(cw, stringWidth(this.cellTextFor(col, row, rowIndex)));
         }
         widths[i] = cw;
       }
