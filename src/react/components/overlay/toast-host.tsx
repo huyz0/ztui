@@ -135,9 +135,14 @@ export function ToastHost({
 
   if (toasts.length === 0) return null;
 
-  const overflow = Math.max(0, toasts.length - max);
+  // A `max` of 0 (or negative) is a caller mistake, not "hide everything" —
+  // `toasts.slice(toasts.length - max)` would otherwise clamp its start past
+  // the array end and render nothing while `overflow` still counted every
+  // toast, showing only a "+N more" footer with no toasts underneath it.
+  const visibleMax = Math.max(1, max);
+  const overflow = Math.max(0, toasts.length - visibleMax);
   // Newest nearest the anchored edge: prepend for top corners, append for bottom.
-  const recent = toasts.slice(toasts.length - max);
+  const recent = toasts.slice(toasts.length - visibleMax);
   const ordered = isTop(position) ? [...recent].reverse() : recent;
 
   // One footer row: "+N more" on the left, a "clear all" link on the right.

@@ -169,4 +169,15 @@ describe("ToastHost", () => {
     await t.settle();
     expect(t.text()).toContain("+4 more");
   });
+
+  test("max={0} still shows at least one toast instead of hiding everything", async () => {
+    // Regression: toasts.slice(toasts.length - max) with max=0 clamps its
+    // start to toasts.length, yielding zero visible toasts while `overflow`
+    // still counted every one of them — a "+N more" footer with no toasts
+    // actually rendered underneath it, silently hiding the whole stack.
+    const t = await mountApp(<ToastHost max={0} />);
+    toast.info("only one", { duration: 0 });
+    await t.settle();
+    expect(t.text()).toContain("only one");
+  });
 });
