@@ -78,6 +78,24 @@ describe("render scheduling: queueRepaint reuses layout", () => {
     clearSpy.mockRestore();
   });
 
+  test("queueRepaint with a zero-height region is a no-op, not a full-frame repaint", async () => {
+    // Regression: only `region.bottom > region.y` took the scoped-damage
+    // branch; a caller-supplied region with bottom === y (e.g. a collapsed or
+    // not-yet-measured widget's blinking caret) fell into the "no region"
+    // else-branch and forced repaintFull = true — a full-frame repaint on
+    // every blink tick instead of the harmless no-op the zero-height region
+    // actually calls for.
+    const t = await mountApp(<Label>hi</Label>, { cols: 20, rows: 5 });
+    await t.settle();
+    const clearSpy = vi.spyOn(t.app.buffer, "clear");
+
+    t.app.queueRepaint({ y: 3, bottom: 3 }); // zero height
+    await flush();
+    expect(clearSpy).not.toHaveBeenCalled();
+
+    clearSpy.mockRestore();
+  });
+
   test("inline graphics force a full frame (no damage-scoped partial repaint)", async () => {
     const t = await mountApp(
       <VBox>

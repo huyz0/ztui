@@ -356,10 +356,16 @@ export class App extends DOMNode {
    * repaint can never mask a real layout change.
    */
   public queueRepaint(region?: { y: number; bottom: number } | null, reason = "unknown"): void {
+    // A zero/negative-height region (e.g. an unmeasured or collapsed widget)
+    // paints nothing — a genuine no-op, not "no region provided". Treating it
+    // like the null case below would force a full-frame repaint on every call
+    // (e.g. a focused caret's blink tick while its widget is collapsed),
+    // exactly the whole-screen cost this method exists to avoid.
+    if (region && region.bottom <= region.y) return;
     this.noteRenderReason(`repaint:${reason}`);
     // A region scopes the repaint to that band of rows (damage tracking). No
     // region means "repaint the whole screen" — the safe default.
-    if (region && region.bottom > region.y) {
+    if (region) {
       this.damageTop = Math.min(this.damageTop, region.y);
       this.damageBottom = Math.max(this.damageBottom, region.bottom);
     } else {
