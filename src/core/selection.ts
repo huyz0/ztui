@@ -147,8 +147,16 @@ export class ReadonlySelectionManager {
       if (!order.has(run.widget)) continue;
       for (let i = 0; i < run.cols.length; i++) {
         const c = run.cols[i];
-        if (c < 0) continue;
-        const p: SelPoint = { widget: run.widget, line: run.line, col: c };
+        // A wide glyph's second screen column is a continuation cell (c < 0)
+        // with no logical column of its own — resolve it to the column of
+        // the glyph it belongs to (same walk-left as colInRun) so it's
+        // checked against the selection range instead of being skipped
+        // outright, which left it unhighlighted even when fully selected.
+        const p: SelPoint = {
+          widget: run.widget,
+          line: run.line,
+          col: c >= 0 ? c : this.colInRun(run, i),
+        };
         if (this.compare(start, p, order) <= 0 && this.compare(p, end, order) < 0) {
           const cell: Cell | undefined = buffer.cells[run.y]?.[run.x + i];
           if (cell) cell.style = cell.style.merge(selStyle);
