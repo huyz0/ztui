@@ -88,7 +88,12 @@ export function GalleryView<T>(props: GalleryViewProps<T>): ReactElement {
   const lastClick = useRef({ index: -1, at: 0 });
   const measureRetries = useRef(0);
 
-  const sel = selectedIndex ?? internalSel;
+  // Clamp against the current `items` length: an uncontrolled cursor that
+  // isn't resynced when a shorter batch of items arrives (e.g. a filter
+  // shrinking the gallery) would otherwise point past the end, breaking the
+  // selected-cell highlight, the scroll-into-view math, and handing
+  // onActivate/onSelect an out-of-bounds index.
+  const sel = Math.min(selectedIndex ?? internalSel, Math.max(0, items.length - 1));
   const columns = Math.max(1, columnsProp ?? autoColumns);
   const rowStride = itemHeight + gap;
 

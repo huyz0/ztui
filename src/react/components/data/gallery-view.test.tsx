@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { GalleryView } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
@@ -222,5 +223,42 @@ describe("GalleryView", () => {
     t.driver.simulateMouse(r.x + 1, r.y + 1, "press", "left");
     await t.settle();
     expect(t.screen.focusedWidget).toBe(wrapper);
+  });
+
+  test("cursor clamps to the new last item when items shrinks out from under an uncontrolled selection", async () => {
+    // Regression: `sel` was `selectedIndex ?? internalSel` with no clamp, so
+    // moving the cursor to the end of a 100-item list and then swapping in a
+    // shorter list left `internalSel` past the end. That broke the
+    // selected-cell highlight and would hand onActivate an out-of-bounds index.
+    const shrinkTrigger: { current: (() => void) | null } = { current: null };
+    function Swapper({ onActivate }: { onActivate: (i: number) => void }) {
+      const [shrunk, setShrunk] = useState(false);
+      shrinkTrigger.current = () => setShrunk(true);
+      return (
+        <GalleryView
+          items={shrunk ? ITEMS.slice(0, 5) : ITEMS}
+          renderItem={renderItem}
+          itemWidth={10}
+          itemHeight={3}
+          onActivate={onActivate}
+          style={{ height: "100%" }}
+        />
+      );
+    }
+    const onActivate = vi.fn();
+    const t = await mountApp(<Swapper onActivate={onActivate} />, { cols: 64, rows: 16 });
+    await t.settle(20);
+    const wrapper = findBox(t).parent;
+    wrapper.handleKey({ name: "end" }); // cursor -> 99
+    await t.settle();
+
+    shrinkTrigger.current?.();
+    await t.settle(20);
+
+    wrapper.handleKey({ name: "enter" });
+    await t.settle();
+    // Without the clamp, onActivate would fire with the stale index 99 —
+    // out of bounds for the now-5-item list.
+    expect(onActivate).toHaveBeenCalledWith(4);
   });
 });
