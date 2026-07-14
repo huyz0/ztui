@@ -128,3 +128,28 @@ describe("SelectWidget dropdown overlay height clamps to available space", () =>
     expect(selectedIndex).toBe(2);
   });
 });
+
+describe("SelectWidget hoveredIndex stays valid when options shrinks while open", () => {
+  test("Enter clamps hoveredIndex first, so it still selects the visibly-highlighted row instead of silently no-oping", () => {
+    // Regression: `options` is a plain field with no setter, so nothing
+    // re-validated hoveredIndex when it was reassigned to a shorter array
+    // while the dropdown stayed open (e.g. a dependent-dropdown pattern).
+    // selectOptionIndex bounds-checks internally, so Enter with a stale
+    // out-of-range hoveredIndex silently did nothing.
+    const w = new SelectWidget();
+    w.options = ["a", "b", "c", "d", "e", "f"];
+    w.isOpen = true;
+    w.hoveredIndex = 5; // last of 6 options
+
+    // The parent replaces options with a much shorter list while still open.
+    w.options = ["x", "y"];
+
+    let selectedValue: string | undefined;
+    const onChange = (v: unknown) => {
+      selectedValue = v as string;
+    };
+    w.onChange = onChange;
+    w.onKey?.({ key: "enter", name: "enter", handled: false });
+    expect(selectedValue).toBe("y"); // clamped to the new last index (1)
+  });
+});

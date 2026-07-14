@@ -365,6 +365,14 @@ export class SelectWidget extends Widget {
         ev.handled = true;
       }
     } else {
+      // `options` can be reassigned to a shorter array while the dropdown is
+      // still open (e.g. a dependent-dropdown pattern), leaving hoveredIndex
+      // pointing past the end — clamp before acting on it, otherwise Enter
+      // silently no-ops (selectOptionIndex bounds-checks) with no visible
+      // explanation, and the overlay shows no highlight at all.
+      if (this.hoveredIndex > resolved.length - 1) {
+        this.hoveredIndex = Math.max(0, resolved.length - 1);
+      }
       if (keyName === "up") {
         this.hoveredIndex = Math.max(0, this.hoveredIndex - 1);
         ev.handled = true;
