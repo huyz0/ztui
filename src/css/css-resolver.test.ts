@@ -242,6 +242,30 @@ describe("CSSResolver Theming and Variables", () => {
     expect(direct).not.toBe("$accent");
     expect(direct.startsWith("#")).toBe(true);
   });
+
+  test("getWidgetColorWithFallback recognizes a concrete non-hex color instead of silently skipping it", () => {
+    // Regression: the ancestor walk only treated a style value as "found"
+    // when it started with "#", "$", or "var(" -- a named color ("red") or an
+    // rgb()/rgba() literal is a perfectly valid background/color value
+    // elsewhere in the codebase, but matched neither branch here, so the walk
+    // silently discarded the widget's own explicit color and continued to the
+    // parent (or the ultimate default) instead.
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    const widget = new Widget("div");
+    widget.style.background = "red";
+    const found = (
+      resolver as unknown as {
+        getWidgetColorWithFallback: (
+          w: Widget,
+          prop: "color" | "background",
+          def: string,
+        ) => string;
+      }
+    ).getWidgetColorWithFallback(widget, "background", "#unused-default");
+    expect(found).toBe("red");
+  });
 });
 
 describe("CSSResolver syntax/diff fallbacks for theme-undefined names", () => {

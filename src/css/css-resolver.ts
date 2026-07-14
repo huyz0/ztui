@@ -270,6 +270,14 @@ export class CSSResolver {
               return resolved;
             }
           }
+        } else {
+          // A concrete non-hex color (a named color like "red", an
+          // rgb()/rgba() literal, an ANSI name like "bright-blue", …) is a
+          // perfectly valid style value elsewhere in the codebase. Previously
+          // neither branch above matched it, so it was silently discarded —
+          // the walk moved on to the parent instead of using the widget's own
+          // explicit color.
+          return styleVal;
         }
       }
       current = current.parent && current.parent instanceof Widget ? current.parent : null;
