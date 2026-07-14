@@ -1,4 +1,5 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import * as iconRegistryModule from "../../render/icon-registry.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import type { TerminalCapabilities } from "../driver.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
@@ -6,6 +7,20 @@ import { TerminalGraphicsManager } from "./graphics.ts";
 const SVG = '<svg viewBox="0 0 24 24"><rect width="24" height="24" fill="currentColor"/></svg>';
 
 iconRegistry.registerIcon({ name: "test-cache-icon", svg: SVG, textFallback: "?" });
+
+// rasterizeSVG does real image work (expensive); stub it so the cache-growth
+// loop below stays fast and this test isn't a timing-flake risk.
+vi.spyOn(iconRegistryModule, "rasterizeSVG").mockImplementation(
+  () =>
+    ({
+      pngBase64: "",
+      pixels: new Uint8Array(0),
+      width: 1,
+      height: 1,
+      superWidth: 1,
+      superHeight: 1,
+    }) as iconRegistryModule.RasterizedIcon,
+);
 
 function caps(): TerminalCapabilities {
   return {
@@ -28,5 +43,5 @@ describe("TerminalGraphicsManager icon cache", () => {
       mgr.getIconSequence("test-cache-icon", capabilities, `#${i.toString().padStart(6, "0")}`);
     }
     expect(mgr._iconCacheSizeForTest()).toBeLessThanOrEqual(256);
-  }, 30000);
+  });
 });

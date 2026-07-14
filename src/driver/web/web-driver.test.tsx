@@ -188,6 +188,25 @@ describe("DOM event translators", () => {
     );
   });
 
+  test("a drag reports its actual held button, not always left", () => {
+    // Regression: `mousemove`'s `event.button` is always 0 in every browser,
+    // regardless of which button is actually held down. A "drag" translated
+    // from `button` alone (as press/release correctly do) always reported
+    // "left" even when the user was dragging with the right or middle button.
+    const metrics = { cellWidth: 8, cellHeight: 16 };
+    // button: 0 (always, per the DOM spec) but buttons: 2 means the right
+    // button is the one actually held during this drag.
+    expect(
+      translateMouseEvent({ offsetX: 0, offsetY: 0, button: 0, buttons: 2 }, "drag", metrics),
+    ).toMatchObject({ button: "right" });
+    expect(
+      translateMouseEvent({ offsetX: 0, offsetY: 0, button: 0, buttons: 4 }, "drag", metrics),
+    ).toMatchObject({ button: "middle" });
+    expect(
+      translateMouseEvent({ offsetX: 0, offsetY: 0, button: 0, buttons: 1 }, "drag", metrics),
+    ).toMatchObject({ button: "left" });
+  });
+
   test("mouse pixels are clamped to the driver's column/row bounds when given", () => {
     // Regression: only the lower bound (Math.max(0, x)) was ever clamped — a
     // host element with padding/border wider than an exact multiple of the

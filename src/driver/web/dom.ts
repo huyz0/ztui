@@ -93,7 +93,7 @@ export interface CellMetrics {
  * widgets don't expect.
  */
 export function translateMouseEvent(
-  ev: { offsetX: number; offsetY: number; button?: number },
+  ev: { offsetX: number; offsetY: number; button?: number; buttons?: number },
   type: ZtuiMouseEvent["type"],
   metrics: CellMetrics,
   bounds?: { cols: number; rows: number },
@@ -106,14 +106,16 @@ export function translateMouseEvent(
     x = Math.min(x, Math.max(0, bounds.cols - 1));
     y = Math.min(y, Math.max(0, bounds.rows - 1));
   }
-  const button =
-    type === "move" || type === "scroll_up" || type === "scroll_down"
-      ? "none"
-      : ev.button === 2
-        ? "right"
-        : ev.button === 1
-          ? "middle"
-          : "left";
+  let button: ZtuiMouseEvent["button"];
+  if (type === "move" || type === "scroll_up" || type === "scroll_down") {
+    button = "none";
+  } else if (type === "drag" && ev.buttons) {
+    // `mousemove`'s `event.button` is always 0 regardless of which button is
+    // actually held — only the `buttons` bitmask reflects it during a drag.
+    button = ev.buttons & 2 ? "right" : ev.buttons & 4 ? "middle" : "left";
+  } else {
+    button = ev.button === 2 ? "right" : ev.button === 1 ? "middle" : "left";
+  }
   return { x, y, type, button };
 }
 
