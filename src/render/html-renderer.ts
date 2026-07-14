@@ -96,6 +96,7 @@ function fgCSS(style: any): string {
   const fg = style.reverse ? style.background : style.color;
   if (fg && fg !== "default") css.push(`color: ${normalizeColorForCSS(fg)}`);
   if (style.bold) css.push("font-weight: bold");
+  if (style.dim) css.push("opacity: 0.6");
   if (style.italic) css.push("font-style: italic");
   const lines: string[] = [];
   if (style.underline) lines.push("underline");
@@ -180,6 +181,7 @@ export function renderBufferToHTML(buffer: ScreenBuffer): string {
         color: cellStyle.color,
         background: cellStyle.background,
         bold: cellStyle.bold,
+        dim: cellStyle.dim,
         italic: cellStyle.italic,
         underline: cellStyle.underline,
         underlineStyle: cellStyle.underlineStyle,
@@ -213,6 +215,7 @@ function stylesEqual(s1: any, s2: any): boolean {
     s1.color === s2.color &&
     s1.background === s2.background &&
     s1.bold === s2.bold &&
+    s1.dim === s2.dim &&
     s1.italic === s2.italic &&
     s1.underline === s2.underline &&
     s1.underlineStyle === s2.underlineStyle &&

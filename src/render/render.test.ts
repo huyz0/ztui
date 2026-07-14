@@ -231,6 +231,19 @@ describe("rendering system", () => {
     expect(html.includes("Ghostty")).toBe(true);
   });
 
+  test("renderBufferToHTML preserves dim styling, not just bold/italic", () => {
+    // Regression: fgCSS (and the styleKey run-boundary comparison) read
+    // style.bold/.italic/.underline/.strikethrough but never style.dim, so a
+    // dimmed cell (common for placeholder/hint/disabled text) exported at
+    // full brightness -- indistinguishable from normal text. The terminal
+    // path (computeEscapeCodes) already emits \x1b[2m for dim; only the HTML
+    // export lost the attribute.
+    const buffer = new ScreenBuffer(10, 1);
+    buffer.drawSegment(0, 0, new Segment("hint", new Style({ dim: true })));
+    const html = renderBufferToHTML(buffer);
+    expect(html).toContain("opacity");
+  });
+
   test("ScreenBuffer renderDiff splits contiguous runs on style boundaries", () => {
     const b1 = new ScreenBuffer(10, 1);
     const b2 = new ScreenBuffer(10, 1);
