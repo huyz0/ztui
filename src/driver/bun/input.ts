@@ -165,9 +165,20 @@ export function parseInput(
 
         // Bit 6 (0x40) marks wheel events; low 2 bits give the direction. This
         // also covers modified wheels (e.g. Ctrl+scroll = 64|16 = 80/81).
+        // Codes 66/67 (btnCode & 3 === 2 or 3) are horizontal tilt
+        // (scroll-left/scroll-right) — MouseEvent has no horizontal-scroll
+        // type, so these are dropped rather than misreported as scroll_down
+        // (which previously double-scrolled vertical widgets on a horizontal
+        // trackpad swipe).
         const isWheel = (btnCode & 0x40) !== 0;
         if (isWheel) {
-          type = (btnCode & 3) === 0 ? "scroll_up" : "scroll_down";
+          const wheelDir = btnCode & 3;
+          if (wheelDir === 0) type = "scroll_up";
+          else if (wheelDir === 1) type = "scroll_down";
+          else {
+            i += mouseMatch[0].length;
+            continue;
+          }
         } else {
           const baseBtn = btnCode & 3;
           // Bit 5 (0x20) marks motion; button bits === 3 means no button held.

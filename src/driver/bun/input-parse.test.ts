@@ -42,6 +42,21 @@ describe("parseInput — SGR mouse decoding", () => {
     expect(firstMouse("\x1b[<69;10;5M")?.type).toBe("scroll_down");
   });
 
+  test("horizontal wheel-tilt (btnCode & 3 === 2 or 3) is dropped, not misreported as a vertical scroll", () => {
+    // Regression: isWheel only checked bit 0x40 and picked direction as
+    // `(btnCode & 3) === 0 ? scroll_up : scroll_down`, so codes 66/67 (xterm's
+    // horizontal tilt-left/tilt-right, which have btnCode & 3 === 2/3) fell
+    // into the scroll_down branch -- a horizontal trackpad swipe double-
+    // scrolled vertical widgets that react to every scroll_down.
+    const mice: MouseEvent[] = [];
+    parseInput(
+      "\x1b[<66;10;5M\x1b[<67;10;5M",
+      () => {},
+      (m) => mice.push(m),
+    );
+    expect(mice).toHaveLength(0);
+  });
+
   test("button press / release / drag", () => {
     const press = firstMouse("\x1b[<0;10;5M");
     expect(press?.type).toBe("press");
