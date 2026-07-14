@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import type { App } from "../core/app.ts";
 import type { DOMNode } from "../dom/dom.ts";
@@ -333,5 +334,44 @@ describe("ApprovalPrompt — batch", () => {
     const root = t.findById<Widget>("ap") as Widget;
     root.handleKey({ name: "escape", handled: false } as never);
     expect(resolved).toEqual({ "1": "deny", "2": "deny", "3": "deny" });
+  });
+
+  test("a new batch of calls (same mounted prompt) seeds its own decisions from defaultDecision", async () => {
+    // Regression: the decisions state's lazy initializer only ran once, at
+    // mount. A host that keeps one ApprovalPrompt mounted across a session
+    // and re-renders it with a new batch once the previous one resolves
+    // (e.g. the agent requests a second round of approvals) left every new
+    // call id missing from `decisions` entirely, ignoring its own
+    // defaultDecision.
+    const batchOne = [{ id: "1", name: "Read", args: "a.ts" }];
+    const batchTwo = [{ id: "2", name: "Bash", args: "npm test" }]; // defaultDecision omitted -> "allow"
+    let resolvedSecond: Record<string, string> | null = null;
+
+    function Swapper() {
+      const [batch, setBatch] = useState(1);
+      return (
+        <ApprovalPrompt
+          id="ap"
+          prompt="Run:"
+          calls={batch === 1 ? batchOne : batchTwo}
+          onResolve={(d) => {
+            if (batch === 1) setBatch(2);
+            else resolvedSecond = d;
+          }}
+        />
+      );
+    }
+
+    const t = await mountApp(<Swapper />, OPTS);
+    await t.settle();
+    const root1 = t.findById<Widget>("ap") as Widget;
+    root1.handleKey({ name: "a", handled: false } as never); // Allow all — resolves batch one, swaps to batch two
+    await t.settle();
+
+    const root2 = t.findById<Widget>("ap") as Widget;
+    root2.handleKey({ name: "enter", handled: false } as never); // Apply, submitting `decisions` as-is
+    // Id "1" from the first batch may harmlessly linger in state; what
+    // matters is that the new id "2" is present and seeded correctly.
+    expect(resolvedSecond).toMatchObject({ "2": "allow" });
   });
 });

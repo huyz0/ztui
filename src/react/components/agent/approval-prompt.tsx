@@ -181,6 +181,26 @@ export function ApprovalPrompt({
   const [decisions, setDecisions] = useState<Record<string, "allow" | "deny">>(() =>
     Object.fromEntries((calls ?? []).map((c) => [c.id, c.defaultDecision ?? "allow"])),
   );
+  // The lazy initializer above only runs once, at mount. A host that keeps one
+  // ApprovalPrompt mounted across a session and re-renders it with a *new*
+  // batch of calls (e.g. a second round of approvals) would otherwise leave
+  // every new call id missing from `decisions` — reading as denied regardless
+  // of its own defaultDecision. Seed just the ids not seen yet; existing
+  // decisions (including ones the user already toggled) are left alone.
+  useEffect(() => {
+    if (!calls) return;
+    setDecisions((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const c of calls) {
+        if (!(c.id in next)) {
+          next[c.id] = c.defaultDecision ?? "allow";
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [calls]);
   const btnRefs = useRef<Record<string, Widget | null>>({});
   const inputRef = useRef<Widget | null>(null);
 
