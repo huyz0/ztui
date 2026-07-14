@@ -253,4 +253,51 @@ describe("Workbench", () => {
     expect(t2.text()).toContain("FILES");
     expect(t2.text()).toContain("Explorer");
   });
+
+  test("two rapid re-docks in the same tick repair the source region to the true remaining sibling", async () => {
+    // Regression: move()'s sibling lookup used the closure-captured
+    // `overrides` from render, not the value being written by the concurrent
+    // setOverrides call in the same handler. With three left panels, moving
+    // the first two away in the same tick (no render in between) made the
+    // second move()'s sibling search use a stale `overrides` that didn't yet
+    // know about the first move — so it could "repair" the left region's
+    // active id back to the panel that had just been moved away instead of
+    // the panel that's genuinely still there.
+    const threePanels = [
+      ...panels,
+      { id: "notes", anchor: "left" as const, title: "Notes", content: <Label>NOTESBODY</Label> },
+    ];
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <Workbench panels={threePanels} initialOpen={["left"]}>
+          <Label>EDITOR</Label>
+        </Workbench>
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    expect(t.text()).toContain("FILES"); // Explorer active on the left
+
+    // Drag both Explorer and Search to the right zone with no settle in
+    // between — both `move()` calls run against the same pre-render
+    // `overrides` closure. Notes is the only left panel left afterward.
+    const explorer = railCenter(t, "explorer");
+    t.driver.simulateMouse(explorer.x, explorer.y, "press", "left");
+    t.driver.simulateMouse(79, 0, "drag", "left");
+    t.driver.simulateMouse(79, 0, "release", "left");
+
+    const search = railCenter(t, "search");
+    t.driver.simulateMouse(search.x, search.y, "press", "left");
+    t.driver.simulateMouse(79, 0, "drag", "left");
+    t.driver.simulateMouse(79, 0, "release", "left");
+
+    await t.settle();
+
+    // The left region must show Notes — the one panel genuinely still
+    // anchored there — not Explorer, which moved to the right and is no
+    // longer visible anywhere (Search, docked right after it, is the
+    // right region's active panel now).
+    expect(t.text()).toContain("NOTESBODY");
+    expect(t.text()).toContain("SEARCHBODY");
+    expect(t.text()).not.toContain("FILES");
+  });
 });

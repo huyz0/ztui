@@ -186,18 +186,34 @@ export function Workbench({
     const source = anchorOf(panel);
     if (source === target) return;
 
-    setOverrides((prev) => ({ ...prev, [id]: target }));
-    setRegions((prev) => {
-      const next = { ...prev, [target]: { ...prev[target], open: true, active: id } };
-      const src = prev[source];
-      if (src.active === id) {
-        // Remaining panels on the source after this move (effective anchor).
-        const sibling = panels.find((p) => p.id !== id && (overrides[p.id] ?? p.anchor) === source);
-        next[source] = sibling
-          ? { ...src, active: sibling.id }
-          : { ...src, active: null, open: false };
-      }
-      return next;
+    // The sibling lookup below must see *this* move's own override applied,
+    // not the render-closure's `overrides` snapshot — otherwise a second
+    // move() call landing before React flushes the first (e.g. a fast
+    // double drag-end in the same tick) would repair the source region
+    // using a sibling list that doesn't yet reflect the first move, and
+    // could point `active` at a panel that itself was just re-docked away.
+    // Nesting the setRegions update inside setOverrides's updater guarantees
+    // it always sees the up-to-date pending override.
+    setOverrides((prev) => {
+      const nextOverrides = { ...prev, [id]: target };
+      setRegions((prevRegions) => {
+        const next = {
+          ...prevRegions,
+          [target]: { ...prevRegions[target], open: true, active: id },
+        };
+        const src = prevRegions[source];
+        if (src.active === id) {
+          // Remaining panels on the source after this move (effective anchor).
+          const sibling = panels.find(
+            (p) => p.id !== id && (nextOverrides[p.id] ?? p.anchor) === source,
+          );
+          next[source] = sibling
+            ? { ...src, active: sibling.id }
+            : { ...src, active: null, open: false };
+        }
+        return next;
+      });
+      return nextOverrides;
     });
   };
 
