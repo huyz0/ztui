@@ -352,6 +352,26 @@ describe("BunDriver input + graphics sequences", () => {
     expect(sawCtrlC).toBe(true);
   });
 
+  test("an unhandled Ctrl+C coalesced with other bytes in the same chunk still triggers the safety exit", () => {
+    // Regression: processInput only special-cased Ctrl+C (going through the
+    // "emit key, exit if unhandled" fallback path) when the raw byte was the
+    // *entire* chunk. A fast keystroke landing in the same stdin read as
+    // Ctrl+C (or trailing paste/mouse bytes after it) instead fell through to
+    // parseInput's generic control-byte handling, which emits an equivalent
+    // ctrl+c key event but never falls back to the safety exit -- "Ctrl+C
+    // quits" silently stopped working whenever a byte preceded it in a chunk.
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+    let sawX = false;
+    driver.on("key", (ev) => {
+      if (ev.key === "x") sawX = true;
+      // Deliberately leave Ctrl+C unhandled so the safety exit must fire.
+    });
+    stdin.emit("data", "x");
+    expect(sawX).toBe(true);
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    exitSpy.mockRestore();
+  });
+
   test("clearScreen and graphic reset emit kitty deletes when the protocol is kitty", () => {
     driver.capabilities.graphicsProtocol = "kitty";
     const before = stdout.all().length;

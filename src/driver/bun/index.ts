@@ -508,13 +508,22 @@ export class BunDriver extends Driver {
     // keyboard protocol, where Ctrl+Shift+C is byte-identical to Ctrl+C). If the
     // event is left unhandled, fall back to the safety exit so "Ctrl+C quits"
     // still holds when no app logic claims it.
-    if (data === "\u0003") {
+    // Split on 0x03 rather than requiring an exact match -- a fast keystroke
+    // right before Ctrl+C (or Ctrl+C landing in the same read as trailing
+    // paste/mouse bytes) can coalesce it into a larger chunk, which would
+    // otherwise skip straight to parseInput's generic control-byte handling
+    // and silently drop the safety-exit fallback.
+    const ctrlCIdx = data.indexOf("\u0003");
+    if (ctrlCIdx !== -1) {
+      if (ctrlCIdx > 0) this.processInput(data.slice(0, ctrlCIdx));
       const ev: KeyEvent = { key: "ctrl+c", name: "c", ctrl: true, meta: false, shift: false };
       this.emit("key", ev);
       if (!ev.handled) {
         this.stop();
         process.exit(0);
       }
+      const rest = data.slice(ctrlCIdx + 1);
+      if (rest) this.processInput(rest);
       return;
     }
 
