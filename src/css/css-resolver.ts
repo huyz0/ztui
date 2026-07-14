@@ -157,7 +157,14 @@ export class CSSResolver {
   private resolveAccent(widget: Widget, name: "focus" | "attention"): string {
     const activeTheme = this.getActiveThemeForWidget(widget);
     const isLight = activeTheme ? isThemeLight(activeTheme) : false;
-    const themed = this.stylesheetVariables[name] ?? activeTheme?.colors?.[name];
+    const rawThemed = this.stylesheetVariables[name] ?? activeTheme?.colors?.[name];
+    // A stylesheet/theme value can itself be an alias (e.g. `$focus: $primary;`)
+    // — expand it through the normal variable machinery rather than using the
+    // raw `$name`/`var(--name)` token verbatim as a colour.
+    const themed =
+      rawThemed && (rawThemed.startsWith("$") || rawThemed.startsWith("var("))
+        ? this.resolveVariable(widget, rawThemed)
+        : rawThemed;
     // Breathe toward a pole, not a lighter tint: lightening an already-bright
     // accent is imperceptible, whereas blending toward white (dark themes) or
     // black (light themes) reads as a clear glow. The contrast pole flips with

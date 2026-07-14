@@ -218,6 +218,30 @@ describe("CSSResolver Theming and Variables", () => {
 
     themeManager.setTheme("default-dark"); // restore
   });
+
+  test("resolveAccent expands a stylesheet alias for $focus/$attention (e.g. $focus: $primary) instead of leaking the raw token", () => {
+    // Regression: resolveAccent read stylesheetVariables[name] directly,
+    // bypassing resolveVariable's recursive expansion, so it could return the
+    // raw "$accent" token verbatim. In the current codebase every real call
+    // path happens to re-run the substitution through resolveVariable's own
+    // outer loop (which then re-expands the leaked token on its next pass),
+    // so this doesn't surface as an observable bug through resolveStyles()
+    // today -- but resolveAccent should still return a real color on its own,
+    // not rely on a caller's loop to paper over it (e.g. a future/other
+    // caller invoking it more directly wouldn't get that safety net).
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    resolver.addVariables({ focus: "$accent" });
+    const widget = new Widget("div");
+    const direct = (
+      resolver as unknown as {
+        resolveAccent: (w: Widget, name: "focus" | "attention") => string;
+      }
+    ).resolveAccent(widget, "focus");
+    expect(direct).not.toBe("$accent");
+    expect(direct.startsWith("#")).toBe(true);
+  });
 });
 
 describe("CSSResolver syntax/diff fallbacks for theme-undefined names", () => {
