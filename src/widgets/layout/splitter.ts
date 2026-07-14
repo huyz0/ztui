@@ -74,7 +74,14 @@ export class SplitterWidget extends Widget {
       ev.handled = true;
     } else if (ev.type === "release") {
       this.dragging = false;
-      this.hovered = false;
+      // Only clear hover if the pointer actually isn't over the splitter
+      // anymore — a release often lands on the same cell the drag started
+      // on, and some drivers don't emit a fresh mouseenter unless the cursor
+      // actually moves off and back onto the cell. Unconditionally clearing
+      // it here left the splitter rendered thin/dim right after a
+      // drag-release even though the mouse never left it.
+      const rect = this.getClientRect();
+      if (!rect.contains(ev.x, ev.y)) this.hovered = false;
       ev.handled = true;
       App.instance?.queueRender();
     }

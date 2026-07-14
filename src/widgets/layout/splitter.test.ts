@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
 import type { MouseEvent } from "../../driver/driver.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { SplitterWidget } from "./splitter.ts";
 
 function mouse(x: number, y: number, type: MouseEvent["type"]): MouseEvent {
@@ -51,5 +54,28 @@ describe("SplitterWidget", () => {
     s.handleMouse(mouse(12, 5, "release"));
     s.handleMouse(mouse(20, 5, "drag")); // after release → ignored
     expect(deltas).toEqual([2]);
+  });
+
+  test("release doesn't clear hover if the pointer is still over the splitter", () => {
+    // Regression: "release" unconditionally cleared `hovered` regardless of
+    // the pointer's actual position, so a drag-release on the same cell it
+    // started on rendered the splitter thin/dim even though the mouse never
+    // left it — it wouldn't look grabbable again until a fresh mouseenter,
+    // which some drivers never fire without cursor movement.
+    const s = new SplitterWidget();
+    s.orientation = "vertical";
+    s.region = new Region(new Offset(10, 0), new Size(1, 20));
+
+    s.onMouseEnter?.({} as never);
+    expect((s as unknown as { hovered: boolean }).hovered).toBe(true);
+
+    s.handleMouse(mouse(10, 5, "press"));
+    s.handleMouse(mouse(10, 5, "release")); // release on the same cell
+    expect((s as unknown as { hovered: boolean }).hovered).toBe(true);
+
+    // A release that lands off the splitter does clear hover.
+    s.handleMouse(mouse(10, 5, "press"));
+    s.handleMouse({ x: 30, y: 30, type: "release", button: "left" } as MouseEvent);
+    expect((s as unknown as { hovered: boolean }).hovered).toBe(false);
   });
 });
