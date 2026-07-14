@@ -4,7 +4,18 @@ import type { KeyEvent, MouseEvent } from "../driver.ts";
 export interface MouseParseState {
   /** Whether a mouse button is currently held (set by press, cleared by release). */
   buttonDown: boolean;
+  /**
+   * `Date.now()` of the last press. If a release is ever lost (e.g. the
+   * terminal window loses focus mid-drag, or the byte is dropped), `buttonDown`
+   * would otherwise stay stuck true forever, turning every later Ghostty-quirk
+   * hover move into a phantom drag. Past {@link BUTTON_DOWN_STALE_MS} since the
+   * last press, the state is treated as stale and reset.
+   */
+  pressedAt: number;
 }
+
+/** See {@link MouseParseState.pressedAt}. */
+const BUTTON_DOWN_STALE_MS = 30_000;
 
 export interface InputDiagnostics {
   chunks: number;
@@ -19,7 +30,7 @@ export function parseInput(
   data: string,
   onKeyRaw: (ev: KeyEvent) => void,
   onMouseRaw: (ev: MouseEvent) => void,
-  mouseState: MouseParseState = { buttonDown: false },
+  mouseState: MouseParseState = { buttonDown: false, pressedAt: 0 },
   diagnostics?: InputDiagnostics,
 ): void {
   if (diagnostics) diagnostics.chunks += 1;
@@ -189,11 +200,21 @@ export function parseInput(
           // sliders/selection and is coalesced like other hover motion.
           if (type === "press") {
             mouseState.buttonDown = true;
+            mouseState.pressedAt = Date.now();
           } else if (type === "release") {
             mouseState.buttonDown = false;
-          } else if (type === "drag" && !mouseState.buttonDown) {
-            type = "move";
-            button = "none";
+          } else if (type === "drag") {
+            // A held button older than the staleness window almost certainly
+            // means its release was lost (e.g. focus left the terminal
+            // mid-drag) rather than a real multi-minute drag — treat it as
+            // released so the quirk-downgrade below can kick back in.
+            if (mouseState.buttonDown && Date.now() - mouseState.pressedAt > BUTTON_DOWN_STALE_MS) {
+              mouseState.buttonDown = false;
+            }
+            if (!mouseState.buttonDown) {
+              type = "move";
+              button = "none";
+            }
           }
         }
 

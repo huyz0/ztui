@@ -67,7 +67,7 @@ export class BunDriver extends Driver {
   private probeBuffer = "";
   private probeTimeout: any = null;
   /** Persisted across input chunks so motion can be classified against held buttons. */
-  private mouseParseState: MouseParseState = { buttonDown: false };
+  private mouseParseState: MouseParseState = { buttonDown: false, pressedAt: 0 };
   private inputDiagnostics: InputDiagnostics = {
     chunks: 0,
     keyEvents: 0,

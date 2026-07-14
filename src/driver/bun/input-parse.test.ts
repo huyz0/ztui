@@ -94,6 +94,25 @@ describe("parseInput — SGR mouse decoding", () => {
     expect(mice[1]?.button).toBe("right");
   });
 
+  test("a held button older than the staleness window is treated as released, not a permanent phantom drag", () => {
+    // Regression: buttonDown was only ever cleared by an explicit release
+    // event. If that release was lost (the terminal window loses focus
+    // mid-drag, or the byte is dropped), buttonDown stayed stuck true
+    // forever -- every later Ghostty-quirk hover move (b=34) was then
+    // misclassified as a real drag instead of being downgraded to a move.
+    const state = { buttonDown: true, pressedAt: Date.now() - 31_000 }; // past the 30s staleness window
+    const mice: MouseEvent[] = [];
+    parseInput(
+      "\x1b[<34;10;5M",
+      () => {},
+      (m) => mice.push(m),
+      state,
+    );
+    expect(mice[0]?.type).toBe("move");
+    expect(mice[0]?.button).toBe("none");
+    expect(state.buttonDown).toBe(false);
+  });
+
   test("decodes 1-based coordinates to 0-based", () => {
     const ev = firstMouse("\x1b[<0;10;5M");
     expect(ev?.x).toBe(9);

@@ -17,7 +17,7 @@ describe("parseInput diagnostics", () => {
       "\u001b[<35;10;5M\u001b[<35;11;5M\u001b[<35;12;5M",
       () => {},
       (ev) => mouseEvents.push(ev),
-      { buttonDown: false },
+      { buttonDown: false, pressedAt: 0 },
       diagnostics as any,
     );
 
