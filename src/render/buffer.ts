@@ -138,7 +138,9 @@ function compressRepeats(content: string): string {
  * A cell that continues a *current* image ({@link Cell.wideContinuation}) is
  * never cleared — its lead cell's image already spans this footprint, and the
  * erase paints an opaque rectangle that (on sixel, which has no global delete)
- * punches a black hole into the freshly-drawn image.
+ * punches a black hole into the freshly-drawn image. `renderDiff` separately
+ * handles the case where this cell is a continuation of an unrelated (plain)
+ * wide glyph instead — see the comment there.
  */
 export function needsGraphicClear(cell: Cell, oldCell?: Cell): boolean {
   const oldHadImage = !!(oldCell && (oldCell.icon || oldCell.graphic));
@@ -517,6 +519,29 @@ export class ScreenBuffer {
             const res = this.flushRun(x, y, content, newCell.style, cursor, lastStyle);
             output += res.out;
             lastStyle = res.lastStyle;
+          } else if (newCell.wideContinuation && oldCell && (oldCell.icon || oldCell.graphic)) {
+            // needsGraphicClear unconditionally exempts every continuation
+            // cell, since a continuation of *this frame's own* icon/image
+            // must never be cleared (would punch a hole in it). But this
+            // continuation cell can also just be the trailing half of an
+            // unrelated plain wide glyph (CJK, emoji, …) that happens to have
+            // replaced an old icon/image lead sitting at this exact cell —
+            // nothing this frame actually occupies that footprint, so the
+            // stale icon must still be erased. Distinguish the two by
+            // checking this frame's own nearest lead cell: only a genuine
+            // (non-image) wide-glyph continuation gets the extra clear.
+            let leadX = x - 1;
+            while (leadX >= 0 && this.cells[y][leadX].wideContinuation) leadX--;
+            const lead = leadX >= 0 ? this.cells[y][leadX] : undefined;
+            const isRealImageContinuation = !!(lead && (lead.icon || lead.graphic));
+            if (!isRealImageContinuation && formatChar) {
+              const content = formatChar({ ...newCell, wideContinuation: false }, oldCell);
+              if (content) {
+                const res = this.flushRun(x, y, content, newCell.style, cursor, lastStyle);
+                output += res.out;
+                lastStyle = res.lastStyle;
+              }
+            }
           }
           // After any special cell — a graphic, an icon, or the continuation
           // half of a wide glyph — we can no longer trust relative cursor

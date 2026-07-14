@@ -147,6 +147,63 @@ describe("renderDiff: an unchanged image is not re-emitted", () => {
   });
 });
 
+describe("renderDiff: a stale icon is erased when replaced by an unrelated wide glyph", () => {
+  // Mimics App's real formatChar: a clear prefix when needsGraphicClear says so,
+  // then the icon/graphic/plain-char content.
+  const fmt = (cell: Cell, oldCell?: Cell) => {
+    const prefix = needsGraphicClear(cell, oldCell) ? "[CLEAR]" : "";
+    if (cell.graphic) return `${prefix}[IMG]`;
+    if (cell.icon) return `${prefix}[ICON]`;
+    return prefix + cell.char;
+  };
+
+  test("an icon lead cell later overwritten by a wide glyph's continuation still gets cleared", () => {
+    // Regression: needsGraphicClear unconditionally exempts every
+    // wideContinuation cell to avoid punching a hole in a *currently*
+    // drawn multi-cell image. But when the new frame's continuation cell
+    // belongs to a genuine plain wide glyph (nothing drawn there this
+    // frame) rather than a real image, and the old frame's icon lead sat
+    // exactly at that cell, the stale icon must still be erased —
+    // otherwise it lingers on stateful graphics protocols (Sixel/Kitty).
+    const prev = new ScreenBuffer(4, 1);
+    prev.cells[0][1] = {
+      char: "?",
+      style: new Style(),
+      wideContinuation: false,
+      icon: "hero:home",
+    };
+    prev.cells[0][2] = { char: "", style: new Style(), wideContinuation: true };
+
+    const buf = new ScreenBuffer(4, 1);
+    // A CJK/emoji-style wide glyph now spans columns 0-1, its continuation
+    // landing exactly on the old icon lead's cell (column 1).
+    buf.cells[0][0] = { char: "中", style: new Style(), wideContinuation: false };
+    buf.cells[0][1] = { char: "", style: new Style(), wideContinuation: true };
+
+    const out = buf.renderDiff(prev, fmt);
+    expect(out).toContain("[CLEAR]");
+  });
+
+  test("a continuation cell that's genuinely still part of the same current image is never cleared", () => {
+    const prev = new ScreenBuffer(4, 1);
+    prev.cells[0][0] = {
+      char: "?",
+      style: new Style(),
+      wideContinuation: false,
+      icon: "hero:home",
+    };
+    prev.cells[0][1] = { char: "", style: new Style(), wideContinuation: true };
+
+    const buf = new ScreenBuffer(4, 1);
+    // Same icon, same position, same footprint — a real still-current image.
+    buf.cells[0][0] = { char: "?", style: new Style(), wideContinuation: false, icon: "hero:home" };
+    buf.cells[0][1] = { char: "", style: new Style(), wideContinuation: true };
+
+    const out = buf.renderDiff(prev, fmt);
+    expect(out).not.toContain("[CLEAR]");
+  });
+});
+
 /**
  * The App compares each full frame's `graphicSignature` against the previous
  * one; a change forces a whole-screen graphics wipe + re-emit so an
