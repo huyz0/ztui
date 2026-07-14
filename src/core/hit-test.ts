@@ -89,14 +89,25 @@ export function hitTest(node: DOMNode, x: number, y: number): Widget | null {
     }
   }
   if (!hasZ) {
-    for (let i = 0; i < children.length; i++) {
+    // Later siblings paint over earlier ones (renderChildren walks in
+    // ascending document order), so the topmost — and thus hit-testable —
+    // sibling on an overlap is the *last* one. Walking in reverse resolves
+    // ties/overlaps to what's actually visible, mirroring the z-indexed
+    // branch below (and the overlay ordering above it).
+    for (let i = children.length - 1; i >= 0; i--) {
       const match = hitTest(children[i], x, y);
       if (match) return match;
     }
     return node;
   }
 
-  const sorted = [...children].sort((a, b) => zIndexOf(b) - zIndexOf(a));
+  const sorted = children
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => {
+      const dz = zIndexOf(b.c) - zIndexOf(a.c);
+      return dz !== 0 ? dz : b.i - a.i;
+    })
+    .map((entry) => entry.c);
 
   for (const child of sorted) {
     const match = hitTest(child, x, y);

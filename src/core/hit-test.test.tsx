@@ -55,6 +55,23 @@ describe("hitTest", () => {
     expect(hitTest(t.screen, 0, 0)).toBe(t.findById("hi"));
   });
 
+  test("two overlapping same-z-index siblings hit-test to the later (topmost-painted) one", async () => {
+    // Regression: both the fast (no-z-index) and z-sorted child-resolution
+    // paths iterated children in ascending document order and returned the
+    // first match. But renderChildren paints in that same ascending order, so
+    // the *later* sibling is the one actually drawn on top. A click on the
+    // overlap resolved to the earlier, visually-covered sibling instead of the
+    // one the user could actually see and click.
+    const t = await mountApp(
+      <Box style={{ width: 20, height: 6 }}>
+        <Box id="under" style={{ width: 10, height: 4, position: "absolute" }} />
+        <Box id="over" style={{ width: 10, height: 4, position: "absolute" }} />
+      </Box>,
+    );
+    await t.settle();
+    expect(hitTest(t.screen, 0, 0)).toBe(t.findById("over"));
+  });
+
   test("isPointOnScrollbar is false for a non-scrollable widget", async () => {
     const t = await mountApp(<Box id="b" style={{ width: 10, height: 4 }} />);
     await t.settle();
