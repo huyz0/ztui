@@ -231,7 +231,13 @@ export class BunDriver extends Driver {
       this.write("\x1b[?1000h\x1b[?1003h\x1b[?1006h");
       this.capabilities.mouseHover = true;
     } else {
-      this.write("\x1b[?1000h\x1b[?1002h\x1b[?1006h");
+      // Explicitly cancel mode 1003 (any-motion tracking) rather than relying
+      // on 1002 to implicitly override it — some terminals keep streaming a
+      // move event per pixel of motion if 1003 is never turned off, wasting a
+      // stream of read/parse work after hover is "disabled" (stop() already
+      // sends the 1003l reset on shutdown; this mirrors it for the runtime
+      // toggle).
+      this.write("\x1b[?1000h\x1b[?1002h\x1b[?1003l\x1b[?1006h");
       this.capabilities.mouseHover = false;
     }
   }

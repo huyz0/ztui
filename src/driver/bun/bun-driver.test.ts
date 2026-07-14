@@ -422,4 +422,15 @@ describe("BunDriver input + graphics sequences", () => {
     driver.stop();
     expect(stdout.all().slice(before)).toContain("\x1b]22;\x1b\\");
   });
+
+  test("setMouseHover(false) explicitly disables mode 1003, not just switching to 1002", () => {
+    // Regression: turning hover off wrote "\x1b[?1000h\x1b[?1002h\x1b[?1006h"
+    // without a trailing "\x1b[?1003l", relying on 1002 to implicitly cancel
+    // 1003. Some terminals don't cancel it implicitly and keep streaming a
+    // move event per pixel of motion even after hover is "disabled".
+    driver.setMouseHover(true);
+    const before = stdout.all().length;
+    driver.setMouseHover(false);
+    expect(stdout.all().slice(before)).toContain("\x1b[?1003l");
+  });
 });
