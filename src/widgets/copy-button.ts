@@ -50,6 +50,11 @@ export class CopyButtonWidget extends Widget {
     };
   }
 
+  public override onUnmount(): void {
+    clearTimeout(this.timer);
+    super.onUnmount();
+  }
+
   private copy(): void {
     const text = this.getText();
     if (text) App.instance?.driver.clipboard.set(text);
