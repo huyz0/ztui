@@ -146,7 +146,9 @@ export class Screen extends Widget {
     const modal = this.topModalLayer;
     const root: Widget = modal ? modal.root : this;
     const list: Widget[] = [];
-    root.walk((node) => {
+    // Document order, not paint (z-index) order — z-index is purely a
+    // stacking concept and shouldn't reorder the Tab sequence.
+    root.walkDocumentOrder((node) => {
       if (node instanceof Widget && node.focusable && node.visible && !node.isDisabled()) {
         list.push(node);
       }
@@ -173,7 +175,7 @@ export class Screen extends Widget {
     this.layers.push(layer);
     if (layer.modal) {
       const focusables: Widget[] = [];
-      layer.root.walk((node) => {
+      layer.root.walkDocumentOrder((node) => {
         if (node instanceof Widget && node.focusable && node.visible && !node.isDisabled())
           focusables.push(node);
       });

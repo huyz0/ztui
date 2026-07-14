@@ -70,7 +70,16 @@ export class DOMNode {
     return sel;
   }
 
-  /** Depth-first visit of this node and its descendants, in z-index order. */
+  /**
+   * Depth-first visit of this node and its descendants, in z-index (paint)
+   * order — mirrors what's actually drawn on top, for callers like
+   * `toAccessibleText()`. z-index is a paint-only concept, so callers that
+   * need tab/focus order (nothing to do with stacking) should use
+   * {@link walkDocumentOrder} instead — otherwise a widget with a nonzero
+   * z-index purely for painting (e.g. an overlapping decorative sibling)
+   * jumps to a different position in the Tab sequence than where it
+   * structurally sits.
+   */
   public walk(callback: (node: DOMNode) => void): void {
     callback(this);
     // `zIndex` lives on Widget; reading it structurally avoids a dom → widget
@@ -80,6 +89,19 @@ export class DOMNode {
     const sorted = [...this.children].sort((a, b) => z(a) - z(b));
     for (const child of sorted) {
       child.walk(callback);
+    }
+  }
+
+  /**
+   * Depth-first visit of this node and its descendants in plain document
+   * order, ignoring z-index. Use for tab/focus order (e.g.
+   * {@link Screen.getFocusableWidgets}) — see {@link walk}'s doc comment for
+   * why z-index order is wrong there.
+   */
+  public walkDocumentOrder(callback: (node: DOMNode) => void): void {
+    callback(this);
+    for (const child of this.children) {
+      child.walkDocumentOrder(callback);
     }
   }
 

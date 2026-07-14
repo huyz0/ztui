@@ -675,7 +675,8 @@ function firstFocusableInClickContainer(widget: Widget): Widget | null {
   }
   if (!(container instanceof Widget)) return null;
   let found: Widget | null = null;
-  container.walk((node) => {
+  // Document order, not paint (z-index) order — see DOMNode.walk's doc comment.
+  container.walkDocumentOrder((node) => {
     if (!found && node instanceof Widget && node.focusable && node.visible && !node.isDisabled()) {
       found = node;
     }

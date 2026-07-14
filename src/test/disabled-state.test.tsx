@@ -3,6 +3,28 @@ import { Button, Checkbox, Input, Select, VBox } from "../react.ts";
 import type { InputWidget } from "../widgets/controls/input.ts";
 import { mountApp } from "./harness.tsx";
 
+describe("Screen.getFocusableWidgets tab order", () => {
+  test("a z-index set purely for painting doesn't reorder Tab order", async () => {
+    // Regression: getFocusableWidgets() walked in z-index (paint) order, so a
+    // widget given a nonzero z-index only to paint above a decorative sibling
+    // (nothing to do with focus) jumped ahead of its earlier document-order
+    // siblings in the Tab sequence.
+    const { screen, findById } = await mountApp(
+      <VBox>
+        <Input id="a" />
+        <Input id="b" style={{ zIndex: 5 }} />
+        <Input id="c" />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    const focusables = screen.getFocusableWidgets().map((w) => w.id);
+    expect(focusables).toEqual(["a", "b", "c"]);
+    screen.focusWidget(findById("a")!);
+    screen.focusNext();
+    expect(screen.focusedWidget?.id).toBe("b");
+  });
+});
+
 describe("Disabled widget state", () => {
   test("a disabled widget is excluded from the focus order", async () => {
     const { screen, findById } = await mountApp(
