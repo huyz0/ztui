@@ -54,7 +54,7 @@ export class CheckboxWidget extends Widget {
   public override measure(maxW: number, maxH: number): void {
     const b = this.borderSize;
     const p = this.padding;
-    const textLen = 3 + stringWidth(this.label); // "☑ " or "☐ " is 2 characters + label
+    const textLen = 2 + stringWidth(this.label); // "☑ " or "☐ " is 2 characters + label
 
     if (this.computedStyle.width === undefined) {
       this.measuredWidth = textLen + b.width + p.width;

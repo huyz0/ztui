@@ -51,7 +51,7 @@ export class SwitchWidget extends Widget {
   public override measure(maxW: number, maxH: number): void {
     const b = this.borderSize;
     const p = this.padding;
-    const textLen = 6 + stringWidth(this.label); // "[● ] " is 5 chars + label
+    const textLen = 5 + stringWidth(this.label); // "[● ] " is 5 chars + label
 
     if (this.computedStyle.width === undefined) {
       this.measuredWidth = textLen + b.width + p.width;

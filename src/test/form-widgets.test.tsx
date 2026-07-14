@@ -350,6 +350,27 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(sw.measuredWidth).toBeGreaterThan(0);
   });
 
+  test("Checkbox and Switch auto-measured width matches exactly what render() paints", async () => {
+    // Regression: measure() reserved one extra column beyond the marker/track
+    // prefix + label that render() actually draws, leaving a stray blank
+    // trailing column in auto-sized layouts (e.g. next to a bordered sibling).
+    const { findById } = await mountApp(
+      <VBox>
+        <Checkbox id="chk" label="Accept" style={{ height: 1 }} />
+        <Switch id="sw" label="News" style={{ height: 1 }} />
+      </VBox>,
+      { cols: 40, rows: 10 },
+    );
+
+    const chk = findById("chk");
+    const sw = findById("sw");
+
+    // Checkbox: "☑ " or "☐ " (2 cells) + label.
+    expect(chk.measuredWidth).toBe(2 + "Accept".length);
+    // Switch: "[ ●]" or "[● ]" + a trailing space (5 cells) + label.
+    expect(sw.measuredWidth).toBe(5 + "News".length);
+  });
+
   test("Mouse interactions for form widgets (Checkbox, RadioGroup, Slider, Select)", async () => {
     let currentRadio = "A";
     let currentSlider = 50;
