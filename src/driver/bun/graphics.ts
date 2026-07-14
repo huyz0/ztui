@@ -9,6 +9,13 @@ import type { TerminalCapabilities } from "../driver.ts";
 
 export { encodePNG };
 
+// Capped LRU: an icon rasterized under a color that changes every frame (a
+// tweened/animated fg color, a per-row rainbow effect, …) would otherwise
+// retain a permanent raster + sixel cache entry per distinct color for the
+// life of the process. Map preserves insertion order, so re-inserting on
+// access marks an entry most-recently-used and the oldest key is evicted.
+const ICON_CACHE_LIMIT = 256;
+
 export class TerminalGraphicsManager {
   private iconCache = new Map<
     string,
@@ -22,6 +29,36 @@ export class TerminalGraphicsManager {
   // Cached background-fill clear sequences, keyed by cell size + bg colour.
   private clearCache = new Map<string, string>();
 
+  /** Test-only accessor for the icon cache's current size. */
+  public _iconCacheSizeForTest(): number {
+    return this.iconCache.size;
+  }
+
+  private iconCacheGet(key: string) {
+    const entry = this.iconCache.get(key);
+    if (entry) {
+      this.iconCache.delete(key);
+      this.iconCache.set(key, entry);
+    }
+    return entry;
+  }
+
+  private iconCacheSet(
+    key: string,
+    entry: {
+      raster?: RasterizedIcon;
+      cellWidth?: number;
+      cellHeight?: number;
+      sixelCache?: Map<string, string>;
+    },
+  ): void {
+    this.iconCache.set(key, entry);
+    if (this.iconCache.size > ICON_CACHE_LIMIT) {
+      const oldestKey = this.iconCache.keys().next().value;
+      if (oldestKey !== undefined) this.iconCache.delete(oldestKey);
+    }
+  }
+
   private getOrRasterize(
     name: string,
     svg: string,
@@ -33,13 +70,13 @@ export class TerminalGraphicsManager {
     const cellHeight = capabilities.cellSize?.height || (isWT ? 22 : 20);
 
     const cacheKey = `${name}_${color}`;
-    const cache = this.iconCache.get(cacheKey);
+    const cache = this.iconCacheGet(cacheKey);
     if (cache?.raster && cache.cellWidth === cellWidth && cache.cellHeight === cellHeight) {
       return cache.raster;
     }
 
     const raster = rasterizeSVG(svg, cellWidth * 2, cellHeight, color);
-    this.iconCache.set(cacheKey, {
+    this.iconCacheSet(cacheKey, {
       raster,
       cellWidth,
       cellHeight,
@@ -109,10 +146,10 @@ export class TerminalGraphicsManager {
       const cacheKey = `${fgColor}_${bgClr}`;
 
       const cacheKeyWithColor = `${name}_${fgColor}`;
-      let cache = this.iconCache.get(cacheKeyWithColor);
+      let cache = this.iconCacheGet(cacheKeyWithColor);
       if (!cache) {
         cache = { raster };
-        this.iconCache.set(cacheKeyWithColor, cache);
+        this.iconCacheSet(cacheKeyWithColor, cache);
       }
       if (!cache.sixelCache) {
         cache.sixelCache = new Map();
@@ -120,6 +157,10 @@ export class TerminalGraphicsManager {
       let sixel = cache.sixelCache.get(cacheKey);
       if (!sixel) {
         sixel = rgbaToSixel(raster.pixels, raster.width, raster.height, fgColor, bgClr);
+        if (cache.sixelCache.size >= ICON_CACHE_LIMIT) {
+          const oldestKey = cache.sixelCache.keys().next().value;
+          if (oldestKey !== undefined) cache.sixelCache.delete(oldestKey);
+        }
         cache.sixelCache.set(cacheKey, sixel);
       }
       const rawSeq = `\x1b[s${sixel}\x1b[u`;
