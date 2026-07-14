@@ -34,6 +34,11 @@ export class TerminalGraphicsManager {
     return this.iconCache.size;
   }
 
+  /** Test-only accessor for the clear-sequence cache's current size. */
+  public _clearCacheSizeForTest(): number {
+    return this.clearCache.size;
+  }
+
   private iconCacheGet(key: string) {
     const entry = this.iconCache.get(key);
     if (entry) {
@@ -105,10 +110,17 @@ export class TerminalGraphicsManager {
       const bg = bgColor && bgColor !== "default" ? bgColor : "#1e1e2e";
       const key = `clear_${w}x${h}_${bg}`;
       let seq = this.clearCache.get(key);
-      if (!seq) {
+      if (seq) {
+        this.clearCache.delete(key);
+        this.clearCache.set(key, seq);
+      } else {
         const sixel = rgbaToSixel(new Uint8Array(w * h * 4), w, h, "white", bg);
         seq = `\x1b[s${sixel}\x1b[u`;
         this.clearCache.set(key, seq);
+        if (this.clearCache.size > ICON_CACHE_LIMIT) {
+          const oldestKey = this.clearCache.keys().next().value;
+          if (oldestKey !== undefined) this.clearCache.delete(oldestKey);
+        }
       }
       return seq;
     }

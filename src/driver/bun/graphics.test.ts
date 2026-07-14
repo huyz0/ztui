@@ -45,3 +45,23 @@ describe("TerminalGraphicsManager icon cache", () => {
     expect(mgr._iconCacheSizeForTest()).toBeLessThanOrEqual(256);
   });
 });
+
+describe("TerminalGraphicsManager clear-sequence cache", () => {
+  test("evicts the oldest clear sequence once the cache exceeds its cap, instead of growing unbounded", () => {
+    // Regression: clearCache (sixel background-clear sequences) had no
+    // eviction, unlike iconCache/sixelCache. A widget whose background color
+    // animates every frame (e.g. a tween) would grow this cache by one
+    // permanent entry per distinct bg color for the life of the process.
+    const mgr = new TerminalGraphicsManager();
+    const capabilities = {
+      graphicsProtocol: "sixel",
+      glyphProtocol: false,
+      cellSize: { width: 10, height: 20 },
+    } as TerminalCapabilities;
+    const iterations = 264;
+    for (let i = 0; i < iterations; i++) {
+      mgr.getIconClearSequence(capabilities, `#${i.toString().padStart(6, "0")}`);
+    }
+    expect(mgr._clearCacheSizeForTest()).toBeLessThanOrEqual(256);
+  });
+});
