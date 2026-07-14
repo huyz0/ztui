@@ -79,6 +79,14 @@ describe("AnsiTerminal", () => {
     expect(t.lines[0].map((c) => c.ch).join("")).toBe("你x");
   });
 
+  test("a reset combined with other SGR params in one sequence still clears them", () => {
+    const t = new AnsiTerminal();
+    // Bold set then reset in the same `m` sequence (ESC[1;0m), as some tools
+    // emit — the reset must win, not just reset the base style it merges onto.
+    t.write("\x1b[1;0mhello");
+    expect(t.lines[0][0].style.bold).toBeFalsy();
+  });
+
   test("cellsToSegments coalesces equal-style runs", () => {
     const t = new AnsiTerminal();
     t.write("\x1b[31maa\x1b[32mbb");

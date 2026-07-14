@@ -138,6 +138,10 @@ export class AnsiTerminal {
       switch (true) {
         case p === 0:
           cur = new Style({});
+          // Clear params accumulated earlier in this SGR list too — a reset
+          // must win over any set that preceded it in the same sequence
+          // (e.g. `ESC[1;0m`), not just the base style it merges onto.
+          for (const k of Object.keys(props)) delete props[k];
           break;
         case p === 1:
           props.bold = true;
