@@ -125,6 +125,7 @@ export class ToastManager {
       // No visible slot: queue it. createdAt is restamped on promotion so the
       // auto-dismiss countdown starts when it actually appears, not now.
       this._pending.push(toast);
+      this.emit();
     }
     return id;
   }
@@ -139,7 +140,10 @@ export class ToastManager {
       return;
     }
     const pendingNext = this._pending.filter((t) => t.id !== id);
-    if (pendingNext.length !== this._pending.length) this._pending = pendingNext;
+    if (pendingNext.length !== this._pending.length) {
+      this._pending = pendingNext;
+      this.emit();
+    }
   }
 
   /** Remove all toasts, visible and queued. */

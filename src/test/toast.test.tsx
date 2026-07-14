@@ -100,6 +100,29 @@ describe("ToastManager", () => {
     expect(mgr.getToasts().map((t) => t.message)).toEqual(["b", "c"]);
     expect(mgr.pendingCount).toBe(2);
   });
+
+  test("queuing an overflow toast and dismissing a still-queued toast both notify subscribers", () => {
+    // Regression: notify()'s overflow-queue branch and dismiss()'s
+    // pending-queue branch mutated `_pending` without calling emit(), unlike
+    // every other mutation path (visible-toast push, promote(), clear(), the
+    // maxVisible setter). A subscriber relying on pendingCount (e.g. a "+N
+    // more" badge) went stale after either of these until some unrelated
+    // store change happened to trigger a re-render.
+    const mgr = ToastManager.getInstance();
+    mgr.maxVisible = 1;
+    mgr.notify({ message: "a" }); // fills the one visible slot
+    let pings = 0;
+    const unsub = mgr.subscribe(() => pings++);
+
+    const idB = mgr.notify({ message: "b" }); // overflows -> queued
+    expect(mgr.pendingCount).toBe(1);
+    expect(pings).toBe(1);
+
+    mgr.dismiss(idB); // removed while still queued, never became visible
+    expect(mgr.pendingCount).toBe(0);
+    expect(pings).toBe(2);
+    unsub();
+  });
 });
 
 describe("ToastHost", () => {
