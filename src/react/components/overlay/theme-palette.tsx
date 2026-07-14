@@ -203,14 +203,15 @@ export function ThemePalette({
   };
 
   // Step the selection by `delta` entries (clamped) and live-preview it. Shared
-  // by keyboard nav and the mouse wheel.
+  // by keyboard nav and the mouse wheel. The side-effecting `preview` call
+  // must stay outside the `setSelected` updater: React (StrictMode, and
+  // future concurrent-render replay) may invoke an updater more than once to
+  // check purity, which would apply the theme twice per step.
   const moveBy = (delta: number) => {
-    setSelected((cur) => {
-      const last = Math.max(0, themes.length - 1);
-      const next = Math.max(0, Math.min(last, Math.min(cur, last) + delta));
-      preview(next);
-      return next;
-    });
+    const last = Math.max(0, themes.length - 1);
+    const next = Math.max(0, Math.min(last, Math.min(selected, last) + delta));
+    setSelected(next);
+    preview(next);
   };
 
   // Enter/click *commits* a theme but keeps the picker open so it can be seen

@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { StrictMode } from "react";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { ThemeManager } from "../../../core.ts";
 import { ThemePalette, VBox } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
@@ -130,6 +131,30 @@ describe("ThemePalette", () => {
       await t.settle();
     }
     expect(t.text()).toContain("nightfly"); // scrolled to the bottom
+  });
+
+  test("arrow-key preview applies the theme once, even under StrictMode", async () => {
+    // Regression: `moveBy` called `preview()` (which calls `manager.setTheme`)
+    // from inside the `setSelected` updater. React may invoke a state updater
+    // twice to check purity (StrictMode does this on every state update, not
+    // just on mount) — an updater with a side effect like this applied the
+    // theme twice per keypress under StrictMode.
+    const manager = ThemeManager.getInstance();
+    manager.setTheme("default-dark");
+    const spy = vi.spyOn(manager, "setTheme");
+    const t = await mountApp(
+      <StrictMode>
+        <VBox style={{ width: "100%", height: "100%" }}>
+          <ThemePalette toggleKey="f3" />
+        </VBox>
+      </StrictMode>,
+      { cols: 80, rows: 40 },
+    );
+    await open(t);
+    spy.mockClear();
+    await press(t, "right");
+    expect(manager.getActiveThemeName()).toBe("default-light");
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   test("Escape reverts the previewed theme", async () => {
