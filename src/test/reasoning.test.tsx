@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { describe, expect, test } from "vitest";
 import type { Widget } from "../dom/widget.ts";
 import { Label, Reasoning } from "../react/components.tsx";
@@ -72,5 +73,33 @@ describe("Reasoning", () => {
     await t.settle();
     expect(toggles).toEqual([false]); // started open (active), now closed
     expect(t.text()).not.toContain("body");
+  });
+
+  test("the body stays mounted while collapsed, not remounted on expand", async () => {
+    // Regression: the body was only rendered when `hasBody && isOpen`, so
+    // collapsing didn't just hide it — it unmounted it, discarding internal
+    // state (e.g. streamed text accrued so far), contradicting the
+    // documented "body stays mounted while collapsed" contract.
+    let mounts = 0;
+    function Probe() {
+      useEffect(() => {
+        mounts++;
+      }, []);
+      return <Label>probe</Label>;
+    }
+    const t = await mountApp(
+      <Reasoning id="r" defaultOpen={false}>
+        <Probe />
+      </Reasoning>,
+      OPTS,
+    );
+    await t.settle();
+    expect(mounts).toBe(1);
+
+    const header = (t.findById<Widget>("r") as Widget).children[0] as Widget;
+    header.onClick?.({} as never); // expand
+    await t.settle();
+    expect(t.text()).toContain("probe");
+    expect(mounts).toBe(1);
   });
 });

@@ -129,8 +129,14 @@ export function ToolCall({
       {/* Body: indented under the badge, revealed when open. Stacks so a
           multi-line result (several Labels, a diff + caption, …) lays out
           vertically rather than overlapping. */}
-      {hasBody && isOpen ? (
-        <VBox style={{ padding: { left: 3 }, width: "100%" }}>{children}</VBox>
+      {hasBody ? (
+        // Stays mounted while collapsed (visible={false} just skips paint/
+        // layout), so a streaming result keeps updating behind the fold
+        // instead of losing its internal state (scroll position, buffered
+        // lines, …) every time the card is collapsed.
+        <VBox visible={isOpen} style={{ padding: { left: 3 }, width: "100%" }}>
+          {children}
+        </VBox>
       ) : undefined}
     </VBox>
   );

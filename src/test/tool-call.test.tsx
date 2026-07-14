@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { describe, expect, test } from "vitest";
 import type { Widget } from "../dom/widget.ts";
 import { Label, ToolCall } from "../react/components.tsx";
@@ -124,6 +125,36 @@ describe("ToolCall", () => {
     reconciler.updateContainer(ui(true), t.container, null, () => {});
     await t.settle();
     expect(t.text()).toContain("controlled body");
+  });
+
+  test("the body stays mounted while collapsed, not remounted on expand", async () => {
+    // Regression: the body was only rendered when `hasBody && isOpen`, so a
+    // collapsed card didn't just hide its body — it unmounted it, discarding
+    // any internal state (e.g. a streaming child's buffered lines). This
+    // contradicts the component's own documented contract ("The body stays
+    // mounted while collapsed, so a streaming result keeps updating behind
+    // the fold").
+    let mounts = 0;
+    function Probe() {
+      useEffect(() => {
+        mounts++;
+      }, []);
+      return <Label>probe</Label>;
+    }
+    const t = await mountApp(
+      <ToolCall id="tc" name="Read" defaultOpen={false}>
+        <Probe />
+      </ToolCall>,
+      OPTS,
+    );
+    await t.settle();
+    expect(mounts).toBe(1);
+
+    const header = (t.findById<Widget>("tc") as Widget).children[0] as Widget;
+    header.onClick?.({} as never); // expand
+    await t.settle();
+    expect(t.text()).toContain("probe");
+    expect(mounts).toBe(1); // still just the original mount, not remounted
   });
 
   test("a header with no body shows no disclosure triangle", async () => {

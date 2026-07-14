@@ -98,8 +98,13 @@ export function Reasoning({
         ) : undefined}
       </HBox>
       {/* Body: indented, dim — reasoning is secondary chrome. */}
-      {hasBody && isOpen ? (
-        <VBox style={{ padding: { left: 3 }, width: "100%", color: "$dimmed" }}>{children}</VBox>
+      {hasBody ? (
+        // Stays mounted while collapsed (visible={false} just skips paint/
+        // layout), so streamed text keeps accruing behind it instead of
+        // losing its internal state every time the card is collapsed.
+        <VBox visible={isOpen} style={{ padding: { left: 3 }, width: "100%", color: "$dimmed" }}>
+          {children}
+        </VBox>
       ) : undefined}
     </VBox>
   );

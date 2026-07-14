@@ -39,6 +39,13 @@ export interface ComponentProps {
   /** Allow this widget to take keyboard focus. */
   focusable?: boolean;
   /**
+   * Whether the widget participates in layout/paint. Unlike conditionally
+   * omitting the element from the tree, `visible={false}` keeps it (and its
+   * subtree) mounted with its state intact — just skipped when measuring,
+   * laying out, and rendering. Defaults to `true`.
+   */
+  visible?: boolean;
+  /**
    * When a click lands on this container (its padding, border, or a non-focusable
    * child), move focus to its first focusable descendant — so clicking a
    * `Form`/`Panel`/`Box` hands focus to its first field. Off by default.
