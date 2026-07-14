@@ -400,8 +400,14 @@ export class DiffWidget extends Widget {
 
     const hVal = parseDimension(this.computedStyle.height, maxH, -1);
     if (hVal === -1 || (typeof hVal === "object" && "fr" in hVal)) {
+      // Use the actual display row count, not the unified semantic row count
+      // (this.rows.length) — in split view, buildSplit zips paired add/delete
+      // blocks to Math.max(dels.length, adds.length) rows per block, which
+      // diverges from this.rows.length whenever a change block is imbalanced.
+      const contentW = Math.max(1, this.measuredWidth - this.borderSize.width - this.padding.width);
+      this.ensureDisplay(contentW);
       this.measuredHeight =
-        this.rows.length + this.headerHeight() + this.borderSize.height + this.padding.height;
+        this.display.length + this.headerHeight() + this.borderSize.height + this.padding.height;
     } else {
       this.measuredHeight = hVal as number;
     }

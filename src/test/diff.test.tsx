@@ -192,6 +192,33 @@ describe("Diff", () => {
     expect(t.text()).toContain("│");
   });
 
+  test("auto-measured height in split view reflects the actual split row count, not the unified count", async () => {
+    // Regression: measure() used this.rows.length (the unified semantic row
+    // count) even in split view. buildSplit zips a change block's del/add
+    // lines to Math.max(dels.length, adds.length) rows, which is smaller than
+    // this.rows.length (dels.length + adds.length) for an imbalanced block —
+    // here 3 deletions + 1 addition unify to 4 rows but split pairs to 3.
+    const oldText = "keep\ndrop A\ndrop B\ndrop C\ntail";
+    const newText = "keep\nadd X\ntail";
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff id="d" oldText={oldText} newText={newText} view="split" context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const priv = w as unknown as {
+      rows: unknown[];
+      display: unknown[];
+      headerHeight: () => number;
+    };
+    expect(priv.display.length).toBeLessThan(priv.rows.length);
+    const expected =
+      priv.display.length + priv.headerHeight() + w.borderSize.height + w.padding.height;
+    expect(w.measuredHeight).toBe(expected);
+  });
+
   test("mouse wheel scrolls the body up and down", async () => {
     const big = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
     const t = await mountApp(
