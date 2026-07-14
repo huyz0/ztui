@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
-import { SelectWidget } from "./select.ts";
+import { Screen } from "../../dom/screen.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
+import { DropdownOverlayWidget, SelectWidget } from "./select.ts";
 
 describe("SelectWidget option logic", () => {
   test("resolves string and object options to a uniform shape", () => {
@@ -79,5 +83,48 @@ describe("SelectWidget option logic", () => {
     const node = w.getAccessibleNode();
     expect(node?.label).toBe("Apple, Cherry");
     expect(node?.state).toContain("2 selected");
+  });
+});
+
+describe("SelectWidget dropdown overlay height clamps to available space", () => {
+  test("overlay height shrinks to available space instead of overflowing the screen", () => {
+    // Regression: dropdownHeight was always resolved.length + 2 with no cap,
+    // so a long option list opened past the screen edge with zero scrolling
+    // support — unlike Combobox, which caps at MAX_VISIBLE_ROWS and shrinks
+    // to whichever side has more room when neither direction fits.
+    const screen = new Screen();
+    screen.region = new Region(Offset.ORIGIN, new Size(20, 10));
+
+    const w = new SelectWidget();
+    w.options = Array.from({ length: 20 }, (_, i) => `opt${i}`);
+    screen.appendChild(w);
+    // Select sits at y=4, height=1 -> spaceAbove=4, spaceBelow=10-5=5. Natural
+    // height is min(20,8)+2=10, which fits neither side.
+    w.region = new Region(new Offset(0, 4), new Size(10, 1));
+
+    w.openDropdown();
+    const overlay = (w as unknown as { overlay: DropdownOverlayWidget }).overlay;
+    expect(overlay).toBeTruthy();
+
+    expect(overlay.dropdownY).toBeGreaterThanOrEqual(0);
+    expect(overlay.dropdownY + overlay.dropdownHeight).toBeLessThanOrEqual(screen.region.height);
+  });
+
+  test("clicking a visible row selects the option actually drawn there, not the unscrolled one", () => {
+    // Regression: render() would need to offset by scrollTop once the
+    // hovered option scrolls past the visible window, but handleMouse
+    // indexed straight into the full option list with the raw row number.
+    const w = new SelectWidget();
+    w.options = Array.from({ length: 12 }, (_, i) => `opt${i}`);
+    w.hoveredIndex = 9; // scrolls the 8-row window so row 0 shows opt2
+    const overlay = new DropdownOverlayWidget(w, 0, 0, 20);
+
+    let selectedIndex: number | undefined;
+    w.selectOptionIndex = (i: number) => {
+      selectedIndex = i;
+    };
+    // Row 0 of the overlay body is at dropdownY + 1.
+    overlay.handleMouse({ type: "press", button: "left", x: 5, y: 1 });
+    expect(selectedIndex).toBe(2);
   });
 });

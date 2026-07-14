@@ -15,6 +15,11 @@ export interface SelectOption {
   value: string;
 }
 
+// Caps the dropdown's natural height the same way Combobox does, so a long
+// option list scrolls instead of the overlay growing past the viewport with
+// no way to reach rows beyond the bottom (or top) screen edge.
+const MAX_VISIBLE_ROWS = 8;
+
 export class DropdownOverlayWidget extends Widget {
   protected override defaultCursor() {
     return "pointer" as const;
@@ -25,7 +30,13 @@ export class DropdownOverlayWidget extends Widget {
     public dropdownX: number,
     public dropdownY: number,
     public dropdownWidth: number,
-    public dropdownHeight: number,
+    /**
+     * Caps the painted height below the natural row count when the screen
+     * doesn't have room in either direction — otherwise the overlay would
+     * still overflow past the screen edge even after {@link SelectWidget.openDropdown}
+     * picked the side with more (but still insufficient) space.
+     */
+    private maxHeight = Number.POSITIVE_INFINITY,
   ) {
     super("dropdown-overlay");
     this.focusable = false;
@@ -39,19 +50,40 @@ export class DropdownOverlayWidget extends Widget {
     };
   }
 
+  public get dropdownHeight(): number {
+    const natural =
+      Math.min(Math.max(this.selectWidget.getResolvedOptions().length, 1), MAX_VISIBLE_ROWS) + 2;
+    return Math.max(3, Math.min(natural, this.maxHeight));
+  }
+
+  /** Rows actually drawn, given the (possibly space-clamped) overlay height. */
+  private visibleRows(options: SelectOption[]): number {
+    return Math.min(options.length, MAX_VISIBLE_ROWS, this.dropdownHeight - 2);
+  }
+
+  /** First option index shown on row 0, mirroring the scroll math in {@link render}. */
+  private scrollTop(options: SelectOption[]): number {
+    const visible = this.visibleRows(options);
+    return this.selectWidget.hoveredIndex >= visible
+      ? this.selectWidget.hoveredIndex - visible + 1
+      : 0;
+  }
+
   public override handleMouse(ev: any): void {
     if (ev.type === "press" && ev.button === "left") {
       const clickX = ev.x;
       const clickY = ev.y;
 
+      const h = this.dropdownHeight;
       const inX = clickX >= this.dropdownX && clickX < this.dropdownX + this.dropdownWidth;
-      const inY = clickY >= this.dropdownY && clickY < this.dropdownY + this.dropdownHeight;
+      const inY = clickY >= this.dropdownY && clickY < this.dropdownY + h;
 
       if (inX && inY) {
         // Clicks inside dropdown:
-        // Option index is offset from top border (which takes 1 line)
-        const optionIndex = clickY - this.dropdownY - 1;
+        // Option index is offset from top border (which takes 1 line), then
+        // scrolled by however many rows are scrolled past.
         const options = this.selectWidget.getResolvedOptions();
+        const optionIndex = this.scrollTop(options) + (clickY - this.dropdownY - 1);
         if (optionIndex >= 0 && optionIndex < options.length) {
           this.selectWidget.selectOptionIndex(optionIndex);
         }
@@ -96,11 +128,15 @@ export class DropdownOverlayWidget extends Widget {
       borderStyle,
     );
 
-    // Draw options
+    // Draw options — only the visible, scrolled-into-view slice.
     const options = this.selectWidget.getResolvedOptions();
-    for (let i = 0; i < options.length; i++) {
+    const visible = this.visibleRows(options);
+    const top = this.scrollTop(options);
+    for (let row = 0; row < visible; row++) {
+      const i = top + row;
       const option = options[i];
-      const optionY = this.dropdownY + 1 + i;
+      if (!option) break;
+      const optionY = this.dropdownY + 1 + row;
       const isHovered = i === this.selectWidget.hoveredIndex;
       const isSelected = this.selectWidget.isOptionSelected(option.value);
 
@@ -248,18 +284,21 @@ export class SelectWidget extends Widget {
 
     const clientRect = this.getClientRect();
     const resolved = this.getResolvedOptions();
-    const dropdownHeight = resolved.length + 2; // +2 for borders
+    const naturalHeight = Math.min(Math.max(resolved.length, 1), MAX_VISIBLE_ROWS) + 2;
     const dropdownWidth = clientRect.width;
 
-    // Position detection
+    // Position detection: prefer the side with more room; if neither side
+    // fits the natural height, shrink to whichever side has more space
+    // rather than opening at the natural height and overflowing past the
+    // screen edge with no way to scroll into the overflow.
     const screenHeight = screen.region.height;
     const spaceBelow = screenHeight - clientRect.bottom;
     const spaceAbove = clientRect.y;
 
-    let dropdownY = clientRect.bottom;
-    if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-      dropdownY = Math.max(0, clientRect.y - dropdownHeight);
-    }
+    const below = spaceBelow >= naturalHeight || spaceBelow >= spaceAbove;
+    const available = below ? spaceBelow : spaceAbove;
+    const maxHeight = Math.max(1, Math.min(naturalHeight, available));
+    const dropdownY = below ? clientRect.bottom : Math.max(0, clientRect.y - maxHeight);
 
     this.hoveredIndex = 0;
     // Highlight the first selected option if single-select
@@ -273,7 +312,7 @@ export class SelectWidget extends Widget {
       clientRect.x,
       dropdownY,
       dropdownWidth,
-      dropdownHeight,
+      maxHeight,
     );
     screen.addOverlay(this.overlay);
     this.overlayScreen = screen;
