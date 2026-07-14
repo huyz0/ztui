@@ -306,7 +306,10 @@ export class TableWidget<Row = any> extends Widget {
   private rowAtView(v: number): { row: Row; rowIndex: number } | null {
     if (this.grouped) {
       const row = this.visualRows()[v];
-      return row && row.kind === "item" ? { row: row.item, rowIndex: v } : null;
+      // `rowIndex` is the row's position within its own group (not the
+      // visual index `v`, which also counts interleaved group-header rows
+      // and shifts whenever a group above is collapsed/expanded).
+      return row && row.kind === "item" ? { row: row.item, rowIndex: row.itemIndex } : null;
     }
     const di = this.viewIndex[v];
     return di === undefined ? null : { row: this.data[di], rowIndex: di };

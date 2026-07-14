@@ -224,6 +224,42 @@ describe("Table sorting (phase 4)", () => {
     expect(lines).toEqual(["10", "20", "30"]);
   });
 
+  test("grouped mode passes each item's within-group index to cell(), not its visual row index", async () => {
+    // Regression: rowAtView() passed the visual row index `v` (which also
+    // counts interleaved group-header rows) to cell()/selectableLines()
+    // instead of the item's own position within its group.
+    interface Item {
+      name: string;
+    }
+    const groupA = { id: "a", title: "Group A", items: [{ name: "a1" }, { name: "a2" }] };
+    const groupB = { id: "b", title: "Group B", items: [{ name: "b1" }, { name: "b2" }] };
+    const numberedColumns: TableColumn<Item>[] = [
+      {
+        key: "name",
+        header: "Name",
+        width: 10,
+        cell: (row, rowIndex) => `${rowIndex + 1}. ${row.name}`,
+      },
+    ];
+    const t = await mountApp(
+      <Table
+        groups={[groupA, groupB]}
+        columns={numberedColumns}
+        style={{ height: "100%", width: 20 }}
+      />,
+    );
+    await t.settle();
+    const lines = t
+      .text()
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^\d+\. /.test(l));
+    // Each group's items are numbered 1, 2 from their own start, not the
+    // visual row position (which would give 2, 3 for group A and 5, 6 for
+    // group B once the two header rows are counted in).
+    expect(lines).toEqual(["1. a1", "2. a2", "1. b1", "2. b2"]);
+  });
+
   test("clicking a sortable header cell triggers a sort", async () => {
     const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
     const widget = findTable(t);
