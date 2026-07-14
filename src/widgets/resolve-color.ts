@@ -14,7 +14,12 @@ import type { Widget } from "../dom/widget.ts";
 export function resolveColor(widget: Widget, color: string | undefined, fallback: string): string {
   if (!color) return fallback;
   if (color.startsWith("$")) {
-    return (widget.app ?? App.instance)?.cssResolver.resolveVariable(widget, color) || fallback;
+    const resolved = (widget.app ?? App.instance)?.cssResolver.resolveVariable(widget, color);
+    // An unknown variable name resolves back to the literal, unresolved
+    // `$name` token (see CSSResolver.resolveVariable), not undefined/empty —
+    // that token is truthy, so `|| fallback` alone never catches it.
+    if (!resolved || resolved === color) return fallback;
+    return resolved;
   }
   return color;
 }
