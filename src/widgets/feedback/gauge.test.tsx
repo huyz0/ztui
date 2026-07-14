@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { App } from "../../core/app.ts";
 import { Gauge, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 
@@ -60,6 +61,38 @@ describe("Gauge", () => {
     }
     // A value spanning all three bands paints at least the three zone colours.
     expect(colors.size).toBeGreaterThanOrEqual(3);
+  });
+
+  test("the partial (boundary) cell bands by its own scale position, not the raw value", async () => {
+    // Regression: the boundary eighth-block cell colored itself from raw
+    // `this.value` while full cells band by their own interpolated
+    // `cellValue`. With a narrow bar, a cell's fractional position on the
+    // scale can sit in a different threshold band than the raw value itself
+    // (rounding collapses several scale units into one cell) — value=36
+    // with a 3-wide bar puts the boundary cell's own position at ~66.7,
+    // past the 50 threshold, even though the raw value (36) is before it.
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <Gauge
+          id="g"
+          style={{ width: 3 }}
+          value={36}
+          showValue={false}
+          label={undefined}
+          thresholds={[
+            { at: 0, color: "$success" },
+            { at: 50, color: "$error" },
+          ]}
+        />
+      </VBox>,
+      { cols: 10, rows: 3 },
+    );
+    await settle();
+    const r = findById("g").getClientRect();
+    // The boundary cell is at index `full` = 1 (0-based) for this input.
+    const boundary = cellAt(r.x + 1, r.y) as { style: { color?: string } };
+    const errorColor = App.instance?.cssResolver.resolveVariable(findById("g")!, "$error");
+    expect(boundary.style.color).toBe(errorColor);
   });
 
   test("uses a unit readout and clamps an out-of-range value", async () => {

@@ -168,11 +168,14 @@ export class GaugeWidget extends Widget {
           new Style({ color: this.bandColor(cellValue, base), background: bg }),
         );
       } else if (c === full && partial > 0) {
+        // Band by this cell's own position on the scale (matching the full
+        // cells above), not the raw `value` — with thresholds near a
+        // boundary the two can disagree about which band this cell falls in.
         buffer.setCell(
           x + c,
           y,
           HBARS[partial - 1],
-          new Style({ color: this.bandColor(this.value, base), background: bg }),
+          new Style({ color: this.bandColor(cellValue, base), background: bg }),
         );
       } else {
         buffer.setCell(x + c, y, "░", this.cachedStyle({ color: trackColor, background: bg }));
