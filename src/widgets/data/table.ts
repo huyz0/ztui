@@ -565,7 +565,9 @@ export class TableWidget<Row = any> extends Widget {
     if (widths.length === 0) return [];
     if (this.grouped) {
       return this.visualRows().map((r) =>
-        r.kind === "header" ? this.groupHeaderText(r) : this.rowLineTextFor(r.item, 0, widths),
+        r.kind === "header"
+          ? this.groupHeaderText(r)
+          : this.rowLineTextFor(r.item, r.itemIndex, widths),
       );
     }
     return this.viewIndex.map((di) => this.rowLineText(di, widths));

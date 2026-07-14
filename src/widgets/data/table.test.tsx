@@ -260,6 +260,41 @@ describe("Table sorting (phase 4)", () => {
     expect(lines).toEqual(["1. a1", "2. a2", "1. b1", "2. b2"]);
   });
 
+  test("grouped mode's selectableLines() (select-all/copy) uses each item's own index too, not row 0", async () => {
+    // Regression: rowAtView() got fixed to pass the item's real itemIndex,
+    // but selectableLines() (used for select-all/copy) still hardcoded 0 as
+    // the rowIndex for every grouped row. render() draws correctly, but
+    // copying the table body produced "1. a1", "1. a2", "1. b1", "1. b2"
+    // instead of matching what's actually on screen.
+    interface Item {
+      name: string;
+    }
+    const groupA = { id: "a", title: "Group A", items: [{ name: "a1" }, { name: "a2" }] };
+    const groupB = { id: "b", title: "Group B", items: [{ name: "b1" }, { name: "b2" }] };
+    const numberedColumns: TableColumn<Item>[] = [
+      {
+        key: "name",
+        header: "Name",
+        width: 10,
+        cell: (row, rowIndex) => `${rowIndex + 1}. ${row.name}`,
+      },
+    ];
+    const t = await mountApp(
+      <Table
+        groups={[groupA, groupB]}
+        columns={numberedColumns}
+        style={{ height: "100%", width: 20 }}
+      />,
+    );
+    await t.settle();
+    const widget = findTable(t);
+    const lines = widget
+      .selectableLines()
+      .map((l) => l.trim())
+      .filter((l) => /^\d+\. /.test(l));
+    expect(lines).toEqual(["1. a1", "2. a2", "1. b1", "2. b2"]);
+  });
+
   test("clicking a sortable header cell triggers a sort", async () => {
     const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
     const widget = findTable(t);
