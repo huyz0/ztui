@@ -1,5 +1,23 @@
 import { describe, expect, test } from "vitest";
-import { ThemeManager } from "./theme.ts";
+import { isColorLight, ThemeManager } from "./theme.ts";
+
+describe("isColorLight", () => {
+  test("classifies rgb()/named colors correctly instead of always reporting dark", () => {
+    // Regression: isColorLight only understood #hex, returning false (dark)
+    // for any other format -- even though rgb()/rgba()/named colors are valid
+    // Theme.colors values everywhere else in the codebase (parseColor already
+    // supports them). A light theme built with e.g. background: "rgb(240,
+    // 240, 240)" or "white" was misclassified as dark, flipping the focus/
+    // attention breathing glow's contrast pole and border derivations.
+    expect(isColorLight("rgb(240, 240, 240)")).toBe(true);
+    expect(isColorLight("white")).toBe(true);
+    expect(isColorLight("rgb(10, 10, 10)")).toBe(false);
+    expect(isColorLight("black")).toBe(false);
+    // #hex still works as before.
+    expect(isColorLight("#ffffff")).toBe(true);
+    expect(isColorLight("#000000")).toBe(false);
+  });
+});
 
 describe("ThemeManager.register fills border/focus/selectionBg/selectionFg defaults", () => {
   test("a theme that omits them gets sensible fallbacks instead of undefined", () => {

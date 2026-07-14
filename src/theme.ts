@@ -79,17 +79,14 @@ export interface Theme {
   };
 }
 
-export function isColorLight(hexColor: string): boolean {
-  if (!hexColor?.startsWith("#")) return false;
-  let hex = hexColor.slice(1);
-  if (hex.length === 3) {
-    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-  }
-  const r = Number.parseInt(hex.slice(0, 2), 16);
-  const g = Number.parseInt(hex.slice(2, 4), 16);
-  const b = Number.parseInt(hex.slice(4, 6), 16);
+export function isColorLight(color: string): boolean {
+  // Use the shared parser so rgb()/rgba()/named colors (all valid Theme.colors
+  // values elsewhere in the codebase) are classified correctly instead of
+  // silently falling through to "dark" for anything that isn't #hex.
+  const rgb = parseColor(color)?.rgb;
+  if (!rgb) return false;
   // Standard relative luminance formula
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
   return luminance > 0.5;
 }
 
