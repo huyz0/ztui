@@ -243,6 +243,27 @@ describe("CSSResolver Theming and Variables", () => {
     expect(direct.startsWith("#")).toBe(true);
   });
 
+  test("resolveAccent breaks a self/mutually-referential alias cycle instead of recursing forever", () => {
+    // Regression: a stylesheet typo like `$focus: $attention; $attention:
+    // $focus;` sent resolveAccent -> resolveVariable -> lookupVariable ->
+    // resolveAccent in a cycle. resolveVariable's own maxDepth cap doesn't
+    // protect this path: each hop is a *fresh* resolveVariable call, so the
+    // depth counter never accumulates across the mutual recursion -- it's
+    // unbounded call-stack recursion (stack overflow), not the graceful
+    // maxDepth fallback every other alias chain gets.
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    resolver.addVariables({ focus: "$attention", attention: "$focus" });
+    const widget = new Widget("div");
+    const direct = (
+      resolver as unknown as {
+        resolveAccent: (w: Widget, name: "focus" | "attention") => string;
+      }
+    ).resolveAccent(widget, "focus");
+    expect(direct.startsWith("#")).toBe(true);
+  });
+
   test("getWidgetColorWithFallback recognizes a concrete non-hex color instead of silently skipping it", () => {
     // Regression: the ancestor walk only treated a style value as "found"
     // when it started with "#", "$", or "var(" -- a named color ("red") or an

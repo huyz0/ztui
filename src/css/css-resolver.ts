@@ -59,6 +59,12 @@ export class CSSResolver {
   // Whether any rule carries a `:hover` pseudo — lets the app skip a full
   // relayout on pointer hover changes when nothing visual depends on hover.
   private _hasHoverRules: boolean | null = null;
+  // Names currently being resolved by resolveAccent, on the current call
+  // stack — guards against a self/mutually-referential alias (e.g.
+  // `$focus: $attention; $attention: $focus;`) recursing forever. Unlike
+  // resolveVariable's own maxDepth cap, this recursion re-enters through a
+  // fresh resolveVariable call each time, so that cap never accumulates.
+  private resolvingAccents = new Set<string>();
 
   constructor(rules: CSSRule[] = []) {
     this.rules = rules;
@@ -155,32 +161,43 @@ export class CSSResolver {
    * the look and colour assertions stay deterministic.
    */
   private resolveAccent(widget: Widget, name: "focus" | "attention"): string {
-    const activeTheme = this.getActiveThemeForWidget(widget);
-    const isLight = activeTheme ? isThemeLight(activeTheme) : false;
-    const rawThemed = this.stylesheetVariables[name] ?? activeTheme?.colors?.[name];
-    // A stylesheet/theme value can itself be an alias (e.g. `$focus: $primary;`)
-    // — expand it through the normal variable machinery rather than using the
-    // raw `$name`/`var(--name)` token verbatim as a colour.
-    const themed =
-      rawThemed && (rawThemed.startsWith("$") || rawThemed.startsWith("var("))
-        ? this.resolveVariable(widget, rawThemed)
-        : rawThemed;
-    // Breathe toward a pole, not a lighter tint: lightening an already-bright
-    // accent is imperceptible, whereas blending toward white (dark themes) or
-    // black (light themes) reads as a clear glow. The contrast pole flips with
-    // theme polarity so the pulse is always visible.
-    const pole = isLight ? "#000000" : "#ffffff";
-
-    if (name === "focus") {
-      const base = themed || activeTheme?.colors?.primary || "#4daafc";
-      if (!motion.enabled || !base.startsWith("#")) return base;
-      return breatheColor(base, pole, Date.now(), FOCUS_BREATH);
+    // Break a self/mutually-referential alias cycle (e.g. a stylesheet typo
+    // like `$focus: $attention; $attention: $focus;`) instead of recursing
+    // through resolveVariable -> lookupVariable -> resolveAccent forever.
+    if (this.resolvingAccents.has(name)) {
+      return name === "focus" ? "#4daafc" : "#e5c07b";
     }
-    // attention — warmer/louder than focus.
-    const base =
-      themed || activeTheme?.colors?.warning || activeTheme?.colors?.primary || "#e5c07b";
-    if (!motion.enabled || !base.startsWith("#")) return base;
-    return breatheColor(base, pole, Date.now(), ATTENTION_BREATH);
+    this.resolvingAccents.add(name);
+    try {
+      const activeTheme = this.getActiveThemeForWidget(widget);
+      const isLight = activeTheme ? isThemeLight(activeTheme) : false;
+      const rawThemed = this.stylesheetVariables[name] ?? activeTheme?.colors?.[name];
+      // A stylesheet/theme value can itself be an alias (e.g. `$focus: $primary;`)
+      // — expand it through the normal variable machinery rather than using the
+      // raw `$name`/`var(--name)` token verbatim as a colour.
+      const themed =
+        rawThemed && (rawThemed.startsWith("$") || rawThemed.startsWith("var("))
+          ? this.resolveVariable(widget, rawThemed)
+          : rawThemed;
+      // Breathe toward a pole, not a lighter tint: lightening an already-bright
+      // accent is imperceptible, whereas blending toward white (dark themes) or
+      // black (light themes) reads as a clear glow. The contrast pole flips with
+      // theme polarity so the pulse is always visible.
+      const pole = isLight ? "#000000" : "#ffffff";
+
+      if (name === "focus") {
+        const base = themed || activeTheme?.colors?.primary || "#4daafc";
+        if (!motion.enabled || !base.startsWith("#")) return base;
+        return breatheColor(base, pole, Date.now(), FOCUS_BREATH);
+      }
+      // attention — warmer/louder than focus.
+      const base =
+        themed || activeTheme?.colors?.warning || activeTheme?.colors?.primary || "#e5c07b";
+      if (!motion.enabled || !base.startsWith("#")) return base;
+      return breatheColor(base, pole, Date.now(), ATTENTION_BREATH);
+    } finally {
+      this.resolvingAccents.delete(name);
+    }
   }
 
   /**
