@@ -103,7 +103,11 @@ export class AnsiTerminal {
   private putChar(ch: string): void {
     const w = stringWidth(ch);
     if (w <= 0) return; // skip control/combining we don't place
-    if (this.cols > 0 && this.col >= this.cols) this.newline();
+    // A wide glyph needs both `col` and `col + 1` inside the viewport — landing
+    // exactly on the last column would otherwise place its continuation cell
+    // one past `cols`, silently escaping the declared width instead of
+    // wrapping to the next line.
+    if (this.cols > 0 && this.col + w > this.cols) this.newline();
     const line = this.line(this.row);
     while (line.length < this.col) line.push({ ch: " ", style: this.style });
     line[this.col] = { ch, style: this.style };

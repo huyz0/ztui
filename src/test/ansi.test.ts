@@ -54,6 +54,20 @@ describe("AnsiTerminal", () => {
     expect(plain(t)).toEqual(["abc", "def"]);
   });
 
+  test("a wide glyph landing on the last column wraps instead of overflowing", () => {
+    // Regression: the overflow check only fired when `col >= cols` *before*
+    // placing the character. A double-width glyph landing exactly on the
+    // last valid column (9 ASCII chars, then a 10-col viewport) passed that
+    // check, got written at col 9, and its zero-width continuation cell
+    // landed at col 10 -- one column past the declared width -- instead of
+    // wrapping the whole glyph to the next line.
+    const t = new AnsiTerminal();
+    t.cols = 10;
+    t.write("123456789中"); // 9 narrow chars fill cols 0-8; "中" (width 2) follows
+    expect(t.lines[0].length).toBeLessThanOrEqual(10);
+    expect(plain(t)).toEqual(["123456789", "中"]);
+  });
+
   test("an escape split across writes is completed on the next chunk", () => {
     const t = new AnsiTerminal();
     t.write("\x1b[3");
