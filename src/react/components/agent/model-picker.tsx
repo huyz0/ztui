@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useMemo, useState } from "react";
+import { type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { TableColumn } from "../../../widgets/data/table.ts";
 import { Input } from "../controls/input.tsx";
 import { Table } from "../data/table.tsx";
@@ -152,6 +152,19 @@ export function ModelPicker({
 
   // Keep the cursor in range as the visible set shrinks.
   const cursor = Math.min(index, Math.max(0, rowsView.length - 1));
+
+  // The cursor otherwise only ever initializes to 0, regardless of which
+  // model `value` marks as current — opening the picker always highlighted
+  // the first row instead of the actual selection, so arrowing immediately
+  // moved off it and Enter could activate the wrong model. Sync to `value`'s
+  // row on mount and whenever the prop itself changes, without fighting the
+  // user's own arrow-key navigation the rest of the time.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only react to `value` changing, not every rowsView recompute from filtering
+  useEffect(() => {
+    if (value == null) return;
+    const idx = rowsView.findIndex((m) => m.id === value);
+    if (idx >= 0) setIndex(idx);
+  }, [value]);
 
   const columns: TableColumn<ModelEntry>[] = [
     {

@@ -78,6 +78,28 @@ describe("ModelPicker", () => {
     expect(picked?.id).toBe("haiku");
   });
 
+  test("opens with the cursor already on the row matching `value`, not row 0", async () => {
+    // Regression: `index` only ever initialized to 0 and was never synced to
+    // `value`, so opening the picker on e.g. the 3rd model still highlighted
+    // the 1st row -- Enter right after opening would activate the wrong
+    // model.
+    let picked: ModelEntry | undefined;
+    const t = await mountApp(
+      <ModelPicker
+        models={MODELS}
+        value="llama"
+        onSelect={(m) => (picked = m)}
+        filterable={false}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const table = findTable(t);
+    t.screen.focusWidget(table);
+    table.handleKey({ name: "enter", key: "enter" } as never);
+    expect(picked?.id).toBe("llama");
+  });
+
   test("groups by provider — each provider name shown once", async () => {
     const t = await mountApp(<ModelPicker models={MODELS} filterable={false} />, OPTS);
     await t.settle();
