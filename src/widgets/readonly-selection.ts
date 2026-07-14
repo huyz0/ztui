@@ -158,8 +158,14 @@ function driveAutoScroll(app: App, root: Widget, x: number, y: number): void {
   };
 
   tick(); // immediate step in response to this drag
-  if (!autoScroll) {
-    autoScroll = { timer: setInterval(tick, 50), root };
-    (autoScroll.timer as { unref?: () => void }).unref?.();
-  }
+  // Always rebind the interval to this call's `tick` closure — it's the only
+  // one that captures the current `dir`/`x`/`y`. A held drag re-invokes this
+  // function on every subsequent drag/move event, so replacing the interval
+  // each time keeps it in sync; without this, a direction reversal (e.g. the
+  // cursor crosses from below the viewport to above it) would leave the
+  // *previous* interval running forever with the stale direction and
+  // coordinates, since only a `!autoScroll` interval-less state started one.
+  if (autoScroll) clearInterval(autoScroll.timer);
+  autoScroll = { timer: setInterval(tick, 50), root };
+  (autoScroll.timer as { unref?: () => void }).unref?.();
 }

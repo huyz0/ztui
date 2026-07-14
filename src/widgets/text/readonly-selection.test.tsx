@@ -307,4 +307,43 @@ describe("read-only selection — off-screen / auto-scroll", () => {
     leaf.handleMouse({ type: "release", button: "left", x: r.x + 1, y: view.bottom + 2 });
     expect(md.scrollOffset.y).toBeGreaterThan(0);
   });
+
+  test("reversing drag direction past the opposite edge reverses auto-scroll instead of freezing it", async () => {
+    // Regression: the auto-scroll interval's `tick` closure captured the
+    // direction/coordinates from whichever call first started it. Once
+    // running, a later call that recomputed a different `dir` (e.g. the
+    // cursor crossed from below the viewport to above it) skipped creating a
+    // new interval (`if (!autoScroll)`), so the *original* interval kept
+    // ticking forever in the stale direction.
+    const blocks = Array.from({ length: 30 }, (_, i) => `para ${i}`).join("\n\n");
+    const { screen, settle } = await mountApp(<Markdown id="md">{blocks}</Markdown>, {
+      cols: 40,
+      rows: 24,
+    });
+    await settle();
+    const md: any = screen.children.find((n: any) => n.tagName === "markdown");
+    const leaf = richLeaves(screen)[0];
+    const r = leaf.getContentRect();
+    const view = md.getContentRect();
+
+    leaf.handleMouse({ type: "press", button: "left", x: r.x, y: r.y });
+    // Drag past the bottom edge: scrolls down.
+    leaf.handleMouse({ type: "drag", button: "left", x: r.x + 1, y: view.bottom + 2 });
+    const afterDown = md.scrollOffset.y;
+    expect(afterDown).toBeGreaterThan(0);
+
+    // Without releasing, drag past the top edge instead: must scroll back up
+    // from here, not keep advancing downward via a stale interval.
+    leaf.handleMouse({ type: "drag", button: "left", x: r.x + 1, y: view.y - 2 });
+    const afterUp = md.scrollOffset.y;
+    expect(afterUp).toBeLessThan(afterDown);
+
+    // Wait past a couple of the 50ms auto-scroll ticks — if the old interval
+    // were still alive it would drive scrollOffset back up (its stale `dir`
+    // was +1), overriding the intended upward scroll.
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    expect(md.scrollOffset.y).toBeLessThanOrEqual(afterUp);
+
+    leaf.handleMouse({ type: "release", button: "left", x: r.x + 1, y: view.y - 2 });
+  });
 });
