@@ -207,6 +207,28 @@ describe("ChatInput", () => {
     expect(cmd).toBe("clear");
   });
 
+  test("accepting a text completion is a single atomic undo step", async () => {
+    // Regression: acceptCompletion's "text" case deleted the typed query and
+    // inserted the result as two separate buffer mutations, each pushing its
+    // own "structural" undo entry — one Ctrl+Z only undid the insert, leaving
+    // the deleted query gone; a second Ctrl+Z was needed to fully revert.
+    const trigger: Trigger = {
+      char: "/",
+      atLineStart: true,
+      getCompletions: () => [{ label: "help" }],
+      onAccept: (c) => ({ kind: "text", value: `[${c.label}]` }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "/he");
+    await t.settle();
+    key(w, "enter"); // accept the "text" completion
+    await t.settle();
+    expect(w.value).toBe("[help]");
+    key(w, "ctrl+z");
+    await t.settle();
+    expect(w.value).toBe("/he"); // one undo fully reverts the accept
+  });
+
   test("ghost-text suggestion renders and Right accepts it at EOL", async () => {
     let value = "";
     const { t, w } = await mountChat({

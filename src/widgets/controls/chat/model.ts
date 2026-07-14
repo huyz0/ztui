@@ -279,6 +279,21 @@ export class ChatBuffer {
     this.anchor = null;
   }
 
+  /**
+   * Replace the `[start, end)` atom range with plain text, as one undo step —
+   * the plain-text counterpart to {@link replaceRangeWithChip}. Used to accept
+   * a completion: deleting the typed query and inserting the result as two
+   * separate calls (each pushing its own "structural" undo entry) made one
+   * undo only half-revert the edit.
+   */
+  public replaceRange(start: number, end: number, text: string): void {
+    this.pushUndo("structural");
+    const graphemes = splitGraphemes(text);
+    this.atoms.splice(start, end - start, ...graphemes);
+    this.caret = start + graphemes.length;
+    this.anchor = null;
+  }
+
   /** Backspace: delete the selection, else the atom before the caret. */
   public backspace(): void {
     if (this.hasSelection()) {

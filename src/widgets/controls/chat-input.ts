@@ -867,8 +867,7 @@ export class ChatInputWidget extends Widget {
     const end = this.buffer.caret;
     switch (result.kind) {
       case "text":
-        this.deleteRange(start, end);
-        this.buffer.insertText(result.value, "structural");
+        this.buffer.replaceRange(start, end, result.value);
         break;
       case "chip": {
         const token: ChipToken = {
