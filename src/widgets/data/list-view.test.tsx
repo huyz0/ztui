@@ -213,4 +213,30 @@ describe("ListView mouse", () => {
     list.handleMouse({ type: "press", button: "left", x: c.x, y: c.bottom - 1, handled: false });
     expect(list.selectedId).toBeNull();
   });
+
+  test("scrolling a wide row out of view doesn't snap horizontal scroll back", async () => {
+    // Regression: the horizontal scroll bound was recomputed from only the
+    // rows visible *this frame*, so scrolling the one very wide row out of
+    // the viewport shrank the bound (based on the remaining, narrower rows)
+    // and clamped scrollLeft back toward 0 -- even though the user never
+    // scrolled left, and the wide row is still part of the same dataset.
+    const wideItems: ListItem[] = [{ id: "wide", label: "w".repeat(200) }, ...bigList(50)];
+    const t = await mountApp(<ListView items={wideItems} style={{ height: "100%" }} />, {
+      rows: 5,
+    });
+    const list = findList(t);
+    await t.settle();
+    // With the wide row visible, scroll right (past what the narrow rows
+    // alone would ever allow).
+    (list as unknown as { scrollLeft: number }).scrollLeft = 100;
+    await t.settle();
+    const scrollLeftAfterSet = (list as unknown as { scrollLeft: number }).scrollLeft;
+    expect(scrollLeftAfterSet).toBeGreaterThan(0);
+
+    // Scroll down far enough that the wide row is no longer in the viewport.
+    for (let i = 0; i < 10; i++) list.handleScroll({ type: "scroll_down" } as any);
+    await t.settle();
+
+    expect((list as unknown as { scrollLeft: number }).scrollLeft).toBe(scrollLeftAfterSet);
+  });
 });

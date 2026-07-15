@@ -98,6 +98,12 @@ export class ListViewWidget extends Widget {
   private lastVisibleRows = 0;
   private lastContentWidth = 0;
   private draggingScrollbar = false;
+  // Widest row width seen so far for the current dataset, so scrolling a wide
+  // row out of the viewport doesn't shrink the horizontal scroll bound (and
+  // snap scrollLeft back) just because it's no longer among the rows sampled
+  // this frame. Reset whenever the dataset itself is swapped for a new one.
+  private maxRowWSeen = 0;
+  private maxRowWFor: ListItem[] | RowGroup<ListItem>[] | null = null;
 
   constructor() {
     super("listview");
@@ -386,12 +392,19 @@ export class ListViewWidget extends Widget {
     const last = Math.min(this.rowCount, first + visibleRows);
     const bodyW = this.bodyWidth(content);
 
-    // Widest visible row drives horizontal scroll bounds.
-    let maxRowW = 0;
+    // Widest visible row drives horizontal scroll bounds. Widened against the
+    // running max for this dataset (not just this frame's visible rows) so a
+    // wide row scrolling out of view doesn't shrink the bound and snap
+    // scrollLeft back.
+    const dataRef = this.groups ?? this.items;
+    if (dataRef !== this.maxRowWFor) {
+      this.maxRowWFor = dataRef;
+      this.maxRowWSeen = 0;
+    }
     for (let v = first; v < last; v++)
-      maxRowW = Math.max(maxRowW, stringWidth(this.displayTextAt(v)));
-    this.lastContentWidth = maxRowW;
-    this.scrollLeft = Math.max(0, Math.min(this.scrollLeft, Math.max(0, maxRowW - bodyW)));
+      this.maxRowWSeen = Math.max(this.maxRowWSeen, stringWidth(this.displayTextAt(v)));
+    this.lastContentWidth = this.maxRowWSeen;
+    this.scrollLeft = Math.max(0, Math.min(this.scrollLeft, Math.max(0, this.maxRowWSeen - bodyW)));
 
     buffer.pushClip(new Region(new Offset(content.x, content.y), new Size(bodyW, content.height)));
     const selIdx = this.selectedIndex;

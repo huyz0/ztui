@@ -136,6 +136,39 @@ describe("Tree scrolling & paging", () => {
     expect(t.text()).not.toContain("item-0");
   });
 
+  test("scrolling a wide row out of view doesn't snap horizontal scroll back", async () => {
+    // Regression: the horizontal scroll bound was recomputed from only the
+    // rows visible *this frame*, so scrolling the one very wide row out of
+    // the viewport shrank the bound (based on the remaining, narrower rows)
+    // and clamped scrollLeft back toward 0 -- even though the user never
+    // scrolled left, and the wide row is still part of the same dataset.
+    const wideChildren = bigTree(50)[0].children ?? [];
+    const data: TreeNode[] = [
+      {
+        id: "root",
+        label: "root",
+        children: [{ id: "wide", label: "w".repeat(200) }, ...wideChildren],
+      },
+    ];
+    const t = await mountApp(<Tree data={data} expanded={["root"]} style={{ height: 12 }} />, {
+      screenStyle: { flexDirection: "column" },
+    });
+    const tree = findTree(t);
+    await t.settle();
+    // With the wide row visible, scroll right (past what the narrow rows
+    // alone would ever allow).
+    (tree as unknown as { scrollLeft: number }).scrollLeft = 100;
+    await t.settle();
+    const scrollLeftAfterSet = (tree as unknown as { scrollLeft: number }).scrollLeft;
+    expect(scrollLeftAfterSet).toBeGreaterThan(0);
+
+    // Scroll down far enough that the wide row is no longer in the viewport.
+    for (let i = 0; i < 10; i++) tree.handleScroll({ type: "scroll_down" } as any);
+    await t.settle();
+
+    expect((tree as unknown as { scrollLeft: number }).scrollLeft).toBe(scrollLeftAfterSet);
+  });
+
   test("scrollbar press jumps the scroll position", async () => {
     const t = await mountApp(
       <Tree data={bigTree(1000)} expanded={["root"]} style={{ height: 12 }} />,
