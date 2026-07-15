@@ -231,20 +231,16 @@ export class BunDriver extends Driver {
       this.write("\x1b[?1000h\x1b[?1003h\x1b[?1006h");
       this.capabilities.mouseHover = true;
     } else {
-      // Explicitly cancel mode 1003 (any-motion tracking) rather than relying
-      // on 1002 to implicitly override it — some terminals keep streaming a
-      // move event per pixel of motion if 1003 is never turned off, wasting a
-      // stream of read/parse work after hover is "disabled" (stop() already
-      // sends the 1003l reset on shutdown; this mirrors it for the runtime
-      // toggle).
-      //
-      // Sent as two separate writes, disable last: a single burst mixing an
-      // enable (h) and a disable (l) across different mouse modes
-      // (`1000h1002h1003l1006h`) made Windows Terminal's ConPTY stop
-      // reporting mouse events entirely for the rest of the session — a
-      // regression this exact ordering fixes (confirmed via bisect).
+      // Switching to 1002 (button-motion only) without an explicit 1003l.
+      // An earlier attempt to explicitly cancel 1003 here (for a Ghostty
+      // quirk where some terminals don't implicitly cancel any-motion
+      // tracking) made Windows Terminal's ConPTY stop reporting mouse events
+      // entirely for the rest of the session, even sent as its own write
+      // after the enables — confirmed via bisect against a real WSL +
+      // Windows Terminal session. 1002 alone is enough on every terminal
+      // that has been reported working; stop() still sends the full
+      // 1000/1002/1003/1006 reset on shutdown regardless.
       this.write("\x1b[?1000h\x1b[?1002h\x1b[?1006h");
-      this.write("\x1b[?1003l");
       this.capabilities.mouseHover = false;
     }
   }

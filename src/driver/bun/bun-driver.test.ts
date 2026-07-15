@@ -423,14 +423,21 @@ describe("BunDriver input + graphics sequences", () => {
     expect(stdout.all().slice(before)).toContain("\x1b]22;\x1b\\");
   });
 
-  test("setMouseHover(false) explicitly disables mode 1003, not just switching to 1002", () => {
-    // Regression: turning hover off wrote "\x1b[?1000h\x1b[?1002h\x1b[?1006h"
-    // without a trailing "\x1b[?1003l", relying on 1002 to implicitly cancel
-    // 1003. Some terminals don't cancel it implicitly and keep streaming a
-    // move event per pixel of motion even after hover is "disabled".
+  test("setMouseHover(false) switches to 1002 without an explicit 1003l", () => {
+    // Regression (reverted): an earlier fix added a trailing "\x1b[?1003l" to
+    // explicitly cancel any-motion tracking here (rather than relying on
+    // 1002 to implicitly override it), targeting a Ghostty quirk where some
+    // terminals keep streaming a move per pixel after hover is "disabled".
+    // That explicit disable — even sent as its own write, after the enables
+    // — made Windows Terminal's ConPTY stop reporting mouse events entirely
+    // for the rest of the session (confirmed via bisect against a real WSL +
+    // Windows Terminal session). 1002 alone must be enough here; stop()
+    // still sends the full 1000/1002/1003/1006 reset on shutdown regardless.
     driver.setMouseHover(true);
     const before = stdout.all().length;
     driver.setMouseHover(false);
-    expect(stdout.all().slice(before)).toContain("\x1b[?1003l");
+    const written = stdout.all().slice(before);
+    expect(written).toContain("\x1b[?1002h");
+    expect(written).not.toContain("\x1b[?1003l");
   });
 });
