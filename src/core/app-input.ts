@@ -117,6 +117,15 @@ export class AppInput {
 
   public handleKey(ev: KeyEvent): void {
     this.log(`Key event received: key=${ev.key}, name=${ev.name}`);
+    // A hotkey explicitly registered on "ctrl+c" gets first refusal, ahead of
+    // the built-in copy-selection/quit behavior below — otherwise that
+    // hardcoded branch always returns first and such a registration could
+    // never be reached at all (unlike every other key, which always gets a
+    // priority-phase dispatch further down).
+    if (ev.key === "ctrl+c" && this.host.hotkeys.dispatch(ev, "priority")) {
+      this.host.queueRender("key:hotkey-priority");
+      return;
+    }
     if (ev.key === "ctrl+c") {
       // Selection-aware quit: if a text selection is active, copy it instead
       // of exiting — the selection stays visible (standard editor behavior);
@@ -236,6 +245,14 @@ export class AppInput {
         // A focused widget consuming the key (e.g. accepting a completion) is a
         // self-contained change — repaint scoped to it, verified for layout.
         this.host.queueRepaintWidget(focused, "key:widget-handled");
+        return;
+      }
+      // A fallback-phase hotkey registered on "tab" gets a chance once the
+      // focused widget has declined it, before the default focus-navigation
+      // behavior runs — otherwise this branch always returns first and such
+      // a registration could never fire.
+      if (this.host.hotkeys.dispatch(ev, "fallback")) {
+        this.host.queueRender("key:hotkey-fallback");
         return;
       }
       screen.focusNext(ev.shift);

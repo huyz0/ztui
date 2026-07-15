@@ -78,6 +78,47 @@ describe("App key dispatch", () => {
     expect(w.hasSelection()).toBe(true); // selection survives the copy
   });
 
+  test("a hotkey registered on ctrl+c fires instead of the built-in copy/quit behavior", async () => {
+    // Regression: the hardcoded ctrl+c branch always ran (and returned) before
+    // any hotkey dispatch at all, so a hotkey registered on "ctrl+c" could
+    // never fire -- unlike every other key, which always gets a chance via
+    // the priority-phase dispatch further down handleKey(). Guard process.exit
+    // too: on the buggy code path this test would otherwise fall through to
+    // the built-in quit behavior and kill the test worker outright.
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    const t = await mountApp(<Box id="card" style={{ width: 10, height: 4 }} />);
+    await t.settle();
+    const handler = vi.fn();
+    const dispose = t.app.hotkeys.register({ key: "ctrl+c", name: "test-ctrl-c", handler });
+    try {
+      t.driver.simulateKey("ctrl+c", "c", true);
+      await t.settle();
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(exitSpy).not.toHaveBeenCalled();
+    } finally {
+      dispose();
+      exitSpy.mockRestore();
+    }
+  });
+
+  test("a fallback hotkey registered on tab fires once the focused widget declines it", async () => {
+    // Regression: the hardcoded tab branch always navigated focus (or handed
+    // the key to a widget that opts into wantsTab) and returned, before the
+    // fallback-phase hotkey dispatch ever ran -- so a hotkey registered on
+    // "tab" could never fire.
+    const t = await mountApp(<Box id="card" style={{ width: 10, height: 4 }} />);
+    await t.settle();
+    const handler = vi.fn();
+    const dispose = t.app.hotkeys.register({ key: "tab", name: "test-tab", handler });
+    try {
+      t.driver.simulateKey("tab", "tab");
+      await t.settle();
+      expect(handler).toHaveBeenCalledTimes(1);
+    } finally {
+      dispose();
+    }
+  });
+
   test("Escape clears a focused selection before anything else", async () => {
     const t = await mountApp(<Input id="in" value="world" />);
     await t.settle();
