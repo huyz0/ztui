@@ -131,6 +131,69 @@ describe("DevTools panel", () => {
     expect(t.cellAt(6, 0).style.background).not.toBe(inside.style.background);
   });
 
+  test("the tree panel re-serializes the live tree on every poll tick, not only on a selection change", async () => {
+    // Regression: the `tree` useMemo depended on [root, selected] but never on
+    // the poll's own tick counter, even though the surrounding comment said it
+    // should re-read the mutable tree every tick. A live-tree mutation (e.g. a
+    // widget's id changing after a re-render) between polls never showed up
+    // in the rendered tree panel until `selected` itself happened to change.
+    let rootRef: Widget | null = null;
+    let alphaRef: Widget | null = null;
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <VBox
+          id="inspected"
+          ref={(w: Widget | null) => {
+            rootRef = w;
+          }}
+        >
+          <Button
+            id="alpha"
+            ref={(w: Widget | null) => {
+              alphaRef = w;
+            }}
+          >
+            Alpha
+          </Button>
+        </VBox>
+        <DevTools root={rootRef} refreshMs={10} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    reconciler.updateContainer(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <VBox
+          id="inspected"
+          ref={(w: Widget | null) => {
+            rootRef = w;
+          }}
+        >
+          <Button
+            id="alpha"
+            ref={(w: Widget | null) => {
+              alphaRef = w;
+            }}
+          >
+            Alpha
+          </Button>
+        </VBox>
+        <DevTools root={rootRef} refreshMs={10} />
+      </VBox>,
+      t.container,
+      null,
+      () => {},
+    );
+    await t.settle();
+    expect(t.text()).toContain("#alpha");
+    expect(t.text()).not.toContain("#renamed");
+
+    // Mutate the live widget directly, bypassing React state entirely.
+    (alphaRef as unknown as Widget).id = "renamed";
+    await t.settle(30); // let at least one 10ms poll tick fire
+    expect(t.text()).toContain("#renamed");
+  });
+
   test("onInspect re-reports the selected widget's region on every poll, not only when the selection changes", async () => {
     // Regression: the polling effect only re-derived the highlighted region
     // when the hovered widget's *id* changed. If the same widget stayed

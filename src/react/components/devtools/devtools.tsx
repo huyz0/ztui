@@ -104,7 +104,7 @@ export function DevTools({
   onInspect,
   ...rest
 }: DevToolsProps): ReactElement {
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   // `null` = "expand everything" until the user collapses something.
   const [expanded, setExpanded] = useState<string[] | null>(null);
@@ -149,9 +149,9 @@ export function DevTools({
     return () => clearInterval(h);
   }, [refreshMs, pick, root, selected, onInspect]);
 
-  // `setTick` forces this to recompute against the current live tree each poll.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-read the mutable tree every tick
-  const tree = useMemo(() => (root ? [serializeDevTree(root)] : []), [root, selected]);
+  // `tick` forces this to recompute against the current live tree each poll.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tick/selected aren't read in the body, they force a re-run
+  const tree = useMemo(() => (root ? [serializeDevTree(root)] : []), [root, selected, tick]);
   const detail = useMemo(() => {
     if (!root || !selected) return [];
     return widgetDetail(resolveDevNode(root as DOMNode, selected));
