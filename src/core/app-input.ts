@@ -393,6 +393,12 @@ export class AppInput {
         if (modal.closeOnOutsideClick) {
           this.log("Outside click closing top modal layer");
           this.safeInvoke("modal onClose (outside click)", () => modal.onClose?.());
+          // The press above already set activeDragWidget to the modal root
+          // (line ~318); onClose typically detaches it. Left set, the next
+          // release/drag event would force `hit` back to this now-detached
+          // widget (line ~314-316) and run hover enter/leave / pointer-shape
+          // resolution against it.
+          this.activeDragWidget = null;
         }
         this.host.queueRender("layer:close-outside-click");
         return;

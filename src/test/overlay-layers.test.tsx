@@ -94,6 +94,33 @@ describe("Dialog", () => {
     expect(t.screen.layers.length).toBe(0);
   });
 
+  test("an outside-click that dismisses a modal clears the pending drag widget", async () => {
+    // Regression: activeDragWidget was set to the hit widget (the modal's
+    // backdrop root) on every press, *before* the outside-click check below
+    // it ran. Closing the modal there returned without clearing it, so the
+    // next drag/release event forced `hit` back to this now-detached widget
+    // (processMouse's activeDragWidget override), running hover enter/leave
+    // and pointer-shape resolution against a widget no longer in the tree.
+    function App() {
+      const [open, setOpen] = useState(true);
+      return (
+        <Dialog open={open} onClose={() => setOpen(false)}>
+          <Button id="ok">OK</Button>
+        </Dialog>
+      );
+    }
+
+    const t = await mountApp(<App />);
+    expect(t.screen.layers.length).toBe(1);
+
+    t.driver.simulateMouse(0, 0, "press", "left");
+    await t.settle();
+    expect(t.screen.layers.length).toBe(0);
+
+    const input = (t.app.input as unknown as { activeDragWidget: unknown }).activeDragWidget;
+    expect(input).toBeNull();
+  });
+
   test("dim shades the backdrop in place instead of blanking it", async () => {
     function App() {
       return (
