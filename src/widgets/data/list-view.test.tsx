@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import type { ListItem } from "../../core.ts";
 import { ListView } from "../../react.ts";
@@ -60,6 +61,37 @@ describe("ListView rendering", () => {
     await t.settle();
     const content = (list as any).getContentRect();
     expect(t.cellAt(content.x, content.y).style.background).toBe("#264f78"); // resolved $selectionBg
+  });
+});
+
+describe("ListView grouping", () => {
+  test("swapping to a wholly new groups dataset re-seeds its own collapsed flags", async () => {
+    // Regression: ensureCollapsedSeeded() only ever ran once (gated on a
+    // plain boolean), so assigning a completely different `groups` array
+    // later (a different tab, fresh search results, ...) had its own
+    // `collapsed: true` flags silently ignored -- the new dataset's group
+    // rendered expanded even though the caller explicitly asked for it to
+    // start collapsed.
+    const groupsA = [
+      { id: "a", title: "Group A", collapsed: true, items: [{ id: "a1", label: "a1" }] },
+    ];
+    const groupsX = [
+      { id: "x", title: "Group X", collapsed: true, items: [{ id: "x1", label: "x1" }] },
+    ];
+    let setGroups!: (g: typeof groupsA) => void;
+    function Host() {
+      const [groups, setter] = useState(groupsA);
+      setGroups = setter;
+      return <ListView groups={groups} style={{ height: "100%" }} />;
+    }
+
+    const t = await mountApp(<Host />);
+    await t.settle();
+    expect(t.text()).not.toContain("a1"); // starts collapsed
+
+    setGroups(groupsX);
+    await t.settle();
+    expect(t.text()).not.toContain("x1"); // the *new* dataset's own collapsed:true is honored
   });
 });
 

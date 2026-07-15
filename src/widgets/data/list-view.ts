@@ -77,6 +77,11 @@ export class ListViewWidget extends Widget {
   /** Ids of collapsed groups (grouped mode). */
   private collapsed = new Set<string>();
   private collapsedSeeded = false;
+  // `groups` reference the seed last ran against — reset the seed when a
+  // wholly new dataset is assigned (a different tab, fresh search results,
+  // …) so its own `collapsed` flags apply instead of being silently ignored
+  // forever after the very first dataset seeded once.
+  private collapsedSeededFor: RowGroup<ListItem>[] | null = null;
   /** Memoized flattened visual rows + the inputs they were built from. */
   private vrCache: GroupedRow<ListItem>[] | null = null;
   private vrCacheGroups: RowGroup<ListItem>[] | null = null;
@@ -111,11 +116,13 @@ export class ListViewWidget extends Widget {
     return this.groups !== null;
   }
 
-  /** Seed collapse state from each group's `collapsed` flag, once. */
+  /** Seed collapse state from each group's `collapsed` flag, once per dataset. */
   private ensureCollapsedSeeded(): void {
-    if (this.collapsedSeeded || !this.groups) return;
+    if (!this.groups) return;
+    if (this.collapsedSeeded && this.collapsedSeededFor === this.groups) return;
     this.collapsed = initialCollapsed(this.groups);
     this.collapsedSeeded = true;
+    this.collapsedSeededFor = this.groups;
   }
 
   /** Memoized flattened visual rows for grouped mode. */
