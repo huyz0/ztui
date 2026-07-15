@@ -149,21 +149,16 @@ export class AppInput {
       process.exit(0);
     }
 
-    // Clipboard commands routed to the focused text widget. Copy/cut also bind
-    // Ctrl+Shift+C/X (key "ctrl+C"/"ctrl+X" — distinguishable from a bare Ctrl+C
-    // only under the Kitty keyboard protocol); paste/select-all use Ctrl+V /
-    // Ctrl+A, which reach the app on every terminal. Each is guarded by a
-    // capability check so non-text widgets are unaffected.
-    if (this.routeClipboardKey(ev)) {
-      this.host.queueRender("clipboard:shortcut");
-      return;
-    }
-
     const screen = this.host.activeScreen;
 
     // Layer key interception: sticky panels see keys first (top-down) so they
     // can claim navigation keys while leaving text for the focused control
     // below. A modal blocks interception from reaching layers beneath it.
+    // Runs before the clipboard shortcuts below so a dialog can claim e.g.
+    // Ctrl+A for its own list ("select all rows") even while a text `Input`
+    // happens to be focused inside it — otherwise routeClipboardKey's
+    // unconditional focused-widget check would always win and the
+    // interceptor could never see the key at all.
     for (let i = screen.layers.length - 1; i >= 0; i--) {
       const layer = screen.layers[i];
       const interceptor = layer.keyInterceptor;
@@ -176,6 +171,16 @@ export class AppInput {
         }
       }
       if (layer.modal) break;
+    }
+
+    // Clipboard commands routed to the focused text widget. Copy/cut also bind
+    // Ctrl+Shift+C/X (key "ctrl+C"/"ctrl+X" — distinguishable from a bare Ctrl+C
+    // only under the Kitty keyboard protocol); paste/select-all use Ctrl+V /
+    // Ctrl+A, which reach the app on every terminal. Each is guarded by a
+    // capability check so non-text widgets are unaffected.
+    if (this.routeClipboardKey(ev)) {
+      this.host.queueRender("clipboard:shortcut");
+      return;
     }
 
     // Global hotkeys, priority phase: modified keys (Ctrl/Alt/F-keys) can't be

@@ -216,6 +216,42 @@ describe("StickyPanel", () => {
     expect(typed).toContain("x");
   });
 
+  test("a layer's keyInterceptor can claim Ctrl+A even while a text input is focused", async () => {
+    // Regression: routeClipboardKey ran before the layer-interceptor loop and
+    // unconditionally checked the focused widget, so Ctrl+A/Ctrl+V (select-
+    // all/paste) never reached a dialog's own keyInterceptor while a text
+    // Input happened to be focused inside it — contradicting the documented
+    // "sticky panels see keys first" dispatch order.
+    const intercepted: string[] = [];
+    function App() {
+      return (
+        <VBox>
+          <Input id="chat" />
+          <StickyPanel
+            open
+            onKeyIntercept={(ev) => {
+              if (ev.key === "ctrl+a") {
+                intercepted.push(ev.key);
+                ev.handled = true;
+              }
+            }}
+          >
+            <Label>/help</Label>
+          </StickyPanel>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<App />);
+    const chat = t.findById<any>("chat");
+    t.screen.focusWidget(chat ?? null);
+    chat.value = "some text";
+
+    t.driver.simulateKey("ctrl+a", "a", true);
+    await t.settle();
+    expect(intercepted).toContain("ctrl+a");
+  });
+
   test("Escape closes the panel via onClose without the input consuming it first", async () => {
     function App() {
       const [open, setOpen] = useState(true);
