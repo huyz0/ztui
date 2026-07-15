@@ -177,6 +177,26 @@ export class TreeWidget extends Widget {
   public setExpanded(id: string, expanded: boolean): void {
     const has = this.expanded.includes(id);
     if (expanded === has) return;
+    if (!expanded && this.selectedId !== null) {
+      // Collapsing an ancestor of the current selection would otherwise leave
+      // `selectedId` pointing at a row no longer in `flat` (selectedIndex
+      // becomes -1), so the next arrow-key press treats it as "nothing
+      // selected" and jumps to the very top/bottom of the entire tree
+      // instead of landing near where the user's focus logically was.
+      // Reselect the collapsed row itself (still visible), mirroring
+      // selectParent()'s "step out to the nearest visible ancestor".
+      this.ensureFlat();
+      const idx = this.flat.findIndex((r) => r.node.id === id);
+      if (idx >= 0) {
+        const depth = this.flat[idx].depth;
+        let end = idx + 1;
+        while (end < this.flat.length && this.flat[end].depth > depth) end++;
+        const strandsSelection = this.flat
+          .slice(idx + 1, end)
+          .some((r) => r.node.id === this.selectedId);
+        if (strandsSelection) this.selectedId = id;
+      }
+    }
     const next = expanded ? [...this.expanded, id] : this.expanded.filter((x) => x !== id);
     if (this.onExpandedChange) {
       this.onExpandedChange(next);

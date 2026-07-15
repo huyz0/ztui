@@ -306,6 +306,34 @@ describe("Tree selection & toggling", () => {
     // Controlled: internal state not mutated.
     expect(tree.expanded).toEqual([]);
   });
+
+  test("collapsing an ancestor of the selected node reselects it instead of stranding selectedIndex at -1", async () => {
+    // Regression: setExpanded left `selectedId` untouched when collapsing an
+    // *ancestor* of the current selection (not the selected node's own row).
+    // The selected node vanished from `flat`, so selectedIndex became -1, and
+    // the next arrow-key press treated it as "nothing selected" — jumping to
+    // the very top (Down) or bottom (Up) of the entire tree instead of
+    // landing near the collapsed ancestor where the user's focus logically
+    // was.
+    const t = await mountApp(
+      <Tree data={workspace} expanded={["src", "src/widgets"]} style={{ height: "100%" }} />,
+    );
+    const tree = findTree(t);
+    tree.selectedId = "src/widgets/tree.ts"; // deeply nested leaf
+
+    tree.setExpanded("src", false); // collapse the top-level ancestor
+    await t.settle();
+
+    // Reselected to the collapsed (still-visible) row, not stranded.
+    expect(tree.selectedId).toBe("src");
+
+    // A subsequent Down moves to the next visible row (README.md), not to
+    // index 0 of a "nothing selected" reset (which would also land on "src"
+    // here, so use Up first to prove it isn't just coincidentally right).
+    t.screen.focusWidget(tree);
+    tree.handleKey({ name: "down" } as any);
+    expect(tree.selectedId).toBe("README.md");
+  });
 });
 
 describe("Tree accessibility", () => {
