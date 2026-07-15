@@ -415,7 +415,11 @@ export function renderBufferToCanvas(
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "center";
   for (let y = 0; y < rows; y++) {
-    const cy = y * ch;
+    // Snapped row top/height, matching the background-fill pass, so glyph
+    // and box-drawing strokes land on the same crisp grid instead of
+    // drifting by sub-pixel amounts on non-1x DPR with non-integer metrics.
+    const cy = rowY[y];
+    const chS = rowY[y + 1] - cy;
     for (let x = 0; x < cols; x++) {
       const cell = cells[y][x];
       if (cell.cont) continue;
@@ -439,7 +443,8 @@ export function renderBufferToCanvas(
 
       if (cell.c === "" || cell.c === " ") continue;
       const color = cell.fg ?? defaultFg;
-      const x0 = x * cw;
+      const x0 = colX[x];
+      const cwS = colX[x + 1] - x0;
 
       const block = BLOCK_RECTS[cell.c];
       if (block) {
@@ -464,10 +469,10 @@ export function renderBufferToCanvas(
         );
         if (box.double) {
           // Two parallel strokes for double-line glyphs.
-          strokeArms(ctx, box, x0, cy, cw, ch, t, -t);
-          strokeArms(ctx, box, x0, cy, cw, ch, t, t);
+          strokeArms(ctx, box, x0, cy, cwS, chS, t, -t);
+          strokeArms(ctx, box, x0, cy, cwS, chS, t, t);
         } else {
-          strokeArms(ctx, box, x0, cy, cw, ch, t, 0);
+          strokeArms(ctx, box, x0, cy, cwS, chS, t, 0);
         }
         ctx.setLineDash([]);
         continue;
@@ -476,6 +481,7 @@ export function renderBufferToCanvas(
       // A wide glyph spans this cell plus the continuation to its right.
       const wide = x + 1 < cols && cells[y][x + 1]?.cont;
       const span = wide ? 2 : 1;
+      const spanW = colX[x + span] - x0;
 
       // Vector icons render natively from their SVG (crisp at DPR), tinted to fg.
       if (cell.svg) {
@@ -501,10 +507,10 @@ export function renderBufferToCanvas(
         const m = ctx.measureText(cell.c);
         const inkAscent = m.actualBoundingBoxAscent || 0;
         const inkDescent = m.actualBoundingBoxDescent || 0;
-        const yBaseline = cy + ch / 2 + (inkAscent - inkDescent) / 2;
-        ctx.fillText(cell.c, x0 + (span * cw) / 2, yBaseline);
+        const yBaseline = cy + chS / 2 + (inkAscent - inkDescent) / 2;
+        ctx.fillText(cell.c, x0 + spanW / 2, yBaseline);
       } else {
-        ctx.fillText(cell.c, x0 + (span * cw) / 2, cy + baseline);
+        ctx.fillText(cell.c, x0 + spanW / 2, cy + baseline);
       }
       if (cell.strike) {
         ctx.strokeStyle = color;
@@ -512,12 +518,12 @@ export function renderBufferToCanvas(
         const yy = cy + Math.round(baseline * 0.7);
         ctx.beginPath();
         ctx.moveTo(x0, yy + 0.5);
-        ctx.lineTo(x0 + span * cw, yy + 0.5);
+        ctx.lineTo(x0 + spanW, yy + 0.5);
         ctx.stroke();
       }
       if (cell.underline) {
-        const x1 = x0 + span * cw;
-        const yy = cy + ch - t;
+        const x1 = x0 + spanW;
+        const yy = cy + chS - t;
         ctx.strokeStyle = cell.uColor ?? color;
         ctx.lineWidth = t;
         ctx.setLineDash([]);

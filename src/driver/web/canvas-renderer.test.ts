@@ -301,6 +301,31 @@ describe("renderBufferToCanvas", () => {
     }
   });
 
+  test("glyph and box-drawing draws align to the same snapped grid as background fills", () => {
+    // Regression: the glyph/box-drawing pass computed its own x0/cy from raw
+    // `x * cellWidth` / `y * cellHeight` instead of the snapped colX/rowY
+    // arrays the background-fill pass uses. With a non-integer cell width at a
+    // high column index, the accumulated rounding drift left glyph centers
+    // (and box-drawing strokes) off the same pixel grid as their own cell's
+    // background fill -- a visible seam on non-1x DPR.
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(8, 1);
+    // A fractional cell width whose drift compounds noticeably by column 6.
+    const metrics = { ...METRICS, cellWidth: 7.225 };
+    buf.drawSegment(6, 0, new Segment("G", new Style({ background: "blue" })));
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, metrics, OPTS);
+
+    const bgRun = calls.fillRect.find((r) => r[2] > 0 && r !== calls.fillRect[0]);
+    expect(bgRun).toBeTruthy();
+    const [bgX, , bgW] = bgRun as number[];
+    const glyphCall = calls.fillText.find((c) => c[0] === "G");
+    expect(glyphCall).toBeTruthy();
+    const [, glyphX] = glyphCall as [string, number, number];
+    // The glyph is centered within its own cell's background rect, both
+    // computed from the same snapped column boundary.
+    expect(glyphX).toBeCloseTo(bgX + bgW / 2, 5);
+  });
+
   test("snaps cell boundaries so a filled run has no sub-pixel gap", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(3, 1);
