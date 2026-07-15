@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useRef, useState } from "react";
+import { type ReactElement, type ReactNode, useEffect, useRef, useState } from "react";
 import type { Widget } from "../../../dom/widget.ts";
 import { Label } from "../text/label.tsx";
 import { Box } from "./box.tsx";
@@ -105,10 +105,19 @@ export function SplitView({ root, onChange, controls, newPane }: SplitViewProps)
   // Monotonic counter for unique ids of split-off panes.
   const newPaneSeq = useRef(0);
 
-  const commit = (next: SplitNode) => {
-    setTree(next);
-    onChange?.(next);
-  };
+  // Surface every layout change for persistence via an effect keyed on the
+  // tree itself (mirrors Workbench's onLayoutChange), rather than calling
+  // onChange as a side effect inside a setState updater — updaters must stay
+  // pure (React may invoke one more than once per commit, e.g. StrictMode),
+  // and calling onChange there would double-fire.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    onChange?.(tree);
+  }, [tree, onChange]);
 
   const doSplit = (id: string, direction: SplitDirection) => {
     if (!newPane) return;
@@ -117,12 +126,15 @@ export function SplitView({ root, onChange, controls, newPane }: SplitViewProps)
       id: `${id}-${++newPaneSeq.current}`,
       content: newPane(id),
     };
-    commit(splitLeaf(tree, id, direction, leaf));
+    // Functional update so two split/close calls landing before React
+    // flushes the first (e.g. a fast double-click) both apply against the
+    // real up-to-date tree instead of the second silently discarding the
+    // first (see Workbench.move()'s identical fix for the same footgun).
+    setTree((prev) => splitLeaf(prev, id, direction, leaf));
   };
 
   const doClose = (id: string) => {
-    if (countLeaves(tree) <= 1) return; // never close the last pane
-    commit(closeLeaf(tree, id));
+    setTree((prev) => (countLeaves(prev) <= 1 ? prev : closeLeaf(prev, id)));
   };
 
   const resizeAt = (path: number[], index: number, delta: number) => {
@@ -151,7 +163,6 @@ export function SplitView({ root, onChange, controls, newPane }: SplitViewProps)
       newSizes[index] = a;
       newSizes[index + 1] = b;
       node.sizes = newSizes;
-      onChange?.(next);
       return next;
     });
   };

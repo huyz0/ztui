@@ -260,4 +260,37 @@ describe("SplitView interactive controls", () => {
     expect(t.text()).toContain("LEFT_PANE"); // the closed pane is back
     expect(t.text()).toContain("RIGHT_PANE");
   });
+
+  test("two splits on the same pane fired before React flushes both apply, not just the second", async () => {
+    // Regression: doSplit/doClose read the `tree` variable closed over at
+    // render time and called setTree(splitLeaf(tree, ...)) directly. Two
+    // split calls landing before React re-renders (e.g. a fast double-click)
+    // both computed splitLeaf against the same stale single-leaf tree, so the
+    // second commit's setTree call overwrote the first split's result
+    // entirely instead of splitting the already-split tree further.
+    let latest: SplitNode | undefined;
+    const t = await mountApp(
+      <SplitView
+        root={interactiveTree}
+        controls
+        newPane={() => "new"}
+        onChange={(r) => (latest = r)}
+      />,
+      { cols: 80, rows: 24 },
+    );
+    let splitBtn: any;
+    t.screen.walk((n: any) => {
+      if (!splitBtn && n.tagName === "label" && n.getTextContent?.() === "↔") splitBtn = n;
+    });
+    expect(splitBtn).toBeTruthy();
+
+    // Fire both clicks back-to-back, before settling in between.
+    splitBtn.onClick?.({});
+    splitBtn.onClick?.({});
+    await t.settle();
+
+    // Starts at 2 leaves; each split on the same original leaf adds one more.
+    // Both must land: 2 -> 3 -> 4, not 2 -> 3 -> 3 (second overwriting the first).
+    expect(latest && countLeaves(latest)).toBe(4);
+  });
 });
