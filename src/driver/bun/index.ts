@@ -237,7 +237,14 @@ export class BunDriver extends Driver {
       // stream of read/parse work after hover is "disabled" (stop() already
       // sends the 1003l reset on shutdown; this mirrors it for the runtime
       // toggle).
-      this.write("\x1b[?1000h\x1b[?1002h\x1b[?1003l\x1b[?1006h");
+      //
+      // Sent as two separate writes, disable last: a single burst mixing an
+      // enable (h) and a disable (l) across different mouse modes
+      // (`1000h1002h1003l1006h`) made Windows Terminal's ConPTY stop
+      // reporting mouse events entirely for the rest of the session — a
+      // regression this exact ordering fixes (confirmed via bisect).
+      this.write("\x1b[?1000h\x1b[?1002h\x1b[?1006h");
+      this.write("\x1b[?1003l");
       this.capabilities.mouseHover = false;
     }
   }
