@@ -173,7 +173,15 @@ export function Workbench({
       // upward (-dy).
       const signed = anchor === "left" ? delta : -delta;
       const min = anchor === "bottom" ? MIN_BOTTOM : MIN_SIDE;
-      return { ...prev, [anchor]: { ...r, size: Math.max(min, r.size + signed) } };
+      // Leave room for a minimally-usable center area so dragging can't grow
+      // a panel past the container's own bounds.
+      const container = rootRef.current?.region;
+      const containerSize = anchor === "bottom" ? container?.height : container?.width;
+      const max =
+        containerSize !== undefined
+          ? Math.max(min, containerSize - MIN_SIDE)
+          : Number.POSITIVE_INFINITY;
+      return { ...prev, [anchor]: { ...r, size: Math.min(max, Math.max(min, r.size + signed)) } };
     });
   };
 

@@ -180,6 +180,32 @@ describe("Workbench", () => {
     expect(sp2.region.x).toBe(startX + 6); // panel widened by the drag
   });
 
+  test("dragging the left splitter past the container edge clamps instead of overrunning it", async () => {
+    // Regression: resize() only clamped the minimum (Math.max(min, ...)), so
+    // a drag gesture whose delta exceeds the container's own width could grow
+    // the panel past the visible area, squeezing the center content (and any
+    // opposite-side panel) to zero or negative width.
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    let sp: any;
+    t.screen.walk((n: any) => {
+      if (!sp && n.tagName === "splitter" && n.orientation === "vertical") sp = n;
+    });
+    const startX = sp.region.x;
+    // Drag far past the right edge of an 80-col container.
+    t.driver.simulateMouse(startX, 10, "press", "left");
+    t.driver.simulateMouse(startX + 500, 10, "drag", "left");
+    t.driver.simulateMouse(startX + 500, 10, "release", "left");
+    await t.settle();
+    let sp2: any;
+    t.screen.walk((n: any) => {
+      if (!sp2 && n.tagName === "splitter" && n.orientation === "vertical") sp2 = n;
+    });
+    // The splitter must not have run off the right edge of the container.
+    expect(sp2.region.x).toBeLessThan(80);
+    // The center content is still visible, not squeezed away entirely.
+    expect(t.text()).toContain("EDITOR");
+  });
+
   test("a tap (no movement) toggles instead of moving", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).toContain("FILES");
