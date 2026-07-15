@@ -39,7 +39,11 @@ function parseStack(stack: string): Frame[] {
       file,
       line: Number(m[3]),
       col: Number(m[4]),
-      library: /node_modules|^node:|^\w+:\/\//.test(m[2]),
+      // Test the stripped path, not the raw capture: an ESM stack frame's
+      // "file://" scheme (a completely ordinary local path) would otherwise
+      // match the generic "^\w+:\/\//" remote-scheme check below and
+      // misclassify every application frame as a library frame.
+      library: /node_modules|^node:|^\w+:\/\//.test(file),
     });
   }
   return frames;

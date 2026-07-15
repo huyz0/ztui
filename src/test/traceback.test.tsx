@@ -77,6 +77,27 @@ describe("Traceback", () => {
     expect(text).toContain("vitest");
   });
 
+  test("an ESM file:// stack frame is not misclassified as a library frame", async () => {
+    // Regression: parseStack's `library` check tested the *raw* capture
+    // (still carrying its "file://" scheme) against `^\w+:\/\//`, which
+    // matches "file://" itself -- so every frame in an ESM/Bun stack trace
+    // (commonly rendered as "at foo (file:///path/to/app.ts:12:5)") was
+    // misclassified as a library frame, and the "expand topmost in-app frame
+    // with syntax-highlighted source" feature never fired for any of them.
+    const here = import.meta.url; // still has its literal "file://" prefix
+    const stack = ["Error: boom", `    at someFn (${here}:1:5)`].join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 78, height: 16 }}>
+        <Traceback id="tb" error={Object.assign(new Error("boom"), { stack })} contextLines={1} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("❯");
+    expect(text).toContain("^");
+  });
+
   test("scrolls when the trace overflows the viewport", async () => {
     const frames = Array.from(
       { length: 30 },
