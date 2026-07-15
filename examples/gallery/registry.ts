@@ -13,8 +13,10 @@ import { chatDemo } from "../chat_demo.tsx";
 import { checkboxDemo } from "../checkbox_demo.tsx";
 import { clipboardDemo } from "../clipboard_demo.tsx";
 import { collapsibleDemo } from "../collapsible_demo.tsx";
+import { comboboxDemo } from "../combobox_demo.tsx";
 import { contextMenuDemo } from "../contextmenu_demo.tsx";
 import { conversationDemo } from "../conversation_demo.tsx";
+import { datePickerDemo } from "../date_picker_demo.tsx";
 import { kitchenSinkDemo } from "../demo.tsx";
 import { descriptionListDemo } from "../description_list_demo.tsx";
 import { devToolsDemo } from "../devtools_demo.tsx";
@@ -114,6 +116,8 @@ export const demos: Demo[] = [
   checkboxDemo,
   switchDemo,
   selectDemo,
+  comboboxDemo,
+  datePickerDemo,
   contextMenuDemo,
   popoverDemo,
   sliderDemo,

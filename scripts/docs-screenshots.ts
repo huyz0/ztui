@@ -77,6 +77,8 @@ const BATCH: Record<string, { cols: number; rows: number; wait?: number; clip?: 
   checkbox: { cols: 40, rows: 10 },
   switch: { cols: 40, rows: 8 },
   select: { cols: 44, rows: 12 },
+  combobox: { cols: 44, rows: 8 },
+  "date-picker": { cols: 44, rows: 8 },
   slider: { cols: 44, rows: 10 },
   radio: { cols: 44, rows: 14 },
   "toggle-button": { cols: 40, rows: 8 },

@@ -41,4 +41,28 @@ const data = [
 `↑`/`↓` move selection · `→`/`←` expand/collapse (or step in/out) · `Enter`/`Space`
 toggles · click the arrow to toggle, the row to select.
 
+## File tree from a directory listing
+
+`buildFileTree` bridges a plain directory listing into `TreeNode[]` for
+`<Tree>` — sorting directories first, then alphabetically, and picking an
+icon per extension (with dedicated icons for test files). It stays I/O-free:
+you supply the listing (from `fs`, Bun's `Glob`, a remote API, …), it only
+shapes the data.
+
+```tsx
+import { buildFileTree, type FileEntry } from "@huyz0/ztui/core";
+import { Tree } from "@huyz0/ztui/react";
+
+const entries: FileEntry[] = [
+  { name: "src", isDirectory: true, children: [{ name: "app.ts", isDirectory: false }] },
+  { name: "package.json", isDirectory: false },
+];
+
+<Tree data={buildFileTree(entries)} showGuides />;
+```
+
+For a directory whose children haven't loaded yet (lazy loading), omit
+`children` and set `hasChildren: true` — `<Tree>`'s `onToggle` fires on
+expand, so you can fetch and merge the real children in then.
+
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/tree_demo.tsx)

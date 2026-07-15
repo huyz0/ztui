@@ -27,9 +27,14 @@ import { Label, TabContainer, VBox } from "@huyz0/ztui/react";
 
 - Children — each child's `label` becomes its tab title.
 - `activeIndex` / `onChange` — controlled active tab (or let it manage internally).
+- `reorderable` — allow dragging a tab header to reorder tabs (default `false`).
+- `onReorder` — fired once a drag-to-reorder ends at a new position; the
+  headers already show the new order live during the drag, so reorder your
+  own tab data here to match.
 
 ## Interaction
 
-Click a tab, or use the arrow keys when the tab bar is focused.
+Click a tab, or use the arrow keys when the tab bar is focused. With
+`reorderable`, drag a tab header to move it.
 
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/tabcontainer_demo.tsx)

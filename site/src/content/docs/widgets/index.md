@@ -35,6 +35,8 @@ tool-call cards, a permission gate, and the status pieces of a turn.
 - [Checkbox](/ztui/widgets/checkbox/) — labelled boolean checkbox.
 - [Switch](/ztui/widgets/switch/) — on/off toggle switch.
 - [Select](/ztui/widgets/select/) — single/multi-select dropdown.
+- [Combobox](/ztui/widgets/combobox/) — filterable text field with autocomplete suggestions.
+- [Date Picker](/ztui/widgets/date-picker/) — a field that opens a calendar popover on activate.
 - [Slider](/ztui/widgets/slider/) — numeric range slider.
 - [Radio Group](/ztui/widgets/radio-group/) — single-choice radio group.
 - [Toggle Button](/ztui/widgets/toggle-button/) — button with a pressed state.
@@ -42,7 +44,7 @@ tool-call cards, a permission gate, and the status pieces of a turn.
 ## Data
 
 - [Table](/ztui/widgets/table/) — virtualized, sortable data grid for huge row sets.
-- [Tree](/ztui/widgets/tree/) — virtualized navigation/file tree.
+- [Tree](/ztui/widgets/tree/) — virtualized navigation/file tree, with a `buildFileTree` bridge from a plain directory listing.
 - [List View](/ztui/widgets/list-view/) — a scrollable, selectable single-column list.
 - [Selection List](/ztui/widgets/selection-list/) — a multi-select checklist.
 - [Sparkline](/ztui/widgets/sparkline/) — compact inline trend chart.

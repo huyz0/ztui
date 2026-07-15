@@ -37,4 +37,10 @@ function Editor() {
 - `language` — syntax highlight (needs `@huyz0/ztui/syntax`).
 - `validators` / `validateOn` / `onValidate` — form validation hooks.
 
+## Interaction
+
+Standard caret/selection/clipboard keys, plus `Ctrl+Z`/`Cmd+Z` to undo and
+`Ctrl+Y`/`Ctrl+Shift+Z`/`Cmd+Shift+Z` to redo — one history entry per edit
+action, not coalesced per keystroke.
+
 [Full demo →](https://github.com/huyz0/ztui/blob/main/examples/textarea_demo.tsx)

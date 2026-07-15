@@ -6,6 +6,71 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-15
+
+### Added
+
+- **`Combobox`** — a filterable text field with autocomplete suggestions in a
+  popover; type to narrow, pick a suggestion or keep a custom value.
+- **`DatePicker`** — a single-date field that opens a calendar popover
+  (day/month/year navigation) and commits a plain `YYYY-MM-DD` value.
+- **`buildFileTree`** — an I/O-free bridge from a plain directory listing
+  (`FileEntry[]`) to `<Tree>`'s `TreeNode[]`, with per-extension icons and
+  lazy-directory support.
+- **Drag-to-reorder tabs** — `<TabContainer reorderable>` lets a tab header be
+  dragged to a new position, with `onReorder` firing once the drag settles.
+- **`TextArea` undo/redo** — `Ctrl+Z`/`Cmd+Z` and
+  `Ctrl+Y`/`Ctrl+Shift+Z`/`Cmd+Shift+Z`, one history entry per edit action.
+- **`GridLayout` configurable columns** — the column count is no longer
+  hardcoded to 2.
+- **WebP/AVIF support** in `Image` via the `sharp` fallback decoder.
+- **`getAccessibleNode` overrides** on `Slider`, `Select`, `Tree`, and `Table`.
+
+### Fixed
+
+This release folds in roughly 100 targeted bug fixes from a multi-round
+review pass across the layout engine, CSS resolver, focus/overlay/hit-test
+system, terminal input drivers (bun + web), and most data/control widgets.
+Highlights:
+
+- **Terminal input drivers**: a Windows Terminal/ConPTY regression that
+  stopped all mouse reporting after any-motion tracking was toggled off (the
+  fix that prompted this release); Ctrl+C safety-exit dropped when coalesced
+  with other bytes in one stdin chunk; escape sequences split across a chunk
+  boundary misparsed as `Alt+key`; a stuck `buttonDown` after a lost SGR
+  release turning ordinary hover into phantom drags; horizontal wheel tilt
+  misreported as vertical scroll (both drivers); web driver drag events
+  always reporting the left button regardless of which was held.
+- **Focus, overlays, and hit-testing**: overlapping siblings/overlays at
+  equal z-index resolved to the wrong (bottom/oldest) one instead of the
+  topmost; a layer's key interceptor losing precedence to clipboard
+  shortcuts; a dismissed modal leaving a stale drag-target reference; tab
+  order following paint (z-index) order instead of document order.
+- **Layout**: `flexWrap`, a `BoxLayout` shrink-phase rounding overflow, a
+  `GridLayout` remainder gap on uneven division, a `DockLayout` overflow past
+  its container, and `Widget.measure()` ignoring a container's own
+  border/padding when measuring children.
+- **CSS resolver**: comma-separated grouped selectors and chained
+  pseudo-classes were silently dropped or matched unconditionally; `$var`
+  alias chains and named/`rgb()` colors weren't resolved in some fallback
+  paths; a self-referential alias could recurse forever.
+- **Data widgets**: `Table`/`Tree`/`ListView` grouped-mode row indexing,
+  column-width sampling, and horizontal-scroll bounds; `Select`/`Combobox`
+  overlay positioning, filtering, and highlighted-index clamping; `Tree`
+  selection stranded at `-1` after collapsing a selected node's ancestor;
+  `ListView`'s collapsed-group seeding never re-running for a swapped
+  dataset.
+- **Rendering**: wide-glyph continuation cells left stale after a reused
+  cell; `AnsiTerminal` overflow at the last column; `renderBufferToHTML`
+  dropping `dim` styling; canvas glyph/box-drawing draws off the same pixel
+  grid as background fills on non-1x DPR.
+- **Misc widget correctness**: `Slider` step `0` producing `NaN`;
+  `RadioGroup`/`Select`/`Combobox` hover/selection desyncs; `Toast`/`ToastHost`
+  `maxVisible` edge cases; `Workbench` resize unbounded by its container;
+  `SplitView` stale-tree/state-update ordering bugs; `DevTools` tree panel
+  not refreshing on live mutation; hotkeys registered on `Tab`/`Ctrl+C`
+  permanently unreachable.
+
 ## [1.1.2] - 2026-07-13
 
 ### Fixed
