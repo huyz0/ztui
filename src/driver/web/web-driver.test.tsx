@@ -228,6 +228,7 @@ describe("DOM event translators", () => {
     const listeners = new Map<string, Set<(ev: unknown) => void>>();
     return {
       tabIndex: -1,
+      __listeners: listeners,
       addEventListener: (type: string, fn: (ev: unknown) => void) => {
         if (!listeners.has(type)) listeners.set(type, new Set());
         listeners.get(type)?.add(fn);
@@ -237,6 +238,47 @@ describe("DOM event translators", () => {
       },
     } as unknown as HTMLElement;
   }
+
+  test("a pure horizontal wheel gesture is dropped, not misreported as a vertical scroll", () => {
+    // Regression: onWheel picked `ev.deltaY < 0 ? scroll_up : scroll_down`
+    // unconditionally, with no deltaX check. A trackpad horizontal swipe (or
+    // shift+wheel) reports deltaX with deltaY at/near zero — since
+    // ZtuiMouseEvent has no horizontal-scroll type, that always fell through
+    // to "scroll_down", turning a pure horizontal gesture into a bogus
+    // downward scroll fed to the app.
+    const host = fakeHost();
+    const driver = new WebDriver();
+    const dispatched: unknown[] = [];
+    driver.dispatchMouse = (ev: unknown) => dispatched.push(ev);
+    const detach = attachToDOM(driver, host, { metrics: { cellWidth: 8, cellHeight: 16 } });
+
+    const wheelListeners = (
+      host as unknown as { __listeners: Map<string, Set<(ev: unknown) => void>> }
+    ).__listeners;
+    const onWheel = [...(wheelListeners?.get("wheel") ?? [])][0] as (ev: unknown) => void;
+    expect(onWheel).toBeTruthy();
+
+    onWheel({
+      deltaX: 50,
+      deltaY: 0,
+      offsetX: 0,
+      offsetY: 0,
+      preventDefault: () => {},
+    });
+    expect(dispatched).toHaveLength(0);
+
+    onWheel({
+      deltaX: 0,
+      deltaY: 10,
+      offsetX: 0,
+      offsetY: 0,
+      preventDefault: () => {},
+    });
+    expect(dispatched).toHaveLength(1);
+    expect((dispatched[0] as { type: string }).type).toBe("scroll_down");
+
+    detach();
+  });
 
   test("attachToDOM throws on a second attach without detaching first", () => {
     const host = fakeHost();

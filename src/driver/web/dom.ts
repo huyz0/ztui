@@ -197,6 +197,16 @@ export function attachToDOM(
     mouse(ev.buttons ? "drag" : "move")(ev);
   };
   const onWheel = (ev: WheelEvent) => {
+    // A trackpad horizontal swipe (or shift+wheel) reports deltaX with
+    // deltaY at/near zero. ZtuiMouseEvent has no horizontal-scroll type, so
+    // treating that as vertical (the old `deltaY < 0 ? up : down` fallback
+    // always picked "scroll_down" here) turned a pure horizontal gesture
+    // into a bogus downward scroll — drop it instead, mirroring the bun
+    // driver's SGR-mouse horizontal-tilt handling.
+    if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) {
+      ev.preventDefault();
+      return;
+    }
     driver.dispatchMouse(
       translateMouseEvent(ev, ev.deltaY < 0 ? "scroll_up" : "scroll_down", measure(), bounds()),
     );
