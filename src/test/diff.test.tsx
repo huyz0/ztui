@@ -103,6 +103,32 @@ describe("Diff", () => {
     } as never);
     await t.settle();
     expect(t.text()).toContain("│"); // split view now shows the divider
+
+    // Click "Unified" (left tab, right-aligned before " Split ") to switch back.
+    w.handleMouse({
+      type: "press",
+      button: "left",
+      x: c.right - 12,
+      y: c.y,
+      handled: false,
+    } as never);
+    await t.settle();
+    expect(t.text()).not.toContain("│"); // back to unified, no divider
+  });
+
+  test("measures a fr-sized width/height from the actual rendered content", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    w.style.width = "1fr"; // parseDimension returns {fr}, not a number
+    w.style.height = "1fr";
+    expect(() => w.measure(80, 20)).not.toThrow();
+    expect(w.getClientRect().width).toBeGreaterThan(0);
   });
 
   test("scrolls when the diff overflows the viewport", async () => {
