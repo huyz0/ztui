@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { describe, expect, test } from "vitest";
 import { findDemo } from "../../examples/gallery/registry.ts";
-import { formatReport, formatRun, profileScenario, runProfile } from "./frame-profile.ts";
 import { mountTestApp } from "./app-mount.tsx";
+import { formatReport, formatRun, profileScenario, runProfile } from "./frame-profile.ts";
 
 describe("runProfile / profileScenario", () => {
   test("runs both scenarios against a mounted UI and reports phase timings", async () => {
