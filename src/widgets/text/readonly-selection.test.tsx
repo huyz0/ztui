@@ -47,6 +47,19 @@ describe("read-only selection — RichText", () => {
     expect(await driver.clipboard.get()).toBe("preexisting");
   });
 
+  test("a press over empty content (nothing selectable rendered) is a no-op", async () => {
+    const { app, findById, settle } = await mountApp(<RichText id="rt">{""}</RichText>, {
+      cols: 40,
+      rows: 5,
+    });
+    const rt = findById("rt");
+    await settle();
+    const r = rt.getContentRect();
+    // No selectable runs exist at all, so pointFromScreen finds nothing.
+    rt.handleMouse({ type: "press", button: "left", x: r.x, y: r.y });
+    expect(app.selection.active).toBeNull();
+  });
+
   test("copies the plain value, not the markup", async () => {
     const { findById, driver, settle } = await mountApp(
       <RichText id="rt">[bold]Hi[/] there</RichText>,
@@ -345,5 +358,32 @@ describe("read-only selection — off-screen / auto-scroll", () => {
     expect(md.scrollOffset.y).toBeLessThanOrEqual(afterUp);
 
     leaf.handleMouse({ type: "release", button: "left", x: r.x + 1, y: view.y - 2 });
+  });
+
+  test("clearing the active selection mid-drag stops the auto-scroll interval", async () => {
+    const blocks = Array.from({ length: 30 }, (_, i) => `para ${i}`).join("\n\n");
+    const { app, screen, settle } = await mountApp(<Markdown id="md">{blocks}</Markdown>, {
+      cols: 40,
+      rows: 24,
+    });
+    await settle();
+    const md: any = screen.children.find((n: any) => n.tagName === "markdown");
+    const leaf = richLeaves(screen)[0];
+    const r = leaf.getContentRect();
+    const view = md.getContentRect();
+
+    leaf.handleMouse({ type: "press", button: "left", x: r.x, y: r.y });
+    leaf.handleMouse({ type: "drag", button: "left", x: r.x + 1, y: view.bottom + 2 });
+    const afterFirstTick = md.scrollOffset.y;
+    expect(afterFirstTick).toBeGreaterThan(0);
+
+    // Selection ends (e.g. a parent cleared it) without a release event —
+    // the next timer tick must notice the group mismatch and stop itself
+    // rather than keep auto-scrolling forever.
+    app.selection.active = null;
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    expect(md.scrollOffset.y).toBe(afterFirstTick);
+
+    leaf.handleMouse({ type: "release", button: "left", x: r.x + 1, y: view.bottom + 2 });
   });
 });
