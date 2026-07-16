@@ -183,6 +183,19 @@ describe("Form widget integration", () => {
     expect(text()).toContain("Nested required");
   });
 
+  test("targetId that matches no field in the tree resolves to no message", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <Input id="a" validators={[required("Required")]} validateOn="submit" />
+        <FieldError id="err" targetId="does-not-exist" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const err = findById<FieldErrorWidget>("err")!;
+    err.measure(40, 10);
+    expect(err.measuredHeight).toBe(0);
+  });
+
   test("FieldError truncates a message wider than its box", async () => {
     const long = "This validation message is far too long to fit the narrow field width";
     const { findById, settle, text } = await mountApp(
