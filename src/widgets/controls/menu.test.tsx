@@ -43,6 +43,18 @@ describe("MenuListWidget keyboard navigation", () => {
     expect(w.highlightedIndex).toBe(3);
   });
 
+  test("wantsTab() reports true so Tab stays inside the menu", () => {
+    expect(menu(items).wantsTab()).toBe(true);
+  });
+
+  test("tab/shift+tab move the highlight like down/up", () => {
+    const w = menu(items);
+    w.handleKey({ ...key("tab"), shift: false });
+    expect(w.highlightedIndex).toBe(3); // 0 → 3, same as "down"
+    w.handleKey({ ...key("tab"), shift: true });
+    expect(w.highlightedIndex).toBe(0); // 3 → 0, same as "up"
+  });
+
   test("home/end jump to the first/last selectable row", () => {
     const w = menu(items);
     w.handleKey(key("end"));
@@ -348,6 +360,25 @@ describe("ContextMenu submenus", () => {
     await settle();
     expect(text()).not.toContain("Sub A"); // submenu closed
     expect(text()).toContain("Open"); // parent still open
+  });
+
+  test("→ on an already-open submenu row just refocuses the existing child", async () => {
+    const { screen, text, driver, settle } = await mountApp(<SubHarness onPick={() => {}} />, {
+      cols: 40,
+      rows: 12,
+    });
+    await settle();
+    const parentMenu = screen.overlays[0].children[0] as MenuListWidget;
+    driver.simulateKey("down", "down"); // highlight "More"
+    await settle();
+    parentMenu.handleKey(key("right")); // opens the submenu, focuses the child
+    await settle();
+    expect(text()).toContain("Sub A");
+    // Press → again directly on the parent (same row, submenu already open):
+    // hits the "reuse the existing childMenu" branch instead of reopening it.
+    expect(() => parentMenu.handleKey(key("right"))).not.toThrow();
+    await settle();
+    expect(text()).toContain("Sub A");
   });
 
   test("hovering a submenu row opens it", async () => {
