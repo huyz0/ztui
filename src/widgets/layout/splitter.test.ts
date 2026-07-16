@@ -3,6 +3,7 @@ import type { MouseEvent } from "../../driver/driver.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { SplitterWidget } from "./splitter.ts";
 
 function mouse(x: number, y: number, type: MouseEvent["type"]): MouseEvent {
@@ -77,5 +78,74 @@ describe("SplitterWidget", () => {
     s.handleMouse(mouse(10, 5, "press"));
     s.handleMouse({ x: 30, y: 30, type: "release", button: "left" } as MouseEvent);
     expect((s as unknown as { hovered: boolean }).hovered).toBe(false);
+  });
+
+  test("mouse-leave while dragging keeps the grip highlighted", () => {
+    const s = new SplitterWidget();
+    s.onMouseEnter?.({} as never);
+    expect((s as unknown as { hovered: boolean }).hovered).toBe(true);
+
+    s.handleMouse(mouse(10, 5, "press"));
+    // Leaving mid-drag must not clear `hovered` — the grip should stay
+    // highlighted while the drag is in progress even if the cursor slips
+    // off the (1-cell-wide) splitter.
+    s.onMouseLeave?.({} as never);
+    expect((s as unknown as { hovered: boolean }).hovered).toBe(true);
+  });
+
+  test("mouse-leave outside a drag clears the hover highlight", () => {
+    const s = new SplitterWidget();
+    s.onMouseEnter?.({} as never);
+    expect((s as unknown as { hovered: boolean }).hovered).toBe(true);
+
+    s.onMouseLeave?.({} as never);
+    expect((s as unknown as { hovered: boolean }).hovered).toBe(false);
+  });
+
+  test("further mouse events are ignored once one has already been handled", () => {
+    const s = new SplitterWidget();
+    const deltas: number[] = [];
+    s.onResize = (d) => deltas.push(d);
+
+    s.handleMouse({ x: 10, y: 5, type: "press", button: "left", handled: true } as MouseEvent);
+    // handled was already true, so the press is never processed: dragging
+    // never starts, so this drag is ignored too.
+    s.handleMouse(mouse(15, 5, "drag"));
+    expect(deltas).toEqual([]);
+  });
+
+  test("a drag with zero net delta does not fire onResize", () => {
+    const s = new SplitterWidget();
+    const deltas: number[] = [];
+    s.onResize = (d) => deltas.push(d);
+
+    s.handleMouse(mouse(10, 5, "press"));
+    s.handleMouse(mouse(10, 5, "drag")); // same position -> delta 0
+    expect(deltas).toEqual([]);
+  });
+
+  test("thickens the glyph and resolves a literal accent color while active (hovered)", () => {
+    // No App.instance is mounted, so the cssResolver calls short-circuit to
+    // undefined and the widget must fall back to the literal accent colors.
+    const s = new SplitterWidget();
+    s.orientation = "vertical";
+    s.region = new Region(new Offset(0, 0), new Size(1, 3));
+    s.onMouseEnter?.({} as never);
+
+    const buffer = new ScreenBuffer(1, 3);
+    s.render(buffer);
+    expect(buffer.cells[0][0].char).toBe("┃");
+    expect(buffer.cells[0][0].style.color).toBe("#4daafc");
+  });
+
+  test("thickens the horizontal glyph while dragging", () => {
+    const s = new SplitterWidget();
+    s.orientation = "horizontal";
+    s.region = new Region(new Offset(0, 0), new Size(3, 1));
+    s.handleMouse(mouse(1, 0, "press")); // starts dragging
+
+    const buffer = new ScreenBuffer(3, 1);
+    s.render(buffer);
+    expect(buffer.cells[0][0].char).toBe("━");
   });
 });
