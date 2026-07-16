@@ -33,6 +33,16 @@ describe("resolveColor", () => {
     expect(resolveColor(widget, "$accent", "fallback")).not.toBe("fallback");
   });
 
+  test("falls back to the App.instance singleton for a widget that isn't mounted", () => {
+    const driver = new MockDriver(40, 5);
+    const app = new App(driver);
+    app.run(); // sets App.instance, but the widget below is never attached
+
+    const widget = new Widget("test");
+    expect(widget.app).toBeNull();
+    expect(resolveColor(widget, "$accent", "fallback")).not.toBe("fallback");
+  });
+
   test("passes through a literal (non-variable) color unchanged", () => {
     const driver = new MockDriver(40, 5);
     const app = new App(driver);
