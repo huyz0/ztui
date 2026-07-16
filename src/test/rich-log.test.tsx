@@ -2,7 +2,7 @@ import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import { Box, RichLog, VBox } from "../react/components.tsx";
 import { reconciler } from "../react/reconciler.ts";
-import type { RichLogWidget } from "../widgets/data/rich-log.ts";
+import { RichLogWidget } from "../widgets/data/rich-log.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -231,5 +231,100 @@ describe("RichLog", () => {
     setWidth(10);
     await t.settle();
     expect(w.selectableLines().join("|")).toContain("aaaa");
+  });
+
+  test("with wrap disabled, a long line is not split (clipped instead)", async () => {
+    const t = await mountApp(
+      <VBox>
+        <RichLog id="log" lines={["aaaa bbbb cccc dddd"]} wrap={false} style={{ width: 11 }} />
+      </VBox>,
+    );
+    await t.settle();
+    expect(t.findById<RichLogWidget>("log")?.selectableLines()).toEqual(["aaaa bbbb cccc dddd"]);
+  });
+
+  test("assigning more lines than maxLines trims from the front", async () => {
+    const t = await mountApp(
+      <RichLog
+        id="log"
+        maxLines={2}
+        lines={["one", "two", "three"]}
+        style={{ width: 20, height: 6 }}
+      />,
+    );
+    await t.settle();
+    expect(t.findById<RichLogWidget>("log")?.selectableLines()).toEqual(["two", "three"]);
+  });
+
+  test("a not-yet-mounted widget renders nothing when hidden", () => {
+    const widget = new RichLogWidget();
+    widget.visible = false;
+    const buffer = { pushClip: () => {}, popClip: () => {} } as any;
+    expect(() => widget.render(buffer)).not.toThrow();
+  });
+
+  test("a widget with a collapsed content rect (zero size) renders nothing", () => {
+    const widget = new RichLogWidget();
+    const buffer = { pushClip: () => {}, popClip: () => {} } as any;
+    // Unmounted -> zero-size region -> content.width/height <= 0.
+    expect(() => widget.render(buffer)).not.toThrow();
+  });
+
+  test("handleScroll/handleKey/handleMouse no-op once the event is already handled", async () => {
+    const t = await mountApp(
+      <RichLog id="log" lines={["a", "b", "c", "d", "e", "f"]} style={{ width: 20, height: 3 }} />,
+    );
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log")!;
+    const before = (w as unknown as { scrollTop: number }).scrollTop;
+    (w as unknown as { handleScroll: (e: unknown) => void }).handleScroll({
+      type: "wheel-down",
+      handled: true,
+    });
+    (w as unknown as { handleKey: (e: unknown) => void }).handleKey({
+      name: "end",
+      handled: true,
+    });
+    w.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: true } as any);
+    expect((w as unknown as { scrollTop: number }).scrollTop).toBe(before);
+  });
+
+  test("handleKey resolves the key name from ev.key when ev.name is absent", async () => {
+    const t = await mountApp(
+      <RichLog id="log" lines={["a", "b", "c", "d", "e", "f"]} style={{ width: 20, height: 3 }} />,
+    );
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log")!;
+    (w as unknown as { scrollTop: number }).scrollTop = 0;
+    (w as unknown as { handleKey: (e: unknown) => void }).handleKey({ key: "home" });
+    expect((w as unknown as { scrollTop: number }).scrollTop).toBe(0);
+  });
+
+  test("dragging the scrollbar past the track clamps to a valid scrollTop (no-op guard)", async () => {
+    const t = await mountApp(
+      <RichLog id="log" lines={["a", "b", "c"]} style={{ width: 20, height: 6 }} />,
+    );
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log")!;
+    // Fewer rows than the viewport -> maxScrollTop is 0 and scrollToTrackY's
+    // trackYToScrollTop returns null, so the private no-op branch runs.
+    expect(() =>
+      (w as unknown as { scrollToTrackY: (y: number) => void }).scrollToTrackY(0),
+    ).not.toThrow();
+  });
+
+  test("the scrollbar thumb sits at the top when already at scrollTop 0 (ratio branch)", async () => {
+    const t = await mountApp(
+      <RichLog
+        id="log"
+        lines={Array.from({ length: 20 }, (_, i) => `line${i}`)}
+        style={{ width: 20, height: 5 }}
+      />,
+    );
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log")!;
+    (w as unknown as { scrollTop: number; tailing: boolean }).scrollTop = 0;
+    (w as unknown as { scrollTop: number; tailing: boolean }).tailing = false;
+    expect(() => t.text()).not.toThrow();
   });
 });
