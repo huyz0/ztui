@@ -40,6 +40,32 @@ describe("Label selection", () => {
     dragSelect(lb, r.x, r.x + 2, r.y); // "Hi"
     expect(await driver.clipboard.get()).toBe("Hi");
   });
+
+  test("copies the raw markup text if RichText.fromMarkup throws when selecting", async () => {
+    // selectableLines() has its own try/catch around fromMarkup, independent
+    // of render()'s — force it to throw so the raw (un-stripped) text is
+    // copied instead of blanking the selection.
+    const spy = vi.spyOn(RichText, "fromMarkup").mockImplementation(() => {
+      throw new Error("boom");
+    });
+    try {
+      const { findById, driver, settle } = await mountApp(
+        <HBox>
+          <Label id="lb" markup>
+            hello
+          </Label>
+        </HBox>,
+        { cols: 40, rows: 3 },
+      );
+      const lb = findById("lb");
+      await settle();
+      const r = lb.getContentRect();
+      dragSelect(lb, r.x, r.x + 5, r.y);
+      expect(await driver.clipboard.get()).toBe("hello");
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 describe("Label markup", () => {
