@@ -115,6 +115,100 @@ describe("WebDriver end-to-end", () => {
     driver.clipboard.set("hello web");
     expect(await driver.clipboard.get()).toBe("hello web");
   });
+
+  // Node exposes a getter-only `globalThis.navigator`, so plain assignment
+  // throws; redefine the property for the duration of the test instead.
+  function withNavigator(value: unknown, fn: () => void | Promise<void>) {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    Object.defineProperty(globalThis, "navigator", {
+      value,
+      configurable: true,
+      writable: true,
+    });
+    return Promise.resolve()
+      .then(fn)
+      .finally(() => {
+        if (descriptor) Object.defineProperty(globalThis, "navigator", descriptor);
+      });
+  }
+
+  test("clipboard falls back to memory when navigator is entirely absent", async () => {
+    await withNavigator(undefined, async () => {
+      const driver = new WebDriver();
+      driver.clipboard.set("no navigator here");
+      expect(await driver.clipboard.get()).toBe("no navigator here");
+    });
+  });
+
+  test("clipboard.get prefers navigator.clipboard.readText when it succeeds", async () => {
+    await withNavigator({ clipboard: { readText: async () => "from the browser" } }, async () => {
+      const driver = new WebDriver();
+      expect(await driver.clipboard.get()).toBe("from the browser");
+    });
+  });
+
+  test("clipboard.get falls back to memory when readText is denied", async () => {
+    await withNavigator(
+      {
+        clipboard: {
+          readText: async () => {
+            throw new Error("permission denied");
+          },
+        },
+      },
+      async () => {
+        const driver = new WebDriver();
+        driver.clipboard.set("fallback value");
+        expect(await driver.clipboard.get()).toBe("fallback value");
+      },
+    );
+  });
+
+  test("dispatchPaste forwards pasted text as a paste event", () => {
+    const driver = new WebDriver();
+    let pasted: string | undefined;
+    driver.on("paste", (text: string) => {
+      pasted = text;
+    });
+    driver.dispatchPaste("clipboard contents");
+    expect(pasted).toBe("clipboard contents");
+  });
+
+  test("toHTML/toText are empty before the first frame is presented", () => {
+    const driver = new WebDriver();
+    expect(driver.toHTML()).toBe("");
+    expect(driver.toText()).toBe("");
+  });
+
+  test("showNotification constructs a Notification when permission is granted", () => {
+    const orig = (globalThis as any).Notification;
+    let constructed: { title: string; body?: string } | undefined;
+    (globalThis as any).Notification = class {
+      permission = "granted";
+      static permission = "granted";
+      constructor(title: string, opts?: { body?: string }) {
+        constructed = { title, body: opts?.body };
+      }
+    };
+    try {
+      const driver = new WebDriver();
+      driver.showNotification("Build finished", "All tests passed");
+      expect(constructed).toEqual({ title: "Build finished", body: "All tests passed" });
+    } finally {
+      (globalThis as any).Notification = orig;
+    }
+  });
+
+  test("showNotification is a no-op when permission is not granted", () => {
+    const orig = (globalThis as any).Notification;
+    (globalThis as any).Notification = { permission: "denied" };
+    try {
+      const driver = new WebDriver();
+      expect(() => driver.showNotification("title", "body")).not.toThrow();
+    } finally {
+      (globalThis as any).Notification = orig;
+    }
+  });
 });
 
 describe("DOM event translators", () => {
