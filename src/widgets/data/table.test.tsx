@@ -635,6 +635,36 @@ describe("Table rich (widget-bearing) cells (phase 5)", () => {
     w.layoutChildren();
     expect(farCell.visible).toBe(false);
   });
+
+  test("calling onViewportChange again with an unchanged window is a no-op", async () => {
+    // The widget itself dedupes by signature before invoking the callback, but
+    // the React wrapper's own setState comparator is exercised directly here
+    // to cover its "unchanged viewport" branch.
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      { key: "act", header: "Act", width: 14, render: (r) => <Label>act-{r.name}</Label> },
+    ];
+    const t = await mountApp(<Table data={people} columns={cols} style={{ height: "100%" }} />);
+    await t.settle();
+    await t.settle();
+    const w = findWidgetByType<TableWidget<Person>>(t, "TableWidget");
+    const before = t.text();
+    // Same first/dataIndices as the current viewport, but a fresh array
+    // reference — must be recognized as unchanged and skip re-rendering.
+    const dataIndices = people.map((_, i) => i);
+    expect(() => (w as any).onViewportChange({ first: 0, dataIndices })).not.toThrow();
+    await t.settle();
+    expect(t.text()).toBe(before);
+  });
+
+  test("a rich table with no `data` prop renders without throwing", async () => {
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      { key: "act", header: "Act", width: 14, render: (r) => <Label>act-{r.name}</Label> },
+    ];
+    const t = await mountApp(<Table columns={cols} style={{ height: "100%" }} />);
+    await expect(t.settle()).resolves.not.toThrow();
+  });
 });
 
 describe("Table body text selection", () => {
