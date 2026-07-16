@@ -1,4 +1,5 @@
-import { type ReactElement, type ReactNode, useState } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { useDisclosure } from "../../use-disclosure.ts";
 import { Box } from "../layout/box.tsx";
 import { HBox } from "../layout/hbox.tsx";
 import { VBox } from "../layout/vbox.tsx";
@@ -80,15 +81,7 @@ export function ToolCall({
   children,
   ...rest
 }: ToolCallProps): ReactElement {
-  const [internal, setInternal] = useState(defaultOpen);
-  const isControlled = open !== undefined;
-  const isOpen = isControlled ? open : internal;
-
-  const toggle = () => {
-    const next = !isOpen;
-    if (!isControlled) setInternal(next);
-    onToggle?.(next);
-  };
+  const { isOpen, toggle } = useDisclosure({ open, defaultOpen, onToggle });
 
   const badge = STATUS_BADGE[status];
   const hasBody = children != null && children !== false;

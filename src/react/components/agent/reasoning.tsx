@@ -1,4 +1,5 @@
-import { type ReactElement, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
+import { useDisclosure } from "../../use-disclosure.ts";
 import { Spinner } from "../feedback/spinner.tsx";
 import { Box } from "../layout/box.tsx";
 import { HBox } from "../layout/hbox.tsx";
@@ -57,27 +58,24 @@ export function Reasoning({
   children,
   ...rest
 }: ReasoningProps): ReactElement {
-  const [internal, setInternal] = useState(defaultOpen ?? active);
-  const isControlled = open !== undefined;
-  const isOpen = isControlled ? open : internal;
+  const { isOpen, isControlled, toggle, setOpenSilently } = useDisclosure({
+    open,
+    defaultOpen: defaultOpen ?? active,
+    onToggle,
+  });
 
   // Auto expand/collapse on the active→done transition (uncontrolled only).
+  // Silent: this isn't a user toggle, so it must not fire onToggle.
   const prevActive = useRef(active);
   useEffect(() => {
     if (prevActive.current !== active) {
       if (!isControlled) {
-        if (active) setInternal(true);
-        else if (collapseWhenDone) setInternal(false);
+        if (active) setOpenSilently(true);
+        else if (collapseWhenDone) setOpenSilently(false);
       }
       prevActive.current = active;
     }
-  }, [active, collapseWhenDone, isControlled]);
-
-  const toggle = () => {
-    const next = !isOpen;
-    if (!isControlled) setInternal(next);
-    onToggle?.(next);
-  };
+  }, [active, collapseWhenDone, isControlled, setOpenSilently]);
 
   const hasBody = children != null && children !== false;
   const disclosure = !hasBody ? " " : isOpen ? DISCLOSURE.open : DISCLOSURE.closed;

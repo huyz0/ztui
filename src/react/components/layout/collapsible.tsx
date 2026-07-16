@@ -1,5 +1,6 @@
-import { createElement, type ReactElement, useState } from "react";
+import { createElement, type ReactElement } from "react";
 import type { CollapsibleGlyphSet } from "../../../widgets/layout/collapsible.ts";
+import { useDisclosure } from "../../use-disclosure.ts";
 import type { ComponentProps } from "../types.ts";
 
 export interface CollapsibleProps extends ComponentProps {
@@ -33,19 +34,8 @@ export function Collapsible({
   children,
   ...rest
 }: CollapsibleProps): ReactElement {
-  const [internal, setInternal] = useState(defaultOpen);
-  const isControlled = open !== undefined;
-  const isOpen = isControlled ? open : internal;
+  const { isOpen, setOpen } = useDisclosure({ open, defaultOpen, onToggle });
 
-  const handleToggle = (next: boolean) => {
-    if (!isControlled) setInternal(next);
-    onToggle?.(next);
-  };
-
-  return createElement(
-    "ztui-collapsible",
-    { ...rest, open: isOpen, onToggle: handleToggle },
-    children,
-  );
+  return createElement("ztui-collapsible", { ...rest, open: isOpen, onToggle: setOpen }, children);
 }
 Collapsible.displayName = "Collapsible";
