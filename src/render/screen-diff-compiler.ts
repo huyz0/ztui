@@ -17,14 +17,6 @@ function isErasableBlank(style: Style): boolean {
   return style === Style.DEFAULT || style.equals(Style.DEFAULT);
 }
 
-/** True when `s` is non-empty and entirely ASCII spaces. */
-function isSpaces(s: string): boolean {
-  for (let i = 0; i < s.length; i++) {
-    if (s.charCodeAt(i) !== 32) return false;
-  }
-  return s.length > 0;
-}
-
 /**
  * Rewrite runs of an identical character using REP (`\x1b[nb`, "repeat the last
  * graphic char n times") — collapsing borders, rules and solid fills (`─`, `█`,
@@ -361,12 +353,7 @@ export class ScreenDiffCompiler {
     // is default here (the run's style is erasable → the transition above left it
     // default), so EL clears to the right colour. Common whenever a line's content
     // shrinks or a row blanks out. Only worth it past a few cells.
-    if (
-      content.length > 4 &&
-      isErasableBlank(style) &&
-      isSpaces(content) &&
-      this.tailIsErasableBlank(buffer, y, x + content.length)
-    ) {
+    if (content.length > 4 && isErasableBlank(style) && this.isBlankFromXToEnd(buffer, y, x)) {
       out += "\x1b[K";
       // EL does not advance the cursor — it stays where the clear began.
       return { out, cursor: { x, y }, lastStyle: style };
@@ -383,8 +370,15 @@ export class ScreenDiffCompiler {
     };
   }
 
-  /** Whether every new-frame cell in `[fromX, width)` of row `y` is an erasable blank. */
-  private tailIsErasableBlank(buffer: DiffableBuffer, y: number, fromX: number): boolean {
+  /**
+   * Whether every new-frame cell in row `y` from `fromX` to the row's end — the
+   * run just written *and* everything after it — is a plain space in an
+   * erasable-blank style. Combines what used to be two separate scans (the
+   * run's own `isSpaces(content)` check, then a second pass over the tail) into
+   * one, so a non-blank cell anywhere bails out immediately instead of always
+   * finishing the run's scan before even looking at the tail.
+   */
+  private isBlankFromXToEnd(buffer: DiffableBuffer, y: number, fromX: number): boolean {
     const row = buffer.cells[y];
     for (let x = fromX; x < buffer.width; x++) {
       const c = row[x];
