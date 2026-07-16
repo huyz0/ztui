@@ -171,6 +171,35 @@ describe("parseInput — character input", () => {
     expect(keys).toHaveLength(1);
     expect(keys[0]).toMatchObject({ key: "meta+f", name: "f", meta: true, ctrl: false });
   });
+
+  test("Alt+Shift+letter carries the shift flag (uppercase char after ESC)", () => {
+    const ev = firstKey("\x1bF");
+    expect(ev).toMatchObject({ key: "meta+f", name: "f", meta: true, shift: true });
+  });
+
+  test("ESC followed by another ESC or a non-printable byte is not treated as Alt+<char>", () => {
+    // Two bare, unmatched escapes: neither is followed by a printable char, so
+    // both fall through to the plain-character path instead of Alt-combining.
+    const keys: KeyEvent[] = [];
+    parseInput(
+      "\x1b\x1b",
+      (k) => keys.push(k),
+      () => {},
+    );
+    expect(keys.length).toBeGreaterThanOrEqual(1);
+    expect(keys.every((k) => k.meta !== true)).toBe(true);
+  });
+
+  test("a lone high surrogate with no valid low surrogate following it is emitted as-is", () => {
+    const keys: KeyEvent[] = [];
+    // U+D800 alone, followed by a plain "a" (not a valid trailing low surrogate).
+    parseInput(
+      "\ud800a",
+      (k) => keys.push(k),
+      () => {},
+    );
+    expect(keys.map((k) => k.key)).toEqual(["\ud800", "a"]);
+  });
 });
 
 describe("parseInput — navigation keys", () => {
@@ -247,6 +276,29 @@ describe("parseInput — modified arrows / navigation", () => {
     expect(firstKey("\x1b[1;2F")?.name).toBe("end");
   });
 
+  test("a modified VT-220 tilde code with no mapped name falls through, dropping nothing else", () => {
+    // Code 9 isn't in the tilde map at all (modified or not) — modName stays
+    // "" and the sequence is left unhandled here, not mis-decoded.
+    const keys = [] as { key: string }[];
+    parseInput(
+      "\x1b[9;5~a",
+      (k) => keys.push(k),
+      () => {},
+    );
+    // The trailing "a" still decodes as an ordinary key afterward.
+    expect(keys.some((k) => k.key === "a")).toBe(true);
+  });
+
+  test("an unmodified VT-220 tilde code with no mapped name is left unhandled", () => {
+    const keys = [] as { key: string }[];
+    parseInput(
+      "\x1b[9~a",
+      (k) => keys.push(k),
+      () => {},
+    );
+    expect(keys.some((k) => k.key === "a")).toBe(true);
+  });
+
   test("Shift+PageUp / Shift+Delete (VT-220 tilde with modifier) decode", () => {
     const pgup = firstKey("\x1b[5;2~");
     expect(pgup?.name).toBe("pageup");
@@ -316,6 +368,20 @@ describe("parseInput — Kitty meta/ctrl+shift combos", () => {
     expect(ev?.shift).toBe(true);
     expect(ev?.ctrl).toBe(false);
     expect(ev?.meta).toBe(false);
+  });
+
+  test("a Kitty CSI-u sequence with no modifier group defaults to unmodified", () => {
+    // keycode 112 = 'p', no ";modifiers" group at all.
+    const ev = firstKey("\x1b[112u");
+    expect(ev).toMatchObject({ key: "p", name: "p", ctrl: false, meta: false, shift: false });
+  });
+
+  test("Ctrl+Down (a named, multi-char key) via Kitty CSI-u gets a ctrl+ prefix", () => {
+    // keycode 57377 = down, modVal(4 ctrl) + 1 = 5. Named keys aren't eligible
+    // for the full ctrl/meta/shift prefix ordering (that's single-char/space
+    // only) — they keep the plain ctrl-only prefix.
+    const ev = firstKey("\x1b[57377;5u");
+    expect(ev).toMatchObject({ key: "ctrl+down", name: "down", ctrl: true });
   });
 });
 
