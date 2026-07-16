@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { DOMNode } from "../dom/dom.ts";
 import type { Widget } from "../dom/widget.ts";
 import { Button, DevTools, DevToolsHighlight, Input, Label, VBox } from "../react/components.tsx";
 import { reconciler } from "../react/reconciler.ts";
@@ -74,6 +75,111 @@ describe("devtools data layer", () => {
     expect(byTerm.id).toBe("go");
     expect(byTerm.region).toMatch(/\d+×\d+/);
     expect(byTerm.state).toContain("focusable");
+  });
+
+  test("widgetDetail reports focused/disabled/hidden flags, truncated text, and computed style rows", async () => {
+    const longText = "x".repeat(50);
+    const t = await mountApp(
+      <VBox id="root">
+        <Button id="disabled-btn" disabled visible={false}>
+          {longText}
+        </Button>
+        <Input id="focus-me" style={{ color: "red", background: "blue" }} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+
+    const disabledBtn = t.findById<Widget>("disabled-btn") as Widget;
+    const disabledRows = widgetDetail(disabledBtn);
+    const disabledByTerm = Object.fromEntries(disabledRows.map((r) => [r.term, r.description]));
+    expect(disabledByTerm.state).toContain("disabled");
+    expect(disabledByTerm.state).toContain("hidden");
+    expect(disabledByTerm.text).toBe(`${longText.slice(0, 39)}…`);
+
+    const focusMe = t.findById<Widget>("focus-me") as Widget;
+    t.screen.focusWidget(focusMe);
+    const focusedRows = widgetDetail(focusMe);
+    const focusedByTerm = Object.fromEntries(focusedRows.map((r) => [r.term, r.description]));
+    expect(focusedByTerm.state).toContain("focused");
+    expect(focusedByTerm.color).toBe("red");
+    expect(focusedByTerm.background).toBe("blue");
+  });
+
+  test("edge cases: null node, id-less/class-less nodes, non-Widget nodes, and bad resolveDevNode ids", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Label>plain</Label>
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+
+    // widgetDetail(null) → no rows.
+    expect(widgetDetail(null)).toEqual([]);
+
+    const root = t.findById<Widget>("root") ?? (t.screen as unknown as Widget);
+    // The VBox above has no id/classes — its label omits both, and its
+    // widgetDetail has no "id"/"classes" rows and no "state" flags (it's not
+    // focusable, focused, disabled, or hidden).
+    const label = t.findById<Widget>("nonexistent");
+    expect(label).toBeUndefined();
+
+    const tree = serializeDevTree(root);
+    expect(tree.label).not.toContain("#");
+    const boxNode = (() => {
+      let found: Widget | undefined;
+      t.screen.walk((n) => {
+        if ((n as Widget).tagName === "box") found = n as Widget;
+      });
+      return found;
+    })();
+    expect(boxNode).toBeTruthy();
+    const rows = widgetDetail(boxNode ?? null);
+    const byTerm = Object.fromEntries(rows.map((r) => [r.term, r.description]));
+    expect(byTerm.id).toBeUndefined();
+    expect(byTerm.classes).toBeUndefined();
+    expect(byTerm.state).toBeUndefined();
+
+    // resolveDevNode with an out-of-range / non-numeric path segment → null.
+    expect(resolveDevNode(root, "0/not-a-number")).toBeNull();
+    expect(resolveDevNode(root, "0/999")).toBeNull();
+
+    // widgetDetail on a plain (non-Widget) DOMNode: no region/measured/state
+    // rows, and an empty own-text run (a text child whose `.text` is falsy)
+    // contributes nothing.
+    const plain = new DOMNode("group");
+    const emptyText = new DOMNode("text");
+    (emptyText as unknown as { text: string }).text = "";
+    plain.children.push(emptyText);
+    const plainRows = widgetDetail(plain);
+    const plainByTerm = Object.fromEntries(plainRows.map((r) => [r.term, r.description]));
+    expect(plainByTerm.tag).toBe("group");
+    expect(plainByTerm.text).toBeUndefined();
+    expect(plainByTerm.region).toBeUndefined();
+
+    // A node with no tagName at all falls back to "?".
+    const untagged = new DOMNode();
+    expect(widgetDetail(untagged)[0]).toEqual({ term: "tag", description: "?" });
+  });
+
+  test("widgetDetail and the label report a widget's classes", async () => {
+    const t = await mountApp(
+      <VBox id="root">
+        <Button id="go" className="primary big">
+          Go
+        </Button>
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("root") as Widget;
+    const go = t.findById<Widget>("go") as Widget;
+    const tree = serializeDevTree(root);
+    expect(tree.children[0].label).toContain(".primary.big");
+    const rows = widgetDetail(go);
+    const byTerm = Object.fromEntries(rows.map((r) => [r.term, r.description]));
+    expect(byTerm.classes).toBe("primary big");
   });
 });
 
