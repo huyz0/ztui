@@ -753,4 +753,142 @@ describe("CSSResolver additional branch coverage", () => {
       themeManager.setTheme("default-dark");
     }
   });
+
+  test("number/function/operator/property/tag syntax names fall through to their semantic base when the theme omits them directly", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.register({
+      name: "no-syntax-test-theme",
+      colors: {
+        primary: "#4daafc",
+        secondary: "#56b6c2",
+        accent: "#c586c0",
+        foreground: "#d6d6d6",
+        background: "#1a1a1a",
+        surface: "#242424",
+        panel: "#2d2d2d",
+        // number/function/operator/property/tag deliberately omitted so
+        // lookupVariable falls through to accent/secondary/foreground/primary.
+      } as never,
+    });
+    themeManager.setTheme("no-syntax-test-theme");
+    try {
+      const resolver = new CSSResolver([]);
+      const w = new Widget("code");
+      for (const name of ["number", "function", "operator", "property", "tag"]) {
+        w.style.color = `$${name}`;
+        const c = resolver.resolveStyles(w, false).color;
+        expect(typeof c === "string" && c.length > 0).toBe(true);
+      }
+    } finally {
+      themeManager.setTheme("default-dark");
+    }
+  });
+
+  test("diff-added/diff-removed/diff-header resolve directly from theme success/error/primary when defined", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    const w = new Widget("code");
+    w.style.color = "$diff-added";
+    expect(resolver.resolveStyles(w, false).color).toBe("#4ec07a");
+    w.style.color = "$diff-removed";
+    expect(resolver.resolveStyles(w, false).color).toBe("#e06c75");
+    w.style.color = "$diff-header";
+    expect(resolver.resolveStyles(w, false).color).toBe("#4daafc");
+  });
+
+  test("calculateSpecificity handles empty selector, tag-less remainder, and id/class combos", () => {
+    const resolver = new CSSResolver([]);
+    const accessor = resolver as unknown as {
+      calculateSpecificity: (base: string, pseudos: string[]) => number;
+    };
+    expect(accessor.calculateSpecificity("", [])).toBe(0);
+    // Starts with neither '#' nor '.' and has no leading tag name to match.
+    expect(accessor.calculateSpecificity("*", [])).toBe(0);
+    expect(accessor.calculateSpecificity("#my-id", [])).toBe(100);
+    expect(accessor.calculateSpecificity(".my-class", [])).toBe(10);
+    expect(accessor.calculateSpecificity("div#my-id.my-class", ["hover"])).toBe(121);
+  });
+
+  test("pseudoMatches fails closed for an unsupported pseudo-class", () => {
+    const resolver = new CSSResolver([]);
+    const accessor = resolver as unknown as {
+      pseudoMatches: (pseudo: string | undefined, w: Widget, isHovered: boolean) => boolean;
+    };
+    const w = new Widget("div");
+    expect(accessor.pseudoMatches("visited", w, false)).toBe(false);
+  });
+
+  test("resolveStyles tolerates a widget with no defaultStyle and skips undefined default entries", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    (w as unknown as { defaultStyle: unknown }).defaultStyle = undefined;
+    expect(() => resolver.resolveStyles(w, false)).not.toThrow();
+
+    const w2 = new Widget("div");
+    w2.defaultStyle.color = undefined;
+    const s = resolver.resolveStyles(w2, false);
+    expect(s.color).toBeUndefined();
+  });
+
+  test("coerceValue falls back to 0 for margin/padding shorthand with an unsupported value count", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    w.style.margin = "1 2 3 4 5" as never;
+    expect(resolver.resolveStyles(w, false).margin).toBe(0);
+  });
+
+  test("diff-added/diff-header/diff-added-bg fall back to hardcoded colors on a light theme missing success/primary", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.register({
+      name: "light-no-semantic-test-theme",
+      colors: {
+        background: "#ffffff",
+        foreground: "#111111",
+        secondary: "#56b6c2",
+        accent: "#c586c0",
+        surface: "#f5f5f5",
+        panel: "#eeeeee",
+        // primary/success/error deliberately omitted.
+      } as never,
+    });
+    themeManager.setTheme("light-no-semantic-test-theme");
+    try {
+      const resolver = new CSSResolver([]);
+      const w = new Widget("code");
+
+      w.style.color = "$diff-added";
+      expect(resolver.resolveStyles(w, false).color).toBe("green");
+
+      w.style.color = "$diff-removed";
+      expect(resolver.resolveStyles(w, false).color).toBe("red");
+
+      w.style.color = "$diff-header";
+      expect(resolver.resolveStyles(w, false).color).toBe("cyan");
+
+      w.style.color = "$diff-added-bg";
+      expect(resolver.resolveStyles(w, false).color?.startsWith("#")).toBe(true);
+
+      w.style.color = "$diff-removed-bg";
+      expect(resolver.resolveStyles(w, false).color?.startsWith("#")).toBe(true);
+    } finally {
+      themeManager.setTheme("default-dark");
+    }
+  });
+
+  test("resolveStyles resolves a matched stylesheet rule whose property value isn't a string", () => {
+    const resolver = new CSSResolver([]);
+    resolver.addRules([
+      { selector: "div", properties: { zIndex: 5 } as unknown as Record<string, string> },
+    ]);
+    const w = new Widget("div");
+    expect(resolver.resolveStyles(w, false).zIndex).toBe(5);
+  });
+
+  test("resolveStyles tolerates a widget with no inline style object", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    (w as unknown as { style: unknown }).style = undefined;
+    expect(() => resolver.resolveStyles(w, false)).not.toThrow();
+  });
 });
