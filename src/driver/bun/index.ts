@@ -8,6 +8,7 @@ import {
   getBaselineCapabilities,
   parseProbeResponse,
 } from "./capabilities.ts";
+import { ClipboardQueue } from "./clipboard-queue.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
 import { type InputDiagnostics, type MouseParseState, parseInput } from "./input.ts";
 
@@ -17,51 +18,10 @@ export class BunDriver extends Driver {
   }
   private graphicsManager = new TerminalGraphicsManager();
   public override readonly capabilities!: TerminalCapabilities;
-  /**
-   * Mirror of the last value we wrote to the clipboard. Most terminals support
-   * OSC 52 *write* but refuse OSC 52 *read* queries (disabled by default for
-   * security), so a `get()` query frequently times out. Falling back to this
-   * local copy keeps in-app copy→paste (and the demo's "read clipboard") working
-   * even when the terminal won't answer a read.
-   */
-  private lastClipboard = "";
-  /**
-   * The in-flight `get()` query, if any. Callers that call `get()` again while
-   * one is already outstanding (e.g. rapid key-repeat-triggered paste checks)
-   * share this promise instead of each queuing their own resolver and OSC 52
-   * write/500ms timer — the terminal gets one query per round-trip, not N.
-   */
-  private pendingClipboardGet: Promise<string> | null = null;
+  private clipboardQueue = new ClipboardQueue();
   public override readonly clipboard: Clipboard = {
-    get: (): Promise<string> => {
-      if (this.pendingClipboardGet) return this.pendingClipboardGet;
-      const promise = new Promise<string>((resolve) => {
-        // Wrap the resolver so a blocked terminal — which commonly answers an
-        // OSC 52 read with an *empty* payload rather than staying silent — falls
-        // back to our local mirror instead of returning "". A genuine non-empty
-        // external clipboard is still honoured.
-        const resolver = (osc: string) => resolve(osc || this.lastClipboard);
-        this.pendingClipboardResolvers.push(resolver);
-        this.write("\x1b]52;c;?\x07");
-        setTimeout(() => {
-          const idx = this.pendingClipboardResolvers.indexOf(resolver);
-          if (idx !== -1) {
-            this.pendingClipboardResolvers.splice(idx, 1);
-            // Terminal never answered — use our local mirror.
-            resolve(this.lastClipboard);
-          }
-        }, 500);
-      });
-      this.pendingClipboardGet = promise;
-      promise.finally(() => {
-        if (this.pendingClipboardGet === promise) this.pendingClipboardGet = null;
-      });
-      return promise;
-    },
-    set: (text: string): void => {
-      this.lastClipboard = text;
-      this.write(`\x1b]52;c;${Buffer.from(text).toString("base64")}\x07`);
-    },
+    get: (): Promise<string> => this.clipboardQueue.get((data) => this.write(data)),
+    set: (text: string): void => this.clipboardQueue.set(text, (data) => this.write(data)),
   };
 
   private isRunning = false;
@@ -83,7 +43,6 @@ export class BunDriver extends Driver {
     moveEventsFlushed: 0,
     moveEventsDroppedInChunk: 0,
   };
-  private pendingClipboardResolvers: ((text: string) => void)[] = [];
   /** Accumulates a bracketed-paste payload that spans multiple stdin chunks. */
   private pasteBuffer: string | null = null;
   private hoverEnabled = false;
@@ -300,12 +259,7 @@ export class BunDriver extends Driver {
       ? data.match(/\x1b\]52;[cp]?;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/)
       : null;
     if (clipboardMatch) {
-      const base64 = clipboardMatch[1];
-      const text = Buffer.from(base64, "base64").toString("utf8");
-      const resolve = this.pendingClipboardResolvers.shift();
-      if (resolve) {
-        resolve(text);
-      }
+      this.clipboardQueue.resolveReply(clipboardMatch[1]);
       data = data.replace(clipboardMatch[0], "");
     }
 
