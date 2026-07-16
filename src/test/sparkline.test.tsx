@@ -65,6 +65,14 @@ describe("Sparkline", () => {
     expect(w.data).toHaveLength(50); // full series retained on the widget
   });
 
+  test("measure() with no explicit height falls back to one intrinsic row", async () => {
+    const { SparklineWidget: SparklineWidgetCtor } = await import("../widgets/data/sparkline.ts");
+    const w = new SparklineWidgetCtor();
+    w.data = [1, 2, 3];
+    w.measure(80, 24);
+    expect(w.measuredHeight).toBe(1);
+  });
+
   test("an empty series renders nothing and doesn't throw", async () => {
     const t = await mountApp(
       <VBox style={{ width: 20 }}>
