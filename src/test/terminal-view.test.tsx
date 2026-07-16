@@ -1,4 +1,8 @@
 import { describe, expect, test } from "vitest";
+import { App } from "../core/app.ts";
+import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
+import { Size } from "../geometry/size.ts";
 import { TerminalView, VBox } from "../react/components.tsx";
 import { reconciler } from "../react/reconciler.ts";
 import type { TerminalViewWidget } from "../widgets/data/terminal-view.ts";
@@ -175,5 +179,178 @@ describe("TerminalView", () => {
     await t.settle();
     // No wrapping → a single logical line in the grid.
     expect(w.selectableLines()).toHaveLength(1);
+  });
+
+  test("write()/clear() fall back to App.instance when the widget isn't attached", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 6 }}>
+        <TerminalView id="tv" content="" />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    // A freestanding widget (never mounted) has `this.app === null`, so
+    // `(this.app ?? App.instance)?.queueRender()` must use the App.instance
+    // singleton instead of throwing.
+    const { TerminalViewWidget } = await import("../widgets/data/terminal-view.ts");
+    const orphan = new TerminalViewWidget();
+    expect(() => orphan.write("hi")).not.toThrow();
+    expect(() => {
+      orphan.content = "reset then";
+    }).not.toThrow();
+    expect(() => orphan.clear()).not.toThrow();
+    expect(App.instance).not.toBeNull();
+
+    // Same fallback inside handleScroll/handleKey/scrollToTrackY: each ends in
+    // `(this.app ?? App.instance)?.queueRender()`, reached only when the
+    // scroll/key actually produces a new position (`next !== null`).
+    orphan.write(Array.from({ length: 10 }, (_, i) => `l${i}`).join("\n"));
+    expect(() =>
+      orphan.handleScroll({ type: "scroll_down", handled: false } as never),
+    ).not.toThrow();
+    expect(() => orphan.handleKey({ name: "down", handled: false } as never)).not.toThrow();
+    (orphan as unknown as { lastVisibleRows: number }).lastVisibleRows = 3;
+    expect(() =>
+      (orphan as unknown as { scrollToTrackY: (y: number) => void }).scrollToTrackY(2),
+    ).not.toThrow();
+
+    // And in the render loop's per-line selection.addRun(), reached when the
+    // widget is selectable and has a non-empty content rect.
+    orphan.getContentRect = () => new Region(new Offset(0, 0), new Size(10, 5));
+    expect(() => orphan.render(t.buffer)).not.toThrow();
+  });
+
+  test("handleScroll/handleKey/handleMouse respect already-handled events and unrecognized input", async () => {
+    const lines = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 6 }}>
+        <TerminalView id="tv" content={lines} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+    const before = t.text();
+
+    const scrollEv = { type: "scroll_down", handled: true } as never;
+    w.handleScroll(scrollEv);
+    expect((scrollEv as any).handled).toBe(true);
+
+    const keyEv = { name: "down", handled: true } as never;
+    w.handleKey(keyEv);
+    expect((keyEv as any).handled).toBe(true);
+
+    const mouseEv = { type: "press", button: "left", handled: true } as never;
+    w.handleMouse(mouseEv);
+    expect((mouseEv as any).handled).toBe(true);
+
+    // An unrecognized scroll type is not a wheel scroll: no-op.
+    w.handleScroll({ type: "wheel_horizontal", handled: false } as never);
+    // A key with no name falls back to `ev.key`; an unrecognized one no-ops.
+    w.handleKey({ key: "z", handled: false } as never);
+    // A non-press / non-left-button mouse event skips the scrollbar-drag logic.
+    w.handleMouse({ type: "move", x: 0, y: 0, handled: false } as never);
+    await t.settle();
+    expect(t.text()).toBe(before);
+  });
+
+  test("clicking inside the content (not the scrollbar column) falls through to text selection", async () => {
+    const lines = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 6 }}>
+        <TerminalView id="tv" content={lines} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+    const c = w.getContentRect();
+    expect(() =>
+      w.handleMouse({
+        type: "press",
+        button: "left",
+        x: c.x,
+        y: c.y,
+        handled: false,
+      } as never),
+    ).not.toThrow();
+  });
+
+  test("dragging the scrollbar thumb on a single-row track is a no-op (trackH <= 1)", async () => {
+    const lines = Array.from({ length: 40 }, (_, i) => `row ${i}`).join("\n");
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 1 }}>
+        <TerminalView id="tv" content={lines} style={{ height: 1 }} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+    const c = w.getContentRect();
+    w.handleMouse({
+      type: "press",
+      button: "left",
+      x: c.right - 1,
+      y: c.y,
+      handled: false,
+    } as never);
+    await t.settle();
+    // trackYToScrollTop returned null (trackH === 1): stayed tailed at the bottom.
+    expect(t.text()).toContain("row 39");
+  });
+
+  test("render is a no-op when invisible or when the content area is empty", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 6 }}>
+        <TerminalView id="tv" content={"hello"} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+
+    w.visible = false;
+    expect(() => w.render(t.buffer)).not.toThrow();
+
+    w.visible = true;
+    const origGetContentRect = w.getContentRect.bind(w);
+    w.getContentRect = () => ({ ...origGetContentRect(), width: 0, height: 0 }) as never;
+    expect(() => w.render(t.buffer)).not.toThrow();
+  });
+
+  test("long unwrapped lines clip at the viewport edge and background-colored cells keep their color", async () => {
+    // Alternating colors per character forces cellsToSegments to emit many
+    // single-char segments (same-style runs merge otherwise), so the render
+    // loop's `x >= content.x + bodyW` break actually gets exercised mid-line
+    // instead of only ever seeing one giant segment.
+    const rainbow = Array.from({ length: 60 }, (_, i) => `\x1b[${31 + (i % 6)}m${i % 10}`).join("");
+    const t = await mountApp(
+      <VBox style={{ width: 20, height: 4 }}>
+        <TerminalView id="tv" content={`\x1b[42mBG\x1b[0m${rainbow}`} wrap={false} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+    // Force a narrow content rect (the test harness floors the screen at
+    // 80x24, so styled widths alone don't shrink it) so the line's ~60
+    // one-char segments overrun it and render() must break out of the loop.
+    w.getContentRect = () => new Region(new Offset(0, 0), new Size(10, 4));
+    expect(() => w.render(t.buffer)).not.toThrow();
+  });
+
+  test("selectable=false skips registering the line for text selection", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 6 }}>
+        <TerminalView id="tv" content={"one line of output"} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+    w.selectable = false;
+    await t.settle();
+    expect(() => w.render(t.buffer)).not.toThrow();
+    expect(t.text()).toContain("one line of output");
   });
 });
