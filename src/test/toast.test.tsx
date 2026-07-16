@@ -193,6 +193,32 @@ describe("ToastHost", () => {
     expect(t.text()).toContain("+4 more");
   });
 
+  test("bottom-left position pins the stack and puts the footer above the toasts", async () => {
+    const t = await mountApp(<ToastHost position="bottom-left" />);
+    toast.info("one", { duration: 0 });
+    toast.warn("two", { duration: 0 });
+    await t.settle();
+    expect(t.text()).toContain("clear all");
+
+    const stack = t.screen.layers[0].root.children[0] as Widget;
+    // For a bottom position, the footer is the *first* child (not reversed,
+    // not appended last like the top-position test above).
+    const footer = stack.children[0] as Widget;
+    const link = footer.children[footer.children.length - 1] as Widget;
+    const r = link.region;
+    t.driver.simulateMouse(r.right - 1, r.y, "press", "left");
+    await t.settle();
+
+    expect(t.screen.layers.length).toBe(0);
+  });
+
+  test("a toast raised without a title renders just the message row", async () => {
+    const t = await mountApp(<ToastHost />);
+    toast.info("no title here", { duration: 0 });
+    await t.settle();
+    expect(t.text()).toContain("no title here");
+  });
+
   test("max={0} still shows at least one toast instead of hiding everything", async () => {
     // Regression: toasts.slice(toasts.length - max) with max=0 clamps its
     // start to toasts.length, yielding zero visible toasts while `overflow`
