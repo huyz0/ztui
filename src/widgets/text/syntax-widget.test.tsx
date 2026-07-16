@@ -1,5 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { Syntax, VBox } from "../../react.ts";
+import { Syntax as SyntaxEngine } from "../../render/rich/syntax.ts";
 import "../../syntax.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { SyntaxWidget } from "./syntax.ts";
@@ -69,5 +70,24 @@ describe("SyntaxWidget", () => {
 
     // Line 3: diff.
     expect(buffer.cells[3][0].char).toBe("-");
+  });
+
+  test("falls back to plain lines if highlighting itself throws", async () => {
+    const spy = vi.spyOn(SyntaxEngine, "renderToLines").mockImplementation(() => {
+      throw new Error("boom");
+    });
+    try {
+      const t = await mountApp(
+        <VBox>
+          <Syntax id="s" language="ts">
+            {"const x = 1;"}
+          </Syntax>
+        </VBox>,
+      );
+      await t.settle();
+      expect(t.buffer.cells[0][0].char).toBe("c");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
