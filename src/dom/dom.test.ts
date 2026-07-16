@@ -603,6 +603,191 @@ describe("DOM and layout resolution", () => {
     expect(child.getClientRect().height).toBe(5);
   });
 
+  test("BoxLayout cross-axis size falls back to remaining rect for fr/percent cross dimensions", () => {
+    // Vertical layout: width is the cross axis. A child whose width is "1fr"
+    // isn't a concrete number, so childWidth must fall back to parentRect.width
+    // rather than trying to add margins to an { fr } object.
+    const parentV = new Widget("view");
+    parentV.region = new Region(Offset.ORIGIN, new Size(20, 20));
+    const vChild = new Widget("button");
+    vChild.style.width = "1fr";
+    parentV.appendChild(vChild);
+    new BoxLayout("vertical").resolve(parentV);
+    expect(vChild.region.width).toBe(20);
+
+    // Horizontal layout: height is the cross axis, same fallback for "1fr".
+    const parentH = new Widget("view");
+    parentH.region = new Region(Offset.ORIGIN, new Size(20, 20));
+    const hChild = new Widget("button");
+    hChild.style.height = "1fr";
+    parentH.appendChild(hChild);
+    new BoxLayout("horizontal").resolve(parentH);
+    expect(hChild.region.height).toBe(20);
+  });
+
+  test("BoxLayout gives a zero-weight fr child only its margin when no fr budget remains", () => {
+    // A lone "0fr" child means totalFr is 0, so remainingFrCount is never > 0
+    // when its turn comes — it must get just its margin, not a distributed share.
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 20));
+    const child = new Widget("button");
+    child.style.width = "0fr";
+    parent.appendChild(child);
+    new BoxLayout("horizontal").resolve(parent);
+    expect(child.region.width).toBe(0);
+  });
+
+  test("BoxLayout breakIntoLines: fr/flexGrow children never force a wrap on their own", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    parent.style.flexWrap = "wrap";
+
+    // An fr child has base size 0 for wrap purposes; a fixed-size child forces
+    // a new line once the running total would overflow.
+    const frChild = new Widget("button");
+    frChild.style.width = "1fr";
+    const autoChild = new Widget("button"); // no width set -> falls back to measuredWidth
+    autoChild.measuredWidth = 4;
+    const fixedChild = new Widget("button");
+    fixedChild.style.width = 8; // combined with the others, overflows a 10-wide line
+
+    parent.appendChild(frChild);
+    parent.appendChild(autoChild);
+    parent.appendChild(fixedChild);
+
+    new BoxLayout("horizontal").resolve(parent);
+
+    // fixedChild must have wrapped onto its own line (y advanced), while
+    // frChild/autoChild share the first line.
+    expect(frChild.region.y).toBe(0);
+    expect(autoChild.region.y).toBe(0);
+    expect(fixedChild.region.y).toBeGreaterThan(0);
+  });
+
+  test("BoxLayout shrink: vertical direction respects minHeight as the shrink floor", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+
+    const a = new Widget("button");
+    a.style.height = 8;
+    a.style.flexShrink = 1;
+    a.style.minHeight = 3;
+    const b = new Widget("button");
+    b.style.height = 8;
+    b.style.flexShrink = 1;
+    b.style.minHeight = 3;
+
+    parent.appendChild(a);
+    parent.appendChild(b);
+
+    new BoxLayout("vertical").resolve(parent);
+
+    expect(a.region.height + b.region.height).toBeLessThanOrEqual(10);
+    expect(a.region.height).toBeGreaterThanOrEqual(3);
+    expect(b.region.height).toBeGreaterThanOrEqual(3);
+  });
+
+  test("BoxLayout cross-axis: horizontal layout's auto cross-height falls back to measuredHeight", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 20));
+    const child = new Widget("button");
+    child.style.height = "auto";
+    child.measuredHeight = 6;
+    parent.appendChild(child);
+    new BoxLayout("horizontal").resolve(parent);
+    expect(child.region.height).toBe(6);
+  });
+
+  test("BoxLayout breakIntoLines: isVert true uses measuredHeight for an auto-sized wrap child", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    parent.style.flexWrap = "wrap";
+
+    const autoChild = new Widget("button"); // no height set -> measuredHeight
+    autoChild.measuredHeight = 4;
+    const fixedChild = new Widget("button");
+    fixedChild.style.height = 8; // combined, overflows a 10-tall column
+
+    parent.appendChild(autoChild);
+    parent.appendChild(fixedChild);
+
+    new BoxLayout("vertical").resolve(parent);
+
+    expect(autoChild.region.x).toBe(0);
+    expect(fixedChild.region.x).toBeGreaterThan(0);
+  });
+
+  test("BoxLayout shrink: minWidth/minHeight default to 0 when unset", () => {
+    const parentH = new Widget("view");
+    parentH.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const hChild = new Widget("button");
+    hChild.style.width = 20;
+    hChild.style.flexShrink = 1; // no minWidth set -> defaults to 0
+    parentH.appendChild(hChild);
+    new BoxLayout("horizontal").resolve(parentH);
+    expect(hChild.region.width).toBeLessThanOrEqual(5);
+
+    const parentV = new Widget("view");
+    parentV.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const vChild = new Widget("button");
+    vChild.style.height = 20;
+    vChild.style.flexShrink = 1; // no minHeight set -> defaults to 0
+    parentV.appendChild(vChild);
+    new BoxLayout("vertical").resolve(parentV);
+    expect(vChild.region.height).toBeLessThanOrEqual(5);
+  });
+
+  test("BoxLayout shrink: a shrinkable child with zero room to shrink applies nothing and breaks the deficit loop", () => {
+    // Regression coverage: minWidth equal to the child's own width means
+    // `current - min` is 0, so shrinkAmount computes to 0 even though the
+    // child is nominally shrinkable (flexShrink > 0). No progress is made in
+    // the pass, so the loop must bail out via `if (!appliedAny) break`
+    // instead of spinning.
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("button");
+    child.style.width = 10;
+    child.style.flexShrink = 1;
+    child.style.minWidth = 10; // zero room to shrink
+    parent.appendChild(child);
+    new BoxLayout("horizontal").resolve(parent);
+    // Nothing could be shrunk, so the child keeps its full requested width
+    // even though it overflows the 5-wide container.
+    expect(child.region.width).toBe(10);
+  });
+
+  test("BoxLayout shrink: a later child hitting its floor triggers a second deficit pass that skips it", () => {
+    // Regression-style coverage: when the LAST-processed shrinkable child is
+    // the one that hits its floor, the earlier children already consumed
+    // shares computed against the stale (pre-zeroing) totalWeight, leaving
+    // deficit > 0 after one full pass. That forces a second while-loop pass
+    // where the floored child (now weight 0) must be skipped via `continue`.
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+
+    const a = new Widget("button");
+    a.style.width = 10;
+    a.style.flexShrink = 10;
+    a.style.minWidth = 0;
+    const b = new Widget("button");
+    b.style.width = 10;
+    b.style.flexShrink = 10;
+    b.style.minWidth = 0;
+    const c = new Widget("button");
+    c.style.width = 10;
+    c.style.flexShrink = 1000;
+    c.style.minWidth = 9;
+
+    parent.appendChild(a);
+    parent.appendChild(b);
+    parent.appendChild(c);
+
+    new BoxLayout("horizontal").resolve(parent);
+
+    expect(c.region.width).toBe(9); // floored at its minWidth
+    expect(a.region.width + b.region.width + c.region.width).toBeLessThanOrEqual(10);
+  });
+
   test("DockLayout dimension fallback tests", () => {
     const parent = new Widget("view");
     parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
