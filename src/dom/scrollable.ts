@@ -5,7 +5,12 @@ import { Size } from "../geometry/size.ts";
 import type { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
 import { fadeScrollEdges } from "./scroll-fade.ts";
-import { scrollbarTrackStyle } from "./scrollbar.ts";
+import {
+  horizontalScrollbarTrack,
+  scrollbarThumb,
+  scrollbarTrackStyle,
+  verticalScrollbarTrack,
+} from "./scrollbar.ts";
 import { Widget } from "./widget.ts";
 
 /** @internal Mixin base constructor type. */
@@ -337,93 +342,104 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       const content = this.getContentRect();
       const viewport = this.getViewportRect();
       const contentSize = this.getContentSize();
-      const hasBorder = this.computedStyle.border && this.computedStyle.border !== "none";
+      const hasBorder = !!this.computedStyle.border && this.computedStyle.border !== "none";
 
       const { showY, showX } = this.scrollbarVisibility();
 
-      const vScrollbarX = hasBorder ? client.right - 1 : viewport.right - 1;
-      const startY = hasBorder ? client.y + 1 : content.y;
-      const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
-      const trackHeight = endY - startY + 1;
-
-      const hScrollbarY = hasBorder ? client.bottom - 1 : viewport.bottom - 1;
-      const startX = hasBorder ? client.x + 1 : content.x;
-      const endX = hasBorder ? client.right - 2 : content.right - 1;
-      const trackWidth = endX - startX + 1;
+      const vTrack = verticalScrollbarTrack(client, content, viewport, hasBorder);
+      const hTrack = horizontalScrollbarTrack(client, content, viewport, hasBorder);
 
       if (ev.type === "press" && ev.button === "left") {
-        if (showY && ev.x === vScrollbarX && ev.y >= startY && ev.y <= endY && trackHeight > 0) {
-          const thumbHeight = Math.max(
-            1,
-            Math.round((content.height / Math.max(1, contentSize.height)) * trackHeight),
+        if (
+          showY &&
+          ev.x === vTrack.line &&
+          ev.y >= vTrack.start &&
+          ev.y <= vTrack.end &&
+          vTrack.length > 0
+        ) {
+          const thumb = scrollbarThumb(
+            vTrack,
+            content.height,
+            contentSize.height,
+            this.scrollOffset.y,
           );
-          const maxScrollY = contentSize.height - content.height;
-          const scrollRatio = maxScrollY > 0 ? this.scrollOffset.y / maxScrollY : 0;
-          const thumbStart = startY + Math.round(scrollRatio * (trackHeight - thumbHeight));
 
-          if (ev.y >= thumbStart && ev.y < thumbStart + thumbHeight) {
+          if (ev.y >= thumb.start && ev.y < thumb.start + thumb.size) {
             this.isDraggingY = true;
-            this.dragStartOffset = ev.y - thumbStart;
+            this.dragStartOffset = ev.y - thumb.start;
           } else {
-            const clickPos = ev.y - startY - Math.floor(thumbHeight / 2);
-            const ratio = trackHeight > thumbHeight ? clickPos / (trackHeight - thumbHeight) : 0;
-            const targetScrollY = Math.max(0, Math.min(maxScrollY, Math.round(ratio * maxScrollY)));
+            const clickPos = ev.y - vTrack.start - Math.floor(thumb.size / 2);
+            const ratio = vTrack.length > thumb.size ? clickPos / (vTrack.length - thumb.size) : 0;
+            const targetScrollY = Math.max(
+              0,
+              Math.min(thumb.maxScroll, Math.round(ratio * thumb.maxScroll)),
+            );
             this.scrollOffset = new Offset(this.scrollOffset.x, targetScrollY);
             this.isDraggingY = true;
-            this.dragStartOffset = Math.floor(thumbHeight / 2);
-            if (this.followTail) this.tailPinned = targetScrollY >= maxScrollY;
+            this.dragStartOffset = Math.floor(thumb.size / 2);
+            if (this.followTail) this.tailPinned = targetScrollY >= thumb.maxScroll;
           }
           ev.handled = true;
         } else if (
           showX &&
-          ev.y === hScrollbarY &&
-          ev.x >= startX &&
-          ev.x <= endX &&
-          trackWidth > 0
+          ev.y === hTrack.line &&
+          ev.x >= hTrack.start &&
+          ev.x <= hTrack.end &&
+          hTrack.length > 0
         ) {
-          const thumbWidth = Math.max(
-            1,
-            Math.round((content.width / Math.max(1, contentSize.width)) * trackWidth),
+          const thumb = scrollbarThumb(
+            hTrack,
+            content.width,
+            contentSize.width,
+            this.scrollOffset.x,
           );
-          const maxScrollX = contentSize.width - content.width;
-          const scrollRatio = maxScrollX > 0 ? this.scrollOffset.x / maxScrollX : 0;
-          const thumbStart = startX + Math.round(scrollRatio * (trackWidth - thumbWidth));
 
-          if (ev.x >= thumbStart && ev.x < thumbStart + thumbWidth) {
+          if (ev.x >= thumb.start && ev.x < thumb.start + thumb.size) {
             this.isDraggingX = true;
-            this.dragStartOffset = ev.x - thumbStart;
+            this.dragStartOffset = ev.x - thumb.start;
           } else {
-            const clickPos = ev.x - startX - Math.floor(thumbWidth / 2);
-            const ratio = trackWidth > thumbWidth ? clickPos / (trackWidth - thumbWidth) : 0;
-            const targetScrollX = Math.max(0, Math.min(maxScrollX, Math.round(ratio * maxScrollX)));
+            const clickPos = ev.x - hTrack.start - Math.floor(thumb.size / 2);
+            const ratio = hTrack.length > thumb.size ? clickPos / (hTrack.length - thumb.size) : 0;
+            const targetScrollX = Math.max(
+              0,
+              Math.min(thumb.maxScroll, Math.round(ratio * thumb.maxScroll)),
+            );
             this.scrollOffset = new Offset(targetScrollX, this.scrollOffset.y);
             this.isDraggingX = true;
-            this.dragStartOffset = Math.floor(thumbWidth / 2);
+            this.dragStartOffset = Math.floor(thumb.size / 2);
           }
           ev.handled = true;
         }
       } else if (ev.type === "drag" && ev.button === "left") {
-        if (this.isDraggingY && trackHeight > 0) {
-          const thumbHeight = Math.max(
-            1,
-            Math.round((content.height / Math.max(1, contentSize.height)) * trackHeight),
+        if (this.isDraggingY && vTrack.length > 0) {
+          const thumb = scrollbarThumb(
+            vTrack,
+            content.height,
+            contentSize.height,
+            this.scrollOffset.y,
           );
-          const maxScrollY = contentSize.height - content.height;
-          const thumbStart = ev.y - this.dragStartOffset - startY;
-          const ratio = trackHeight > thumbHeight ? thumbStart / (trackHeight - thumbHeight) : 0;
-          const targetScrollY = Math.max(0, Math.min(maxScrollY, Math.round(ratio * maxScrollY)));
+          const thumbStart = ev.y - this.dragStartOffset - vTrack.start;
+          const ratio = vTrack.length > thumb.size ? thumbStart / (vTrack.length - thumb.size) : 0;
+          const targetScrollY = Math.max(
+            0,
+            Math.min(thumb.maxScroll, Math.round(ratio * thumb.maxScroll)),
+          );
           this.scrollOffset = new Offset(this.scrollOffset.x, targetScrollY);
-          if (this.followTail) this.tailPinned = targetScrollY >= maxScrollY;
+          if (this.followTail) this.tailPinned = targetScrollY >= thumb.maxScroll;
           ev.handled = true;
-        } else if (this.isDraggingX && trackWidth > 0) {
-          const thumbWidth = Math.max(
-            1,
-            Math.round((content.width / Math.max(1, contentSize.width)) * trackWidth),
+        } else if (this.isDraggingX && hTrack.length > 0) {
+          const thumb = scrollbarThumb(
+            hTrack,
+            content.width,
+            contentSize.width,
+            this.scrollOffset.x,
           );
-          const maxScrollX = contentSize.width - content.width;
-          const thumbStart = ev.x - this.dragStartOffset - startX;
-          const ratio = trackWidth > thumbWidth ? thumbStart / (trackWidth - thumbWidth) : 0;
-          const targetScrollX = Math.max(0, Math.min(maxScrollX, Math.round(ratio * maxScrollX)));
+          const thumbStart = ev.x - this.dragStartOffset - hTrack.start;
+          const ratio = hTrack.length > thumb.size ? thumbStart / (hTrack.length - thumb.size) : 0;
+          const targetScrollX = Math.max(
+            0,
+            Math.min(thumb.maxScroll, Math.round(ratio * thumb.maxScroll)),
+          );
           this.scrollOffset = new Offset(targetScrollX, this.scrollOffset.y);
           ev.handled = true;
         }
@@ -441,7 +457,7 @@ export function Scrollable<TBase extends Constructor<Widget>>(
       const content = this.getContentRect();
       const viewport = this.getViewportRect();
       const contentSize = this.getContentSize();
-      const hasBorder = this.computedStyle.border && this.computedStyle.border !== "none";
+      const hasBorder = !!this.computedStyle.border && this.computedStyle.border !== "none";
 
       const fg = this.computedStyle.borderColor || this.computedStyle.color || "default";
       const bg = this.computedStyle.background || "default";
@@ -455,52 +471,42 @@ export function Scrollable<TBase extends Constructor<Widget>>(
 
       // Vertical Scrollbar
       if (showY && content.height > 0) {
-        const startY = hasBorder ? client.y + 1 : content.y;
-        const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
-        const trackHeight = endY - startY + 1;
+        const vTrack = verticalScrollbarTrack(client, content, viewport, hasBorder);
 
-        if (trackHeight > 0) {
-          const thumbHeight = Math.max(
-            1,
-            Math.round((content.height / Math.max(1, contentSize.height)) * trackHeight),
+        if (vTrack.length > 0) {
+          const thumb = scrollbarThumb(
+            vTrack,
+            content.height,
+            contentSize.height,
+            this.scrollOffset.y,
           );
-          const maxScrollY = contentSize.height - content.height;
-          const scrollRatio = maxScrollY > 0 ? this.scrollOffset.y / maxScrollY : 0;
-          const thumbStart = startY + Math.round(scrollRatio * (trackHeight - thumbHeight));
 
-          const x = hasBorder ? client.right - 1 : viewport.right - 1;
-
-          for (let y = startY; y <= endY; y++) {
-            const isThumb = y >= thumbStart && y < thumbStart + thumbHeight;
-            if (isThumb) buffer.setCell(x, y, "█", style);
-            else if (hasBorder) buffer.setCell(x, y, "│", style);
-            else buffer.setCell(x, y, " ", track);
+          for (let y = vTrack.start; y <= vTrack.end; y++) {
+            const isThumb = y >= thumb.start && y < thumb.start + thumb.size;
+            if (isThumb) buffer.setCell(vTrack.line, y, "█", style);
+            else if (hasBorder) buffer.setCell(vTrack.line, y, "│", style);
+            else buffer.setCell(vTrack.line, y, " ", track);
           }
         }
       }
 
       // Horizontal Scrollbar
       if (showX && content.width > 0) {
-        const startX = hasBorder ? client.x + 1 : content.x;
-        const endX = hasBorder ? client.right - 2 : content.right - 1;
-        const trackWidth = endX - startX + 1;
+        const hTrack = horizontalScrollbarTrack(client, content, viewport, hasBorder);
 
-        if (trackWidth > 0) {
-          const thumbWidth = Math.max(
-            1,
-            Math.round((content.width / Math.max(1, contentSize.width)) * trackWidth),
+        if (hTrack.length > 0) {
+          const thumb = scrollbarThumb(
+            hTrack,
+            content.width,
+            contentSize.width,
+            this.scrollOffset.x,
           );
-          const maxScrollX = contentSize.width - content.width;
-          const scrollRatio = maxScrollX > 0 ? this.scrollOffset.x / maxScrollX : 0;
-          const thumbStart = startX + Math.round(scrollRatio * (trackWidth - thumbWidth));
 
-          const y = hasBorder ? client.bottom - 1 : viewport.bottom - 1;
-
-          for (let x = startX; x <= endX; x++) {
-            const isThumb = x >= thumbStart && x < thumbStart + thumbWidth;
-            if (isThumb) buffer.setCell(x, y, "▀", style);
-            else if (hasBorder) buffer.setCell(x, y, "─", style);
-            else buffer.setCell(x, y, " ", track);
+          for (let x = hTrack.start; x <= hTrack.end; x++) {
+            const isThumb = x >= thumb.start && x < thumb.start + thumb.size;
+            if (isThumb) buffer.setCell(x, hTrack.line, "▀", style);
+            else if (hasBorder) buffer.setCell(x, hTrack.line, "─", style);
+            else buffer.setCell(x, hTrack.line, " ", track);
           }
         }
       }

@@ -2,6 +2,7 @@ import type { DOMNode } from "../dom/dom.ts";
 import { OverlayRootWidget } from "../dom/overlay.ts";
 import { Screen } from "../dom/screen.ts";
 import type { ScrollableMembers } from "../dom/scrollable.ts";
+import { horizontalScrollbarTrack, verticalScrollbarTrack } from "../dom/scrollbar.ts";
 import { Widget } from "../dom/widget.ts";
 
 /** A node's paint z-index — only {@link Widget}s carry one; everything else is 0. */
@@ -136,7 +137,7 @@ export function isPointOnScrollbar(widget: Widget, x: number, y: number): boolea
   // reserves), so hit-test against that, not the gutter-shrunk content rect.
   const viewport = parent.getViewportRect ? parent.getViewportRect() : content;
   const contentSize = parent.getContentSize();
-  const hasBorder = parent.computedStyle.border && parent.computedStyle.border !== "none";
+  const hasBorder = !!parent.computedStyle.border && parent.computedStyle.border !== "none";
 
   const overflowY = parent.computedStyle.overflowY || "auto";
   const showY =
@@ -149,19 +150,15 @@ export function isPointOnScrollbar(widget: Widget, x: number, y: number): boolea
   // the content rect has collapsed to zero height/width, so it must not
   // swallow clicks either — otherwise an invisible bar still intercepts input.
   if (showY && content.height > 0) {
-    const vScrollbarX = hasBorder ? client.right - 1 : viewport.right - 1;
-    const startY = hasBorder ? client.y + 1 : content.y;
-    const endY = hasBorder ? client.bottom - 2 : content.bottom - 1;
-    if (x === vScrollbarX && y >= startY && y <= endY) {
+    const track = verticalScrollbarTrack(client, content, viewport, hasBorder);
+    if (x === track.line && y >= track.start && y <= track.end) {
       return true;
     }
   }
 
   if (showX && content.width > 0) {
-    const hScrollbarY = hasBorder ? client.bottom - 1 : viewport.bottom - 1;
-    const startX = hasBorder ? client.x + 1 : content.x;
-    const endX = hasBorder ? client.right - 2 : content.right - 1;
-    if (y === hScrollbarY && x >= startX && x <= endX) {
+    const track = horizontalScrollbarTrack(client, content, viewport, hasBorder);
+    if (y === track.line && x >= track.start && x <= track.end) {
       return true;
     }
   }
