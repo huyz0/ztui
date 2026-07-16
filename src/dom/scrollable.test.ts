@@ -8,6 +8,7 @@ import { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
 import { flush, waitFor } from "../test/harness.tsx";
 import { Scrollable } from "./scrollable.ts";
+import { TextNode } from "./text-node.ts";
 import { Widget } from "./widget.ts";
 
 class TestBox extends Widget {
@@ -568,5 +569,388 @@ describe("Scrollable Mixin", () => {
     scrollBox.render(new ScreenBuffer(5, 5));
     expect(scrollBox.scrollOffset.y).toBe(afterDrag); // no snap-back
     expect(scrollBox.scrollOffset.y).toBeLessThan(bottom);
+  });
+
+  test("drawScrollFades is a no-op when overflowY doesn't scroll", () => {
+    // Regression coverage: the early `if (!this.scrollableY) return;` guard —
+    // with overflowY: hidden there's nothing to fade even if content overflows.
+    const scrollBox = new ScrollableBox();
+    scrollBox.computedStyle.overflowY = "hidden";
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(5, 20));
+    child.render = (buf: ScreenBuffer) => {
+      for (let y = 0; y < 5; y++)
+        for (let x = 0; x < 5; x++) buf.setCell(x, y, "X", new Style({ color: "#ffffff" }));
+    };
+    scrollBox.appendChild(child);
+
+    const buf = new ScreenBuffer(5, 5);
+    scrollBox.render(buf);
+    // No fade applied to the top row since scrolling is disabled on this axis.
+    expect(buf.cells[0][0].style.color).toBe("#ffffff");
+  });
+
+  test("measure passes the real maxH (not the expanded scrollable bound) to children on a non-scrollable Y axis", () => {
+    // Regression coverage: `childMaxH = this.scrollableY ? 10000 : maxH;` — when
+    // overflowY is hidden, children must be measured against the real maxH, not
+    // the expanded 10000 used for scrollable content.
+    const scrollBox = new ScrollableBox();
+    scrollBox.computedStyle.overflowY = "hidden";
+    scrollBox.style.width = 10;
+    scrollBox.style.height = 10;
+
+    const child = new Widget("label");
+    scrollBox.appendChild(child);
+
+    const calls: Array<[number, number]> = [];
+    const originalMeasure = child.measure.bind(child);
+    child.measure = (mw: number, mh: number) => {
+      calls.push([mw, mh]);
+      originalMeasure(mw, mh);
+    };
+
+    scrollBox.measure(10, 10);
+
+    // Width is still scrollable (default overflowX: auto) so it gets the
+    // expanded 10000 bound; height is not scrollable, so it gets the real maxH.
+    expect(calls[0]).toEqual([10000, 10]);
+  });
+
+  test("handleScroll and handleKey ignore events already handled by a child", () => {
+    const scrollBox = new ScrollableBox();
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    scrollBox.appendChild(child);
+
+    const scrollEv: any = {
+      x: 2,
+      y: 2,
+      type: "scroll_down",
+      button: "none",
+      handled: true, // already handled upstream (e.g. by a child)
+    };
+    scrollBox.handleScroll(scrollEv);
+    expect(scrollBox.scrollOffset.y).toBe(0);
+
+    const keyEv: any = {
+      key: "down",
+      name: "down",
+      ctrl: false,
+      meta: false,
+      shift: false,
+      handled: true,
+    };
+    scrollBox.handleKey(keyEv);
+    expect(scrollBox.scrollOffset.y).toBe(0);
+  });
+
+  test("handleMouse ignores events already handled by a child", () => {
+    const scrollBox = new ScrollableBox();
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    scrollBox.appendChild(child);
+
+    const pressEv: any = { x: 4, y: 0, type: "press", button: "left", handled: true };
+    scrollBox.handleMouse(pressEv);
+    // Nothing should have engaged the scrollbar drag state.
+    expect((scrollBox as any).isDraggingY).toBe(false);
+    expect(scrollBox.scrollOffset.y).toBe(0);
+  });
+
+  test("keyboard scrolling with followTail re-pins only once the bottom is reached", async () => {
+    // Regression coverage for the followTail branch inside handleKey (mirrors
+    // the mouse-drag/wheel followTail handling already covered elsewhere). Uses
+    // a real App + layout pass so scrollOffset-dependent content sizing (which
+    // assumes children are repositioned by layout each frame) stays accurate.
+    const driver = new MockDriver(40, 20);
+    const app = new App(driver);
+    app.run();
+
+    const scrollBox = new ScrollableBox();
+    scrollBox.followTail = true;
+    scrollBox.style.position = "absolute";
+    scrollBox.style.width = 5;
+    scrollBox.style.height = 5;
+    app.activeScreen.appendChild(scrollBox);
+
+    // Ten stacked rows of content — well past the 5-row viewport.
+    for (let i = 0; i < 10; i++) {
+      const row = new Widget("row");
+      row.style.width = 5;
+      row.style.height = 1;
+      scrollBox.appendChild(row);
+    }
+    app.queueRender();
+    app.activeScreen.focusWidget(scrollBox);
+
+    // Wait for layout, then for the render loop to pin followTail to the bottom.
+    await waitFor(() => scrollBox.region.width > 0);
+    await waitFor(() => scrollBox.scrollOffset.y > 0);
+    await flush(15);
+    const bottom = scrollBox.scrollOffset.y;
+    expect(bottom).toBeGreaterThan(0);
+    expect((scrollBox as any).isAtBottom()).toBe(true);
+
+    // Scroll up one row with the keyboard: no longer at the bottom, so
+    // subsequent frames must NOT snap back down.
+    driver.simulateKey("up", "up", false, false);
+    await waitFor(() => scrollBox.scrollOffset.y === bottom - 1);
+    await flush(15);
+    expect(scrollBox.scrollOffset.y).toBe(bottom - 1);
+    expect((scrollBox as any).isAtBottom()).toBe(false);
+
+    // Scroll back down with the keyboard until the bottom is reached again —
+    // this re-pins tailPinned.
+    driver.simulateKey("down", "down", false, false);
+    await waitFor(() => (scrollBox as any).isAtBottom());
+    expect(scrollBox.scrollOffset.y).toBe(bottom);
+
+    app.stop();
+  });
+
+  test("handleMouse treats an explicit border: none the same as borderless", () => {
+    // Regression coverage for `hasBorder = !!computedStyle.border && border !== "none"`
+    // — an explicit "none" must short-circuit to false, not stay truthy.
+    const scrollBox = new ScrollableBox();
+    scrollBox.computedStyle.border = "none";
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    scrollBox.appendChild(child);
+
+    // Same click used by the existing borderless jump-scroll test.
+    const press: any = { x: 4, y: 3, type: "press", button: "left", handled: false };
+    scrollBox.handleMouse(press);
+    expect(press.handled).toBe(true);
+    expect(scrollBox.scrollOffset.y).toBeGreaterThan(0);
+  });
+
+  test("pressing directly on the vertical/horizontal thumb starts a drag instead of jump-scrolling", () => {
+    // Regression coverage for the `if (ev.y >= thumb.start && ev.y < thumb.start + thumb.size)`
+    // branches in handleMouse — previously only the jump-scroll (click off the
+    // thumb) path was exercised.
+    const scrollBox = new ScrollableBox();
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    scrollBox.appendChild(child);
+
+    // Vertical track is at x=4, thumb spans y=0..1 at scrollOffset 0.
+    const pressV: any = { x: 4, y: 0, type: "press", button: "left", handled: false };
+    scrollBox.handleMouse(pressV);
+    expect(pressV.handled).toBe(true);
+    expect((scrollBox as any).isDraggingY).toBe(true);
+    expect((scrollBox as any).dragStartOffset).toBe(0);
+    // Clicking directly on the thumb doesn't jump-scroll.
+    expect(scrollBox.scrollOffset.y).toBe(0);
+    scrollBox.handleMouse({ x: 4, y: 0, type: "release", button: "none", handled: false } as any);
+
+    // Horizontal track is at y=4, thumb spans x=0..1 at scrollOffset 0.
+    const pressH: any = { x: 0, y: 4, type: "press", button: "left", handled: false };
+    scrollBox.handleMouse(pressH);
+    expect(pressH.handled).toBe(true);
+    expect((scrollBox as any).isDraggingX).toBe(true);
+    expect((scrollBox as any).dragStartOffset).toBe(0);
+    expect(scrollBox.scrollOffset.x).toBe(0);
+  });
+
+  test("dragging with a thumb that fills the whole track doesn't move the offset (no divide-by-zero track room)", () => {
+    // Regression coverage for the `vTrack.length > thumb.size ? ratio : 0` and
+    // horizontal equivalent in the drag handler: when the thumb fills the
+    // entire track (viewport nearly as tall/wide as content), there's no room
+    // to drag, so the ratio must safely fall back to 0 rather than divide by
+    // a zero/negative denominator.
+    const scrollBox = new ScrollableBox();
+    scrollBox.computedStyle.overflowX = "hidden";
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 1));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(5, 2));
+    scrollBox.appendChild(child);
+
+    // Force drag state directly (this thumb fills the whole 1-cell track, so
+    // there's no distinct "off-thumb" click to start a drag through handleMouse).
+    (scrollBox as any).isDraggingY = true;
+    (scrollBox as any).dragStartOffset = 0;
+
+    const drag: any = { x: 4, y: 0, type: "drag", button: "left", handled: false };
+    scrollBox.handleMouse(drag);
+    expect(drag.handled).toBe(true);
+    expect(scrollBox.scrollOffset.y).toBe(0);
+
+    // Horizontal counterpart: force isDraggingX with a thumb filling the track.
+    const scrollBoxH = new ScrollableBox();
+    scrollBoxH.computedStyle.overflowY = "hidden";
+    scrollBoxH.region = new Region(Offset.ORIGIN, new Size(1, 5));
+    const childH = new Widget("label");
+    childH.region = new Region(Offset.ORIGIN, new Size(2, 5));
+    scrollBoxH.appendChild(childH);
+    (scrollBoxH as any).isDraggingX = true;
+    (scrollBoxH as any).dragStartOffset = 0;
+    const dragH: any = { x: 0, y: 4, type: "drag", button: "left", handled: false };
+    scrollBoxH.handleMouse(dragH);
+    expect(dragH.handled).toBe(true);
+    expect(scrollBoxH.scrollOffset.x).toBe(0);
+  });
+
+  test("bordered scrollbars paint the non-thumb track with line glyphs", () => {
+    // Regression coverage for the `else if (hasBorder)` branches in
+    // drawScrollbars — previously only the borderless (space-filled) and
+    // thumb-cell paths were exercised.
+    const scrollBox = new ScrollableBox();
+    scrollBox.computedStyle.border = "rounded";
+    scrollBox.computedStyle.overflowY = "scroll";
+    scrollBox.computedStyle.overflowX = "hidden";
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(8, 8));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(6, 20));
+    scrollBox.appendChild(child);
+
+    const buffer = new ScreenBuffer(8, 8);
+    buffer.clear();
+    scrollBox.render(buffer);
+
+    // Vertical track is at x=7 (client.right - 1), rows 1..6; thumb sits at
+    // rows 1..2, so row 4 is a non-thumb track cell painted with the border glyph.
+    expect(buffer.cells[4][7].char).toBe("│");
+
+    // Horizontal counterpart: same geometry, transposed.
+    const scrollBoxH = new ScrollableBox();
+    scrollBoxH.computedStyle.border = "rounded";
+    scrollBoxH.computedStyle.overflowX = "scroll";
+    scrollBoxH.computedStyle.overflowY = "hidden";
+    scrollBoxH.region = new Region(Offset.ORIGIN, new Size(8, 8));
+    const childH = new Widget("label");
+    childH.region = new Region(Offset.ORIGIN, new Size(20, 6));
+    scrollBoxH.appendChild(childH);
+
+    const bufferH = new ScreenBuffer(8, 8);
+    bufferH.clear();
+    scrollBoxH.render(bufferH);
+
+    // Horizontal track is at y=7 (client.bottom - 1), columns 1..6; thumb sits
+    // at columns 1..2, so column 4 is a non-thumb track cell.
+    expect(bufferH.cells[7][4].char).toBe("─");
+  });
+
+  test("measure skips non-Widget and non-visible children", () => {
+    // Regression coverage for `if (child instanceof Widget && child.visible)`
+    // (and the plain `instanceof Widget` re-check in the second loop) —
+    // previously only the "all children qualify" path was exercised.
+    const scrollBox = new ScrollableBox();
+    scrollBox.style.width = 10;
+    scrollBox.style.height = 10;
+
+    const hiddenChild = new Widget("label");
+    hiddenChild.visible = false;
+    hiddenChild.style.width = 20;
+    hiddenChild.style.height = 20;
+    scrollBox.appendChild(hiddenChild);
+
+    const textNode = new TextNode("hi");
+    scrollBox.appendChild(textNode as any);
+
+    // Must not throw despite a non-Widget and an invisible child in the list.
+    expect(() => scrollBox.measure(10, 10)).not.toThrow();
+    // The invisible child was never measured with the expanded scrollable bound.
+    expect(hiddenChild.measuredWidth).toBe(0);
+  });
+
+  test("handleKey is a no-op at scroll boundaries and for non-scrollable axes", () => {
+    // Regression coverage for the (else-less) boundary guards in handleKey:
+    // scrollableY/scrollableX false, and each directional guard already at its
+    // limit (0 or max) so the inner `if` doesn't fire and `scrolled` stays false.
+    const mk = (overrides: Partial<Record<string, string>> = {}) => {
+      const box = new ScrollableBox();
+      Object.assign(box.computedStyle, overrides);
+      box.region = new Region(Offset.ORIGIN, new Size(5, 5));
+      const child = new Widget("label");
+      child.region = new Region(Offset.ORIGIN, new Size(10, 10));
+      box.appendChild(child);
+      return box;
+    };
+    const keyEv = (name: string): any => ({
+      key: name,
+      name,
+      ctrl: false,
+      meta: false,
+      shift: false,
+      handled: false,
+    });
+
+    // scrollableY false: up/down/pageup/pagedown never touch scrollOffset.y.
+    const noY = mk({ overflowY: "hidden" });
+    noY.handleKey(keyEv("down"));
+    expect(noY.scrollOffset.y).toBe(0);
+
+    // scrollableX false: left/right never touch scrollOffset.x.
+    const noX = mk({ overflowX: "hidden" });
+    noX.handleKey(keyEv("right"));
+    expect(noX.scrollOffset.x).toBe(0);
+
+    // Already at the top/left boundary: up/left/pageup are no-ops.
+    const atStart = mk();
+    atStart.handleKey(keyEv("up"));
+    expect(atStart.scrollOffset.y).toBe(0);
+    atStart.handleKey(keyEv("pageup"));
+    expect(atStart.scrollOffset.y).toBe(0);
+    atStart.handleKey(keyEv("left"));
+    expect(atStart.scrollOffset.x).toBe(0);
+
+    // Already at the bottom/right boundary: down/pagedown/right are no-ops.
+    // Pin getContentSize to a fixed value so the boundary math (which normally
+    // relies on layout re-shrinking child regions as scrollOffset changes,
+    // not relevant to this synthetic no-layout test) stays stable across calls.
+    const atEnd = mk();
+    const contentRect = atEnd.getContentRect();
+    const fixedContentSize = atEnd.getContentSize();
+    atEnd.getContentSize = () => fixedContentSize;
+    const maxY = fixedContentSize.height - contentRect.height;
+    const maxX = fixedContentSize.width - contentRect.width;
+    atEnd.scrollOffset = new Offset(maxX, maxY);
+    atEnd.handleKey(keyEv("down"));
+    expect(atEnd.scrollOffset.y).toBe(maxY);
+    atEnd.handleKey(keyEv("pagedown"));
+    expect(atEnd.scrollOffset.y).toBe(maxY);
+    atEnd.handleKey(keyEv("right"));
+    expect(atEnd.scrollOffset.x).toBe(maxX);
+
+    // An unrecognized key touches neither axis, so `scrolled` stays false overall.
+    const untouched = mk();
+    const otherEv = keyEv("tab");
+    untouched.handleKey(otherEv);
+    expect(otherEv.handled).toBe(false);
+    expect(untouched.scrollOffset.equals(Offset.ORIGIN)).toBe(true);
+  });
+
+  test("handleMouse ignores presses off any scrollbar track and releases while not dragging", () => {
+    // Regression coverage: the press branch's final (no-op) alternate when the
+    // click lands on neither the vertical nor horizontal track, the release
+    // branch's condition being false for a non-mouse-drag event type, and the
+    // release branch's inner guard when nothing was actually being dragged.
+    const scrollBox = new ScrollableBox();
+    scrollBox.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const child = new Widget("label");
+    child.region = new Region(Offset.ORIGIN, new Size(10, 10));
+    scrollBox.appendChild(child);
+
+    // A click in the middle of the content, away from either track.
+    const midPress: any = { x: 1, y: 1, type: "press", button: "left", handled: false };
+    scrollBox.handleMouse(midPress);
+    expect(midPress.handled).toBe(false);
+    expect((scrollBox as any).isDraggingY).toBe(false);
+    expect((scrollBox as any).isDraggingX).toBe(false);
+
+    // A mouse event type that matches none of press/drag/release.
+    const moveEv: any = { x: 1, y: 1, type: "move", button: "none", handled: false };
+    scrollBox.handleMouse(moveEv);
+    expect(moveEv.handled).toBe(false);
+
+    // A release while nothing is being dragged.
+    const releaseEv: any = { x: 1, y: 1, type: "release", button: "none", handled: false };
+    scrollBox.handleMouse(releaseEv);
+    expect(releaseEv.handled).toBe(false);
   });
 });
