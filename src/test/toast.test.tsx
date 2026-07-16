@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { ToastManager, toast } from "../core/toast.ts";
 import type { Widget } from "../dom/widget.ts";
-import { ToastHost } from "../react/components.tsx";
+import { ToastHost, useToast } from "../react/components.tsx";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -191,6 +191,16 @@ describe("ToastHost", () => {
     for (let i = 0; i < 7; i++) toast.info(`msg ${i}`, { duration: 0 });
     await t.settle();
     expect(t.text()).toContain("+4 more");
+  });
+
+  test("useToast returns the imperative toast façade", async () => {
+    let captured: unknown;
+    function Harness() {
+      captured = useToast();
+      return null;
+    }
+    await mountApp(<Harness />);
+    expect(captured).toBe(toast);
   });
 
   test("max={0} still shows at least one toast instead of hiding everything", async () => {
