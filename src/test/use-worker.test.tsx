@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { Label } from "../react/components.tsx";
 import { unmount } from "../react/reconciler.ts";
 import { type UseWorkerResult, useWorker } from "../react/use-worker.ts";
+import { flush } from "../testing.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -150,6 +151,21 @@ describe("useWorker", () => {
     expect(t.text()).toContain("success:second"); // unchanged
   });
 
+  test("cancelling immediately after starting a run (before the running state flushes) is safe", async () => {
+    const t = await mountApp(<Probe />, OPTS);
+    await t.settle();
+
+    const d = defer<string>();
+    // Fire run() and cancel() back-to-back, before React has flushed the
+    // "running" state update — exercises the s.isRunning-false branch inside
+    // cancel()'s functional setState.
+    api.run(() => d.promise);
+    api.cancel();
+    await t.settle();
+
+    expect(api.isRunning).toBe(false);
+  });
+
   test("cancel() with no run in flight is a no-op", async () => {
     const t = await mountApp(<Probe />, OPTS);
     await t.settle();
@@ -205,8 +221,24 @@ describe("useWorker", () => {
     await t.settle();
     const savedReset = api.reset;
     unmount(t.container);
-    // mountedRef is now false; reset() must guard its setState call.
+    // Flush so the unmount effect cleanup (setting mountedRef.current = false)
+    // actually runs before we call the stale API back.
+    await flush();
     expect(() => savedReset()).not.toThrow();
+  });
+
+  test("cancel() after unmount (with a run in flight) skips the setState guard", async () => {
+    const t = await mountApp(<Probe />, OPTS);
+    await t.settle();
+    const savedCancel = api.cancel;
+    const d = defer<string>();
+    api.run(() => d.promise);
+    await t.settle();
+    unmount(t.container);
+    await flush();
+    // mountedRef is now false but controllerRef is still set (the run never
+    // settled) — cancel() must abort without touching React state.
+    expect(() => savedCancel()).not.toThrow();
   });
 
   test("a task's rejection after cancel() never overwrites the cancelled state", async () => {
