@@ -69,6 +69,38 @@ describe("ApprovalPrompt — single", () => {
     expect(ids).toEqual(["allow", "deny"]);
   });
 
+  test("clicking a flat action button (not just its key shortcut) reports its id", async () => {
+    const ids: string[] = [];
+    const t = await mountApp(
+      <ApprovalPrompt id="ap" prompt="Allow?" onAction={(id) => ids.push(id)} />,
+      OPTS,
+    );
+    await t.settle();
+    const allText = (w: Widget): string => {
+      let s = w.getTextContent?.() ?? "";
+      for (const c of w.children) s += allText(c as Widget);
+      return s;
+    };
+    let allowBtn: Widget | undefined;
+    t.screen.walk((n) => {
+      if ((n as Widget).onClick && allText(n as Widget).includes("Allow")) allowBtn = n as Widget;
+    });
+    (allowBtn as Widget).onClick?.({} as never);
+    expect(ids).toEqual(["allow"]);
+  });
+
+  test("falls back to `ev.key` when a raw event carries no `.name`", async () => {
+    const ids: string[] = [];
+    const t = await mountApp(
+      <ApprovalPrompt id="ap" prompt="Allow?" onAction={(id) => ids.push(id)} />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+    root.handleKey({ key: "a", handled: false } as never); // Allow, via `.key` not `.name`
+    expect(ids).toEqual(["allow"]);
+  });
+
   test("arrow keys move focus across the permission buttons (one Tab stop)", async () => {
     const t = await mountApp(<ApprovalPrompt id="ap" prompt="Allow?" onAction={() => {}} />, OPTS);
     await t.settle();
