@@ -229,6 +229,10 @@ function stylesEqual(s1: any, s2: any): boolean {
 export function normalizeColorForCSS(color: string): string {
   const norm = color.trim().toLowerCase();
 
+  // Deliberately its own palette (Dracula-ish), not the ANSI_16_RGB table in
+  // color.ts — this is CSS shown on a bright monitor for a copy/paste export,
+  // not a terminal-fallback quantization, so it favors legibility over
+  // matching what a real 16-colour terminal renders.
   const standardANSI: Record<string, string> = {
     black: "#000000",
     red: "#ff5555",

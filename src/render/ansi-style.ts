@@ -1,4 +1,4 @@
-import { parseColor } from "./color.ts";
+import { ANSI_16_RGB, ANSI_COLOR_INDEX, parseColor } from "./color.ts";
 import { colorMode } from "./color-mode.ts";
 import type { Style, UnderlineStyle } from "./style.ts";
 
@@ -278,32 +278,13 @@ export function scrollRegionSeq(top: number, bottom: number, delta: number): str
 
 // Map RGB values to the closest basic 16-colour index by Euclidean distance.
 function getClosestBasicColor(r: number, g: number, b: number): number {
-  const ansiRGBs = [
-    { r: 0, g: 0, b: 0 }, // 0: black
-    { r: 128, g: 0, b: 0 }, // 1: red
-    { r: 0, g: 128, b: 0 }, // 2: green
-    { r: 128, g: 128, b: 0 }, // 3: yellow
-    { r: 0, g: 0, b: 128 }, // 4: blue
-    { r: 128, g: 0, b: 128 }, // 5: magenta
-    { r: 0, g: 128, b: 128 }, // 6: cyan
-    { r: 192, g: 192, b: 192 }, // 7: white
-    { r: 128, g: 128, b: 128 }, // 8: bright-black / gray
-    { r: 255, g: 0, b: 0 }, // 9: bright-red
-    { r: 0, g: 255, b: 0 }, // 10: bright-green
-    { r: 255, g: 255, b: 0 }, // 11: bright-yellow
-    { r: 0, g: 0, b: 255 }, // 12: bright-blue
-    { r: 255, g: 0, b: 255 }, // 13: bright-magenta
-    { r: 0, g: 255, b: 255 }, // 14: bright-cyan
-    { r: 255, g: 255, b: 255 }, // 15: bright-white
-  ];
-
   let minDistance = Number.MAX_VALUE;
   let closestIndex = 0;
 
-  for (let i = 0; i < ansiRGBs.length; i++) {
-    const dr = r - ansiRGBs[i].r;
-    const dg = g - ansiRGBs[i].g;
-    const db = b - ansiRGBs[i].b;
+  for (let i = 0; i < ANSI_16_RGB.length; i++) {
+    const dr = r - ANSI_16_RGB[i].r;
+    const dg = g - ANSI_16_RGB[i].g;
+    const db = b - ANSI_16_RGB[i].b;
     const dist = dr * dr + dg * dg + db * db;
     if (dist < minDistance) {
       minDistance = dist;
@@ -314,27 +295,7 @@ function getClosestBasicColor(r: number, g: number, b: number): number {
   return closestIndex;
 }
 
-// Named 16-color table (module-level so it isn't rebuilt on every call).
-const basicColors: Record<string, number> = {
-  black: 0,
-  red: 1,
-  green: 2,
-  yellow: 3,
-  blue: 4,
-  magenta: 5,
-  cyan: 6,
-  white: 7,
-  gray: 8,
-  grey: 8,
-  "bright-black": 8,
-  "bright-red": 9,
-  "bright-green": 10,
-  "bright-yellow": 11,
-  "bright-blue": 12,
-  "bright-magenta": 13,
-  "bright-cyan": 14,
-  "bright-white": 15,
-};
+const basicColors = ANSI_COLOR_INDEX;
 
 // Memoize color → SGR escape. The conversion is pure given the color depth, and
 // a frame typically reuses a small palette (e.g. a gradient), so this turns a

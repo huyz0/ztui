@@ -95,6 +95,58 @@ const NAMED_RGB: Record<string, RGB> = {
 };
 
 /**
+ * The 16-slot ANSI colour palette (indices 0-15), in the "standard" 0/128/192/255
+ * values ECMA-48 terminals default to absent a custom palette. This is the
+ * canonical table for anything that needs to *degrade to or quantize against*
+ * the 16-colour ANSI space (SGR 30-37/90-97 downgrade, icon/glyph colour
+ * matching) — kept deliberately separate from {@link NAMED_RGB} above, which
+ * uses xterm's own (different) default palette for parsing a CSS-ish colour
+ * name into a colour to blend/animate. The two tables answering "what RGB is
+ * red?" differently is intentional, not drift: one models the fallback palette
+ * terminals negotiate down to, the other models what xterm itself renders.
+ */
+export const ANSI_16_RGB: readonly RGB[] = [
+  { r: 0, g: 0, b: 0 }, // 0: black
+  { r: 128, g: 0, b: 0 }, // 1: red
+  { r: 0, g: 128, b: 0 }, // 2: green
+  { r: 128, g: 128, b: 0 }, // 3: yellow
+  { r: 0, g: 0, b: 128 }, // 4: blue
+  { r: 128, g: 0, b: 128 }, // 5: magenta
+  { r: 0, g: 128, b: 128 }, // 6: cyan
+  { r: 192, g: 192, b: 192 }, // 7: white
+  { r: 128, g: 128, b: 128 }, // 8: bright-black / gray
+  { r: 255, g: 0, b: 0 }, // 9: bright-red
+  { r: 0, g: 255, b: 0 }, // 10: bright-green
+  { r: 255, g: 255, b: 0 }, // 11: bright-yellow
+  { r: 0, g: 0, b: 255 }, // 12: bright-blue
+  { r: 255, g: 0, b: 255 }, // 13: bright-magenta
+  { r: 0, g: 255, b: 255 }, // 14: bright-cyan
+  { r: 255, g: 255, b: 255 }, // 15: bright-white
+];
+
+/** Colour name → {@link ANSI_16_RGB} index. */
+export const ANSI_COLOR_INDEX: Record<string, number> = {
+  black: 0,
+  red: 1,
+  green: 2,
+  yellow: 3,
+  blue: 4,
+  magenta: 5,
+  cyan: 6,
+  white: 7,
+  gray: 8,
+  grey: 8,
+  "bright-black": 8,
+  "bright-red": 9,
+  "bright-green": 10,
+  "bright-yellow": 11,
+  "bright-blue": 12,
+  "bright-magenta": 13,
+  "bright-cyan": 14,
+  "bright-white": 15,
+};
+
+/**
  * Parse a CSS-ish colour into RGB channels plus a compositing alpha (0..1).
  * Extends {@link parseRgb} with `rgba(r,g,b,a)`, 8-digit hex (`#rrggbbaa`), and
  * the basic colour names. Returns `null` for `default`/`transparent`/unknown —

@@ -1,4 +1,5 @@
 import { renderSvgSync } from "../utils/sharp-sync.ts";
+import { ANSI_16_RGB, ANSI_COLOR_INDEX } from "./color.ts";
 import type { GlyfContour } from "./glyf-encode.ts";
 
 /** A registered icon: its name, SVG source, fallbacks, and optional vector outline. */
@@ -137,29 +138,9 @@ export function rasterizeSVG(
 export function parseColorToRGB(color: string): { r: number; g: number; b: number } {
   const norm = color.trim().toLowerCase();
 
-  const basicColors: Record<string, { r: number; g: number; b: number }> = {
-    black: { r: 0, g: 0, b: 0 },
-    red: { r: 128, g: 0, b: 0 },
-    green: { r: 0, g: 128, b: 0 },
-    yellow: { r: 128, g: 128, b: 0 },
-    blue: { r: 0, g: 0, b: 128 },
-    magenta: { r: 128, g: 0, b: 128 },
-    cyan: { r: 0, g: 128, b: 128 },
-    white: { r: 192, g: 192, b: 192 },
-    gray: { r: 128, g: 128, b: 128 },
-    grey: { r: 128, g: 128, b: 128 },
-    "bright-black": { r: 128, g: 128, b: 128 },
-    "bright-red": { r: 255, g: 0, b: 0 },
-    "bright-green": { r: 0, g: 255, b: 0 },
-    "bright-yellow": { r: 255, g: 255, b: 0 },
-    "bright-blue": { r: 0, g: 0, b: 255 },
-    "bright-magenta": { r: 255, g: 0, b: 255 },
-    "bright-cyan": { r: 0, g: 255, b: 255 },
-    "bright-white": { r: 255, g: 255, b: 255 },
-  };
-
-  if (basicColors[norm]) {
-    return basicColors[norm];
+  const ansiIndex = ANSI_COLOR_INDEX[norm];
+  if (ansiIndex !== undefined) {
+    return ANSI_16_RGB[ansiIndex];
   }
 
   if (norm.startsWith("#")) {
