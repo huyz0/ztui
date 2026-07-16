@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { TaskNode } from "../react/components.tsx";
-import { TaskTree } from "../react/components.tsx";
+import { Label, TaskTree } from "../react/components.tsx";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -54,6 +54,17 @@ describe("TaskTree", () => {
     expect(text).toContain("Plan");
     // 6 nodes total, 2 completed.
     expect(text).toContain("2/6");
+  });
+
+  test("title with an icon shows the icon beside the heading", async () => {
+    const t = await mountApp(
+      <TaskTree title="Plan" icon={<Label>{"★"}</Label>} items={items} />,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("★");
+    expect(text).toContain("Plan");
   });
 
   test("a flat tree still renders (no children)", async () => {
