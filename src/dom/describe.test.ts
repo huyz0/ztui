@@ -40,4 +40,25 @@ describe("DOMNode.describe", () => {
     text.text = "hello world this is quite long";
     expect(text.describe()).toBe('text("hello world this is…")');
   });
+
+  test("falls back to 'node' when constructed with no tag name", () => {
+    const node = new DOMNode();
+    expect(node.describe()).toBe("node");
+  });
+});
+
+describe("DOMNode.matchesSelector edge cases", () => {
+  test("an empty (or whitespace-only) selector never matches", () => {
+    const node = new DOMNode("view");
+    expect(node.matchesSelector("")).toBe(false);
+    expect(node.matchesSelector("   ")).toBe(false);
+  });
+
+  test("a selector starting with neither a tag, '#', nor '.' has no tag match to check", () => {
+    const node = new DOMNode("view");
+    // No leading identifier/`#`/`.` — the tag-match regex simply fails, so the
+    // whole thing falls through to the id/class parts (none here) and the
+    // length check then fails since nothing consumed the leading "!".
+    expect(node.matchesSelector("!view")).toBe(false);
+  });
 });
