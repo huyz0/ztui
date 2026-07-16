@@ -121,5 +121,18 @@ describe("colorMode (NO_COLOR)", () => {
       colorMode.reset();
       expect(colorMode.enabled).toBe(true);
     });
+
+    test("defaults to colour on when there is no process.env at all (e.g. browser)", () => {
+      const realProcess = globalThis.process;
+      // @ts-expect-error simulating a non-Node global (web bundle) on purpose
+      delete globalThis.process;
+      try {
+        colorMode.reset();
+        expect(colorMode.enabled).toBe(true);
+      } finally {
+        globalThis.process = realProcess;
+        colorMode.reset();
+      }
+    });
   });
 });

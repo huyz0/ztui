@@ -35,6 +35,14 @@ describe("parseColor", () => {
   it("stays consistent with parseRgb for plain rgb", () => {
     expect(parseColor("#0a141e")?.rgb).toEqual(parseRgb("#0a141e"));
   });
+
+  it("parseRgb returns null for a string that isn't hex or rgb(...)", () => {
+    expect(parseRgb("not-a-color")).toBeNull();
+  });
+
+  it("parseRgb returns null for a hex string of the wrong length", () => {
+    expect(parseRgb("#12345")).toBeNull();
+  });
 });
 
 describe("mix", () => {
