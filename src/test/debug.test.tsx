@@ -15,6 +15,7 @@ import {
   VBox,
   View,
 } from "../react.ts";
+import { waitFor } from "./harness.tsx";
 
 function SimpleTestApp() {
   const [count, setCount] = useState(0);
@@ -38,7 +39,7 @@ describe("first-class isolated debugging", () => {
     app.run();
 
     // Wait for React commit and microtask render queue to flush
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => renderBufferToHTML((app as any).currentBuffer).includes("Counter: 0"));
 
     const html = renderBufferToHTML((app as any).currentBuffer);
 
@@ -56,7 +57,7 @@ describe("first-class isolated debugging", () => {
     app.run();
 
     // Wait for initial render
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.children.length > 0);
 
     expect(app.activeScreen.focusedWidget).toBeNull();
 
@@ -64,7 +65,7 @@ describe("first-class isolated debugging", () => {
     driver.simulateKey("tab");
 
     // Wait for key event processing and render queue
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.focusedWidget !== null);
 
     expect(app.activeScreen.focusedWidget).not.toBeNull();
     expect(app.activeScreen.focusedWidget!.tagName).toBe("button");
@@ -79,7 +80,7 @@ describe("first-class isolated debugging", () => {
     driver.simulateMouse(clickX, clickY, "press", "left");
 
     // Wait for click event state change and microtask render
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => renderBufferToHTML((app as any).currentBuffer).includes("Counter: 1"));
 
     const html = renderBufferToHTML((app as any).currentBuffer);
     expect(html.includes("Counter: 1")).toBe(true);
@@ -88,7 +89,7 @@ describe("first-class isolated debugging", () => {
     driver.simulateKey("enter");
 
     // Wait for key event and state change
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => renderBufferToHTML((app as any).currentBuffer).includes("Counter: 2"));
 
     const htmlAfterEnter = renderBufferToHTML((app as any).currentBuffer);
     expect(htmlAfterEnter.includes("Counter: 2")).toBe(true);
@@ -104,7 +105,7 @@ describe("first-class isolated debugging", () => {
     app.run({ inspectorPort: 8081 });
 
     // Wait for render
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.children.length > 0);
 
     // 1. Test GET /dom
     const domRes = await fetch("http://localhost:8081/dom");
@@ -141,7 +142,7 @@ describe("first-class isolated debugging", () => {
     expect(inputData.status).toBe("ok");
 
     // Wait for click event state change and microtask render
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => renderBufferToHTML((app as any).currentBuffer).includes("Counter: 1"));
 
     // Query render again to verify state update
     const renderRes2 = await fetch("http://localhost:8081/render");
@@ -164,26 +165,26 @@ describe("first-class isolated debugging", () => {
     );
     app.run();
 
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.children.length > 0);
 
     // Cycle focus forward (first Tab -> focuses btn1)
     driver.simulateKey("tab", "tab", false, false); // shift=false
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.focusedWidget?.id === "btn1");
     expect(app.activeScreen.focusedWidget?.id).toBe("btn1");
 
     // Cycle focus forward (second Tab -> focuses btn2)
     driver.simulateKey("tab", "tab", false, false);
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.focusedWidget?.id === "btn2");
     expect(app.activeScreen.focusedWidget?.id).toBe("btn2");
 
     // Cycle focus backward (Shift-Tab -> focuses btn1 again)
     driver.simulateKey("tab", "tab", false, true); // shift=true
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.focusedWidget?.id === "btn1");
     expect(app.activeScreen.focusedWidget?.id).toBe("btn1");
 
     // Cycle focus backward (Shift-Tab -> focuses btn2 via wrap-around)
     driver.simulateKey("tab", "tab", false, true);
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.focusedWidget?.id === "btn2");
     expect(app.activeScreen.focusedWidget?.id).toBe("btn2");
 
     app.stop();
@@ -201,7 +202,7 @@ describe("first-class isolated debugging", () => {
     );
     app.run();
 
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.children.length > 0);
 
     // Verify input is not focused initially (no caret '█' in render). The text
     // render preserves the literal glyph (the HTML backend draws █ as a CSS fill).
@@ -215,7 +216,7 @@ describe("first-class isolated debugging", () => {
     driver.simulateMouse(clickX, clickY, "press", "left");
 
     // Wait for event queue & render microtask
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => renderBufferToText((app as any).currentBuffer).includes("█"));
 
     // Now it should be focused and show the caret
     const textAfter = renderBufferToText((app as any).currentBuffer);
@@ -246,7 +247,7 @@ describe("first-class isolated debugging", () => {
     );
     app.run();
 
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => renderBufferToHTML((app as any).currentBuffer).includes("Custom Title"));
 
     const html = renderBufferToHTML((app as any).currentBuffer);
 
@@ -278,7 +279,7 @@ describe("first-class isolated debugging", () => {
     );
     app.run();
 
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => renderBufferToHTML((app as any).currentBuffer).includes("Box Left"));
 
     const html = renderBufferToHTML((app as any).currentBuffer);
 
@@ -315,7 +316,7 @@ describe("first-class isolated debugging", () => {
     );
     app.run();
 
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => app.activeScreen.children.length > 0);
 
     const btn = app.activeScreen.children[0].children[0] as any;
     expect(btn.tagName).toBe("button");
@@ -325,11 +326,11 @@ describe("first-class isolated debugging", () => {
 
     // Hover over the button (mouse move event)
     driver.simulateMouse(clickX, clickY, "move", "none");
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => enterCount === 1);
 
     // Move mouse away to coordinates (39, 9)
     driver.simulateMouse(39, 9, "move", "none");
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    await waitFor(() => leaveCount === 1);
 
     expect(enterCount).toBe(1);
     expect(leaveCount).toBe(1);

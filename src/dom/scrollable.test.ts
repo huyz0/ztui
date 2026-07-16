@@ -6,6 +6,7 @@ import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { ScreenBuffer } from "../render/buffer.ts";
 import { Style } from "../render/style.ts";
+import { flush, waitFor } from "../test/harness.tsx";
 import { Scrollable } from "./scrollable.ts";
 import { Widget } from "./widget.ts";
 
@@ -292,18 +293,16 @@ describe("Scrollable Mixin", () => {
 
     app.activeScreen.focusWidget(child);
 
-    // Wait for App.run and initial render microtask
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    // Wait for App.run and initial render microtask.
+    await waitFor(() => scrollBox.region.width > 0);
 
     // Simulate key down on driver
     driver.simulateKey("down", "down", false, false);
 
-    // Wait for event processing and rendering queue
-    await new Promise((resolve) => setTimeout(resolve, 15));
-
     // Key event should bubble up from child to scrollBox and scroll it down.
     // The scrollbar gutter shrinks the viewport by a row/column, so auto-scroll
     // focus lands at 6 and the down key scrolls it to 7.
+    await waitFor(() => scrollBox.scrollOffset.y === 7);
     expect(scrollBox.scrollOffset.y).toBe(7);
 
     // Clean up
@@ -447,12 +446,12 @@ describe("Scrollable Mixin", () => {
     expect(scrollBox.scrollOffset.y).toBe(0);
 
     // Wait for initial render
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await waitFor(() => scrollBox.region.width > 0);
 
     // 1. Click on the scrollbar track (say y=3, which is outside the y=0 thumb area)
     // This should trigger a jump-scroll!
     driver.simulateMouse(4, 3, "press", "left");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await waitFor(() => scrollBox.scrollOffset.y > 0);
     expect(scrollBox.scrollOffset.y).toBeGreaterThan(0);
 
     // Save offset after jump
@@ -461,17 +460,17 @@ describe("Scrollable Mixin", () => {
     // 2. Drag the mouse up to y=1
     // Since mouse drag is captured by app.input.activeDragWidget, dragging anywhere should update the scrollbar
     driver.simulateMouse(4, 1, "drag", "left");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await waitFor(() => scrollBox.scrollOffset.y < jumpY);
     expect(scrollBox.scrollOffset.y).toBeLessThan(jumpY);
 
     // 3. Release mouse
     driver.simulateMouse(4, 1, "release", "none");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await flush(15);
 
     // Dragging mouse after release should not change scrollOffset
     const afterReleaseY = scrollBox.scrollOffset.y;
     driver.simulateMouse(4, 2, "drag", "left");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await flush(15);
     expect(scrollBox.scrollOffset.y).toBe(afterReleaseY);
 
     app.stop();
@@ -503,12 +502,12 @@ describe("Scrollable Mixin", () => {
     expect(scrollBox.scrollOffset.x).toBe(0);
 
     // Wait for initial render
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await waitFor(() => scrollBox.region.width > 0);
 
     // 1. Click on the scrollbar track (say x=3, which is outside the x=0 thumb area)
     // This should trigger a jump-scroll!
     driver.simulateMouse(3, 4, "press", "left");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await waitFor(() => scrollBox.scrollOffset.x > 0);
     expect(scrollBox.scrollOffset.x).toBeGreaterThan(0);
 
     // Save offset after jump
@@ -517,17 +516,17 @@ describe("Scrollable Mixin", () => {
     // 2. Drag the mouse left to x=1
     // Since mouse drag is captured by app.input.activeDragWidget, dragging anywhere should update the scrollbar
     driver.simulateMouse(1, 4, "drag", "left");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await waitFor(() => scrollBox.scrollOffset.x < jumpX);
     expect(scrollBox.scrollOffset.x).toBeLessThan(jumpX);
 
     // 3. Release mouse
     driver.simulateMouse(1, 4, "release", "none");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await flush(15);
 
     // Dragging mouse after release should not change scrollOffset
     const afterReleaseX = scrollBox.scrollOffset.x;
     driver.simulateMouse(2, 4, "drag", "left");
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await flush(15);
     expect(scrollBox.scrollOffset.x).toBe(afterReleaseX);
 
     app.stop();
