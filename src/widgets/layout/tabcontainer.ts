@@ -1,5 +1,8 @@
 import { App } from "../../core/app.ts";
 import { Widget } from "../../dom/widget.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
@@ -246,6 +249,26 @@ export class TabContainerWidget extends Widget {
     if (this.computedStyle.maxHeight !== undefined) {
       this.measuredHeight = Math.min(this.measuredHeight, this.computedStyle.maxHeight);
     }
+  }
+
+  /**
+   * Position panel children below the tab bar. Invoked by the App layout pass
+   * (returns true to take over child layout) instead of the default box/dock/
+   * grid dispatch, since a tab container's content area starts one row down
+   * for the bar and only the active panel is ever visible.
+   */
+  public layoutChildren(): boolean {
+    const inner = this.getContentRect();
+    const tabBarHeight = 1;
+    for (const child of this.children) {
+      if (child instanceof Widget && child.visible) {
+        child.region = new Region(
+          new Offset(inner.x, inner.y + tabBarHeight),
+          new Size(inner.width, Math.max(0, inner.height - tabBarHeight)),
+        );
+      }
+    }
+    return true;
   }
 
   public override render(buffer: ScreenBuffer): void {
