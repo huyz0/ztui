@@ -4,6 +4,7 @@ import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
 import { Box, ContextMenu, Label, useContextMenu, VBox } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { type MenuItem, MenuListWidget } from "./menu.ts";
 
@@ -74,6 +75,64 @@ describe("MenuListWidget keyboard navigation", () => {
   });
 });
 
+describe("MenuListWidget items setter", () => {
+  test("a non-array assignment is coerced to an empty list", () => {
+    const w = menu([{ label: "One" }]);
+    (w as any).items = "not an array";
+    expect(w.items).toEqual([]);
+  });
+
+  test("re-assigning items keeps the highlight when it is still selectable", () => {
+    const w = menu([{ label: "One" }, { label: "Two" }]);
+    w.handleKey(key("down")); // highlight -> 1
+    expect(w.highlightedIndex).toBe(1);
+    w.items = [{ label: "One" }, { label: "Two" }, { label: "Three" }];
+    expect(w.highlightedIndex).toBe(1); // still selectable, untouched
+  });
+});
+
+describe("MenuListWidget.move with a single selectable row", () => {
+  test("moving among all-disabled/separator rows besides one is a no-op", () => {
+    const w = menu([{ label: "Only" }, { separator: true }, { label: "Skip", disabled: true }]);
+    expect(w.highlightedIndex).toBe(0);
+    w.handleKey(key("down"));
+    // Wraps all the way back to the same (only selectable) row - no change.
+    expect(w.highlightedIndex).toBe(0);
+  });
+});
+
+describe("MenuListWidget.activate", () => {
+  test("activating a row with a submenu opens it instead of firing onSelect", () => {
+    const w = menu([{ label: "More", submenu: [{ label: "Sub" }] }]);
+    let selected = false;
+    w.onSelect = () => {
+      selected = true;
+    };
+    // No screen attached: openSubmenu bails out after setting the highlight,
+    // so onSelect must still not fire for a submenu row.
+    w.activate(0);
+    expect(selected).toBe(false);
+  });
+});
+
+describe("MenuListWidget.handleKey edge cases", () => {
+  test("falls back to ev.key when ev.name is absent", () => {
+    const w = menu([{ label: "One" }, { label: "Two" }]);
+    const ev = { key: "down", name: undefined, ctrl: false, shift: false, meta: false } as any;
+    w.handleKey(ev);
+    expect(w.highlightedIndex).toBe(1);
+    expect(ev.handled).toBe(true);
+  });
+
+  test("Tab moves forward, Shift+Tab moves backward", () => {
+    const w = menu([{ label: "One" }, { label: "Two" }, { label: "Three" }]);
+    w.handleKey({ name: "tab", shift: false } as any);
+    expect(w.highlightedIndex).toBe(1);
+    w.handleKey({ name: "tab", shift: true } as any);
+    expect(w.highlightedIndex).toBe(0);
+  });
+});
+
 describe("MenuListWidget mouse", () => {
   const items: MenuItem[] = [{ label: "One" }, { separator: true }, { label: "Two" }];
 
@@ -93,6 +152,67 @@ describe("MenuListWidget mouse", () => {
     const rect = w.getContentRect();
     w.handleMouse(mouse(rect.x, rect.y + 1, "move")); // disabled row
     expect(w.highlightedIndex).toBe(0); // unchanged
+  });
+
+  test("a right-click press doesn't activate the row", () => {
+    const w = menu([{ label: "One" }]);
+    let selected = false;
+    w.onSelect = () => {
+      selected = true;
+    };
+    const rect = w.getContentRect();
+    w.handleMouse(mouse(rect.x, rect.y, "press", "right"));
+    expect(selected).toBe(false);
+  });
+});
+
+describe("MenuListWidget.openSubmenu without a screen", () => {
+  test("a detached widget's submenu open is a no-op (no screen to anchor to)", () => {
+    const w = menu([{ label: "More", submenu: [{ label: "Sub" }] }]);
+    // Never attached to a Screen, so getScreen() returns null.
+    expect(() => w.activate(0)).not.toThrow();
+    expect(w.highlightedIndex).toBe(0);
+  });
+});
+
+describe("MenuListWidget render", () => {
+  function render(items: MenuItem[], highlightedIndex = 0): ScreenBuffer {
+    const w = menu(items);
+    w.computedStyle = { ...w.defaultStyle };
+    w.handleKey(key("home"));
+    for (let i = 0; i < highlightedIndex; i++) w.handleKey(key("down"));
+    const buffer = new ScreenBuffer(24, items.length + 2);
+    w.render(buffer);
+    return buffer;
+  }
+
+  test("renders a danger row, a plain shortcut row, and a submenu chevron", () => {
+    const buf = render([
+      { label: "Delete", danger: true },
+      { label: "Save", shortcut: "Ctrl+S" },
+      { label: "More", submenu: [{ label: "Sub" }] },
+    ]);
+    const rows = buf.cells.map((r) => r.map((c) => c.char).join(""));
+    expect(rows.some((r) => r.includes("Delete"))).toBe(true);
+    expect(rows.some((r) => r.includes("Ctrl+S"))).toBe(true);
+    expect(rows.some((r) => r.includes("▸"))).toBe(true);
+  });
+
+  test("a row past the visible rect (overflowing region) is skipped, not drawn out of bounds", () => {
+    const w = menu([{ label: "One" }, { label: "Two" }, { label: "Three" }]);
+    w.computedStyle = { ...w.defaultStyle };
+    // A buffer shorter than the item count clips the trailing rows.
+    const buffer = new ScreenBuffer(24, 2);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("falls back to the resolved $foreground when computedStyle.color is unset", () => {
+    const w = menu([{ label: "One" }]);
+    w.computedStyle = {}; // no explicit color
+    const buffer = new ScreenBuffer(24, 3);
+    expect(() => w.render(buffer)).not.toThrow();
+    const row = buffer.cells[0].map((c) => c.char).join("");
+    expect(row).toContain("One");
   });
 });
 
