@@ -212,6 +212,37 @@ describe("DOM and layout resolution", () => {
     expect(c3.region.y).toBe(c0.region.y + c0.region.height);
   });
 
+  test("GridLayout does nothing when there are no visible/eligible children", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(80, 10));
+    const hidden = new Widget("button");
+    hidden.visible = false;
+    parent.appendChild(hidden);
+
+    // Should not throw despite there being no eligible children to lay out.
+    expect(() => new GridLayout(3).resolve(parent)).not.toThrow();
+  });
+
+  test("GridLayout distributes the row-height floor-division remainder too", () => {
+    const parent = new Widget("view");
+    // 3 rows over 10 height: 10 / 3 = 3.33 -> baseRowHeight 3, extraRows 1.
+    parent.region = new Region(Offset.ORIGIN, new Size(80, 10));
+
+    const children = Array.from({ length: 6 }, () => new Widget("button"));
+    for (const c of children) parent.appendChild(c);
+
+    const layout = new GridLayout(2); // 6 children / 2 cols = 3 rows
+    layout.resolve(parent);
+
+    const [c0, , c2, , c4] = children;
+    // First row gets the extra cell (height 4); the rest stay at 3.
+    expect(c0.region.height).toBe(4);
+    expect(c2.region.height).toBe(3);
+    expect(c4.region.height).toBe(3);
+    expect(c2.region.y).toBe(c0.region.y + c0.region.height);
+    expect(c4.region.y).toBe(c2.region.y + c2.region.height);
+  });
+
   test("DockLayout resolution", () => {
     const parent = new Widget("view");
     parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
