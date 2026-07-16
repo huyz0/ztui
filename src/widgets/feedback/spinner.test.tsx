@@ -1,6 +1,11 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { HBox, Spinner, WaitingGrid, WaitingPanel } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
+import { SpinnerWidget } from "./spinner.ts";
 
 const channelSum = (c: string): number =>
   (c.match(/\d+/g) ?? []).reduce((n, x) => n + Number(x), 0);
@@ -63,6 +68,82 @@ describe("ZTUI Spinner Widget Suite", () => {
       { cols: 10, rows: 3 },
     );
     expect(cellAt(0, 0).char).toBe("●");
+  });
+
+  test("falls back to the mode's built-in frames when frames is unset or an empty array", () => {
+    const noFrames = new SpinnerWidget();
+    noFrames.mode = "hex";
+    noFrames.frames = undefined;
+    noFrames.region = new Region(Offset.ORIGIN, new Size(1, 1));
+    const buf1 = new ScreenBuffer(1, 1);
+    noFrames.render(buf1);
+    expect(["⬡", "⬢"]).toContain(buf1.cells[0][0].char);
+
+    const emptyFrames = new SpinnerWidget();
+    emptyFrames.mode = "hex";
+    emptyFrames.frames = [];
+    emptyFrames.region = new Region(Offset.ORIGIN, new Size(1, 1));
+    const buf2 = new ScreenBuffer(1, 1);
+    emptyFrames.render(buf2);
+    expect(["⬡", "⬢"]).toContain(buf2.cells[0][0].char);
+  });
+
+  test("skips rendering while invisible, past the content edge, or off the buffer", () => {
+    const invisible = new SpinnerWidget();
+    invisible.visible = false;
+    invisible.region = new Region(Offset.ORIGIN, new Size(1, 1));
+    const buf1 = new ScreenBuffer(1, 1);
+    expect(() => invisible.render(buf1)).not.toThrow();
+    expect(buf1.cells[0][0].char).toBe(" ");
+
+    const zeroRect = new SpinnerWidget();
+    zeroRect.region = new Region(Offset.ORIGIN, new Size(0, 0));
+    const buf2 = new ScreenBuffer(1, 1);
+    expect(() => zeroRect.render(buf2)).not.toThrow();
+
+    const offBuffer = new SpinnerWidget();
+    // Region sits entirely past the (tiny) buffer's bounds.
+    offBuffer.region = new Region(new Offset(5, 5), new Size(1, 1));
+    const buf3 = new ScreenBuffer(2, 2);
+    expect(() => offBuffer.render(buf3)).not.toThrow();
+  });
+
+  test("without a CSS resolver, falls back to the literal 'cyan' colour", () => {
+    const w = new SpinnerWidget();
+    w.mode = "rotate";
+    w.region = new Region(Offset.ORIGIN, new Size(1, 1));
+    const buffer = new ScreenBuffer(1, 1);
+    // Unattached: no computedStyle.color, no App.instance running.
+    w.render(buffer);
+    expect(buffer.cells[0][0].style.color).toBe("cyan");
+  });
+
+  test("blink mode falls back to FALLBACK_RGB when its colour can't be parsed", () => {
+    const w = new SpinnerWidget();
+    w.mode = "blink";
+    // A named colour "cyan" (the unattached fallback) doesn't parse as RGB,
+    // so blink's brightness mix must fall back to FALLBACK_RGB rather than
+    // throwing or leaving the cell uncoloured.
+    const spy = vi.spyOn(Date, "now").mockReturnValue(0);
+    try {
+      w.region = new Region(Offset.ORIGIN, new Size(1, 1));
+      const buffer = new ScreenBuffer(1, 1);
+      w.render(buffer);
+      expect(buffer.cells[0][0].style.color).toMatch(/^rgb\(/);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("an unrecognised mode falls back to the rotate frames and default interval scale", () => {
+    const w = new SpinnerWidget();
+    // Cast past the SpinnerMode union: FRAMES/INTERVAL_SCALE lookups for an
+    // unknown mode are undefined, so both must fall back via `??`.
+    w.mode = "bogus" as unknown as SpinnerWidget["mode"];
+    w.region = new Region(Offset.ORIGIN, new Size(1, 1));
+    const buffer = new ScreenBuffer(1, 1);
+    w.render(buffer);
+    expect("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏").toContain(buffer.cells[0][0].char);
   });
 });
 
