@@ -83,4 +83,43 @@ describe("Sparkline", () => {
     await t.settle();
     expect(t.text()).not.toContain("▁");
   });
+
+  test("showValue formats a non-integer last value to one decimal", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 20 }}>
+        <Sparkline id="s" data={[1, 2, 3.14762]} showValue />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.text()).toContain("3.1");
+    expect(t.text()).not.toContain("3.14762");
+  });
+
+  test("measure() falls back to intrinsic size for a non-numeric width/height", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 20 }}>
+        <Sparkline id="s" data={[1, 2, 3]} style={{ width: "1fr", height: "1fr" }} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<SparklineWidget>("s") as SparklineWidget;
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("falls back through the $accent CSS variable when no explicit color is set", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 20 }}>
+        <Sparkline id="s" data={[1, 2, 3]} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    // No style.color was set, so render() takes the $accent/default fallback
+    // path instead of computedStyle.color - just verify it doesn't blow up and
+    // still draws bars.
+    expect(t.text()).toMatch(/[▁▂▃▄▅▆▇█]/);
+  });
 });
