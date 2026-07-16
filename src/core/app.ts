@@ -485,17 +485,98 @@ export class App extends DOMNode {
     this.framePipelineRuns++;
     const screen = this.activeScreen;
 
-    // Capture and clear the layout-dirty flag up front: a re-entrant queueRender
-    // during this frame must re-dirty for the *next* frame, not be swallowed.
+    // Phase 1: capture and clear this frame's dirty/damage state, and decide
+    // full vs. partial (damage-tracked) repaint.
+    const dirty = this.captureDirtyState();
+    const doLayout = dirty.doLayout;
+    const forcedFull = dirty.forcedFull;
+    const dirtyWidgets = dirty.dirtyWidgets;
+    let full = dirty.full;
+    let damageTop = dirty.damageTop;
+    let damageBottom = dirty.damageBottom;
+
+    // Phase 2: restyle. A full frame always re-resolves. On a paint-only frame
+    // we can reuse the previous frame's computedStyle, because nothing that the
+    // central pass resolves has changed — real style/focus/hover/theme changes
+    // all go through queueRender (a full frame), and time-varying colors
+    // (focus/attention breathing, the caret) are re-resolved by each widget in
+    // its own render(). The one exception is a loaded stylesheet, whose
+    // `:focus`/`:hover` rules *could* carry a time-varying token resolved by
+    // this pass — so when rules exist we keep re-resolving every frame
+    // (correctness over speed).
+    const restyle = doLayout || this.cssResolver.hasRules();
+    if (restyle) this.restylePhase(screen);
+
+    // Phase 3: layout (screen + overlays), only when the layout-dirty flag was set.
+    const size = this.driver.getSize();
+    if (doLayout) this.layoutPhase(screen, size);
+    this.layoutOverlaysPhase(screen, restyle, doLayout);
+
+    // Phase 4: geometry-verified scoped-repaint downgrade — only meaningful
+    // right after a layout pass, since it depends on prevRegion comparisons
+    // that layout just refreshed.
+    if (doLayout) {
+      const downgraded = this.scopedRepaintDowngrade(
+        full,
+        forcedFull,
+        dirtyWidgets,
+        damageTop,
+        damageBottom,
+      );
+      full = downgraded.full;
+      damageTop = downgraded.damageTop;
+      damageBottom = downgraded.damageBottom;
+    }
+
+    // Damage band for a partial frame: clamp to the screen and clip rendering to
+    // those rows. renderChildren prunes subtrees that don't intersect the clip and
+    // setCell drops writes outside it, so only the changed band is rebuilt; every
+    // other row is retained from the previous frame (and therefore matches
+    // prevBuffer, so the diff finds nothing there).
+    const dmgY0 = full ? 0 : Math.max(0, Math.floor(damageTop));
+    const dmgY1 = full ? size.height : Math.min(size.height, Math.ceil(damageBottom));
+
+    // Phase 5: paint the frame into currentBuffer.
+    const graphicsResetSeq = this.paintPhase(screen, full, dmgY0, dmgY1, size);
+
+    // Phase 6: diff against prevBuffer (or just detect change, for backends
+    // that don't consume the ANSI encoding).
+    const { ansiDiff, changed } = this.diffPhase(dmgY0, dmgY1, size, graphicsResetSeq);
+
+    // Phase 7: write the diff to the driver and record the frame summary.
+    this.writePhase(
+      full,
+      doLayout,
+      restyle,
+      dmgY0,
+      dmgY1,
+      size,
+      ansiDiff,
+      changed,
+      graphicsResetSeq,
+    );
+  }
+
+  /**
+   * Capture and clear this frame's layout/repaint dirty state (so a re-entrant
+   * queueRender/queueRepaint during this frame re-dirties for the *next* frame,
+   * not this one), and decide whether the frame must be full.
+   */
+  private captureDirtyState(): {
+    doLayout: boolean;
+    full: boolean;
+    damageTop: number;
+    damageBottom: number;
+    dirtyWidgets: Set<Widget>;
+    forcedFull: boolean;
+  } {
     const doLayout = this.needsLayout;
     this.needsLayout = false;
 
-    // Decide full vs. partial (damage-tracked) repaint, capturing and clearing the
-    // dirty state up front so a re-entrant request re-dirties for the next frame.
     const wasRepaintFull = this.repaintFull;
     let full = doLayout || wasRepaintFull;
-    let damageTop = this.damageTop;
-    let damageBottom = this.damageBottom;
+    const damageTop = this.damageTop;
+    const damageBottom = this.damageBottom;
     const dirtyWidgets = this.dirtyWidgets;
     this.dirtyWidgets = new Set();
     this.repaintFull = false;
@@ -513,34 +594,32 @@ export class App extends DOMNode {
     if (!full && (damageTop === Number.POSITIVE_INFINITY || damageBottom <= damageTop)) {
       full = true;
     }
+    return { doLayout, full, damageTop, damageBottom, dirtyWidgets, forcedFull };
+  }
 
-    // Styles: a full frame always re-resolves. On a paint-only frame we can reuse
-    // the previous frame's computedStyle, because nothing that the central pass
-    // resolves has changed — real style/focus/hover/theme changes all go through
-    // queueRender (a full frame), and time-varying colors (focus/attention
-    // breathing, the caret) are re-resolved by each widget in its own render().
-    // The one exception is a loaded stylesheet, whose `:focus`/`:hover` rules
-    // *could* carry a time-varying token resolved by this pass — so when rules
-    // exist we keep re-resolving every frame (correctness over speed).
-    const restyle = doLayout || this.cssResolver.hasRules();
-    if (restyle) {
-      const t = frameProfiler.now();
-      this.resolveAllStyles(screen);
-      frameProfiler.record("restyle", t);
-    }
-    const size = this.driver.getSize();
-    if (doLayout) {
-      let t = frameProfiler.now();
-      screen.measure(screen.region.width, size.height);
-      frameProfiler.record("measure", t);
-      t = frameProfiler.now();
-      this.resolveAllLayouts(screen);
-      frameProfiler.record("layout", t);
-    }
+  /** Re-resolve every widget's computedStyle for `screen`. */
+  private restylePhase(screen: Screen): void {
+    const t = frameProfiler.now();
+    this.resolveAllStyles(screen);
+    frameProfiler.record("restyle", t);
+  }
 
-    // Resolve styles and absolute layouts for screen overlays. Overlays fill the
-    // screen and must be measured (so layer content can size/center itself)
-    // before their subtree is laid out.
+  /** Measure and lay out `screen` at the driver's current size. */
+  private layoutPhase(screen: Screen, size: Size): void {
+    let t = frameProfiler.now();
+    screen.measure(screen.region.width, size.height);
+    frameProfiler.record("measure", t);
+    t = frameProfiler.now();
+    this.resolveAllLayouts(screen);
+    frameProfiler.record("layout", t);
+  }
+
+  /**
+   * Resolve styles and absolute layouts for screen overlays. Overlays fill the
+   * screen and must be measured (so layer content can size/center itself)
+   * before their subtree is laid out.
+   */
+  private layoutOverlaysPhase(screen: Screen, restyle: boolean, doLayout: boolean): void {
     for (const overlay of screen.overlays) {
       if (restyle) {
         const t = frameProfiler.now();
@@ -557,41 +636,56 @@ export class App extends DOMNode {
         frameProfiler.record("layout", t);
       }
     }
+  }
 
-    // Geometry-verified scoped repaint. We relaid out above; refresh prevRegion
-    // (so the next frame has a fresh baseline) and learn whether anything moved.
-    // When this frame relaid out *only* to service queueRepaintWidget requests
-    // (not a forced-full reason) and nothing moved, downgrade it to a repaint
-    // scoped to the union of those widgets' regions — re-rendering just their
-    // subtrees instead of the whole tree. If any region shifted, stay full so a
-    // real layout change is never dropped.
-    if (doLayout) {
-      const layoutChanged = this.refreshPrevRegions();
-      if (full && !forcedFull && dirtyWidgets.size > 0 && !layoutChanged) {
-        let top = Number.POSITIVE_INFINITY;
-        let bot = Number.NEGATIVE_INFINITY;
-        for (const w of dirtyWidgets) {
-          if (w.region.height > 0 && this.isInActiveTree(w)) {
-            top = Math.min(top, w.region.y);
-            bot = Math.max(bot, w.region.bottom);
-          }
-        }
-        if (bot > top) {
-          full = false;
-          damageTop = Math.min(damageTop, top);
-          damageBottom = Math.max(damageBottom, bot);
+  /**
+   * Geometry-verified scoped repaint. We relaid out just before this is called;
+   * refresh prevRegion (so the next frame has a fresh baseline) and learn
+   * whether anything moved. When this frame relaid out *only* to service
+   * queueRepaintWidget requests (not a forced-full reason) and nothing moved,
+   * downgrade it to a repaint scoped to the union of those widgets' regions —
+   * re-rendering just their subtrees instead of the whole tree. If any region
+   * shifted, stay full so a real layout change is never dropped.
+   */
+  private scopedRepaintDowngrade(
+    full: boolean,
+    forcedFull: boolean,
+    dirtyWidgets: Set<Widget>,
+    damageTop: number,
+    damageBottom: number,
+  ): { full: boolean; damageTop: number; damageBottom: number } {
+    const layoutChanged = this.refreshPrevRegions();
+    if (full && !forcedFull && dirtyWidgets.size > 0 && !layoutChanged) {
+      let top = Number.POSITIVE_INFINITY;
+      let bot = Number.NEGATIVE_INFINITY;
+      for (const w of dirtyWidgets) {
+        if (w.region.height > 0 && this.isInActiveTree(w)) {
+          top = Math.min(top, w.region.y);
+          bot = Math.max(bot, w.region.bottom);
         }
       }
+      if (bot > top) {
+        full = false;
+        damageTop = Math.min(damageTop, top);
+        damageBottom = Math.max(damageBottom, bot);
+      }
     }
+    return { full, damageTop, damageBottom };
+  }
 
-    // Damage band for a partial frame: clamp to the screen and clip rendering to
-    // those rows. renderChildren prunes subtrees that don't intersect the clip and
-    // setCell drops writes outside it, so only the changed band is rebuilt; every
-    // other row is retained from the previous frame (and therefore matches
-    // prevBuffer, so the diff finds nothing there).
-    const dmgY0 = full ? 0 : Math.max(0, Math.floor(damageTop));
-    const dmgY1 = full ? size.height : Math.min(size.height, Math.ceil(damageBottom));
-
+  /**
+   * Paint the frame into {@link currentBuffer}: clear the appropriate region,
+   * render the tree (clipped to the damage band for a partial frame), paint the
+   * active selection, and — on a full frame whose graphics signature changed —
+   * compute the terminal graphics-layer reset sequence.
+   */
+  private paintPhase(
+    screen: Screen,
+    full: boolean,
+    dmgY0: number,
+    dmgY1: number,
+    size: Size,
+  ): string {
     const tRender = frameProfiler.now();
     resetRenderedWidgetCount();
     if (full) {
@@ -666,11 +760,22 @@ export class App extends DOMNode {
     }
 
     frameProfiler.record("render", tRender);
+    return graphicsResetSeq;
+  }
 
+  /**
+   * Diff {@link currentBuffer} against {@link prevBuffer} for the damage band.
+   * The terminal needs the ANSI encoding; a backend that re-presents the cell
+   * grid (the web canvas) discards it, so for those we only detect whether the
+   * frame changed and skip building a string nobody reads.
+   */
+  private diffPhase(
+    dmgY0: number,
+    dmgY1: number,
+    size: Size,
+    graphicsResetSeq: string,
+  ): { ansiDiff: string; changed: boolean } {
     const tDiff = frameProfiler.now();
-    // The terminal needs the ANSI encoding; a backend that re-presents the cell
-    // grid (the web canvas) discards it, so for those we only detect whether the
-    // frame changed and skip building a string nobody reads.
     let ansiDiff = "";
     let changed: boolean;
     if (this.driver.consumesFrameBytes) {
@@ -722,7 +827,25 @@ export class App extends DOMNode {
       changed = this.currentBuffer.differsFrom(this.prevBuffer, dmgY0, dmgY1);
     }
     frameProfiler.record("diff", tDiff);
+    return { ansiDiff, changed };
+  }
 
+  /**
+   * Write the frame's ANSI bytes (if any) to the driver, present the buffer,
+   * advance the prev-buffer baseline, and record the frame summary consumed by
+   * {@link getLastFrame} / frame-scheduling tests.
+   */
+  private writePhase(
+    full: boolean,
+    doLayout: boolean,
+    restyle: boolean,
+    dmgY0: number,
+    dmgY1: number,
+    size: Size,
+    ansiDiff: string,
+    changed: boolean,
+    graphicsResetSeq: string,
+  ): void {
     const emitted = changed;
     const tWrite = frameProfiler.now();
     if (emitted) {

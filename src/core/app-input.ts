@@ -117,70 +117,11 @@ export class AppInput {
 
   public handleKey(ev: KeyEvent): void {
     this.log(`Key event received: key=${ev.key}, name=${ev.name}`);
-    // A hotkey explicitly registered on "ctrl+c" gets first refusal, ahead of
-    // the built-in copy-selection/quit behavior below — otherwise that
-    // hardcoded branch always returns first and such a registration could
-    // never be reached at all (unlike every other key, which always gets a
-    // priority-phase dispatch further down).
-    if (ev.key === "ctrl+c" && this.host.hotkeys.dispatch(ev, "priority")) {
-      this.host.queueRender("key:hotkey-priority");
-      return;
-    }
-    if (ev.key === "ctrl+c") {
-      // Selection-aware quit: if a text selection is active, copy it instead
-      // of exiting — the selection stays visible (standard editor behavior);
-      // Escape or clicking elsewhere deselects, after which Ctrl+C quits.
-      // This is the only copy path that works on terminals WITHOUT the Kitty
-      // keyboard protocol, where Ctrl+Shift+C is byte-identical to a bare
-      // Ctrl+C. Marking the event handled stops the driver's fallback exit.
-      const focused = this.host.activeScreen.focusedWidget as ClipboardWidget | null;
-      const copied = focused?.copySelection?.();
-      if (copied != null) {
-        ev.handled = true;
-        this.host.queueRender("clipboard:copy-focused-selection");
-        return;
-      }
-      // Read-only (mouse) selection over a display widget copies too.
-      if (this.host.selection.active && this.host.copyActiveSelection() != null) {
-        ev.handled = true;
-        this.host.queueRender("clipboard:copy-readonly-selection");
-        return;
-      }
-      // On a backend that doesn't own its host process (the web canvas, served
-      // to many users), Ctrl+C must never quit — it would kill the shared page
-      // and any server behind it. With nothing to copy, just swallow it.
-      if (this.host.driver.capabilities.ownsProcess === false) {
-        ev.handled = true;
-        return;
-      }
-      ev.handled = true;
-      this.host.stop();
-      process.exit(0);
-    }
+    if (this.handleCtrlC(ev)) return;
 
     const screen = this.host.activeScreen;
 
-    // Layer key interception: sticky panels see keys first (top-down) so they
-    // can claim navigation keys while leaving text for the focused control
-    // below. A modal blocks interception from reaching layers beneath it.
-    // Runs before the clipboard shortcuts below so a dialog can claim e.g.
-    // Ctrl+A for its own list ("select all rows") even while a text `Input`
-    // happens to be focused inside it — otherwise routeClipboardKey's
-    // unconditional focused-widget check would always win and the
-    // interceptor could never see the key at all.
-    for (let i = screen.layers.length - 1; i >= 0; i--) {
-      const layer = screen.layers[i];
-      const interceptor = layer.keyInterceptor;
-      if (interceptor) {
-        this.safeInvoke(`keyInterceptor on layer ${i}`, () => interceptor(ev));
-        if (ev.handled) {
-          this.log(`Key "${ev.key}" intercepted by layer ${i}`);
-          this.host.queueRender("key:layer-interceptor");
-          return;
-        }
-      }
-      if (layer.modal) break;
-    }
+    if (this.interceptLayerKeys(ev, screen)) return;
 
     // Clipboard commands routed to the focused text widget. Copy/cut also bind
     // Ctrl+Shift+C/X (key "ctrl+C"/"ctrl+X" — distinguishable from a bare Ctrl+C
@@ -201,69 +142,176 @@ export class AppInput {
       return;
     }
 
+    if (this.handleEscapeSelectionClear(ev, screen)) return;
+    if (this.handleEscapeLayerClose(ev, screen)) return;
+    if (this.handleTabKey(ev, screen)) return;
+    if (this.bubbleKeyToFocusChain(ev, screen)) return;
+
+    // Global hotkeys, fallback phase: bare keys ("?", "g", enter…) only fire
+    // once the focus chain declined the event, so hotkeys never eat typing.
+    if (this.host.hotkeys.dispatch(ev, "fallback")) {
+      this.log(`Key "${ev.key}" handled by global hotkey`);
+      this.host.queueRender("key:hotkey-fallback");
+      return;
+    }
+
+    this.log(`Key "${ev.key}" ignored (no widget in the focused chain handled it)`);
+  }
+
+  /**
+   * Ctrl+C: a registered hotkey gets first refusal, ahead of the built-in
+   * copy-selection/quit behavior below — otherwise that hardcoded branch
+   * always returns first and such a registration could never be reached at
+   * all (unlike every other key, which always gets a priority-phase dispatch
+   * later in {@link handleKey}). Falling through to the built-in behavior:
+   * selection-aware quit — if a text selection is active, copy it instead of
+   * exiting (the selection stays visible, standard editor behavior; Escape or
+   * clicking elsewhere deselects, after which Ctrl+C quits). This is the only
+   * copy path that works on terminals WITHOUT the Kitty keyboard protocol,
+   * where Ctrl+Shift+C is byte-identical to a bare Ctrl+C. Returns whether the
+   * key was Ctrl+C (and therefore fully handled here, one way or another).
+   */
+  private handleCtrlC(ev: KeyEvent): boolean {
+    if (ev.key === "ctrl+c" && this.host.hotkeys.dispatch(ev, "priority")) {
+      this.host.queueRender("key:hotkey-priority");
+      return true;
+    }
+    if (ev.key !== "ctrl+c") return false;
+
+    const focused = this.host.activeScreen.focusedWidget as ClipboardWidget | null;
+    const copied = focused?.copySelection?.();
+    if (copied != null) {
+      ev.handled = true;
+      this.host.queueRender("clipboard:copy-focused-selection");
+      return true;
+    }
+    // Read-only (mouse) selection over a display widget copies too.
+    if (this.host.selection.active && this.host.copyActiveSelection() != null) {
+      ev.handled = true;
+      this.host.queueRender("clipboard:copy-readonly-selection");
+      return true;
+    }
+    // On a backend that doesn't own its host process (the web canvas, served
+    // to many users), Ctrl+C must never quit — it would kill the shared page
+    // and any server behind it. With nothing to copy, just swallow it.
+    if (this.host.driver.capabilities.ownsProcess === false) {
+      ev.handled = true;
+      return true;
+    }
+    ev.handled = true;
+    this.host.stop();
+    process.exit(0);
+  }
+
+  /**
+   * Layer key interception: sticky panels see keys first (top-down) so they
+   * can claim navigation keys while leaving text for the focused control
+   * below. A modal blocks interception from reaching layers beneath it. Runs
+   * before the clipboard shortcuts in {@link handleKey} so a dialog can claim
+   * e.g. Ctrl+A for its own list ("select all rows") even while a text `Input`
+   * happens to be focused inside it — otherwise routeClipboardKey's
+   * unconditional focused-widget check would always win and the interceptor
+   * could never see the key at all.
+   */
+  private interceptLayerKeys(ev: KeyEvent, screen: Screen): boolean {
+    for (let i = screen.layers.length - 1; i >= 0; i--) {
+      const layer = screen.layers[i];
+      const interceptor = layer.keyInterceptor;
+      if (interceptor) {
+        this.safeInvoke(`keyInterceptor on layer ${i}`, () => interceptor(ev));
+        if (ev.handled) {
+          this.log(`Key "${ev.key}" intercepted by layer ${i}`);
+          this.host.queueRender("key:layer-interceptor");
+          return true;
+        }
+      }
+      if (layer.modal) break;
+    }
+    return false;
+  }
+
+  /**
+   * Escape first deselects (standard editor behavior — the selection survives
+   * Ctrl+C copies until explicitly dismissed), so quitting after a copy is Esc
+   * then Ctrl+C.
+   */
+  private handleEscapeSelectionClear(ev: KeyEvent, screen: Screen): boolean {
     if (ev.key === "escape" || ev.name === "escape") {
-      // Escape first deselects (standard editor behavior — the selection
-      // survives Ctrl+C copies until explicitly dismissed), so quitting after
-      // a copy is Esc then Ctrl+C.
       const focused = screen.focusedWidget as ClipboardWidget | null;
       if (focused?.hasSelection?.()) {
         this.safeInvoke("clearSelection (escape)", () => focused.clearSelection?.());
         this.host.queueRender("selection:clear-focused-escape");
-        return;
+        return true;
       }
       if (this.host.selection.active) {
         this.host.selection.active = null;
         this.host.queueRender("selection:clear-readonly-escape");
-        return;
+        return true;
       }
     }
+    return false;
+  }
 
-    // Escape closes the topmost layer that opted in (modal dialog or sticky
-    // panel), before its content sees the key — a focused control would
-    // otherwise mark every key handled. Disable per-layer with
-    // `closeOnEscape={false}` when the content needs Escape for itself.
+  /**
+   * Escape closes the topmost layer that opted in (modal dialog or sticky
+   * panel), before its content sees the key — a focused control would
+   * otherwise mark every key handled. Disable per-layer with
+   * `closeOnEscape={false}` when the content needs Escape for itself.
+   */
+  private handleEscapeLayerClose(ev: KeyEvent, screen: Screen): boolean {
     if (ev.key === "escape" || ev.name === "escape") {
       const top = screen.layers[screen.layers.length - 1];
       if (top?.closeOnEscape) {
         this.log("Escape closing top layer");
         this.safeInvoke("layer onClose (escape)", () => top.onClose?.());
         this.host.queueRender("layer:close-escape");
-        return;
+        return true;
       }
     }
+    return false;
+  }
 
-    if (ev.key === "tab") {
-      // Give the focused widget first refusal: if it has in-widget Tab work
-      // (e.g. accept an open completion or inline suggestion) it claims the
-      // key; otherwise Tab navigates focus as usual.
-      const focused = screen.focusedWidget;
-      if (focused instanceof Widget && !focused.isDisabled() && focused.wantsTab(ev)) {
-        this.safeInvoke(
-          () => `handleKey (tab) on ${focused.describe()}`,
-          () => focused.handleKey(ev),
-        );
-        // A focused widget consuming the key (e.g. accepting a completion) is a
-        // self-contained change — repaint scoped to it, verified for layout.
-        this.host.queueRepaintWidget(focused, "key:widget-handled");
-        return;
-      }
-      // A fallback-phase hotkey registered on "tab" gets a chance once the
-      // focused widget has declined it, before the default focus-navigation
-      // behavior runs — otherwise this branch always returns first and such
-      // a registration could never fire.
-      if (this.host.hotkeys.dispatch(ev, "fallback")) {
-        this.host.queueRender("key:hotkey-fallback");
-        return;
-      }
-      screen.focusNext(ev.shift);
-      this.log(() => `Focus moved to: ${screen.focusedWidget?.describe() ?? "(none)"}`);
-      this.host.queueRender("focus:tab-navigation");
-      return;
+  /**
+   * Give the focused widget first refusal on Tab: if it has in-widget Tab work
+   * (e.g. accept an open completion or inline suggestion) it claims the key;
+   * otherwise Tab navigates focus as usual. Returns false (letting the caller
+   * fall through) only when the key isn't Tab at all — every other path
+   * handles the event.
+   */
+  private handleTabKey(ev: KeyEvent, screen: Screen): boolean {
+    if (ev.key !== "tab") return false;
+
+    const focused = screen.focusedWidget;
+    if (focused instanceof Widget && !focused.isDisabled() && focused.wantsTab(ev)) {
+      this.safeInvoke(
+        () => `handleKey (tab) on ${focused.describe()}`,
+        () => focused.handleKey(ev),
+      );
+      // A focused widget consuming the key (e.g. accepting a completion) is a
+      // self-contained change — repaint scoped to it, verified for layout.
+      this.host.queueRepaintWidget(focused, "key:widget-handled");
+      return true;
     }
+    // A fallback-phase hotkey registered on "tab" gets a chance once the
+    // focused widget has declined it, before the default focus-navigation
+    // behavior runs — otherwise this branch always returns first and such
+    // a registration could never fire.
+    if (this.host.hotkeys.dispatch(ev, "fallback")) {
+      this.host.queueRender("key:hotkey-fallback");
+      return true;
+    }
+    screen.focusNext(ev.shift);
+    this.log(() => `Focus moved to: ${screen.focusedWidget?.describe() ?? "(none)"}`);
+    this.host.queueRender("focus:tab-navigation");
+    return true;
+  }
 
-    // Bubble key event up from the focused widget. A disabled focused widget
-    // (e.g. it was disabled while focused) swallows nothing — skip its chain
-    // so input can't reach an inert control.
+  /**
+   * Bubble the key event up from the focused widget. A disabled focused
+   * widget (e.g. it was disabled while focused) swallows nothing — skip its
+   * chain so input can't reach an inert control.
+   */
+  private bubbleKeyToFocusChain(ev: KeyEvent, screen: Screen): boolean {
     let current: DOMNode | null = screen.focusedWidget;
     if (current instanceof Widget && current.isDisabled()) current = null;
     let handledBy: Widget | null = null;
@@ -291,41 +339,65 @@ export class AppInput {
       // growing textarea, reflowed content), and any app-state cascade routes
       // through React's own queueRender, so this never hides a wider change.
       this.host.queueRepaintWidget(handledBy, "key:widget-handled");
-      return;
+      return true;
     }
-
-    // Global hotkeys, fallback phase: bare keys ("?", "g", enter…) only fire
-    // once the focus chain declined the event, so hotkeys never eat typing.
-    if (this.host.hotkeys.dispatch(ev, "fallback")) {
-      this.log(`Key "${ev.key}" handled by global hotkey`);
-      this.host.queueRender("key:hotkey-fallback");
-      return;
-    }
-
-    this.log(`Key "${ev.key}" ignored (no widget in the focused chain handled it)`);
+    return false;
   }
 
   private processMouse(ev: MouseEvent): void {
-    // Collapse redundant same-cell motion. Under any-motion tracking (1003) a
-    // hover sends a move per pixel; without a button down, a move that stays in
-    // the same cell can't change the hovered widget or a drag, so it is pure
-    // overhead (a full tree hit-test) — skip it.
+    if (this.shouldSkipDuplicateMove(ev)) return;
+    if (this.shouldSkipUninterestingMove(ev)) return;
+
+    const hit = this.resolveMouseHit(ev);
+
+    this.log(
+      () =>
+        `Mouse ${ev.type} @ (${ev.x},${ev.y}) btn=${ev.button} -> hit: ${hit?.describe() ?? "none"}`,
+    );
+
+    if (ev.type === "release") {
+      this.activeDragWidget = null;
+    }
+
+    this.updateHoverState(hit, ev);
+    this.updatePointerShape(hit, ev);
+
+    if (this.dismissModalOnOutsideClick(ev, hit)) return;
+
+    this.dispatchMouseToHitWidget(hit, ev);
+  }
+
+  /**
+   * Collapse redundant same-cell motion. Under any-motion tracking (1003) a
+   * hover sends a move per pixel; without a button down, a move that stays in
+   * the same cell can't change the hovered widget or a drag, so it is pure
+   * overhead (a full tree hit-test) — skip it.
+   */
+  private shouldSkipDuplicateMove(ev: MouseEvent): boolean {
     if (ev.type === "move" && ev.x === this.lastMouseX && ev.y === this.lastMouseY) {
       this.mouseDiagnostics.sameCellSkipped += 1;
-      return;
+      return true;
     }
     this.lastMouseX = ev.x;
     this.lastMouseY = ev.y;
+    return false;
+  }
 
-    if (
+  /** A move that can't affect hover (no drag, no `:hover` rules, no widget hover interest) is pure overhead. */
+  private shouldSkipUninterestingMove(ev: MouseEvent): boolean {
+    return (
       ev.type === "move" &&
       !this.activeDragWidget &&
       !this.host.cssResolver.hasHoverRules() &&
       !this.screenHasHoverInterest(this.host.activeScreen)
-    ) {
-      return;
-    }
+    );
+  }
 
+  /**
+   * Hit-test the pointer position (pinned to the drag widget for `drag`/
+   * `release`), and — on `press` — update drag/multi-click bookkeeping.
+   */
+  private resolveMouseHit(ev: MouseEvent): Widget | null {
     let hit = hitTest(this.host.activeScreen, ev.x, ev.y);
 
     if (this.activeDragWidget && (ev.type === "drag" || ev.type === "release")) {
@@ -353,16 +425,11 @@ export class AppInput {
         }
       }
     }
+    return hit;
+  }
 
-    this.log(
-      () =>
-        `Mouse ${ev.type} @ (${ev.x},${ev.y}) btn=${ev.button} -> hit: ${hit?.describe() ?? "none"}`,
-    );
-
-    if (ev.type === "release") {
-      this.activeDragWidget = null;
-    }
-
+  /** Fire onMouseLeave/onMouseEnter and queue a hover-CSS repaint when the hovered widget changes. */
+  private updateHoverState(hit: Widget | null, ev: MouseEvent): void {
     if (hit !== this.hoveredWidgetRef) {
       const oldHovered = this.hoveredWidgetRef;
       this.hoveredWidgetRef = hit;
@@ -390,132 +457,144 @@ export class AppInput {
         this.host.queueRender("mouse:hover-css");
       }
     }
+  }
 
-    // Push the pointer shape (OSC 22) for the cell under the cursor. Resolved
-    // every processed move — not just on widget boundary crossings — so a
-    // shape that varies *within* a widget (e.g. a list's rows vs its scrollbar
-    // gutter) updates too. `setPointerShape` dedupes redundant writes.
+  /**
+   * Push the pointer shape (OSC 22) for the cell under the cursor. Resolved
+   * every processed move — not just on widget boundary crossings — so a
+   * shape that varies *within* a widget (e.g. a list's rows vs its scrollbar
+   * gutter) updates too. `setPointerShape` dedupes redundant writes.
+   */
+  private updatePointerShape(hit: Widget | null, ev: MouseEvent): void {
     if (this.host.pointerShapes && this.host.driver.capabilities.pointerShapes) {
       const dragging = this.activeDragWidget;
       const target = dragging ?? hit;
       this.host.driver.setPointerShape(this.resolveCursorShape(target, ev.x, ev.y));
     }
+  }
 
-    // Modal outside-click: a press that resolves to the bare backdrop (i.e.
-    // missed the panel) dismisses the layer if it opted in. The full-screen
-    // modal backdrop is hit-tested first, so the layer below never sees it.
+  /**
+   * Modal outside-click: a press that resolves to the bare backdrop (i.e.
+   * missed the panel) dismisses the layer if it opted in. The full-screen
+   * modal backdrop is hit-tested first, so the layer below never sees it.
+   * Returns whether the event was consumed this way.
+   */
+  private dismissModalOnOutsideClick(ev: MouseEvent, hit: Widget | null): boolean {
     if (ev.type === "press" && ev.button === "left") {
       const modal = this.host.activeScreen.topModalLayer;
       if (modal && hit === modal.root) {
         if (modal.closeOnOutsideClick) {
           this.log("Outside click closing top modal layer");
           this.safeInvoke("modal onClose (outside click)", () => modal.onClose?.());
-          // The press above already set activeDragWidget to the modal root
-          // (line ~318); onClose typically detaches it. Left set, the next
+          // The press in resolveMouseHit already set activeDragWidget to the
+          // modal root; onClose typically detaches it. Left set, the next
           // release/drag event would force `hit` back to this now-detached
-          // widget (line ~314-316) and run hover enter/leave / pointer-shape
-          // resolution against it.
+          // widget and run hover enter/leave / pointer-shape resolution
+          // against it.
           this.activeDragWidget = null;
         }
         this.host.queueRender("layer:close-outside-click");
-        return;
+        return true;
       }
     }
+    return false;
+  }
 
-    if (hit) {
-      const hitWidget = hit;
-      // A disabled control (or anything inside a disabled container) ignores
-      // pointer input entirely — no activation, focus, or click.
-      if (hitWidget.isDisabled()) {
-        ev.handled = true;
-        return;
-      }
-      if (hitWidget.handleMouse) {
-        this.safeInvoke(
-          () => `handleMouse on ${hitWidget.describe()}`,
-          () => hitWidget.handleMouse(ev),
-        );
-      }
+  /** Dispatch handleMouse, then onMouseDown/focus/onClick or scroll-forwarding, to the hit widget. */
+  private dispatchMouseToHitWidget(hit: Widget | null, ev: MouseEvent): void {
+    if (!hit) return;
+    const hitWidget = hit;
+    // A disabled control (or anything inside a disabled container) ignores
+    // pointer input entirely — no activation, focus, or click.
+    if (hitWidget.isDisabled()) {
+      ev.handled = true;
+      return;
+    }
+    if (hitWidget.handleMouse) {
+      this.safeInvoke(
+        () => `handleMouse on ${hitWidget.describe()}`,
+        () => hitWidget.handleMouse(ev),
+      );
+    }
 
-      if (!ev.handled) {
-        // Any-button press fires onMouseDown first, so a right-click can be
-        // observed (e.g. to open a context menu) before the left-only
-        // focus/onClick path below. Handling it here suppresses both. The
-        // handler bubbles to the nearest ancestor that defines it, so a click
-        // on a leaf (e.g. a Label) still reaches a clickable container's
-        // handler — handlers don't have to sit on the exact hit widget.
-        if (ev.type === "press") {
-          const target = this.findAncestorHandler(hitWidget, "onMouseDown");
-          if (target) {
-            this.log(() => `onMouseDown (${ev.button}) -> ${target.describe()}`);
-            this.safeInvoke(
-              () => `onMouseDown on ${target.describe()}`,
-              () => target.onMouseDown?.(ev),
-            );
-            this.host.queueRepaintWidget(target, "mouse:down");
-          }
+    if (!ev.handled) {
+      // Any-button press fires onMouseDown first, so a right-click can be
+      // observed (e.g. to open a context menu) before the left-only
+      // focus/onClick path below. Handling it here suppresses both. The
+      // handler bubbles to the nearest ancestor that defines it, so a click
+      // on a leaf (e.g. a Label) still reaches a clickable container's
+      // handler — handlers don't have to sit on the exact hit widget.
+      if (ev.type === "press") {
+        const target = this.findAncestorHandler(hitWidget, "onMouseDown");
+        if (target) {
+          this.log(() => `onMouseDown (${ev.button}) -> ${target.describe()}`);
+          this.safeInvoke(
+            () => `onMouseDown on ${target.describe()}`,
+            () => target.onMouseDown?.(ev),
+          );
+          this.host.queueRepaintWidget(target, "mouse:down");
         }
-        if (!ev.handled && ev.type === "press" && ev.button === "left") {
-          // The clicked widget itself, or — when it can't take focus — the first
-          // focusable inside the nearest `focusOnClick` container (so clicking a
-          // form/panel's chrome hands focus to its first field).
-          const focusTarget = hitWidget.focusable
-            ? hitWidget
-            : firstFocusableInClickContainer(hitWidget);
-          if (focusTarget) {
-            const prevFocused = this.host.activeScreen.focusedWidget;
-            // Pointer focus must not scroll: the user clicked a visible cell, and
-            // a read-only selection may have just anchored on this same press —
-            // scrolling here would shift that anchor off the clicked content.
-            this.host.activeScreen.focusWidget(focusTarget, { scroll: false });
-            this.log(() => `Focused via click -> ${focusTarget.describe()}`);
-            // Focus moves the ring between two fixed-size widgets — repaint both
-            // (old loses the ring, new gains it), scoped + geometry-verified.
-            if (prevFocused instanceof Widget && prevFocused !== focusTarget) {
-              this.host.queueRepaintWidget(prevFocused, "focus:mouse-press");
-            }
-            this.host.queueRepaintWidget(focusTarget, "focus:mouse-press");
+      }
+      if (!ev.handled && ev.type === "press" && ev.button === "left") {
+        // The clicked widget itself, or — when it can't take focus — the first
+        // focusable inside the nearest `focusOnClick` container (so clicking a
+        // form/panel's chrome hands focus to its first field).
+        const focusTarget = hitWidget.focusable
+          ? hitWidget
+          : firstFocusableInClickContainer(hitWidget);
+        if (focusTarget) {
+          const prevFocused = this.host.activeScreen.focusedWidget;
+          // Pointer focus must not scroll: the user clicked a visible cell, and
+          // a read-only selection may have just anchored on this same press —
+          // scrolling here would shift that anchor off the clicked content.
+          this.host.activeScreen.focusWidget(focusTarget, { scroll: false });
+          this.log(() => `Focused via click -> ${focusTarget.describe()}`);
+          // Focus moves the ring between two fixed-size widgets — repaint both
+          // (old loses the ring, new gains it), scoped + geometry-verified.
+          if (prevFocused instanceof Widget && prevFocused !== focusTarget) {
+            this.host.queueRepaintWidget(prevFocused, "focus:mouse-press");
           }
-          // onClick bubbles to the nearest ancestor handler too.
-          const target = this.findAncestorHandler(hitWidget, "onClick");
-          if (target) {
-            this.log(() => `onClick -> ${target.describe()}`);
-            this.safeInvoke(
-              () => `onClick on ${target.describe()}`,
-              () => target.onClick?.(ev),
-            );
-            // The click's own visual is local; any app-state cascade an onClick
-            // triggers routes through React's full queueRender, so this can't hide
-            // a wider change.
-            this.host.queueRepaintWidget(target, "mouse:click");
-          }
-        } else if (ev.type === "scroll_up" || ev.type === "scroll_down") {
-          let current: DOMNode | null = hitWidget;
-          while (current) {
-            if (current instanceof Widget) {
-              const w = current;
-              if (w.handleScroll) {
-                this.log(() => `Scroll forwarded to ${w.describe()}`);
-                this.safeInvoke(
-                  () => `handleScroll on ${w.describe()}`,
-                  () => w.handleScroll(ev),
-                );
-                if (ev.handled) {
-                  // Scrolling shifts content within the widget's fixed region
-                  // (scrollOffset isn't layout) — scope the repaint to it.
-                  this.host.queueRepaintWidget(w, "mouse:scroll-handled");
-                  break;
-                }
+          this.host.queueRepaintWidget(focusTarget, "focus:mouse-press");
+        }
+        // onClick bubbles to the nearest ancestor handler too.
+        const target = this.findAncestorHandler(hitWidget, "onClick");
+        if (target) {
+          this.log(() => `onClick -> ${target.describe()}`);
+          this.safeInvoke(
+            () => `onClick on ${target.describe()}`,
+            () => target.onClick?.(ev),
+          );
+          // The click's own visual is local; any app-state cascade an onClick
+          // triggers routes through React's full queueRender, so this can't hide
+          // a wider change.
+          this.host.queueRepaintWidget(target, "mouse:click");
+        }
+      } else if (ev.type === "scroll_up" || ev.type === "scroll_down") {
+        let current: DOMNode | null = hitWidget;
+        while (current) {
+          if (current instanceof Widget) {
+            const w = current;
+            if (w.handleScroll) {
+              this.log(() => `Scroll forwarded to ${w.describe()}`);
+              this.safeInvoke(
+                () => `handleScroll on ${w.describe()}`,
+                () => w.handleScroll(ev),
+              );
+              if (ev.handled) {
+                // Scrolling shifts content within the widget's fixed region
+                // (scrollOffset isn't layout) — scope the repaint to it.
+                this.host.queueRepaintWidget(w, "mouse:scroll-handled");
+                break;
               }
             }
-            current = current.parent;
           }
+          current = current.parent;
         }
-      } else {
-        // The hit widget consumed the event (e.g. a toggle/slider/custom control);
-        // its change is local to its subtree, so scope + verify.
-        this.host.queueRepaintWidget(hitWidget, "mouse:handled");
       }
+    } else {
+      // The hit widget consumed the event (e.g. a toggle/slider/custom control);
+      // its change is local to its subtree, so scope + verify.
+      this.host.queueRepaintWidget(hitWidget, "mouse:handled");
     }
   }
 
