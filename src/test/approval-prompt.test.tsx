@@ -192,6 +192,97 @@ describe("ApprovalPrompt — single", () => {
     expect(reported).toEqual([]);
   });
 
+  test("an action without a single-char key renders with no (key) suffix, and bordered={false} drops the border", async () => {
+    const t = await mountApp(
+      <ApprovalPrompt
+        prompt="Allow?"
+        bordered={false}
+        actions={[
+          { id: "yes", label: "Yes", icon: "✓" }, // no `key` at all
+          { id: "later", label: "Later", key: "esc" }, // multi-char key
+        ]}
+        onAction={() => {}}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("✓ Yes");
+    expect(text).not.toContain("Yes (");
+    expect(text).toContain("Later");
+    expect(text).not.toContain("Later (");
+  });
+
+  test("Esc is a no-op in single mode when the actions have no `deny` id", async () => {
+    const ids: string[] = [];
+    const t = await mountApp(
+      <ApprovalPrompt
+        id="ap"
+        prompt="Pick one"
+        actions={[{ id: "yes", label: "Yes", key: "y" }]}
+        onAction={(id) => ids.push(id)}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+    root.handleKey({ name: "escape", handled: false } as never);
+    expect(ids).toEqual([]);
+  });
+
+  test("submitting an empty field cancels without reporting anything", async () => {
+    const reported: Array<[string, string | undefined]> = [];
+    const t = await mountApp(
+      <ApprovalPrompt
+        id="ap"
+        prompt="Allow?"
+        actions={[
+          { id: "allow", label: "Allow", key: "a" },
+          { id: "custom", label: "Custom…", key: "c", input: true },
+        ]}
+        onAction={(id, value) => reported.push([id, value])}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+    root.handleKey({ name: "c", handled: false } as never);
+    await t.settle();
+    const input = findInput(t.app) as InputWidget;
+    input.handleKey({ name: "enter", handled: false } as never); // nothing typed
+    await t.settle();
+    expect(findInput(t.app)).toBeUndefined(); // field closed
+    expect(reported).toEqual([]);
+  });
+
+  test("onKey ignores already-handled events and events while the input field is open", async () => {
+    const ids: string[] = [];
+    const t = await mountApp(
+      <ApprovalPrompt
+        id="ap"
+        prompt="Allow?"
+        actions={[
+          { id: "allow", label: "Allow", key: "a" },
+          { id: "custom", label: "Custom…", key: "c", input: true },
+        ]}
+        onAction={(id) => ids.push(id)}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+
+    // Already handled elsewhere -> ignored even though "a" matches an action.
+    root.handleKey({ name: "a", handled: true } as never);
+    expect(ids).toEqual([]);
+
+    // Open the inline field, then a shortcut key reaching the root must be ignored.
+    root.handleKey({ name: "c", handled: false } as never);
+    await t.settle();
+    root.handleKey({ name: "a", handled: false } as never);
+    expect(ids).toEqual([]);
+  });
+
   test("denyOnEscape={false} ignores Esc", async () => {
     const ids: string[] = [];
     const t = await mountApp(
@@ -231,6 +322,38 @@ describe("ApprovalPrompt — batch", () => {
     expect(text).toContain("✗ Deny all");
     expect(text).toContain("Allow matching");
     expect(text).toContain("Apply");
+  });
+
+  test("clicking a row toggles its own decision (and calls without args render without a preview)", async () => {
+    let resolved: Record<string, string> | null = null;
+    const noArgsCalls = [
+      { id: "1", name: "Read" }, // no `args`
+      { id: "2", name: "Bash", args: "npm test" },
+    ];
+    const t = await mountApp(
+      <ApprovalPrompt
+        id="ap"
+        prompt="Run:"
+        calls={noArgsCalls}
+        onResolve={(d) => (resolved = d)}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const allText = (w: Widget): string => {
+      let s = w.getTextContent?.() ?? "";
+      for (const c of w.children) s += allText(c as Widget);
+      return s;
+    };
+    let row: Widget | undefined;
+    t.screen.walk((n) => {
+      if ((n as Widget).onClick && allText(n as Widget).includes("Read")) row = n as Widget;
+    });
+    (row as Widget).onClick?.({} as never);
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+    root.handleKey({ name: "enter", handled: false } as never); // Apply
+    expect(resolved).toEqual({ "1": "deny", "2": "allow" }); // row 1 flipped from its default allow
   });
 
   test("Allow all / Deny all resolve every call at once", async () => {
@@ -321,6 +444,79 @@ describe("ApprovalPrompt — batch", () => {
 
     // cd + ls carry "read-only" → now allow; rm does not → still deny. Apply.
     root.handleKey({ name: "enter", handled: false } as never);
+    expect(resolved).toEqual({ "1": "allow", "2": "allow", "3": "deny" });
+  });
+
+  test("a call without `matches` falls back to grouping by its tool name", async () => {
+    const noMatches = [
+      { id: "1", name: "Read", args: "a.ts", defaultDecision: "deny" as const }, // no `matches`
+    ];
+    let resolved: Record<string, string> | null = null;
+    const t = await mountApp(
+      <ApprovalPrompt id="ap" prompt="Run:" calls={noMatches} onResolve={(d) => (resolved = d)} />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+    root.handleKey({ name: "m", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("all Read"); // grouped by name, since no `matches` given
+    const list = findMenuList(t.app) as MenuListWidget;
+    list.handleKey({ name: "enter", handled: false } as never); // choose it
+    await t.settle();
+    root.handleKey({ name: "enter", handled: false } as never); // Apply
+    expect(resolved).toEqual({ "1": "allow" });
+  });
+
+  test("a match pattern containing a space is shown verbatim (not grouped)", async () => {
+    const spacedCalls = [
+      { id: "1", name: "Bash", args: "git commit -m x", matches: ["git commit -m x"] },
+    ];
+    const t = await mountApp(
+      <ApprovalPrompt id="ap" prompt="Run:" calls={spacedCalls} onResolve={() => {}} />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+    root.handleKey({ name: "m", handled: false } as never);
+    await t.settle();
+    expect(t.text()).toContain("git commit -m x");
+    expect(t.text()).not.toContain("all git commit -m x");
+  });
+
+  test("Allow matching's custom… glob allows every call whose args match the typed pattern", async () => {
+    const shellCalls = [
+      { id: "1", name: "Bash", args: "rm -rf build", defaultDecision: "deny" as const },
+      { id: "2", name: "Bash", args: "rm -rf dist", defaultDecision: "deny" as const },
+      { id: "3", name: "Bash", args: "ls", defaultDecision: "deny" as const },
+    ];
+    const matched: string[] = [];
+    let resolved: Record<string, string> | null = null;
+    const t = await mountApp(
+      <ApprovalPrompt
+        id="ap"
+        prompt="Run:"
+        calls={shellCalls}
+        onMatch={(p) => matched.push(p)}
+        onResolve={(d) => (resolved = d)}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+    root.handleKey({ name: "m", handled: false } as never); // open Allow matching
+    await t.settle();
+    // The union of patterns for these calls is just ["Bash"]; "custom…" is last.
+    const list = findMenuList(t.app) as MenuListWidget;
+    list.handleKey({ name: "up", handled: false } as never); // wrap to the last row: "custom…"
+    list.handleKey({ name: "enter", handled: false } as never);
+    await t.settle();
+    const input = findInput(t.app) as InputWidget;
+    for (const ch of "rm -rf *") input.handleKey({ key: ch, handled: false } as never);
+    input.handleKey({ name: "enter", handled: false } as never);
+    await t.settle();
+    expect(matched).toEqual(["rm -rf *"]);
+    root.handleKey({ name: "enter", handled: false } as never); // Apply
     expect(resolved).toEqual({ "1": "allow", "2": "allow", "3": "deny" });
   });
 
