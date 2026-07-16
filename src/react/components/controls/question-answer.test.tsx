@@ -63,6 +63,34 @@ describe("QuestionAnswer composite — multi select", () => {
   });
 });
 
+describe("QuestionAnswer composite — horizontal multi select with hints", () => {
+  test("renders hint text and toggles a checkbox laid out in a row", async () => {
+    let result: QAResult | undefined;
+    const { app, driver, settle, text } = await mountApp(
+      <QuestionAnswer
+        question="Pick many"
+        mode="multi"
+        orientation="horizontal"
+        options={[{ label: "a", hint: "first" }, { label: "b" }]}
+        onSubmit={(r) => {
+          result = r;
+        }}
+      />,
+    );
+    const screen = app.activeScreen;
+    expect(text()).toContain("a — first");
+    screen.focusWidget(screen.getFocusableWidgets()[0]); // first checkbox (a)
+    driver.simulateKey("space", "space"); // a on
+    await settle();
+    driver.simulateKey("tab", "tab"); // → b
+    driver.simulateKey("tab", "tab"); // → submit button
+    driver.simulateKey("enter", "enter");
+    await settle();
+
+    expect(result?.selected).toEqual(["a"]);
+  });
+});
+
 describe("QuestionAnswer composite — free text", () => {
   test("typing in the Other input is reported as `other`", async () => {
     let result: QAResult | undefined;
