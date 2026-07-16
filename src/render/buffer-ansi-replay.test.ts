@@ -333,6 +333,69 @@ describe("render diff ANSI replays to the source buffer", () => {
     }
   });
 
+  function detectScrollOf(compiler: ScreenDiffCompiler) {
+    return (
+      compiler as unknown as {
+        detectScroll: (
+          buffer: ScreenBuffer,
+          old: ScreenBuffer,
+        ) => { top: number; bottom: number; delta: number } | null;
+      }
+    ).detectScroll.bind(compiler);
+  }
+
+  test("detectScroll declines a changed band shorter than 3 rows even with a valid shift", () => {
+    // bandH < 3 is rejected before any shift search runs, however cheap the
+    // shift would otherwise be — a scroll op never pays for a 2-row band.
+    const old = new ScreenBuffer(4, 4);
+    const next = new ScreenBuffer(4, 4);
+    // Rows 1..2 differ (bandH = 2); next[1] === old[2] would be a valid
+    // shift-by-1 if the band-size floor weren't enforced.
+    for (let x = 0; x < 4; x++) {
+      old.setCell(x, 1, "a", new Style({}));
+      old.setCell(x, 2, "b", new Style({}));
+      next.setCell(x, 1, "b", new Style({}));
+      next.setCell(x, 2, "c", new Style({}));
+    }
+    const detectScroll = detectScrollOf(new ScreenDiffCompiler());
+    expect(detectScroll(next, old)).toBeNull();
+  });
+
+  test("detectScroll finds a shift once the changed band reaches 3 rows", () => {
+    const old = new ScreenBuffer(4, 5);
+    const next = new ScreenBuffer(4, 5);
+    // Rows 1..3 form the changed band (bandH = 3); next[1..2] === old[2..3]
+    // (shift by 1), row 3 is freshly revealed content.
+    for (let x = 0; x < 4; x++) {
+      old.setCell(x, 1, "a", new Style({}));
+      old.setCell(x, 2, "b", new Style({}));
+      old.setCell(x, 3, "c", new Style({}));
+      next.setCell(x, 1, "b", new Style({}));
+      next.setCell(x, 2, "c", new Style({}));
+      next.setCell(x, 3, "d", new Style({}));
+    }
+    const detectScroll = detectScrollOf(new ScreenDiffCompiler());
+    expect(detectScroll(next, old)).toEqual({ top: 1, bottom: 3, delta: 1 });
+  });
+
+  test("detectScroll rejects a shift that leaves fewer than MIN_SAVE=2 rows actually shared", () => {
+    // bandH = 3, shift by 2 leaves only 1 shared row (bandH - d = 1 < MIN_SAVE),
+    // so even though rows line up, the shift doesn't pay for itself.
+    const old = new ScreenBuffer(4, 5);
+    const next = new ScreenBuffer(4, 5);
+    for (let x = 0; x < 4; x++) {
+      old.setCell(x, 1, "a", new Style({}));
+      old.setCell(x, 2, "b", new Style({}));
+      old.setCell(x, 3, "c", new Style({}));
+      // Shift by 2: next[1] === old[3]; rows 2 and 3 are freshly revealed.
+      next.setCell(x, 1, "c", new Style({}));
+      next.setCell(x, 2, "x", new Style({}));
+      next.setCell(x, 3, "y", new Style({}));
+    }
+    const detectScroll = detectScrollOf(new ScreenDiffCompiler());
+    expect(detectScroll(next, old)).toBeNull();
+  });
+
   test("scrollSavesBytes treats a value-equal (non-singleton) default Style as blank", () => {
     // Regression test: the revealed-band blank check used to compare
     // `style !== Style.DEFAULT` by reference, so a freshly-constructed
