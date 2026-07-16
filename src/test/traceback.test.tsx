@@ -17,6 +17,20 @@ const STACK = [
   "    at Object.<anonymous> (/proj/node_modules/runner/index.js:120:5)",
 ].join("\n");
 
+describe("Traceback measure()", () => {
+  test("an fr-sized width measures intrinsically from the widest rendered row", async () => {
+    const { TracebackWidget: TracebackWidgetCtor } = await import("../widgets/data/traceback.ts");
+    const w = new TracebackWidgetCtor();
+    w.name = "TypeError";
+    w.message = "cannot read property 'x' of undefined";
+    w.stack = STACK;
+    w.computedStyle = { ...w.computedStyle, width: "1fr" };
+    w.measure(200, 50);
+    // Intrinsic width from the longest display row, not the fr weight itself.
+    expect(w.measuredWidth).toBeGreaterThan(10);
+  });
+});
+
 describe("Traceback", () => {
   test("renders the error header and parsed frames", async () => {
     const t = await mountApp(
