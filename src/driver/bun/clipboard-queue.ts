@@ -11,10 +11,21 @@
  * its own resolver and OSC 52 write/timeout — the terminal gets one query per
  * round-trip, not N.
  */
+interface PendingQuery {
+  /** Set once this query has timed out; a later reply for it must be discarded, not
+   * handed to whichever query happens to be at the front of the queue next. */
+  abandoned: boolean;
+  resolve: (text: string) => void;
+}
+
 export class ClipboardQueue {
   private lastClipboard = "";
   private pendingGet: Promise<string> | null = null;
-  private pendingResolvers: ((text: string) => void)[] = [];
+  // FIFO order still matches replies to queries (OSC 52 replies carry no
+  // correlating id), but each slot tracks whether it timed out so a
+  // late-arriving reply for an abandoned query is discarded instead of being
+  // silently reassigned to the next query in line.
+  private pending: PendingQuery[] = [];
 
   /** Read the clipboard: queries the terminal, falling back to the local mirror. */
   get(write: (data: string) => void): Promise<string> {
@@ -24,16 +35,19 @@ export class ClipboardQueue {
       // OSC 52 read with an *empty* payload rather than staying silent — falls
       // back to our local mirror instead of returning "". A genuine non-empty
       // external clipboard is still honoured.
-      const resolver = (osc: string) => resolve(osc || this.lastClipboard);
-      this.pendingResolvers.push(resolver);
+      const entry: PendingQuery = {
+        abandoned: false,
+        resolve: (osc: string) => resolve(osc || this.lastClipboard),
+      };
+      this.pending.push(entry);
       write("\x1b]52;c;?\x07");
       setTimeout(() => {
-        const idx = this.pendingResolvers.indexOf(resolver);
-        if (idx !== -1) {
-          this.pendingResolvers.splice(idx, 1);
-          // Terminal never answered — use our local mirror.
-          resolve(this.lastClipboard);
-        }
+        if (entry.abandoned) return;
+        entry.abandoned = true;
+        // Terminal never answered — use our local mirror. Leave the slot in
+        // `pending` (marked abandoned) so a reply that arrives afterwards is
+        // discarded rather than shifted onto the next resolver.
+        resolve(this.lastClipboard);
       }, 500);
     });
     this.pendingGet = promise;
@@ -49,10 +63,16 @@ export class ClipboardQueue {
     write(`\x1b]52;c;${Buffer.from(text).toString("base64")}\x07`);
   }
 
-  /** Feed a late-arriving OSC 52 reply (base64 payload) to the oldest pending `get()`. */
+  /**
+   * Feed a late-arriving OSC 52 reply (base64 payload) to the oldest
+   * still-live pending `get()`. Slots abandoned by a timeout are discarded
+   * (not resolved again) so a stale reply can never be misattributed to a
+   * later, unrelated query.
+   */
   resolveReply(base64: string): void {
+    const entry = this.pending.shift();
+    if (!entry || entry.abandoned) return; // discard: no correlating id, don't reassign to the next query
     const text = Buffer.from(base64, "base64").toString("utf8");
-    const resolve = this.pendingResolvers.shift();
-    resolve?.(text);
+    entry.resolve(text);
   }
 }
