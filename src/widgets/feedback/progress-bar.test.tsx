@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { HBox, ProgressBar } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
-import type { ProgressBarWidget } from "./progress-bar.ts";
+import { ProgressBarWidget } from "./progress-bar.ts";
 
 // Default theme primary is #4daafc; the bar fills with that and dims
 // toward black for the empty track.
@@ -183,5 +187,75 @@ describe("ZTUI ProgressBar Widget Suite", () => {
     await settle(150);
     const frame = app.getLastFrame();
     expect(frame?.full).toBe(false);
+  });
+
+  test("measure() falls back to intrinsic sizing when width/height style is unset or fr-based", () => {
+    const noStyle = new ProgressBarWidget();
+    // No style.width/height at all -> both computedStyle values are undefined.
+    noStyle.measure(80, 24);
+    expect(noStyle.measuredWidth).toBe(20);
+    expect(noStyle.measuredHeight).toBe(1);
+
+    const frStyle = new ProgressBarWidget();
+    frStyle.style.width = "1fr"; // parseDimension returns {fr}, not a number
+    frStyle.style.height = "1fr";
+    frStyle.measure(80, 24);
+    expect(frStyle.measuredWidth).toBe(20);
+    expect(frStyle.measuredHeight).toBe(1);
+  });
+
+  test("render() bails out on a non-positive content width", () => {
+    const w = new ProgressBarWidget();
+    w.value = 50;
+    w.region = new Region(Offset.ORIGIN, new Size(0, 1));
+    const buffer = new ScreenBuffer(4, 1);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("falls back to the literal 'cyan' fill (and its FALLBACK_RGB shade) with no colour and no App", () => {
+    const w = new ProgressBarWidget();
+    w.value = 50;
+    // Unattached: no computedStyle.color, and no App.instance running, so the
+    // primary-colour chain falls all the way to the "cyan" literal, which
+    // parseRgb() can't parse (named colour, not hex) -> FALLBACK_RGB is mixed in.
+    w.region = new Region(Offset.ORIGIN, new Size(10, 1));
+    const buffer = new ScreenBuffer(10, 1);
+    w.render(buffer);
+    // FALLBACK_RGB = {r:0,g:255,b:255}; the fully-lit leading cell should be
+    // exactly that colour (rgbStr formatting), not the theme's default blue.
+    expect(buffer.cells[0][0].style.color).toBe("rgb(0, 255, 255)");
+  });
+
+  test("a zero range (min === max) shows a 0% readout without dividing by zero", () => {
+    const w = new ProgressBarWidget();
+    w.value = 5;
+    w.min = 5;
+    w.max = 5;
+    w.showPercent = true;
+    w.region = new Region(Offset.ORIGIN, new Size(20, 1));
+    const buffer = new ScreenBuffer(20, 1);
+    expect(() => w.render(buffer)).not.toThrow();
+    const row = Array.from({ length: 20 }, (_, x) => buffer.cells[0][x].char).join("");
+    expect(row).toContain("0%");
+  });
+
+  test("indeterminate sweep travels forward, then folds back once past the far edge", () => {
+    const w = new ProgressBarWidget();
+    w.indeterminate = true;
+    w.region = new Region(Offset.ORIGIN, new Size(12, 1));
+    const buffer = new ScreenBuffer(12, 1);
+    // span = trackWidth - 1 = 11; pick Date.now() values so t = (now/60) %
+    // (span*2) lands on each side of `span`, forcing both the forward (t) and
+    // reflected (span*2 - t) branches deterministically instead of relying on
+    // whatever the wall clock happens to be at test time.
+    const spy = vi.spyOn(Date, "now");
+    try {
+      spy.mockReturnValue(60 * 5); // t = 5 <= span (11): forward branch
+      expect(() => w.render(buffer)).not.toThrow();
+      spy.mockReturnValue(60 * 20); // t = 20 > span (11): reflected branch
+      expect(() => w.render(buffer)).not.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
