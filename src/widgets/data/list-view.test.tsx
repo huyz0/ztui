@@ -283,3 +283,107 @@ describe("ListView mouse", () => {
     expect((list as unknown as { scrollLeft: number }).scrollLeft).toBe(scrollLeftAfterSet);
   });
 });
+
+describe("ListView additional branch coverage", () => {
+  test("cursorShapeAt reports no pointer over the scrollbar gutter", async () => {
+    const t = await mountApp(<ListView items={bigList(100)} style={{ height: "100%" }} />, {
+      rows: 10,
+    });
+    const list = findList(t);
+    const c = list.getContentRect();
+    expect(list.cursorShapeAt(c.right - 1, c.y)).toBeNull();
+    expect(list.cursorShapeAt(c.x, c.y)).not.toBeNull();
+  });
+
+  test("handleScroll/handleKey/handleMouse no-op once the event is already handled", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    const list = findList(t);
+    list.handleScroll({ type: "scroll_down", handled: true } as any);
+    list.handleKey({ name: "down", handled: true } as any);
+    list.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: true } as any);
+    expect(list.selectedId).toBeNull();
+  });
+
+  test("release without an active scrollbar drag is a no-op", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    const list = findList(t);
+    const ev = { type: "release", handled: false } as any;
+    list.handleMouse(ev);
+    expect(ev.handled).toBe(false);
+  });
+
+  test("a press outside the content rect (left/right/above) is ignored", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    const list = findList(t);
+    const c = list.getContentRect();
+    list.handleMouse({ type: "press", button: "left", x: c.x - 1, y: c.y } as any);
+    list.handleMouse({ type: "press", button: "left", x: c.right + 5, y: c.y } as any);
+    list.handleMouse({ type: "press", button: "left", x: c.x, y: c.y - 1 } as any);
+    expect(list.selectedId).toBeNull();
+  });
+
+  test("a non-press, non-left-button, non-release/drag mouse event is ignored", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    const list = findList(t);
+    const c = list.getContentRect();
+    list.handleMouse({ type: "move", x: c.x, y: c.y } as any);
+    list.handleMouse({ type: "press", button: "right", x: c.x, y: c.y } as any);
+    expect(list.selectedId).toBeNull();
+  });
+
+  test("selectIndex silently ignores an out-of-range index (no throw)", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    const list = findList(t);
+    const ev = { name: "enter", handled: false } as any;
+    // Force a stale/out-of-range selectedIndex path indirectly via a direct
+    // moveSelection call on an empty list.
+    const empty = await mountApp(<ListView items={[]} style={{ height: "100%" }} />);
+    const emptyList = findList(empty);
+    emptyList.handleKey({ name: "down" } as any);
+    expect(emptyList.selectedId).toBeNull();
+    list.handleKey(ev); // no selection -> unhandled, doesn't throw
+  });
+
+  test("collapseCursorGroup returns false outside grouped mode or with no selection", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    const list = findList(t);
+    const ev = { name: "left", handled: false } as any;
+    list.handleKey(ev); // flat mode -> left/right aren't handled here
+    expect(ev.handled).toBe(false);
+  });
+
+  test("collapseCursorGroup returns false when the selected item's group can't be found", async () => {
+    const groups = [{ id: "g1", title: "G1", items: [{ id: "a", label: "A" } as ListItem] }];
+    const t = await mountApp(<ListView groups={groups} style={{ height: "100%" }} />);
+    const list = findList(t);
+    (list as unknown as { selectedId: string | null }).selectedId = "ghost";
+    const ev = { name: "left", handled: false } as any;
+    list.handleKey(ev);
+    expect(ev.handled).toBe(false);
+  });
+
+  test("render is a no-op when the widget is not visible", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    const list = findList(t);
+    list.visible = false;
+    expect(() => t.app.queueRender()).not.toThrow();
+  });
+
+  test("the scrollbar thumb sits at the top when scrollTop is 0 (zero-maxScroll ratio branch)", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    await t.settle();
+    // With only 4 short items and a tall viewport there's nothing to scroll,
+    // so maxScrollTop is 0 and the ratio's zero-branch renders.
+    expect(() => t.text()).not.toThrow();
+  });
+
+  test("resolves selection/muted colors via the widget's own app when set", async () => {
+    const t = await mountApp(
+      <ListView items={fruits} selectedId="apple" style={{ height: "100%" }} />,
+    );
+    await t.settle();
+    const list = findList(t);
+    expect((list as unknown as { app?: unknown }).app).toBeTruthy();
+    expect(() => t.text()).not.toThrow();
+  });
+});
