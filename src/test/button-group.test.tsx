@@ -294,6 +294,19 @@ describe("ButtonGroup", () => {
     // than submit() (the ternary's other branch from the submit test above).
     expect(() => reset.handleKey({ name: "enter", key: "enter" } as never)).not.toThrow();
   });
+
+  test("vertical orientation lays buttons out vertically", async () => {
+    const t = await mountApp(
+      <ButtonGroup orientation="vertical">
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const g = group(t);
+    expect((g.computedStyle as any).layout).toBe("vertical");
+  });
 });
 
 describe("ButtonWidget unit behaviour", () => {
