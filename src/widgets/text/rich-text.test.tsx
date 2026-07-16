@@ -1,5 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { RichText, VBox } from "../../react.ts";
+import { RichText as RichTextEngine } from "../../render/rich/text.ts";
 import { mountApp } from "../../test/harness.tsx";
 
 describe("RichText", () => {
@@ -30,5 +31,21 @@ describe("RichText", () => {
 
     // Line 2: "Right" right-aligned. Length 5, starts at 80 - 5 = 75.
     expect(buffer.cells[2][75].char).toBe("R");
+  });
+
+  test("falls back to plain text if RichText.fromMarkup itself throws", async () => {
+    const spy = vi.spyOn(RichTextEngine, "fromMarkup").mockImplementation(() => {
+      throw new Error("boom");
+    });
+    try {
+      const { app } = await mountApp(<RichText>hello</RichText>, {
+        cols: 40,
+        rows: 3,
+        capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+      });
+      expect(app.buffer.cells[0][0].char).toBe("h");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
