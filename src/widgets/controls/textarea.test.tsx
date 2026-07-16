@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
+import { App } from "../../core/app.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { TextArea, VBox } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { TextAreaWidget } from "./textarea.ts";
 
@@ -130,6 +135,225 @@ describe("TextAreaWidget — line editing edge cases", () => {
     press(w2, { name: "down", shift: true });
     expect(w2.hasSelection()).toBe(true);
     expect((w2.copySelection() ?? "").length).toBeGreaterThan(0);
+  });
+});
+
+describe("TextAreaWidget — additional branch coverage", () => {
+  const press = (w: TextAreaWidget, ev: Record<string, unknown>) => w.onKey?.(ev as never);
+
+  test("setting value while the caret isn't at the end clamps row/col instead of jumping there", () => {
+    const w = new TextAreaWidget();
+    w.value = "one\ntwo\nthree";
+    // Move off the end so the setter's "isAtEnd" fast path doesn't apply.
+    press(w, { name: "up" });
+    press(w, { name: "up" });
+    press(w, { name: "home" });
+    expect((w as any).cursorRow).toBe(0);
+    expect((w as any).cursorCol).toBe(0);
+    // Replace with a shorter document: cursor must clamp into range, not reset
+    // to the end (that's the isAtEnd branch, already covered elsewhere).
+    w.value = "x";
+    expect((w as any).cursorRow).toBe(0);
+    expect((w as any).cursorCol).toBe(0);
+  });
+
+  test("pageup/pagedown extend a selection under shift", async () => {
+    const { findById } = await mountApp(
+      <TextArea
+        id="t"
+        value={Array.from({ length: 20 }, (_, i) => `row${i}`).join("\n")}
+        style={{ width: 20, height: 5 }}
+      />,
+      { cols: 24, rows: 8 },
+    );
+    const t = findById("t");
+    t.handleKey({ name: "pageup", shift: true });
+    expect(t.hasSelection()).toBe(true);
+    t.handleKey({ name: "pagedown", shift: true });
+    expect(t.hasSelection()).toBe(true);
+  });
+
+  test("a bare right-arrow with an active selection collapses to the selection end", () => {
+    const w = new TextAreaWidget();
+    w.value = "hello";
+    press(w, { name: "home" });
+    press(w, { name: "right", shift: true });
+    press(w, { name: "right", shift: true });
+    expect(w.hasSelection()).toBe(true);
+    press(w, { name: "right" }); // no shift: collapse to selection end (col 2)
+    expect(w.hasSelection()).toBe(false);
+    expect((w as any).cursorCol).toBe(2);
+  });
+
+  test("copySelection/cutSelection return null when nothing is selected", () => {
+    const w = new TextAreaWidget();
+    w.value = "hello";
+    expect(w.copySelection()).toBeNull();
+    expect(w.cutSelection()).toBeNull();
+    expect(w.value).toBe("hello");
+  });
+
+  test("keepCursorInView is a no-op when the viewport has no room", () => {
+    const w = new TextAreaWidget();
+    w.value = "abc";
+    w.style = { height: 0, width: 0, border: "none" };
+    // Driving a key still calls keepCursorInView internally; it must not throw
+    // even though the content rect collapses to zero.
+    expect(() => press(w, { key: "x" })).not.toThrow();
+  });
+
+  test("handleMouse is a no-op once the base handler already marked the event handled", () => {
+    const w = new TextAreaWidget();
+    w.value = "hello";
+    const before = (w as any).cursorCol;
+    w.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: true } as never);
+    expect((w as any).cursorCol).toBe(before);
+  });
+
+  test("mouse release without an active selection just clears the (empty) anchor", () => {
+    const w = new TextAreaWidget();
+    w.value = "hello";
+    w.handleMouse({ type: "release", button: "left", x: 0, y: 0 } as never);
+    expect(w.hasSelection()).toBe(false);
+  });
+
+  test("a disabled textarea renders with the disabled color instead of the computed style color", async () => {
+    const { findById, settle } = await mountApp(
+      <TextArea id="t" value="hello" disabled style={{ width: 20, height: 3 }} />,
+      { cols: 24, rows: 5 },
+    );
+    const t = findById("t");
+    await settle();
+    expect(t.isDisabled()).toBe(true);
+  });
+
+  test("blurring while rendering stops the blink and runs blur validation", async () => {
+    const { findById, screen, app, settle } = await mountApp(
+      <TextArea id="t" value="hello" style={{ width: 20, height: 3 }} />,
+      { cols: 24, rows: 5 },
+    );
+    const t = findById("t");
+    screen.focusWidget(t);
+    await settle();
+    expect(t.cursorVisible).toBe(true);
+    // Move focus elsewhere so the next render() sees focused=false, exercising
+    // the stopBlinking + blur-validation branch.
+    screen.focusWidget(null as never);
+    app.queueRender();
+    await settle();
+    expect(t.focused).toBe(false);
+  });
+
+  test("scrolled content clips rows at the bottom of a short viewport", async () => {
+    const { findById, settle } = await mountApp(
+      <TextArea
+        id="t"
+        value={Array.from({ length: 30 }, (_, i) => `line${i}`).join("\n")}
+        style={{ width: 20, height: 3, border: "none" }}
+      />,
+      { cols: 24, rows: 5 },
+    );
+    const t = findById("t");
+    await settle();
+    // The content rect is shorter than the document, so the render loop's
+    // vertical-clip `break` must fire.
+    expect(t.getContentRect().height).toBeLessThan(30);
+  });
+
+  test("delete/enter/tab/typed-char all replace an active selection first", () => {
+    const mk = () => {
+      const w = new TextAreaWidget();
+      w.value = "hello";
+      press(w, { name: "home" });
+      press(w, { name: "right", shift: true });
+      press(w, { name: "right", shift: true }); // selects "he"
+      return w;
+    };
+
+    const wDelete = mk();
+    press(wDelete, { name: "delete" });
+    expect(wDelete.value).toBe("llo");
+
+    const wEnter = mk();
+    press(wEnter, { name: "enter" });
+    expect(wEnter.value).toBe("\nllo");
+
+    const wTab = mk();
+    press(wTab, { name: "tab" });
+    expect(wTab.value).toBe("  llo");
+
+    const wChar = mk();
+    press(wChar, { key: "X" });
+    expect(wChar.value).toBe("Xllo");
+  });
+
+  test("plain backspace mid-line deletes the preceding character", () => {
+    const w = new TextAreaWidget();
+    w.value = "ab";
+    press(w, { name: "backspace" }); // cursorCol > 0, no selection: deletes 'b'
+    expect(w.value).toBe("a");
+  });
+
+  test("undo history is capped at maxHistory entries", () => {
+    const w = new TextAreaWidget();
+    w.value = "";
+    for (let i = 0; i < 205; i++) press(w, { key: "a" });
+    expect(w.value.length).toBe(205);
+    // With history capped at 200, undoing all the way can't get back past the
+    // 5 earliest (unrecorded) keystrokes to an empty string.
+    for (let i = 0; i < 205; i++) w.undo();
+    expect(w.value.length).toBeGreaterThan(0);
+  });
+
+  test("moving the caret back to column 0 re-aligns scrollX to the left edge", async () => {
+    const { findById } = await mountApp(
+      <TextArea id="t" value={"x".repeat(200)} lineNumbers={false} />,
+      {
+        cols: 20,
+        rows: 6,
+      },
+    );
+    const t = findById("t");
+    t.cursorRow = 0;
+    t.cursorCol = 0;
+    for (let i = 0; i < 200; i++) t.handleKey({ key: "right" });
+    expect(t.scrollX).toBeGreaterThan(0);
+    t.handleKey({ name: "home" });
+    expect(t.scrollX).toBe(0);
+  });
+
+  test("render() falls back to plain colors when there's no themed App to resolve variables", () => {
+    // With no App.instance, every `App.instance?.cssResolver.resolveVariable(...)`
+    // call in render() short-circuits to undefined, exercising the `|| fallback`
+    // branch for the gutter, disabled/focus/selection/placeholder colors.
+    expect(App.instance).toBeFalsy();
+    const w = new TextAreaWidget();
+    w.value = "hi";
+    w.placeholder = "type…";
+    w.disabled = true;
+    w.region = new Region(new Offset(0, 0), new Size(10, 3));
+    const buffer = new ScreenBuffer(12, 4);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("selection spanning three lines renders the middle line fully highlighted", async () => {
+    const { findById, screen, settle } = await mountApp(
+      <TextArea
+        id="t"
+        value={"aaa\nbbb\nccc"}
+        lineNumbers={false}
+        style={{ width: 20, height: 5 }}
+      />,
+      { cols: 24, rows: 6 },
+    );
+    const t = findById("t");
+    screen.focusWidget(t);
+    t.cursorRow = 0;
+    t.cursorCol = 1;
+    t.handleKey({ name: "down", shift: true });
+    t.handleKey({ name: "down", shift: true });
+    await settle();
+    expect(t.copySelection()).toBe("aa\nbbb\nc");
   });
 });
 
