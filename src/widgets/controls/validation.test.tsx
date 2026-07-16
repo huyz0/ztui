@@ -739,4 +739,87 @@ describe("ValidationSummary", () => {
     (summary as unknown as { selectedIndex: number }).selectedIndex = 5;
     expect(() => summary.render(buffer)).not.toThrow();
   });
+
+  test("measure falls back to maxW when computedStyle.width is unset (unmounted widget)", () => {
+    const summary = new ValidationSummaryWidget();
+    summary.measure(33, 10);
+    expect(summary.measuredWidth).toBe(33);
+  });
+
+  test("onKey ignores a key that isn't up/down/enter/space", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.focused = true;
+    summary.handleKey({ name: "tab" } as any);
+    expect(app.activeScreen.focusedWidget?.id).not.toBe("a");
+  });
+
+  test("handleMouse ignores a non-left-press event and an out-of-range row", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    const rect = summary.getContentRect();
+
+    // Wrong event type: not a "press".
+    summary.handleMouse({ type: "release", button: "left", x: rect.x, y: rect.y });
+    expect(app.activeScreen.focusedWidget?.id).not.toBe("a");
+
+    // Wrong button.
+    summary.handleMouse({ type: "press", button: "right", x: rect.x, y: rect.y });
+    expect(app.activeScreen.focusedWidget?.id).not.toBe("a");
+
+    // Row past the end of the item list.
+    summary.handleMouse({ type: "press", button: "left", x: rect.x, y: rect.y + 50 });
+    expect(app.activeScreen.focusedWidget?.id).not.toBe("a");
+  });
+
+  test("form() and descendantFields() skip non-Widget and non-validatable children", () => {
+    const summary = new ValidationSummaryWidget();
+    // A raw text node is not a Widget — findForm()/descendantFields() must
+    // skip it rather than assuming every child is a Widget.
+    summary.appendChild({ nodeType: "text" } as never);
+    // A plain Box-like Widget is not a validatable field.
+    const plain = new ValidationSummaryWidget();
+    summary.appendChild(plain);
+    const input = new InputWidget();
+    input.validators = [() => "Bad value"];
+    input.validation.touched = true;
+    input.validation.validate();
+    plain.appendChild(input);
+
+    expect(() => summary.measure(40, 10)).not.toThrow();
+    expect(summary.measuredHeight).toBe(1); // finds the deeply-nested invalid input
+  });
+
+  test("findForm (formId lookup) skips a non-Widget child while searching", async () => {
+    const { findById, settle, text } = await mountApp(
+      <VBox>
+        <ValidationSummary id="summary" formId="form" />
+        <Form id="form">
+          <Input id="a" validators={[required("A required")]} validateOn="submit" />
+        </Form>
+      </VBox>,
+    );
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    // Splice in a non-Widget "child" ahead of the real Form so findForm's walk
+    // has to skip it via the `instanceof Widget` guard before it finds Form.
+    let root: unknown = summary;
+    while ((root as { parent?: unknown }).parent) root = (root as { parent: unknown }).parent;
+    (root as { children: unknown[] }).children.unshift({ nodeType: "text" });
+
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    expect(text()).toContain("A required");
+  });
 });
