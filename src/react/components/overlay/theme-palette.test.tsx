@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { ThemeManager } from "../../../core.ts";
+import type { Widget } from "../../../dom/widget.ts";
 import { ThemePalette, VBox } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
@@ -44,6 +45,22 @@ describe("ThemePalette", () => {
     const screen = t.text();
     expect(screen).toContain("default-dark");
     expect(screen).toContain("default-light");
+  });
+
+  test("defaultValue is skipped when it already matches the active theme", async () => {
+    const manager = ThemeManager.getInstance();
+    manager.setTheme("nord");
+    const spy = vi.spyOn(manager, "setTheme");
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <ThemePalette toggleKey="f3" defaultValue="nord" />
+      </VBox>,
+      { cols: 80, rows: 40 },
+    );
+    await t.settle();
+    // Already on "nord": the mount effect must not redundantly re-apply it.
+    expect(spy).not.toHaveBeenCalled();
+    expect(manager.getActiveThemeName()).toBe("nord");
   });
 
   test("filters themes and shows an empty state when nothing matches", async () => {
@@ -94,6 +111,13 @@ describe("ThemePalette", () => {
 
     expect(t.text()).toContain("nightfly"); // last theme now visible
     expect(t.text()).not.toContain("default-dark"); // top scrolled off
+
+    // Paging back up must scroll the window back up too (not just clamp the
+    // selection index), exercising the "selection above the view" branch.
+    await press(t, "pageup");
+    await press(t, "pageup");
+    expect(t.text()).toContain("default-dark");
+    expect(t.text()).not.toContain("nightfly");
   });
 
   test("value binds the active theme and onSelect reports applied themes", async () => {
@@ -155,6 +179,38 @@ describe("ThemePalette", () => {
     await press(t, "right");
     expect(manager.getActiveThemeName()).toBe("default-light");
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  test("clicking a card selects and applies its theme", async () => {
+    const manager = ThemeManager.getInstance();
+    manager.setTheme("default-dark");
+    const picked: string[] = [];
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <ThemePalette toggleKey="f3" onSelect={(th) => picked.push(th.name)} />
+      </VBox>,
+      { cols: 80, rows: 40 },
+    );
+    await open(t);
+
+    // Find the card for "default-light" (not the currently selected one) and
+    // click it directly — exercises ThemeCard's onClick and the palette's
+    // pick() handler (as opposed to keyboard nav + Enter).
+    let card: Widget | undefined;
+    t.screen.layers[0].root.walk((n: unknown) => {
+      const w = n as Widget;
+      if ((w as { getTextContent?: () => string }).getTextContent?.()?.includes("default-light")) {
+        card = w;
+      }
+    });
+    expect(card).toBeDefined();
+    const r = (card as Widget).region;
+    t.driver.simulateMouse(r.x + 1, r.y + 1, "press", "left");
+    await t.settle();
+
+    expect(manager.getActiveThemeName()).toBe("default-light");
+    expect(picked.at(-1)).toBe("default-light");
+    expect(t.text()).toContain("Themes"); // still open after applying
   });
 
   test("Escape reverts the previewed theme", async () => {
