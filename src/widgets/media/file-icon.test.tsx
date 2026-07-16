@@ -140,4 +140,23 @@ describe("React <FileIcon> component", () => {
     expect(cell.icon).toBeTruthy();
     expect(cell.style.color).toMatch(/^#/);
   });
+
+  test("resolves by extension alone when no filename is given", async () => {
+    const t = await mountApp(<FileIcon id="ric" extension="ts" />);
+    await t.settle();
+    const w = t.findById("ric")!;
+    const client = (w as any).getClientRect();
+    const cell = t.cellAt(client.x, client.y);
+    expect(cell.icon).toBeTruthy();
+    expect(cell.style.color).toMatch(/^#/);
+  });
+
+  test("falls back to the default icon when neither filename nor extension is given", async () => {
+    const t = await mountApp(<FileIcon id="ric" />);
+    await t.settle();
+    const w = t.findById("ric")!;
+    const client = (w as any).getClientRect();
+    const cell = t.cellAt(client.x, client.y);
+    expect(cell.icon).toBeTruthy();
+  });
 });
