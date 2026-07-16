@@ -39,6 +39,15 @@ describe("ModelPicker", () => {
     expect(text).toContain("✓"); // marker on the selected row
   });
 
+  test("a string cost renders verbatim, not as a multiplier badge", async () => {
+    const models: ModelEntry[] = [
+      { id: "custom", provider: "Vendor", name: "Custom", cost: "$3/Mtok" },
+    ];
+    const t = await mountApp(<ModelPicker models={models} />, OPTS);
+    await t.settle();
+    expect(t.text()).toContain("$3/Mto");
+  });
+
   test("filters rows by text against name and provider", async () => {
     const t = await mountApp(<ModelPicker models={MODELS} filterPlaceholder="find…" />, OPTS);
     await t.settle();
@@ -54,6 +63,25 @@ describe("ModelPicker", () => {
     const text = t.text();
     expect(text).toContain("Llama 3.1");
     expect(text).not.toContain("Opus 4.8");
+  });
+
+  test("filtering tolerates models missing a filtered field", async () => {
+    const models: ModelEntry[] = [
+      { id: "a", provider: "Anthropic", name: "Opus" },
+      { id: "b", name: "No Provider" }, // provider is undefined
+    ];
+    const t = await mountApp(<ModelPicker models={models} />, OPTS);
+    await t.settle();
+    let input: any;
+    t.screen.walk((n) => {
+      if ((n as any).constructor?.name === "InputWidget") input = n;
+    });
+    input.value = "anthropic";
+    input.onChange?.("anthropic");
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("Opus");
+    expect(text).not.toContain("No Provider");
   });
 
   test("Enter on a row fires onSelect with that model", async () => {
@@ -101,6 +129,58 @@ describe("ModelPicker", () => {
     const occurrences = (t.text().match(/Anthropic/g) ?? []).length;
     expect(occurrences).toBe(1); // two Anthropic rows, but the name heads the group once
     expect(t.text()).toContain("Ollama");
+  });
+
+  test("a model missing cost renders a blank cell (column still shown)", async () => {
+    const models: ModelEntry[] = [
+      { id: "a", provider: "Vendor", name: "Priced", cost: 3 },
+      { id: "b", provider: "Vendor", name: "Unpriced" },
+    ];
+    const t = await mountApp(<ModelPicker models={models} filterable={false} />, OPTS);
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("3×"); // cost > 2 -> $error color branch
+    expect(text).toContain("Unpriced");
+  });
+
+  test("mixed location (some models without one) falls back to a blank cell", async () => {
+    const models: ModelEntry[] = [
+      { id: "a", provider: "Vendor", name: "Local", location: "local" },
+      { id: "b", provider: "Vendor", name: "Unknown" },
+    ];
+    const t = await mountApp(<ModelPicker models={models} filterable={false} />, OPTS);
+    await t.settle();
+    expect(t.text()).toContain("Unknown");
+  });
+
+  test("a `value` that matches no row leaves the cursor unmoved", async () => {
+    let picked: ModelEntry | undefined;
+    const t = await mountApp(
+      <ModelPicker
+        models={MODELS}
+        value="does-not-exist"
+        onSelect={(m) => (picked = m)}
+        filterable={false}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const table = findTable(t);
+    t.screen.focusWidget(table);
+    table.handleKey({ name: "enter", key: "enter" } as never);
+    expect(picked?.id).toBe("opus"); // cursor stayed at row 0
+  });
+
+  test("a model with no provider groups under the empty-string bucket", async () => {
+    const models: ModelEntry[] = [
+      { id: "a", provider: "Vendor", name: "Has provider" },
+      { id: "b", name: "No provider" },
+    ];
+    const t = await mountApp(<ModelPicker models={models} filterable={false} />, OPTS);
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("Has provider");
+    expect(text).toContain("No provider");
   });
 
   test("a column is omitted when no model supplies that field", async () => {
