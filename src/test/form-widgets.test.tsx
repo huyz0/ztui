@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
+import { App } from "../core/app.ts";
 import {
   Checkbox,
   EmailInput,
@@ -799,5 +800,272 @@ describe("ZTUI Form Widgets Suite", () => {
     fr.measure(30, 6);
     expect(fr.measuredWidth).toBeGreaterThan(0);
     expect(fr.measuredHeight).toBeGreaterThan(0);
+  });
+  test("Switch: unmatched key, already-handled/non-left/non-press mouse events, disabled render, non-numeric dimensions", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <Switch id="sw" label="Beta" />
+        <Switch
+          id="sw-disabled"
+          label="Off"
+          disabled
+          active
+          style={{ width: "2fr", height: "2fr" }}
+        />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+
+    const sw = findById<SwitchWidget>("sw") as SwitchWidget;
+
+    // A key that isn't space/" "/enter must not toggle (else branch of onKey).
+    expect(sw.active).toBe(false);
+    sw.onKey?.({ key: "tab" } as any);
+    expect(sw.active).toBe(false);
+
+    // An event already marked handled by a parent must short-circuit
+    // handleMouse before it can toggle.
+    const handledEv: any = { type: "press", button: "left", handled: true };
+    sw.handleMouse(handledEv);
+    expect(sw.active).toBe(false);
+
+    // A press with a non-left button must not toggle.
+    sw.handleMouse({ type: "press", button: "right" } as any);
+    expect(sw.active).toBe(false);
+
+    // A non-press event type (e.g. a release) must not toggle.
+    sw.handleMouse({ type: "release", button: "left" } as any);
+    expect(sw.active).toBe(false);
+
+    // A genuine left press does toggle.
+    sw.handleMouse({ type: "press", button: "left" } as any);
+    expect(sw.active).toBe(true);
+
+    // Disabled switch renders using its disabled color and skips the
+    // focus-band branch; "2fr" style values resolve to a non-number
+    // dimension object, exercising the typeof-guard's false branch for
+    // both width and height in measure().
+    // Mounting already paints it once, exercising the disabled-color branch
+    // and the non-numeric ("2fr") width/height measure() branches.
+    const swDisabled = findById<SwitchWidget>("sw-disabled") as SwitchWidget;
+    expect(swDisabled.isDisabled()).toBe(true);
+    expect(swDisabled.measuredWidth).toBeGreaterThan(0);
+  });
+
+  test("Switch: measure() falls back to intrinsic size before layout assigns computed width/height", () => {
+    // Before the widget is attached/laid out, computedStyle falls back to the
+    // author-set `style` (empty here), so both the width- and
+    // height-undefined branches of measure() run.
+    const sw = new SwitchWidget();
+    sw.label = "Hi";
+    sw.measure(80, 24);
+    expect(sw.measuredWidth).toBe(5 + "Hi".length);
+    expect(sw.measuredHeight).toBe(1);
+  });
+
+  test("Switch: color fallbacks kick in without a resolvable App/theme, and invalid state recolors it", async () => {
+    const { findById, screen, buffer } = await mountApp(
+      <VBox>
+        <Switch id="sw" label="Beta" />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const sw = findById<SwitchWidget>("sw") as SwitchWidget;
+
+    // A failed validator makes the switch invalid: resolveColor() returns a
+    // severity color, taking the `if (severityColor)` true branch in render().
+    sw.validation.validators = [() => "must be on"];
+    sw.validation.validate();
+    expect(sw.validation.invalid).toBe(true);
+    expect(() => sw.render(buffer)).not.toThrow();
+
+    // Focus it too, so render() also exercises the focus-color path.
+    screen.focusWidget(sw);
+
+    // With no live App instance, every `App.instance?.cssResolver...` lookup
+    // in render() (focus color, primary color, disabled color) falls back to
+    // its hardcoded default instead of a resolved theme color.
+    const savedInstance = App.instance;
+    App.instance = null;
+    try {
+      expect(() => sw.render(buffer)).not.toThrow();
+    } finally {
+      App.instance = savedInstance;
+    }
+  });
+
+  test("Switch: mouse toggle repaints via App.instance when the widget isn't attached to an app", () => {
+    // this.app is null for a freestanding widget never mounted into a tree, so
+    // `(this.app ?? App.instance)?.queueRepaintWidget(...)` must fall back to
+    // the App.instance singleton instead of throwing.
+    const sw = new SwitchWidget();
+    expect(() => sw.handleMouse({ type: "press", button: "left" } as any)).not.toThrow();
+    expect(sw.active).toBe(true);
+  });
+
+  test("ToggleButton: unmatched key and non-left/non-press mouse events don't toggle", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <ToggleButton id="tgl" label="Beta" />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const tgl = findById<ToggleButtonWidget>("tgl") as ToggleButtonWidget;
+
+    tgl.onKey?.({ key: "tab" } as any);
+    expect(tgl.active).toBe(false);
+
+    tgl.handleMouse({ type: "press", button: "right" } as any);
+    expect(tgl.active).toBe(false);
+
+    tgl.handleMouse({ type: "release", button: "left" } as any);
+    expect(tgl.active).toBe(false);
+
+    const handledEv: any = { type: "press", button: "left", handled: true };
+    tgl.handleMouse(handledEv);
+    expect(tgl.active).toBe(false);
+  });
+
+  test("ToggleButton: mouse/key toggles repaint via App.instance when unattached", () => {
+    const tgl = new ToggleButtonWidget();
+    expect(() => tgl.handleMouse({ type: "press", button: "left" } as any)).not.toThrow();
+    expect(tgl.active).toBe(true);
+
+    expect(() => tgl.onKey?.({ name: "space" } as any)).not.toThrow();
+    expect(tgl.active).toBe(false);
+  });
+
+  test("ToggleButton: measure() handles explicit numeric and non-numeric width/height", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <ToggleButton id="tgl-pct" label="A" style={{ width: "50%", height: "50%" }} />
+        <ToggleButton id="tgl-fr" label="B" style={{ width: "1fr", height: "1fr" }} />
+      </VBox>,
+      { cols: 40, rows: 10 },
+    );
+    const pct = findById<ToggleButtonWidget>("tgl-pct") as ToggleButtonWidget;
+    const fr = findById<ToggleButtonWidget>("tgl-fr") as ToggleButtonWidget;
+    // "50%" resolves to a concrete number; "1fr" resolves to a weight object,
+    // exercising the typeof-guard's false (fallback to intrinsic size) branch.
+    expect(pct.measuredWidth).toBeGreaterThan(0);
+    expect(fr.measuredWidth).toBeGreaterThan(0);
+    expect(fr.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("ToggleButton: measure() falls back to intrinsic size before layout assigns computed width/height", () => {
+    const tgl = new ToggleButtonWidget();
+    tgl.label = "Hi";
+    tgl.measure(80, 24);
+    expect(tgl.measuredWidth).toBe(4 + "Hi".length);
+    expect(tgl.measuredHeight).toBe(1);
+  });
+
+  test("ToggleButton: render exercises active/focused color branches and the no-App-instance fallback", async () => {
+    const { findById, screen, buffer } = await mountApp(
+      <VBox>
+        <ToggleButton id="tgl" label="Beta" active />
+        <ToggleButton id="tgl-disabled" label="Off" disabled />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const tgl = findById<ToggleButtonWidget>("tgl") as ToggleButtonWidget;
+    const tglDisabled = findById<ToggleButtonWidget>("tgl-disabled") as ToggleButtonWidget;
+
+    // Active (not focused): fg/bg take the "$primary"/"$selectionBg" branches.
+    expect(() => tgl.render(buffer)).not.toThrow();
+    // Focused: fg/bg take "$background"/"$focus".
+    screen.focusWidget(tgl);
+    expect(() => tgl.render(buffer)).not.toThrow();
+    // Disabled: fg takes "$disabled".
+    expect(tglDisabled.isDisabled()).toBe(true);
+    expect(() => tglDisabled.render(buffer)).not.toThrow();
+
+    // With no live App instance, render() must skip resolving fg/bg through
+    // the cssResolver (the `if (App.instance)` false branch) instead of
+    // throwing, leaving fg/bg as their raw token/color strings.
+    const savedInstance = App.instance;
+    App.instance = null;
+    try {
+      expect(() => tgl.render(buffer)).not.toThrow();
+    } finally {
+      App.instance = savedInstance;
+    }
+  });
+
+  test("Checkbox: unmatched key, already-handled/non-left/non-press mouse events, non-numeric dimensions", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <Checkbox id="chk" label="Beta" />
+        <Checkbox id="chk-fr" label="Off" style={{ width: "2fr", height: "2fr" }} />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const chk = findById<CheckboxWidget>("chk") as CheckboxWidget;
+
+    chk.onKey?.({ key: "tab" } as any);
+    expect(chk.checked).toBe(false);
+
+    const handledEv: any = { type: "press", button: "left", handled: true };
+    chk.handleMouse(handledEv);
+    expect(chk.checked).toBe(false);
+
+    chk.handleMouse({ type: "press", button: "right" } as any);
+    expect(chk.checked).toBe(false);
+
+    chk.handleMouse({ type: "release", button: "left" } as any);
+    expect(chk.checked).toBe(false);
+
+    chk.handleMouse({ type: "press", button: "left" } as any);
+    expect(chk.checked).toBe(true);
+
+    // "2fr" style values resolve to a non-number dimension object, exercising
+    // the typeof-guard's false branch for both width and height in measure().
+    const chkFr = findById<CheckboxWidget>("chk-fr") as CheckboxWidget;
+    expect(chkFr.measuredWidth).toBeGreaterThan(0);
+  });
+
+  test("Checkbox: measure() falls back to intrinsic size before layout assigns computed width/height", () => {
+    const chk = new CheckboxWidget();
+    chk.label = "Hi";
+    chk.measure(80, 24);
+    expect(chk.measuredWidth).toBe(2 + "Hi".length);
+    expect(chk.measuredHeight).toBe(1);
+  });
+
+  test("Checkbox: mouse toggle repaints via App.instance when the widget isn't attached to an app", () => {
+    const chk = new CheckboxWidget();
+    expect(() => chk.handleMouse({ type: "press", button: "left" } as any)).not.toThrow();
+    expect(chk.checked).toBe(true);
+  });
+
+  test("Checkbox: color fallbacks kick in without a resolvable App/theme, and invalid state recolors it", async () => {
+    const { findById, screen, buffer } = await mountApp(
+      <VBox>
+        <Checkbox id="chk" label="Beta" />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const chk = findById<CheckboxWidget>("chk") as CheckboxWidget;
+
+    // A failed validator makes the checkbox invalid: resolveColor() returns a
+    // severity color, taking the `if (severityColor)` true branch in render().
+    chk.validation.validators = [() => "must be checked"];
+    chk.validation.validate();
+    expect(chk.validation.invalid).toBe(true);
+    expect(() => chk.render(buffer)).not.toThrow();
+
+    // Focus it too, so render() also exercises the focus-color path.
+    screen.focusWidget(chk);
+
+    // With no live App instance, every `App.instance?.cssResolver...` lookup
+    // in render() (focus color, primary color, disabled color) falls back to
+    // its hardcoded default instead of a resolved theme color.
+    const savedInstance = App.instance;
+    App.instance = null;
+    try {
+      expect(() => chk.render(buffer)).not.toThrow();
+    } finally {
+      App.instance = savedInstance;
+    }
   });
 });

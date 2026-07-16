@@ -7,7 +7,7 @@
       "!site",
       "!**/.oss",
       "!**/.gemini",
-      "!**/.claude",
+      "!.claude",
       "!**/bun.lock",
       "!**/ztui.log",
       "!**/coverage",
