@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { requestAnimationTick } from "./animation.ts";
+import { requestAnimationTick, requestCosmeticRepaint } from "./animation.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -79,5 +79,56 @@ describe("requestAnimationTick", () => {
     requestAnimationTick(owner, 16, true);
     await sleep(130);
     expect(calls.render).toBe(1);
+  });
+
+  test("re-booking a pending tick with a sooner due time moves it earlier", async () => {
+    const { owner, calls } = fakeOwner();
+    requestAnimationTick(owner, 200, true); // booked far out
+    requestAnimationTick(owner, 16, true); // re-booked sooner — should win
+    await sleep(150);
+    // The sooner (16ms) due time should have fired already, well before 200ms.
+    expect(calls.repaint).toBe(1);
+  });
+});
+
+describe("requestCosmeticRepaint", () => {
+  test("is a no-op for a detached owner (no app)", () => {
+    expect(() => requestCosmeticRepaint({ app: null }, "test")).not.toThrow();
+    expect(() => requestCosmeticRepaint({}, "test")).not.toThrow();
+  });
+
+  test("merges reasons from repeated requests for the same owner into one batched call", async () => {
+    const calls: string[] = [];
+    const app = {
+      queueRender: () => {},
+      queueRepaint: (_region: unknown, reason?: string) => {
+        if (reason) calls.push(reason);
+      },
+    };
+    const owner = { app };
+    requestCosmeticRepaint(owner, "reason-a");
+    requestCosmeticRepaint(owner, "reason-b"); // same owner — merges into the existing entry
+    await sleep(130);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("reason-a");
+    expect(calls[0]).toContain("reason-b");
+  });
+
+  test("skips an app whose queueRepaint disappears before the batched flush fires", async () => {
+    const calls = { repaint: 0, render: 0 };
+    const app: { queueRender: () => void; queueRepaint?: () => void } = {
+      queueRender: () => {
+        calls.render++;
+      },
+      queueRepaint: () => {
+        calls.repaint++;
+      },
+    };
+    requestCosmeticRepaint({ app }, "vanishing");
+    // Simulate the capability disappearing between scheduling and the flush —
+    // flushCosmeticRepaints must skip this app rather than throw.
+    app.queueRepaint = undefined;
+    await sleep(130);
+    expect(calls).toEqual({ repaint: 0, render: 0 });
   });
 });
