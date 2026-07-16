@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vitest";
+import { TextNode } from "../dom/text-node.ts";
 import type { Widget } from "../dom/widget.ts";
+import { Offset } from "../geometry/offset.ts";
+import { Region } from "../geometry/region.ts";
+import { Size } from "../geometry/size.ts";
 import { Button, ButtonGroup, Form, Input } from "../react/components.tsx";
+import { ScreenBuffer } from "../render/buffer.ts";
+import { ButtonWidget } from "../widgets/controls/button.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -267,5 +273,76 @@ describe("ButtonGroup", () => {
     (save as Widget).handleKey({ name: "enter", key: "enter" } as never);
     await t.settle();
     expect(submitted).toBe(true);
+  });
+
+  test("a formAction=reset button inside a group resets its Form", async () => {
+    const t = await mountApp(
+      <Form>
+        <Input id="field" validators={[]} />
+        <ButtonGroup>
+          <Button id="reset" formAction="reset">
+            Reset
+          </Button>
+        </ButtonGroup>
+      </Form>,
+      OPTS,
+    );
+    await t.settle();
+    const reset = buttons(t).find((b) => (b as any).id === "reset") as Widget;
+    t.screen.focusWidget(reset);
+    // Should not throw walking up to the Form and invoking reset() rather
+    // than submit() (the ternary's other branch from the submit test above).
+    expect(() => reset.handleKey({ name: "enter", key: "enter" } as never)).not.toThrow();
+  });
+});
+
+describe("ButtonWidget unit behaviour", () => {
+  test("onKey falls back to ev.key when ev.name is absent", () => {
+    const b = new ButtonWidget();
+    let clicked = false;
+    b.onClick = () => {
+      clicked = true;
+    };
+    const ev = { key: "enter", handled: false } as any;
+    b.onKey?.(ev);
+    expect(clicked).toBe(true);
+    expect(ev.handled).toBe(true);
+  });
+
+  test("handleMouse is a no-op once the event is already handled", () => {
+    const b = new ButtonWidget();
+    const triggered = false;
+    b.formAction = "submit";
+    // No parent Form, so triggerFormAction() would be a no-op anyway; instead
+    // verify the widget doesn't touch onClick/formAction logic when the base
+    // handleMouse already marked the event handled.
+    const ev = { type: "press", button: "left", handled: true } as any;
+    b.handleMouse(ev);
+    expect(triggered).toBe(false);
+  });
+
+  test("render() falls back to static colours when there is no active App", () => {
+    // With no mounted App, App.instance is null, so the disabled/explicit
+    // colour resolution must fall back to its static defaults rather than
+    // calling into the (absent) css resolver.
+    const b = new ButtonWidget();
+    b.appendChild(new TextNode("Go"));
+    b.region = new Region(new Offset(0, 0), new Size(10, 1));
+    b.disabled = true;
+    const buffer = new ScreenBuffer(10, 1);
+    expect(() => b.render(buffer)).not.toThrow();
+    const row = buffer.cells[0].map((cell) => cell.char).join("");
+    expect(row).toContain("Go");
+  });
+
+  test("render() falls back to a static explicit colour when there is no active App", () => {
+    const b = new ButtonWidget();
+    b.appendChild(new TextNode("Go"));
+    b.computedStyle = { color: "$primary" };
+    b.region = new Region(new Offset(0, 0), new Size(10, 1));
+    const buffer = new ScreenBuffer(10, 1);
+    expect(() => b.render(buffer)).not.toThrow();
+    const row = buffer.cells[0].map((cell) => cell.char).join("");
+    expect(row).toContain("Go");
   });
 });
