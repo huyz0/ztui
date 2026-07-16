@@ -293,4 +293,34 @@ describe("SplitView interactive controls", () => {
     // Both must land: 2 -> 3 -> 4, not 2 -> 3 -> 3 (second overwriting the first).
     expect(latest && countLeaves(latest)).toBe(4);
   });
+
+  test("clicking ↕ splits the pane along the column axis", async () => {
+    let latest: SplitNode | undefined;
+    const t = await mountApp(
+      <SplitView
+        root={interactiveTree}
+        controls
+        newPane={() => "new"}
+        onChange={(r) => (latest = r)}
+      />,
+      { cols: 80, rows: 24 },
+    );
+    let splitBtn: any;
+    t.screen.walk((n: any) => {
+      if (!splitBtn && n.tagName === "label" && n.getTextContent?.() === "↕") splitBtn = n;
+    });
+    expect(splitBtn).toBeTruthy();
+    const { x, y } = splitBtn.region;
+    t.driver.simulateMouse(x, y, "press", "left");
+    t.driver.simulateMouse(x, y, "release", "left");
+    await t.settle();
+
+    expect(latest && countLeaves(latest)).toBe(3);
+    // The new split node introduced by "↕" must be a column split.
+    const split = latest as Extract<SplitNode, { type: "split" }>;
+    const inner = split.children.find((c) => c.type === "split") as
+      | Extract<SplitNode, { type: "split" }>
+      | undefined;
+    expect(inner?.direction).toBe("column");
+  });
 });
