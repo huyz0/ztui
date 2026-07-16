@@ -225,6 +225,135 @@ describe("GalleryView", () => {
     expect(t.screen.focusedWidget).toBe(wrapper);
   });
 
+  test("Left/Home/PageUp/PageDown move the cursor; an unrecognized key is ignored", async () => {
+    const onSelect = vi.fn();
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        defaultSelectedIndex={20}
+        onSelect={onSelect}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const wrapper = findBox(t).parent;
+
+    wrapper.handleKey({ name: "left" });
+    await t.settle();
+    expect(onSelect).toHaveBeenLastCalledWith(19);
+
+    wrapper.handleKey({ name: "home" });
+    await t.settle();
+    expect(onSelect).toHaveBeenLastCalledWith(0);
+
+    wrapper.handleKey({ name: "pagedown" });
+    await t.settle();
+    const afterPageDown = onSelect.mock.calls.at(-1)?.[0];
+    expect(afterPageDown).toBeGreaterThan(0);
+
+    wrapper.handleKey({ name: "pageup" });
+    await t.settle();
+    expect(onSelect).toHaveBeenLastCalledWith(0); // pageup from near the top clamps to 0
+
+    onSelect.mockClear();
+    wrapper.handleKey({ name: "tab" }); // no case matches -> ignored
+    await t.settle();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  test("an event with no `name` falls back to `key` for navigation", async () => {
+    const onSelect = vi.fn();
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        onSelect={onSelect}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const wrapper = findBox(t).parent;
+    wrapper.handleKey({ key: "right" }); // no `name` field at all
+    await t.settle();
+    expect(onSelect).toHaveBeenLastCalledWith(1);
+  });
+
+  test("Enter on an empty gallery does not activate", async () => {
+    const onActivate = vi.fn();
+    const t = await mountApp(
+      <GalleryView
+        items={[] as number[]}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        onActivate={onActivate}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    findBox(t).parent.handleKey({ name: "enter" });
+    expect(onActivate).not.toHaveBeenCalled();
+  });
+
+  test("double-clicking a cell activates it", async () => {
+    const onActivate = vi.fn();
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        onActivate={onActivate}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const box = findBox(t);
+    const cell = box.children[0].children[1]; // second cell of the first row
+    const r = cell.region;
+    t.driver.simulateMouse(r.x + 1, r.y + 1, "press", "left");
+    await t.settle();
+    t.driver.simulateMouse(r.x + 1, r.y + 1, "press", "left"); // within DOUBLE_CLICK_MS
+    await t.settle();
+    expect(onActivate).toHaveBeenCalledWith(1);
+  });
+
+  test("a controlled selectedIndex is used as-is (no internal state update)", async () => {
+    const onSelect = vi.fn();
+    function Controlled() {
+      const [sel, setSel] = useState(0);
+      return (
+        <GalleryView
+          items={ITEMS}
+          renderItem={renderItem}
+          itemWidth={10}
+          itemHeight={3}
+          selectedIndex={sel}
+          onSelect={(i) => {
+            onSelect(i);
+            setSel(i);
+          }}
+          style={{ height: "100%" }}
+        />
+      );
+    }
+    const t = await mountApp(<Controlled />, { cols: 64, rows: 16 });
+    await t.settle(20);
+    const wrapper = findBox(t).parent;
+    wrapper.handleKey({ name: "right" });
+    await t.settle();
+    expect(onSelect).toHaveBeenLastCalledWith(1);
+  });
+
   test("cursor clamps to the new last item when items shrinks out from under an uncontrolled selection", async () => {
     // Regression: `sel` was `selectedIndex ?? internalSel` with no clamp, so
     // moving the cursor to the end of a 100-item list and then swapping in a
