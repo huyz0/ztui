@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { styleToEscapeCodes } from "./ansi-style.ts";
 import { ScreenBuffer } from "./buffer.ts";
+import { ScreenDiffCompiler } from "./screen-diff-compiler.ts";
 import { Style } from "./style.ts";
 
 /**
@@ -340,11 +341,11 @@ describe("render diff ANSI replays to the source buffer", () => {
     // "non-blank", inflating the scroll-cost estimate and sometimes losing
     // the `scroll < plain` comparison against an otherwise-cheap scroll.
     //
-    // scrollSavesBytes is private; called directly (bracket notation) since
-    // reaching this exact comparison through the public renderDiff/
-    // detectScroll pipeline requires fighting unrelated heuristics (the
-    // scroll-band boundary search, MIN_SAVE) that aren't part of what this
-    // bug is about.
+    // scrollSavesBytes is private on ScreenDiffCompiler; called directly
+    // (bracket notation) since reaching this exact comparison through the
+    // public renderDiff/detectScroll pipeline requires fighting unrelated
+    // heuristics (the scroll-band boundary search, MIN_SAVE) that aren't part
+    // of what this bug is about.
     const buf = new ScreenBuffer(4, 3);
     // Revealed row (row 2) is genuinely blank, but with a fresh Style
     // instance rather than the Style.DEFAULT singleton.
@@ -352,20 +353,22 @@ describe("render diff ANSI replays to the source buffer", () => {
     // A plain diff cost that only "wins" if the revealed row is correctly
     // recognized as free (cost 0): a same-sized plain-diff band with 1 cell
     // of real cost is cheaper than a scroll misreporting 4 cells of cost.
+    const compiler = new ScreenDiffCompiler();
     const scrollSavesBytes = (
-      buf as unknown as {
+      compiler as unknown as {
         scrollSavesBytes: (
+          buffer: ScreenBuffer,
           old: ScreenBuffer,
           top: number,
           bottom: number,
           delta: number,
         ) => boolean;
       }
-    ).scrollSavesBytes.bind(buf);
+    ).scrollSavesBytes.bind(compiler);
     const old = new ScreenBuffer(4, 3);
     old.setCell(0, 2, "x", new Style({ color: "#ff0000" })); // 1 real difference in the revealed row
 
-    expect(scrollSavesBytes(old, 0, 2, 2)).toBe(true); // scroll cost (0) < plain cost (1)
+    expect(scrollSavesBytes(buf, old, 0, 2, 2)).toBe(true); // scroll cost (0) < plain cost (1)
   });
 
   test("a scroll-down emits SD and replays to the new frame", () => {
