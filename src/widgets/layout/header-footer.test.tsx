@@ -4,16 +4,16 @@ import { mountApp } from "../../test/harness.tsx";
 
 describe("Header / Footer", () => {
   test("getTextContent reflects children", async () => {
-    const { screen } = await mountApp(
+    const { findById } = await mountApp(
       <VBox>
-        <Header>Custom Title</Header>
-        <Footer>Custom Status</Footer>
+        <Header id="hdr">Custom Title</Header>
+        <Footer id="ftr">Custom Status</Footer>
       </VBox>,
       { cols: 80, rows: 24 },
     );
 
-    const header = screen.children[0].children[0] as any;
-    const footer = screen.children[0].children[1] as any;
+    const header = findById<any>("hdr")!;
+    const footer = findById<any>("ftr")!;
 
     expect(header.getTextContent()).toBe("Custom Title");
     expect(footer.getTextContent()).toBe("Custom Status");

@@ -38,9 +38,9 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
   });
 
   test("Propagates mouse hover and resolves stylesheet dynamically in VTE", async () => {
-    const { driver, screen, settle } = await mountApp(<InteractiveApp />);
+    const { driver, findById, settle } = await mountApp(<InteractiveApp />);
 
-    const btn = screen.children[0].children[1] as any;
+    const btn = findById<any>("btn")!;
     const hoverX = btn.region.x + Math.floor(btn.region.width / 2);
     const hoverY = btn.region.y + Math.floor(btn.region.height / 2);
 
@@ -66,9 +66,9 @@ describe("Virtual Terminal Emulation (VTE) Integration", () => {
   });
 
   test("Propagates clicks and keyboard events in PTY/VTE", async () => {
-    const { driver, screen, settle } = await mountApp(<InteractiveApp />);
+    const { driver, findById, settle } = await mountApp(<InteractiveApp />);
 
-    const btn = screen.children[0].children[1] as any;
+    const btn = findById<any>("btn")!;
     const clickX = btn.region.x + Math.floor(btn.region.width / 2);
     const clickY = btn.region.y + Math.floor(btn.region.height / 2);
 

@@ -163,7 +163,7 @@ describe("SVG Icon Support Engine", () => {
 
 describe("IconWidget", () => {
   test("visibility toggling and border size limits render without error", async () => {
-    const { app, settle } = await mountApp(
+    const { app, settle, findById } = await mountApp(
       <VBox>
         <Icon name="home" style={{ width: 1 }} />
         <Icon name="home" id="icon-to-hide" />
@@ -172,8 +172,7 @@ describe("IconWidget", () => {
       { cols: 80, rows: 25, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
     );
 
-    const vbox = app.activeScreen.children[0];
-    const iconToHide = vbox.children[1] as any;
+    const iconToHide = findById<any>("icon-to-hide")!;
     iconToHide.visible = false;
     app.queueRender();
     await settle();

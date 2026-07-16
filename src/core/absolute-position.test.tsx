@@ -4,9 +4,9 @@ import { mountApp } from "../test/harness.tsx";
 
 describe("App layout — absolute positioning", () => {
   test("a position:absolute child is placed relative to its parent's content rect, alongside normal-flow siblings", async () => {
-    const { app } = await mountApp(
-      <VBox style={{ width: 40, height: 10, background: "black" }}>
-        <Box style={{ width: 10, height: 2, background: "red" }} />
+    const { findById } = await mountApp(
+      <VBox id="vbox" style={{ width: 40, height: 10, background: "black" }}>
+        <Box id="standard-child" style={{ width: 10, height: 2, background: "red" }} />
         <Box
           id="abs-child"
           style={{
@@ -26,9 +26,9 @@ describe("App layout — absolute positioning", () => {
       },
     );
 
-    const vbox = app.activeScreen.children[0] as any;
-    const standardChild = vbox.children[0] as any;
-    const absChild = vbox.children[1] as any;
+    const vbox = findById<any>("vbox")!;
+    const standardChild = findById<any>("standard-child")!;
+    const absChild = findById<any>("abs-child")!;
 
     expect(standardChild.region.x).toBe(vbox.getContentRect().x);
     expect(standardChild.region.y).toBe(vbox.getContentRect().y);
