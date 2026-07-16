@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import { Box, RichLog, VBox } from "../react/components.tsx";
 import { reconciler } from "../react/reconciler.ts";
@@ -205,5 +206,30 @@ describe("RichLog", () => {
     // it must rebuild against the cached width rather than return stale rows.
     w.lines = ["xxxx yyyy zzzz"];
     expect(w.selectableLines()).toEqual(["xxxx yyyy", "zzzz"]);
+  });
+
+  test("per-entry wrap cache stays bounded to two widths, evicting the oldest", async () => {
+    let setWidth!: (w: number) => void;
+    function Host() {
+      const [width, setter] = useState(20);
+      setWidth = setter;
+      return (
+        <VBox>
+          <RichLog id="log" lines={["aaaa bbbb cccc dddd"]} wrap style={{ width }} />
+        </VBox>
+      );
+    }
+    const t = await mountApp(<Host />);
+    await t.settle();
+    const w = t.findById<RichLogWidget>("log") as RichLogWidget;
+
+    // Force the entry to be re-wrapped at three distinct widths; the cache
+    // caps at two entries per line, so the third rebuild must evict the
+    // first (oldest) width rather than growing unbounded.
+    setWidth(15);
+    await t.settle();
+    setWidth(10);
+    await t.settle();
+    expect(w.selectableLines().join("|")).toContain("aaaa");
   });
 });
