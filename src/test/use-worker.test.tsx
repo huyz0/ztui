@@ -86,6 +86,46 @@ describe("useWorker", () => {
     expect(api.isRunning).toBe(false);
   });
 
+  test("cancel while the task itself rejects on abort settles as cancelled, not error", async () => {
+    const t = await mountApp(<Probe />, OPTS);
+    await t.settle();
+
+    const p = api.run(
+      (signal) =>
+        new Promise<string>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        }),
+    );
+    await t.settle();
+
+    api.cancel();
+    const result = await p;
+    await t.settle();
+
+    expect(result).toBeUndefined();
+    expect(t.text()).toContain("cancelled:");
+    expect(api.status).toBe("cancelled");
+  });
+
+  test("reset cancels an in-flight run and clears data/error back to idle", async () => {
+    const t = await mountApp(<Probe />, OPTS);
+    await t.settle();
+
+    const d = defer<string>();
+    api.run(() => d.promise);
+    await t.settle();
+    expect(api.isRunning).toBe(true);
+
+    api.reset();
+    await t.settle();
+
+    expect(t.text()).toContain("idle:-");
+    expect(api.status).toBe("idle");
+    expect(api.data).toBeUndefined();
+    expect(api.error).toBeUndefined();
+    expect(api.isRunning).toBe(false);
+  });
+
   test("latest run wins: a superseded run cannot settle the state", async () => {
     const t = await mountApp(<Probe />, OPTS);
     await t.settle();
