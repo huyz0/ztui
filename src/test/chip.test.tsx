@@ -72,4 +72,24 @@ describe("FileChip", () => {
     chip.onClick?.({} as never);
     expect(opened).toEqual([["src/core/app.ts", 42]]);
   });
+
+  test("without a line number, shows just the basename", async () => {
+    const t = await mountApp(<FileChip path="src/core/app.ts" />, OPTS);
+    await t.settle();
+    expect(t.text()).toContain("app.ts");
+    expect(t.text()).not.toContain("app.ts:");
+  });
+
+  test("a path with a trailing slash falls back to the full path", async () => {
+    const t = await mountApp(<FileChip path="src/core/" />, OPTS);
+    await t.settle();
+    expect(t.text()).toContain("src/core/");
+  });
+
+  test("without onOpen, the chip is not clickable", async () => {
+    const t = await mountApp(<FileChip id="f" path="src/core/app.ts" />, OPTS);
+    await t.settle();
+    const chip = t.findById<Widget>("f") as Widget;
+    expect(chip.onClick).toBeUndefined();
+  });
 });
