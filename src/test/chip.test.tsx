@@ -31,6 +31,12 @@ describe("Chip", () => {
     expect(text).toContain("×");
   });
 
+  test("dim variant applies the muted color style", async () => {
+    const t = await mountApp(<Chip variant="dim">muted</Chip>, OPTS);
+    await t.settle();
+    expect(t.text()).toContain("muted");
+  });
+
   test("onRemove fires from the × only", async () => {
     let removed = 0;
     const t = await mountApp(
@@ -54,6 +60,19 @@ describe("Pill", () => {
     await t.settle();
     const text = t.text();
     expect(text).toContain("●");
+    expect(text).toContain("ready");
+  });
+
+  test("dot={false} hides the status dot", async () => {
+    const t = await mountApp(
+      <Pill color="$success" dot={false}>
+        ready
+      </Pill>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).not.toContain("●");
     expect(text).toContain("ready");
   });
 });
