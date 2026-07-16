@@ -12,6 +12,7 @@ import {
   VBox,
 } from "../react.ts";
 import { CheckboxWidget } from "../widgets/controls/checkbox.ts";
+import { SwitchWidget } from "../widgets/controls/switch.ts";
 import { ToggleButtonWidget } from "../widgets/controls/toggle-button.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -723,5 +724,13 @@ describe("ZTUI Form Widgets Suite", () => {
     tgl.computedStyle = {};
     tgl.measure(80, 24);
     expect(tgl.measuredHeight).toBe(1);
+  });
+
+  test("Switch measure() falls back to a height of 1 when computedStyle has no height", () => {
+    const sw = new SwitchWidget();
+    sw.label = "News";
+    sw.computedStyle = {};
+    sw.measure(80, 24);
+    expect(sw.measuredHeight).toBe(1);
   });
 });
