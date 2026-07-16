@@ -47,4 +47,19 @@ describe("box title", () => {
     expect(top.endsWith(" ─╮")).toBe(true);
     expect([...top].length).toBe(10);
   });
+
+  test("title is suppressed when the box is too narrow to reserve any label budget", () => {
+    // width - 4 <= 0: no room at all for "─ x ─", so drawTitle bails before
+    // touching the border row.
+    const top = rowText(renderBox({ width: 4, title: "Hi" }), 0);
+    expect(top).toBe("╭──╮");
+  });
+
+  test("truncates to a bare ellipsis when only one column of label budget is left", () => {
+    // width 6 -> available = 2 -> truncateToWidth's budget (available-2=0) is
+    // <= 1, so the label collapses to a single "…" rather than any real text.
+    const top = rowText(renderBox({ width: 6, title: "Settings" }), 0);
+    expect(top).toBe("╭─ … ╮");
+    expect([...top].length).toBe(6);
+  });
 });
