@@ -999,6 +999,53 @@ export class Widget extends DOMNode {
   public onUnmount(): void {}
 
   /**
+   * Sum (main axis) or max (cross axis) of the visible, non-absolute children's
+   * measured size along `dim`, for content-sizing an auto/fr-sized parent.
+   * Shared by {@link measure}'s width and height resolution, which are
+   * otherwise identical except for which axis is "main" (the one children's
+   * sizes stack along) vs "cross" (the one they're just measured against):
+   * a horizontal (row) layout stacks children along width and only inspects
+   * height as the cross axis, and a vertical (column) layout does the reverse.
+   *
+   * - Main axis: `fr`-sized and flex-grow children contribute a placeholder
+   *   `1` (their real share is decided later by layout); everyone else
+   *   contributes their measured size. Sizes add up.
+   * - Cross axis: `fr`-sized children again contribute a placeholder `1`;
+   *   everyone else contributes their measured size. The largest wins.
+   */
+  private static contentSizeAlongAxis(
+    children: DOMNode[],
+    dim: "width" | "height",
+    isMainAxis: boolean,
+  ): number {
+    let content = 0;
+    const marginStart = dim === "width" ? "left" : "top";
+    const marginEnd = dim === "width" ? "right" : "bottom";
+    for (const child of children) {
+      if (
+        !(child instanceof Widget) ||
+        !child.visible ||
+        child.computedStyle.position === "absolute"
+      ) {
+        continue;
+      }
+      const childProp = dim === "width" ? child.computedStyle.width : child.computedStyle.height;
+      const isFr =
+        childProp !== undefined && typeof childProp === "string" && childProp.endsWith("fr");
+      const measured = dim === "width" ? child.measuredWidth : child.measuredHeight;
+      const marginSum = child.margin[marginStart] + child.margin[marginEnd];
+      if (isMainAxis) {
+        const isFlexGrow = child.computedStyle.flexGrow !== undefined;
+        content += (!isFr && !isFlexGrow ? measured : 1) + marginSum;
+      } else {
+        const childSize = !isFr ? measured : 1;
+        content = Math.max(content, childSize + marginSum);
+      }
+    }
+    return content;
+  }
+
+  /**
    * Compute this widget's intrinsic size into {@link measuredWidth} /
    * {@link measuredHeight}, given the space the parent offers (`maxW`/`maxH`).
    * Runs bottom-up (children first). **Override point** for content-sized custom
@@ -1068,48 +1115,9 @@ export class Widget extends DOMNode {
     // 2. Resolve own width
     const wVal = parseDimension(this.computedStyle.width, maxW, -1);
     if (wVal === -1 || (typeof wVal === "object" && "fr" in wVal)) {
-      let contentW = 0;
-      if (hasText) {
-        contentW = stringWidth(text);
-      } else {
-        if (layoutType === "horizontal") {
-          for (const child of this.children) {
-            if (
-              child instanceof Widget &&
-              child.visible &&
-              child.computedStyle.position !== "absolute"
-            ) {
-              const childWProp = child.computedStyle.width;
-              const isFr =
-                childWProp !== undefined &&
-                typeof childWProp === "string" &&
-                childWProp.endsWith("fr");
-              const isFlexGrow = child.computedStyle.flexGrow !== undefined;
-              if (!isFr && !isFlexGrow) {
-                contentW += child.measuredWidth + child.margin.left + child.margin.right;
-              } else {
-                contentW += 1 + child.margin.left + child.margin.right;
-              }
-            }
-          }
-        } else {
-          for (const child of this.children) {
-            if (
-              child instanceof Widget &&
-              child.visible &&
-              child.computedStyle.position !== "absolute"
-            ) {
-              const childWProp = child.computedStyle.width;
-              const isFr =
-                childWProp !== undefined &&
-                typeof childWProp === "string" &&
-                childWProp.endsWith("fr");
-              const childW = !isFr ? child.measuredWidth : 1;
-              contentW = Math.max(contentW, childW + child.margin.left + child.margin.right);
-            }
-          }
-        }
-      }
+      const contentW = hasText
+        ? stringWidth(text)
+        : Widget.contentSizeAlongAxis(this.children, "width", layoutType === "horizontal");
       // Clamp auto/content-sized width to the space actually offered so a
       // content-sized widget never claims more room than its parent has
       // (scroll content is offered a large maxW, so this is a no-op there).
@@ -1121,48 +1129,11 @@ export class Widget extends DOMNode {
     // 3. Resolve own height
     const hVal = parseDimension(this.computedStyle.height, maxH, -1);
     if (hVal === -1 || (typeof hVal === "object" && "fr" in hVal)) {
-      let contentH = 0;
-      if (hasText) {
-        contentH = text ? 1 : 0;
-      } else {
-        if (layoutType === "vertical") {
-          for (const child of this.children) {
-            if (
-              child instanceof Widget &&
-              child.visible &&
-              child.computedStyle.position !== "absolute"
-            ) {
-              const childHProp = child.computedStyle.height;
-              const isFr =
-                childHProp !== undefined &&
-                typeof childHProp === "string" &&
-                childHProp.endsWith("fr");
-              const isFlexGrow = child.computedStyle.flexGrow !== undefined;
-              if (!isFr && !isFlexGrow) {
-                contentH += child.measuredHeight + child.margin.top + child.margin.bottom;
-              } else {
-                contentH += 1 + child.margin.top + child.margin.bottom;
-              }
-            }
-          }
-        } else {
-          for (const child of this.children) {
-            if (
-              child instanceof Widget &&
-              child.visible &&
-              child.computedStyle.position !== "absolute"
-            ) {
-              const childHProp = child.computedStyle.height;
-              const isFr =
-                childHProp !== undefined &&
-                typeof childHProp === "string" &&
-                childHProp.endsWith("fr");
-              const childH = !isFr ? child.measuredHeight : 1;
-              contentH = Math.max(contentH, childH + child.margin.top + child.margin.bottom);
-            }
-          }
-        }
-      }
+      const contentH = hasText
+        ? text
+          ? 1
+          : 0
+        : Widget.contentSizeAlongAxis(this.children, "height", layoutType === "vertical");
       // Clamp auto/content-sized height to the offered space (see width above).
       this.measuredHeight = Math.min(contentH + b.height + p.height, maxH);
     } else {
