@@ -96,6 +96,17 @@ export class FormWidget extends BoxWidget {
     App.instance?.queueRender();
   }
 
+  /**
+   * In `auto`/`shared` mode, reserve one extra row below the fields' natural
+   * flow for the shared status line so it never overlaps the last field.
+   */
+  public override measure(maxW: number, maxH: number): void {
+    super.measure(maxW, maxH);
+    if (this.messageMode === "auto" || this.messageMode === "shared") {
+      this.measuredHeight = Math.min(this.measuredHeight + 1, maxH);
+    }
+  }
+
   /** Paints the form container (background/border); fields render themselves. */
   public override render(buffer: ScreenBuffer): void {
     super.render(buffer);
@@ -111,7 +122,8 @@ export class FormWidget extends BoxWidget {
     if (rect.height < 1) return;
     const color = focused?.validation.resolveColor() || "red";
     const bg = this.findResolvedBackground();
-    const y = rect.bottom;
+    // The reserved row added in measure() is the last row of the content rect.
+    const y = rect.bottom - 1;
     // Truncate to fit the available width rather than wrapping onto a new row.
     const text = stringWidth(msg) > rect.width ? truncate(msg, rect.width) : msg;
     buffer.drawSegment(rect.x, y, new Segment(text, new Style({ color, background: bg })), rect);

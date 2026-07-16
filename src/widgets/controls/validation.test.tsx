@@ -129,6 +129,18 @@ describe("Form widget integration", () => {
     expect(submitted).toEqual({ a: "ok" });
   });
 
+  test("auto/shared message mode paints the focused field's error on the form's bottom row", async () => {
+    const { findById, settle, text } = await mountApp(
+      <Form id="form" style={{ width: 30, height: 4 }}>
+        <Input id="a" validators={[required("Name required")]} validateOn="submit" />
+      </Form>,
+    );
+    const form = findById<FormWidget>("form")!;
+    form.submit(); // invalid → focuses "a" and sets its validation message
+    await settle();
+    expect(text()).toContain("Name required");
+  });
+
   test("FieldError takes zero rows until its field is invalid", async () => {
     const { findById } = await mountApp(
       <Form id="form">
