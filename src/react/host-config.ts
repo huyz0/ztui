@@ -20,6 +20,7 @@ export { createWidgetByTagName, registerElement, TextNode };
 const KNOWN_HANDLER_PROPS = [
   "onClick",
   "onMouseDown",
+  "onScroll",
   "onKey",
   "onMouseEnter",
   "onMouseLeave",
