@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
+import { App } from "../core/app.ts";
 import {
   Checkbox,
   EmailInput,
@@ -11,6 +12,7 @@ import {
   ToggleButton,
   VBox,
 } from "../react.ts";
+import { SwitchWidget } from "../widgets/controls/switch.ts";
 import { mountApp } from "./harness.tsx";
 
 describe("ZTUI Form Widgets Suite", () => {
@@ -696,5 +698,107 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(emailVal).toBe("");
     expect(selNarrow.value).toBe("ExtremelyLongBananaOptionName");
     expect(selectVal).toBe("ExtremelyLongBananaOptionName");
+  });
+
+  test("Switch: unmatched key, already-handled/non-left/non-press mouse events, disabled render, non-numeric dimensions", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <Switch id="sw" label="Beta" />
+        <Switch
+          id="sw-disabled"
+          label="Off"
+          disabled
+          active
+          style={{ width: "2fr", height: "2fr" }}
+        />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+
+    const sw = findById<SwitchWidget>("sw") as SwitchWidget;
+
+    // A key that isn't space/" "/enter must not toggle (else branch of onKey).
+    expect(sw.active).toBe(false);
+    sw.onKey?.({ key: "tab" } as any);
+    expect(sw.active).toBe(false);
+
+    // An event already marked handled by a parent must short-circuit
+    // handleMouse before it can toggle.
+    const handledEv: any = { type: "press", button: "left", handled: true };
+    sw.handleMouse(handledEv);
+    expect(sw.active).toBe(false);
+
+    // A press with a non-left button must not toggle.
+    sw.handleMouse({ type: "press", button: "right" } as any);
+    expect(sw.active).toBe(false);
+
+    // A non-press event type (e.g. a release) must not toggle.
+    sw.handleMouse({ type: "release", button: "left" } as any);
+    expect(sw.active).toBe(false);
+
+    // A genuine left press does toggle.
+    sw.handleMouse({ type: "press", button: "left" } as any);
+    expect(sw.active).toBe(true);
+
+    // Disabled switch renders using its disabled color and skips the
+    // focus-band branch; "2fr" style values resolve to a non-number
+    // dimension object, exercising the typeof-guard's false branch for
+    // both width and height in measure().
+    // Mounting already paints it once, exercising the disabled-color branch
+    // and the non-numeric ("2fr") width/height measure() branches.
+    const swDisabled = findById<SwitchWidget>("sw-disabled") as SwitchWidget;
+    expect(swDisabled.isDisabled()).toBe(true);
+    expect(swDisabled.measuredWidth).toBeGreaterThan(0);
+  });
+
+  test("Switch: measure() falls back to intrinsic size before layout assigns computed width/height", () => {
+    // Before the widget is attached/laid out, computedStyle falls back to the
+    // author-set `style` (empty here), so both the width- and
+    // height-undefined branches of measure() run.
+    const sw = new SwitchWidget();
+    sw.label = "Hi";
+    sw.measure(80, 24);
+    expect(sw.measuredWidth).toBe(5 + "Hi".length);
+    expect(sw.measuredHeight).toBe(1);
+  });
+
+  test("Switch: color fallbacks kick in without a resolvable App/theme, and invalid state recolors it", async () => {
+    const { findById, screen, buffer } = await mountApp(
+      <VBox>
+        <Switch id="sw" label="Beta" />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const sw = findById<SwitchWidget>("sw") as SwitchWidget;
+
+    // A failed validator makes the switch invalid: resolveColor() returns a
+    // severity color, taking the `if (severityColor)` true branch in render().
+    sw.validation.validators = [() => "must be on"];
+    sw.validation.validate();
+    expect(sw.validation.invalid).toBe(true);
+    expect(() => sw.render(buffer)).not.toThrow();
+
+    // Focus it too, so render() also exercises the focus-color path.
+    screen.focusWidget(sw);
+
+    // With no live App instance, every `App.instance?.cssResolver...` lookup
+    // in render() (focus color, primary color, disabled color) falls back to
+    // its hardcoded default instead of a resolved theme color.
+    const savedInstance = App.instance;
+    App.instance = null;
+    try {
+      expect(() => sw.render(buffer)).not.toThrow();
+    } finally {
+      App.instance = savedInstance;
+    }
+  });
+
+  test("Switch: mouse toggle repaints via App.instance when the widget isn't attached to an app", () => {
+    // this.app is null for a freestanding widget never mounted into a tree, so
+    // `(this.app ?? App.instance)?.queueRepaintWidget(...)` must fall back to
+    // the App.instance singleton instead of throwing.
+    const sw = new SwitchWidget();
+    expect(() => sw.handleMouse({ type: "press", button: "left" } as any)).not.toThrow();
+    expect(sw.active).toBe(true);
   });
 });
