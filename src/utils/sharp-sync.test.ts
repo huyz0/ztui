@@ -89,6 +89,54 @@ describe("sharp-sync", () => {
     );
   });
 
+  test("renderSvgSync handles spawnSync returning undefined (possibly mocked)", () => {
+    (spawnSync as any).mockReturnValueOnce(undefined as any);
+
+    expect(() => {
+      renderSvgSync({
+        svg: "<svg></svg>",
+        width: 10,
+        height: 20,
+        isIcon: false,
+      });
+    }).toThrow("Failed to spawn sharp-render-sync.ts: spawnSync returned undefined");
+  });
+
+  test("renderSvgSync surfaces a helpful error when the sharp subprocess exits with a sharp-related stderr", () => {
+    (spawnSync as any).mockReturnValueOnce({
+      error: undefined,
+      status: 1,
+      stdout: "",
+      stderr: "libvips: sharp native binding failed to load",
+    } as any);
+
+    expect(() => {
+      renderSvgSync({
+        svg: "<svg></svg>",
+        width: 10,
+        height: 20,
+        isIcon: false,
+      });
+    }).toThrow(/requires the optional 'sharp' dependency/);
+  });
+
+  test("renderSvgSync handles invalid JSON stdout with no stdout/stderr text", () => {
+    (spawnSync as any).mockReturnValueOnce({
+      error: undefined,
+      stdout: "",
+      stderr: "",
+    } as any);
+
+    expect(() => {
+      renderSvgSync({
+        svg: "<svg></svg>",
+        width: 10,
+        height: 20,
+        isIcon: false,
+      });
+    }).toThrow("Failed to parse sharp-render-sync.ts output: . Stderr: . Error:");
+  });
+
   test("renderSvgSync handles success: false response", () => {
     (spawnSync as any).mockReturnValueOnce({
       error: undefined,
