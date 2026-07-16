@@ -1,7 +1,9 @@
-import { describe, expect, test } from "vitest";
+import React from "react";
+import { describe, expect, test, vi } from "vitest";
 import { Size } from "../geometry/size.ts";
 import { View } from "../react.ts";
 import { mountApp } from "../test/harness.tsx";
+import { logger } from "../utils/logger.ts";
 import { reconciler } from "./reconciler.ts";
 
 describe("host-config — prop clearing on re-render", () => {
@@ -44,6 +46,58 @@ describe("host-config — prop clearing on re-render", () => {
     expect(widget).toBeDefined();
     expect(widget?.classes.size).toBe(0);
     expect(widget?.classes.has("")).toBe(false);
+  });
+});
+
+describe("render — error callbacks", () => {
+  test("an uncaught render error (no error boundary) is logged via logger.error", async () => {
+    const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    function Boom(): React.ReactNode {
+      throw new Error("boom");
+    }
+
+    await mountApp(<Boom />);
+
+    expect(errorSpy).toHaveBeenCalledWith("react", "uncaught render error", expect.any(Error));
+
+    errorSpy.mockRestore();
+  });
+
+  test("an error caught by an error boundary is logged via logger.error", async () => {
+    const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    class Boundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+      state = { hasError: false };
+      static getDerivedStateFromError() {
+        return { hasError: true };
+      }
+      componentDidCatch() {
+        // swallow — logging is asserted via the reconciler's onCaughtError.
+      }
+      render() {
+        return this.state.hasError ? <View id="fallback" /> : this.props.children;
+      }
+    }
+
+    function Boom(): React.ReactNode {
+      throw new Error("boom");
+    }
+
+    const { findById } = await mountApp(
+      <Boundary>
+        <Boom />
+      </Boundary>,
+    );
+
+    expect(findById("fallback")).toBeDefined();
+    expect(errorSpy).toHaveBeenCalledWith(
+      "react",
+      "caught render error (error boundary)",
+      expect.any(Error),
+    );
+
+    errorSpy.mockRestore();
   });
 });
 
