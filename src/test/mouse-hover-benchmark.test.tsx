@@ -1,7 +1,11 @@
 import { createElement } from "react";
 import { describe, expect, test } from "vitest";
 import { findDemo } from "../../examples/gallery/registry.ts";
-import { runMouseHoverBenchmark } from "../tools/mouse-hover-benchmark.ts";
+import {
+  buildSweepPath,
+  formatMouseHoverBenchmark,
+  runMouseHoverBenchmark,
+} from "../tools/mouse-hover-benchmark.ts";
 
 describe("runMouseHoverBenchmark", () => {
   test("coalesces a Ghostty-style hover sweep into a measurable benchmark report", async () => {
@@ -57,5 +61,30 @@ describe("runMouseHoverBenchmark", () => {
 
     expect(dense.totalEvents).toBeGreaterThan(sparse.totalEvents);
     expect(dense.pathSamples.length).toBeGreaterThan(sparse.pathSamples.length);
+  });
+
+  test("formatMouseHoverBenchmark renders every field as a readable line", async () => {
+    const demo = findDemo("table");
+    const result = await runMouseHoverBenchmark({
+      ui: createElement(demo!.Component),
+      cols: 100,
+      rows: 30,
+      sweep: { y: 8, xStart: 2, xEnd: 20, step: 2, repeats: 1 },
+      settleMs: 40,
+    });
+    const formatted = formatMouseHoverBenchmark(result);
+    expect(formatted).toContain("duration_ms=");
+    expect(formatted).toContain("events=");
+    expect(formatted).toContain("renders=");
+    expect(formatted).toContain("writes=");
+    expect(formatted).toContain("bytes=");
+    expect(formatted).toContain("mouse_hover=true");
+    expect(formatted).toContain("render_reasons=");
+  });
+
+  test("buildSweepPath walks backward when xStart > xEnd", () => {
+    const path = buildSweepPath({ xStart: 10, xEnd: 4, y: 0, step: 2 });
+    expect(path.map((p) => p.x)).toEqual([10, 8, 6, 4]);
+    expect(path.every((p) => p.y === 0)).toBe(true);
   });
 });

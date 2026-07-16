@@ -14,4 +14,8 @@ describe("named hover scenarios", () => {
     expect(scenario?.ui).toBeTruthy();
     expect(scenario?.sweep.path?.length).toBeGreaterThan(5);
   });
+
+  test("returns null for an unknown scenario name", () => {
+    expect(getNamedHoverScenario("does-not-exist")).toBeNull();
+  });
 });
