@@ -31,3 +31,24 @@ describe("RadioGroupWidget value/hoveredIndex sync", () => {
     expect(w.hoveredIndex).toBe(1);
   });
 });
+
+describe("RadioGroupWidget edge cases", () => {
+  test("a key event with no options is a no-op", () => {
+    const w = new RadioGroupWidget();
+    w.options = [];
+    const ev = { name: "down", key: "down" } as any;
+    expect(() => w.onKey?.(ev)).not.toThrow();
+    expect(ev.handled).toBeUndefined();
+  });
+
+  test("an already-handled mouse event is left untouched", () => {
+    const w = new RadioGroupWidget();
+    w.options = ["a", "b"];
+    let committed: string | undefined;
+    w.onChange = (v) => {
+      committed = v;
+    };
+    w.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: true } as any);
+    expect(committed).toBeUndefined();
+  });
+});

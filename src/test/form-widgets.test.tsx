@@ -724,4 +724,26 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(selNarrow.value).toBe("ExtremelyLongBananaOptionName");
     expect(selectVal).toBe("ExtremelyLongBananaOptionName");
   });
+
+  test("RadioGroup renders in a disabled state and falls back for non-numeric measure", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <RadioGroup id="rg-disabled" options={["A", "B"]} value="A" disabled />
+        <RadioGroup
+          id="rg-fr"
+          options={["A", "B"]}
+          value="A"
+          style={{ width: "1fr", height: "1fr" }}
+        />
+      </VBox>,
+      { cols: 30, rows: 6 },
+    );
+    const disabled = findById("rg-disabled");
+    expect(disabled.isDisabled()).toBe(true);
+
+    const fr = findById("rg-fr");
+    fr.measure(30, 6);
+    expect(fr.measuredWidth).toBeGreaterThan(0);
+    expect(fr.measuredHeight).toBeGreaterThan(0);
+  });
 });
