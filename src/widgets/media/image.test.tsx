@@ -47,6 +47,20 @@ describe("Image & SVG Image Widgets", () => {
     expect(() => decodeImage(new Uint8Array([1, 2, 3, 4]))).toThrow();
   });
 
+  test("Recognizes the AVIF ISOBMFF ftyp brand and routes to the sharp fallback", () => {
+    const avifHeader = new Uint8Array([
+      0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66, 0, 0, 0, 0,
+    ]);
+    expect(() => decodeImage(avifHeader)).toThrow();
+  });
+
+  test("An ISOBMFF ftyp box with a non-AVIF brand is not misidentified as AVIF", () => {
+    const mp4Header = new Uint8Array([
+      0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0,
+    ]);
+    expect(() => decodeImage(mp4Header)).toThrow(/Unsupported or invalid image format/);
+  });
+
   test("Decodes WebP images via the sharp fallback", () => {
     const decoded = decodeImage(new Uint8Array(Buffer.from(TINY_WEBP_BASE64, "base64")));
     expect(decoded.width).toBe(1);
@@ -215,6 +229,15 @@ describe("Image & SVG Image Widgets", () => {
     );
     await waitFor(() => /error/i.test(text()), { timeout: 500 }).catch(() => {});
     expect(text().toLowerCase()).toContain("error");
+  });
+
+  test("Image with neither src nor buffer shows the 'No image source' placeholder", async () => {
+    const { cellAt } = await mountApp(<Image />, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+    expect(cellAt(0, 0).char).toBe("N"); // 'N' of "No image source provided"
   });
 
   test("SvgImage with no source shows the 'No SVG source' placeholder", async () => {
