@@ -1,8 +1,9 @@
 import { describe, expect, test } from "vitest";
 import type { TableColumn } from "../../core.ts";
 import { Button, Label, Table } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { findWidgetByType, mountApp } from "../../test/harness.tsx";
-import type { TableWidget } from "./table.ts";
+import { TableWidget } from "./table.ts";
 
 interface Person {
   id: number;
@@ -721,6 +722,226 @@ describe("Table accessibility", () => {
     node = widget.getAccessibleNode();
     expect(node?.value).toBe("2"); // 1-based
     expect(node?.label).toBe(people[1].name);
+  });
+});
+
+describe("Table — additional branch coverage", () => {
+  test("getAccessibleNode reports nothing selected when selectedIndex points past the data", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: 8 }} />);
+    const widget = findTable(t);
+    widget.selectedIndex = 999; // stale/out-of-range index
+    const node = widget.getAccessibleNode();
+    expect(node?.value).toBe("1000"); // value is 1-based on the raw index...
+    expect(node?.label).toBe(""); // ...but rowAtView() finds nothing, so no label
+  });
+
+  test("getAccessibleNode returns null when the table isn't visible", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: 8 }} />);
+    const widget = findTable(t);
+    widget.visible = false;
+    expect(widget.getAccessibleNode()).toBeNull();
+  });
+
+  test("getAccessibleNode reports focused state and singular row/column counts", async () => {
+    const t = await mountApp(
+      <Table data={[people[0]]} columns={[columns[0]]} style={{ height: 8 }} />,
+    );
+    const widget = findTable(t);
+    t.screen.focusWidget(widget);
+    const node = widget.getAccessibleNode();
+    expect(node?.state).toContain("focused");
+    expect(node?.state).toContain("1 row");
+    expect(node?.state).toContain("1 column");
+  });
+
+  test("getAccessibleNode reports the disabled state", async () => {
+    const t = await mountApp(
+      <Table data={people} columns={columns} disabled style={{ height: 8 }} />,
+    );
+    const widget = findTable(t);
+    expect(widget.getAccessibleNode()?.state).toContain("disabled");
+  });
+
+  test("getAccessibleNode has no label when there are no columns at all", async () => {
+    const t = await mountApp(<Table data={people} columns={[]} style={{ height: 8 }} />);
+    const widget = findTable(t);
+    widget.selectedIndex = 0;
+    expect(widget.getAccessibleNode()?.label).toBe("");
+  });
+
+  test("toggleGroup expands a previously collapsed group back open", async () => {
+    const group = { id: "g", title: "G", items: people, collapsed: true };
+    const t = await mountApp(
+      <Table groups={[group]} columns={columns} style={{ height: "100%" }} />,
+    );
+    const widget = findTable(t);
+    await t.settle();
+    widget.toggleGroup("g"); // was seeded collapsed -> expands
+    await t.settle();
+    expect(t.text()).toContain("Charlie");
+    widget.toggleGroup("g"); // collapses again
+    await t.settle();
+    expect(t.text()).not.toContain("Charlie");
+  });
+
+  test("keyboard navigation before layout falls back to a viewport height of 1", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    // Force lastVisibleRows back to its pre-layout default to exercise the
+    // `this.lastVisibleRows || 1` fallback inside ensureVisible().
+    (widget as any).lastVisibleRows = 0;
+    widget.handleKey({ name: "down" } as any);
+    expect(widget.selectedIndex).toBe(0);
+  });
+
+  test("handleScroll ignores an event the base handler already marked handled", async () => {
+    const t = await mountApp(<Table data={bigData(100)} columns={columns} style={{ height: 8 }} />);
+    const widget = findTable(t);
+    const before = (widget as any).scrollTop;
+    widget.handleScroll({ type: "scroll_down", handled: true } as any);
+    expect((widget as any).scrollTop).toBe(before);
+  });
+
+  test("handleKey ignores an event the base handler already marked handled", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    widget.handleKey({ name: "down", handled: true } as any);
+    expect(widget.selectedIndex).toBe(-1);
+  });
+
+  test("handleKey reads the key name from ev.key when ev.name is absent", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    widget.handleKey({ key: "down" } as any);
+    expect(widget.selectedIndex).toBe(0);
+  });
+
+  test("handleMouse ignores an event the base handler already marked handled", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    widget.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: true } as any);
+    expect(widget.selectedIndex).toBe(-1);
+  });
+
+  test("handleMouse ignores non-press/non-left events and clicks outside the content rect", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    const content = widget.getContentRect();
+    widget.handleMouse({ type: "move", button: "left", x: content.x, y: content.y } as any);
+    expect(widget.selectedIndex).toBe(-1);
+    widget.handleMouse({ type: "press", button: "left", x: content.x - 5, y: content.y } as any);
+    expect(widget.selectedIndex).toBe(-1);
+  });
+
+  test("clicking above the first body row (negative row offset) does nothing", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    const content = widget.getContentRect();
+    widget.handleMouse({
+      type: "press",
+      button: "left",
+      x: content.x,
+      y: content.y - 1,
+    } as any);
+    expect(widget.selectedIndex).toBe(-1);
+  });
+
+  test("clicking past the last row does nothing", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: 20 }} />, {
+      screenStyle: { flexDirection: "column" },
+    });
+    const widget = findTable(t);
+    const content = widget.getContentRect();
+    widget.handleMouse({
+      type: "press",
+      button: "left",
+      x: content.x,
+      y: content.bottom - 1,
+    } as any);
+    expect(widget.selectedIndex).toBe(-1);
+  });
+
+  test("selectableLines is empty before the table has ever been laid out", () => {
+    const t = new TableWidget<Person>();
+    t.data = people;
+    t.columns = columns;
+    expect(t.selectableLines()).toEqual([]);
+  });
+
+  test("columnAtX treats a column with no measured width yet as zero-wide", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    await t.settle();
+    (widget as any).lastColWidths = []; // simulate stale/short width cache
+    const content = widget.getContentRect();
+    // Clicking a header cell should not throw and should not sort (no column found).
+    expect(() =>
+      widget.handleMouse({ type: "press", button: "left", x: content.x + 1, y: content.y } as any),
+    ).not.toThrow();
+  });
+
+  test("a zero-size table's render/computeMetrics bail out cleanly", async () => {
+    const t = await mountApp(
+      <Table data={people} columns={columns} style={{ width: 0, height: 0 }} />,
+    );
+    const widget = findTable(t);
+    expect(() => t.app.queueRender()).not.toThrow();
+    await expect(t.settle()).resolves.not.toThrow();
+    expect(widget.selectedIndex).toBe(-1);
+  });
+
+  test("an invisible table's render() is a no-op", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable(t);
+    widget.visible = false;
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => widget.render(buffer)).not.toThrow();
+  });
+
+  test("a fr-width column with an unparsable fraction defaults to 1fr", async () => {
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: "xfr" },
+      { key: "age", header: "Age", width: "1fr" },
+    ];
+    const t = await mountApp(<Table data={people} columns={cols} style={{ height: "100%" }} />);
+    await expect(t.settle()).resolves.not.toThrow();
+    expect(t.text()).toContain("Charlie");
+  });
+
+  test("a table with zero columns renders without a gap-related crash", async () => {
+    const t = await mountApp(<Table data={people} columns={[]} style={{ height: "100%" }} />);
+    await expect(t.settle()).resolves.not.toThrow();
+  });
+
+  test("minWidth/maxWidth clamp an auto-sized column", async () => {
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", minWidth: 20 },
+      { key: "age", header: "Age", maxWidth: 2 },
+    ];
+    const t = await mountApp(<Table data={people} columns={cols} style={{ height: "100%" }} />);
+    await t.settle();
+    const widget = findTable(t);
+    const widths = (widget as any).lastColWidths as number[];
+    expect(widths[0]).toBeGreaterThanOrEqual(20);
+    expect(widths[1]).toBeLessThanOrEqual(2);
+  });
+
+  test("an invisible table-cell widget's render() is a no-op", async () => {
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      { key: "act", header: "Act", width: 12, render: (r) => <Label>[{r.name}]</Label> },
+    ];
+    const t = await mountApp(<Table data={people} columns={cols} style={{ height: "100%" }} />);
+    await t.settle();
+    await t.settle();
+    let cell: any;
+    t.screen.walk((n: any) => {
+      if (!cell && n.constructor?.name === "TableCellWidget") cell = n;
+    });
+    expect(cell).toBeDefined();
+    cell.visible = false;
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => cell.render(buffer)).not.toThrow();
   });
 });
 
