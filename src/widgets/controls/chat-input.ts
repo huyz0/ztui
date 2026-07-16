@@ -4,33 +4,13 @@ import { Widget } from "../../dom/widget.ts";
 import type { KeyEvent, MouseEvent } from "../../driver/driver.ts";
 import type { Region } from "../../geometry/region.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
+import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { CompletionPopupWidget } from "./chat/completion-popup.ts";
-import {
-  type Atom,
-  ChatBuffer,
-  type ChipSerializer,
-  type ChipToken,
-  isChip,
-} from "./chat/model.ts";
+import { caretRowCol, indexAtRowCol, layoutRows, type VisualRow } from "./chat/layout.ts";
+import { ChatBuffer, type ChipSerializer, type ChipToken, isChip } from "./chat/model.ts";
 import type { Attachment, Command, Completion, Trigger } from "./chat/types.ts";
 import { blendCaretColors, CaretBlink, smoothCaretIntensity } from "./internal/caret.ts";
-
-/** One atom placed on a wrapped visual row, with its display width and start column. */
-interface PlacedAtom {
-  index: number;
-  atom: Atom;
-  width: number;
-  col: number;
-}
-interface VisualRow {
-  atoms: PlacedAtom[];
-  /** First atom index on the row (== caret index at the row's left edge). */
-  start: number;
-  /** Caret index just past the row's last atom. */
-  end: number;
-}
 
 const SEND_GLYPH = "⏎";
 const STOP_GLYPH = "■";
@@ -424,13 +404,8 @@ export class ChatInputWidget extends Widget {
   }
 
   // ── geometry / wrapping ─────────────────────────────────────────────────────
-
-  /** Display width of one atom (chips include their pill/bracket chrome). */
-  private atomWidth(atom: Atom): number {
-    if (isChip(atom)) return stringWidth(atom.label) + 2;
-    if (atom === "\n") return 0;
-    return charWidth(atom);
-  }
+  // Pure wrapping/measurement lives in ./chat/layout.ts; this widget only
+  // supplies the current atoms/width/caret and consumes the result.
 
   /** Rows the attachment strip occupies above the text (0 or 1). */
   private stripRows(): number {
@@ -449,59 +424,7 @@ export class ChatInputWidget extends Widget {
 
   /** Wrap the buffer's atoms into visual rows for the given inner width. */
   private layoutRows(innerWidth: number): VisualRow[] {
-    const atoms = this.buffer.getAtoms();
-    const rows: VisualRow[] = [];
-    let cur: PlacedAtom[] = [];
-    let col = 0;
-    let start = 0;
-    const flush = (end: number, hadNewline: boolean) => {
-      rows.push({ atoms: cur, start, end });
-      cur = [];
-      col = 0;
-      start = hadNewline ? end + 1 : end;
-    };
-    for (let i = 0; i < atoms.length; i++) {
-      const atom = atoms[i];
-      if (atom === "\n") {
-        flush(i, true);
-        continue;
-      }
-      const w = this.atomWidth(atom);
-      if (this.softWrap && col + w > innerWidth && cur.length > 0) {
-        flush(i, false);
-      }
-      cur.push({ index: i, atom, width: w, col });
-      col += w;
-    }
-    rows.push({ atoms: cur, start, end: atoms.length });
-    return rows;
-  }
-
-  /** Locate the visual row + cell column for a caret atom-index. */
-  private caretRowCol(rows: VisualRow[]): { row: number; col: number } {
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
-      if (this.buffer.caret >= row.start && this.buffer.caret <= row.end) {
-        let col = 0;
-        for (const pa of row.atoms) {
-          if (pa.index >= this.buffer.caret) break;
-          col += pa.width;
-        }
-        return { row: r, col };
-      }
-    }
-    const last = rows[rows.length - 1];
-    return { row: rows.length - 1, col: last.atoms.reduce((s, a) => s + a.width, 0) };
-  }
-
-  /** Map a (row, targetCol) back to a caret atom-index (for Up/Down motion). */
-  private indexAtRowCol(rows: VisualRow[], row: number, targetCol: number): number {
-    const vr = rows[Math.max(0, Math.min(rows.length - 1, row))];
-    if (vr.atoms.length === 0) return vr.start;
-    for (const pa of vr.atoms) {
-      if (targetCol <= pa.col + Math.floor(pa.width / 2)) return pa.index;
-    }
-    return vr.end;
+    return layoutRows(this.buffer.getAtoms(), innerWidth, this.softWrap);
   }
 
   // ── auto-grow ────────────────────────────────────────────────────────────────
@@ -544,7 +467,7 @@ export class ChatInputWidget extends Widget {
     const shift = !!ev.shift;
     const mod = !!ev.ctrl || !!ev.meta;
     const rows = this.layoutRows(this.innerWidth());
-    const here = this.caretRowCol(rows);
+    const here = caretRowCol(rows, this.buffer.caret);
 
     // 3. Ctrl+J is a literal line feed — a universally-reliable "insert newline"
     // that works even on terminals that can't report Shift+Enter.
@@ -716,7 +639,7 @@ export class ChatInputWidget extends Widget {
       return;
     }
 
-    const target = this.indexAtRowCol(rows, here.row + dir, here.col);
+    const target = indexAtRowCol(rows, here.row + dir, here.col);
     if (shift && this.buffer.anchor === null) this.buffer.anchor = this.buffer.caret;
     if (!shift) this.buffer.clearSelection();
     this.buffer.caret = target;
@@ -927,7 +850,7 @@ export class ChatInputWidget extends Widget {
     if (rows.length === 0) return 0;
     let localRow = y - content.y - strip + this.scrollRow;
     localRow = Math.max(0, Math.min(rows.length - 1, localRow));
-    return this.indexAtRowCol(rows, localRow, x - content.x);
+    return indexAtRowCol(rows, localRow, x - content.x);
   }
 
   public override handleMouse(ev: MouseEvent): void {
@@ -1052,7 +975,7 @@ export class ChatInputWidget extends Widget {
     const fg = this.computedStyle.color || resolve("$foreground");
 
     const rows = this.layoutRows(innerW);
-    const here = this.caretRowCol(rows);
+    const here = caretRowCol(rows, this.buffer.caret);
 
     // The attachment strip (when present) occupies the first content row; text
     // flows below it.
