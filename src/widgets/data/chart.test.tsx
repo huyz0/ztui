@@ -26,7 +26,10 @@ function countIn(
 
 const isBraille = (ch: string) =>
   ch.length > 0 && ch.charCodeAt(0) >= 0x2800 && ch.charCodeAt(0) <= 0x28ff;
-const isBar = (ch: string) => ch === "█" || (ch >= "▏" && ch <= "▉");
+// The eighth-block glyphs (▏▎▍▌▋▊▉) run from U+258F down to U+2589, i.e. in
+// the *opposite* direction from their visual fraction, so the codepoint range
+// check must go from ▉ (U+2589) up to ▏ (U+258F).
+const isBar = (ch: string) => ch === "█" || (ch >= "▉" && ch <= "▏");
 
 describe("BarChart", () => {
   test("draws bars proportional to value", async () => {
@@ -50,6 +53,52 @@ describe("BarChart", () => {
     const row1 = countIn(cellAt, { x: r.x, y: r.y + 1, width: r.width, height: 1 }, isBar);
     expect(row0).toBeGreaterThan(row1); // value 10 bar longer than value 5
     expect(row1).toBeGreaterThan(0);
+  });
+
+  test("draws a partial eighth-block glyph when the bar length isn't a whole cell", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <BarChart
+          id="c"
+          style={{ width: 17, height: 2 }}
+          showValue={false}
+          items={[{ value: 10 }, { value: 3 }]}
+        />
+      </VBox>,
+      { cols: 24, rows: 5 },
+    );
+    await settle();
+    const r = findById("c").getClientRect();
+    // value 3 against max 10 over a 17-col bar doesn't land on a whole eighth,
+    // so the second row (that item's bar) must include a partial glyph.
+    let sawPartial = false;
+    for (let x = r.x; x < r.x + r.width; x++) {
+      const ch = cellAt(x, r.y + 1).char;
+      if (isBar(ch) && ch !== "█") sawPartial = true;
+    }
+    expect(sawPartial).toBe(true);
+  });
+
+  test("formats non-integer values with one decimal and non-finite values as blank", async () => {
+    const fractional = await mountApp(
+      <VBox>
+        <BarChart id="c" style={{ width: 20 }} items={[{ label: "x", value: 3.5 }]} />
+      </VBox>,
+      { cols: 30, rows: 4 },
+    );
+    await fractional.settle();
+    expect(fractional.text()).toContain("3.5");
+
+    // A non-finite value can't drive the bar/label maths, but fmtNum must
+    // degrade to an empty string rather than printing "NaN"/"Infinity".
+    const nonFinite = await mountApp(
+      <VBox>
+        <BarChart id="c" style={{ width: 20 }} items={[{ label: "y", value: Number.NaN }]} />
+      </VBox>,
+      { cols: 30, rows: 4 },
+    );
+    await nonFinite.settle();
+    expect(nonFinite.text()).not.toContain("NaN");
   });
 
   test("clips rows when height is shorter than the data", async () => {
@@ -301,6 +350,34 @@ describe("PieChart", () => {
     expect(out).toContain("used");
     expect(out).toContain("75%");
     expect(out).toContain("25%");
+  });
+
+  test("distributes leftover bar cells to the slices with the largest fractional remainder", async () => {
+    // Three equal slices over a 10-col bar: each gets exact width 10/3 = 3.33,
+    // floors to 3 (sum 9), leaving a 1-cell remainder that must be handed to
+    // one of the slices, so some column must carry a third distinct colour.
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <PieChart
+          id="pie"
+          style={{ width: 10 }}
+          items={[
+            { label: "a", value: 1, color: "$accent" },
+            { label: "b", value: 1, color: "$success" },
+            { label: "c", value: 1, color: "$warning" },
+          ]}
+        />
+      </VBox>,
+      { cols: 20, rows: 8 },
+    );
+    await settle();
+    const r = findById("pie").getClientRect();
+    let total = 0;
+    for (let x = r.x; x < r.x + r.width; x++) {
+      if (cellAt(x, r.y).char === "█") total++;
+    }
+    // All 10 columns are painted (leftover cell assigned, none left blank).
+    expect(total).toBe(10);
   });
 
   test("legend can be hidden and zero/empty data is tolerated", async () => {
