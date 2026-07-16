@@ -75,6 +75,68 @@ describe("Reasoning", () => {
     expect(t.text()).not.toContain("body");
   });
 
+  test("with no children, the header shows a blank disclosure and isn't clickable", async () => {
+    const t = await mountApp(<Reasoning id="r" label="Thinking" />, OPTS);
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("Thinking");
+    expect(text).not.toContain("▸");
+    expect(text).not.toContain("▾");
+    const root = t.findById<Widget>("r") as Widget;
+    const header = root.children[0] as Widget;
+    expect(header.onClick).toBeUndefined();
+  });
+
+  test("without collapseWhenDone, finishing does not auto-collapse the body", async () => {
+    const ui = (active: boolean) => (
+      <Reasoning id="r" active={active}>
+        <Label>still visible</Label>
+      </Reasoning>
+    );
+    const t = await mountApp(ui(true), OPTS);
+    await t.settle();
+    expect(t.text()).toContain("still visible");
+
+    reconciler.updateContainer(ui(false), t.container, null, () => {});
+    await t.settle();
+    // collapseWhenDone defaults to false, so the body stays expanded.
+    expect(t.text()).toContain("still visible");
+  });
+
+  test("controlled mode: the active→done transition does not drive open state", async () => {
+    let toggled = false;
+    const ui = (active: boolean) => (
+      <Reasoning id="r" active={active} open={true} onToggle={() => (toggled = true)}>
+        <Label>controlled body</Label>
+      </Reasoning>
+    );
+    const t = await mountApp(ui(true), OPTS);
+    await t.settle();
+    expect(t.text()).toContain("controlled body");
+
+    reconciler.updateContainer(ui(false), t.container, null, () => {});
+    await t.settle();
+    // Controlled: the effect must not call setOpenSilently, so no onToggle fires
+    // and the caller-supplied `open` continues to govern visibility.
+    expect(toggled).toBe(false);
+    expect(t.text()).toContain("controlled body");
+  });
+
+  test("uncontrolled: active flipping false→true auto-expands the body", async () => {
+    const ui = (active: boolean) => (
+      <Reasoning id="r" active={active} defaultOpen={false}>
+        <Label>newly visible</Label>
+      </Reasoning>
+    );
+    const t = await mountApp(ui(false), OPTS);
+    await t.settle();
+    expect(t.text()).not.toContain("newly visible");
+
+    reconciler.updateContainer(ui(true), t.container, null, () => {});
+    await t.settle();
+    expect(t.text()).toContain("newly visible");
+  });
+
   test("the body stays mounted while collapsed, not remounted on expand", async () => {
     // Regression: the body was only rendered when `hasBody && isOpen`, so
     // collapsing didn't just hide it — it unmounted it, discarding internal
