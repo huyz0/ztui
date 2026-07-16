@@ -139,6 +139,42 @@ describe("TerminalView", () => {
     expect(t.text()).not.toContain("line 0");
   });
 
+  test("maxLines getter/setter delegates to the underlying terminal", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 6 }}>
+        <TerminalView id="tv" content={""} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+    w.maxLines = 500;
+    expect(w.maxLines).toBe(500);
+  });
+
+  test("a press away from the scrollbar track falls through to text selection", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 40, height: 6 }}>
+        <TerminalView id="tv" content={"hello world"} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<TerminalViewWidget>("tv") as TerminalViewWidget;
+    const c = w.getContentRect();
+    const app = (w as any).app;
+    w.handleMouse({ type: "press", button: "left", x: c.x, y: c.y, handled: false } as never);
+    w.handleMouse({
+      type: "drag",
+      button: "left",
+      x: c.x + 5,
+      y: c.y,
+      handled: false,
+    } as never);
+    w.handleMouse({ type: "release", button: "left", x: c.x + 5, y: c.y, handled: false } as never);
+    expect(app.selection.active).not.toBeNull();
+  });
+
   test("a non-extending content change reparses from scratch", async () => {
     const t = await mountApp(
       <VBox style={{ width: 40, height: 6 }}>
