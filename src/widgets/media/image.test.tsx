@@ -14,7 +14,7 @@ import { fullColorRgbaToSixel } from "../../driver/bun/graphics.ts";
 import { reconciler } from "../../react/reconciler.ts";
 import { Image, SvgImage, VBox, View } from "../../react.ts";
 import { findWidgetByType, mountApp, waitFor } from "../../test/harness.tsx";
-import { decodeImage, ImageWidget, resizeImage } from "./image.ts";
+import { decodeImage, type ImageWidget, resizeImage } from "./image.ts";
 
 const TINY_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
@@ -431,7 +431,6 @@ describe("Image & SVG Image Widgets", () => {
   test("A non-Error thrown while reading the file source is stringified in the placeholder", async () => {
     const readSpy = fs.readFileSync as unknown as ReturnType<typeof vi.fn>;
     readSpy.mockImplementationOnce(() => {
-      // biome-ignore lint/style/useThrowOnlyError: regression test for the non-Error branch
       throw "disk exploded";
     });
     const { cellAt } = await mountApp(
