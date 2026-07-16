@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { Widget } from "../dom/widget.ts";
 import { type ModelEntry, ModelPicker } from "../react/components.tsx";
 import "../widgets/index.ts";
-import { mountApp } from "./harness.tsx";
+import { findWidgetByType, mountApp } from "./harness.tsx";
 
 const OPTS = {
   cols: 70,
@@ -24,12 +24,7 @@ const MODELS: ModelEntry[] = [
 ];
 
 function findTable(t: Awaited<ReturnType<typeof mountApp>>): Widget {
-  let found: Widget | undefined;
-  t.screen.walk((n) => {
-    if ((n as Widget).constructor?.name === "TableWidget") found = n as Widget;
-  });
-  if (!found) throw new Error("TableWidget not found");
-  return found;
+  return findWidgetByType<Widget>(t, "TableWidget");
 }
 
 describe("ModelPicker", () => {

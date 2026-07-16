@@ -2,7 +2,7 @@ import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import type { ListItem } from "../../core.ts";
 import { ListView } from "../../react.ts";
-import { mountApp } from "../../test/harness.tsx";
+import { findWidgetByType, mountApp } from "../../test/harness.tsx";
 import type { ListViewWidget } from "./list-view.ts";
 
 const fruits: ListItem[] = [
@@ -17,12 +17,7 @@ function bigList(n: number): ListItem[] {
 }
 
 function findList(t: Awaited<ReturnType<typeof mountApp>>): ListViewWidget {
-  let found: ListViewWidget | undefined;
-  t.screen.walk((n: any) => {
-    if (n.constructor?.name === "ListViewWidget") found = n as ListViewWidget;
-  });
-  if (!found) throw new Error("ListViewWidget not found");
-  return found;
+  return findWidgetByType<ListViewWidget>(t, "ListViewWidget");
 }
 
 describe("ListView rendering", () => {

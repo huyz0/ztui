@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { TreeNode } from "../../core.ts";
 import { Tree } from "../../react.ts";
-import { mountApp, waitFor } from "../../test/harness.tsx";
+import { findWidgetByType, mountApp, waitFor } from "../../test/harness.tsx";
 import type { TreeWidget } from "./tree.ts";
 
 const workspace: TreeNode[] = [
@@ -23,12 +23,7 @@ const workspace: TreeNode[] = [
 ];
 
 function findTree(t: Awaited<ReturnType<typeof mountApp>>): TreeWidget {
-  let found: TreeWidget | undefined;
-  t.screen.walk((n: any) => {
-    if (n.constructor?.name === "TreeWidget") found = n as TreeWidget;
-  });
-  if (!found) throw new Error("TreeWidget not found");
-  return found;
+  return findWidgetByType<TreeWidget>(t, "TreeWidget");
 }
 
 function bigTree(n: number): TreeNode[] {

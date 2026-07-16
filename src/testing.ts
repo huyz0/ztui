@@ -97,3 +97,23 @@ export async function waitFor(
     await flush(interval);
   }
 }
+
+/**
+ * Find the sole widget instance of `className` (its concrete class name, e.g.
+ * `"TableWidget"`) under `t.screen` — for reaching into a widget a test needs
+ * the concrete instance of (to call its own methods/read its own state)
+ * without threading an `id` through every fixture that mounts one. Throws if
+ * none is found, so a rename of the widget class fails loudly instead of the
+ * test silently operating on `undefined`.
+ */
+export function findWidgetByType<T>(
+  t: { screen: { walk(fn: (n: unknown) => void): void } },
+  className: string,
+): T {
+  let found: T | undefined;
+  t.screen.walk((n: any) => {
+    if (n?.constructor?.name === className) found = n as T;
+  });
+  if (!found) throw new Error(`${className} not found`);
+  return found;
+}

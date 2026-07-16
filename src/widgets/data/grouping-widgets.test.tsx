@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import type { ListItem, RowGroup, TableColumn } from "../../core.ts";
 import { ListView, Table } from "../../react.ts";
-import { mountApp } from "../../test/harness.tsx";
+import { findWidgetByType, mountApp } from "../../test/harness.tsx";
 import type { ListViewWidget } from "./list-view.ts";
 import type { TableWidget } from "./table.ts";
 
@@ -19,21 +19,11 @@ const listGroups: RowGroup<ListItem>[] = [
 ];
 
 function findList(t: Awaited<ReturnType<typeof mountApp>>): ListViewWidget {
-  let found: ListViewWidget | undefined;
-  t.screen.walk((n: any) => {
-    if (n.constructor?.name === "ListViewWidget") found = n as ListViewWidget;
-  });
-  if (!found) throw new Error("ListViewWidget not found");
-  return found;
+  return findWidgetByType<ListViewWidget>(t, "ListViewWidget");
 }
 
 function findTable(t: Awaited<ReturnType<typeof mountApp>>): TableWidget {
-  let found: TableWidget | undefined;
-  t.screen.walk((n: any) => {
-    if (n.constructor?.name === "TableWidget") found = n as TableWidget;
-  });
-  if (!found) throw new Error("TableWidget not found");
-  return found;
+  return findWidgetByType<TableWidget>(t, "TableWidget");
 }
 
 describe("ListView grouping", () => {

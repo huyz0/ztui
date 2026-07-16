@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { TableColumn } from "../../core.ts";
 import { Button, Label, Table } from "../../react.ts";
-import { mountApp } from "../../test/harness.tsx";
+import { findWidgetByType, mountApp } from "../../test/harness.tsx";
 import type { TableWidget } from "./table.ts";
 
 interface Person {
@@ -649,12 +649,7 @@ describe("Table accessibility", () => {
 // --- helpers ---------------------------------------------------------------
 
 function findTable<Row>(t: Awaited<ReturnType<typeof mountApp>>): TableWidget<Row> {
-  let found: TableWidget<Row> | undefined;
-  t.screen.walk((node) => {
-    if ((node as any).constructor?.name === "TableWidget") found = node as TableWidget<Row>;
-  });
-  if (!found) throw new Error("TableWidget not found in tree");
-  return found;
+  return findWidgetByType<TableWidget<Row>>(t, "TableWidget");
 }
 
 /** Extract the Name column (first 10 cells) of each body line, in order. */

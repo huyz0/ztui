@@ -9,6 +9,7 @@ import { cleanupMountedApps } from "../testing.ts";
  * need their own teardown).
  */
 export {
+  findWidgetByType,
   flush,
   type MountOptions,
   type MountResult,
