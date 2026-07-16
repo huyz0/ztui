@@ -126,12 +126,13 @@ export class StatusDotWidget extends Widget {
     const w =
       this.computedStyle.width === undefined
         ? charWidth(this.glyph)
-        : (parseDimension(this.computedStyle.width, maxW, charWidth(this.glyph)) as number);
+        : parseDimension(this.computedStyle.width, maxW, charWidth(this.glyph));
     this.measuredWidth = typeof w === "number" ? w : charWidth(this.glyph);
-    this.measuredHeight =
+    const h =
       this.computedStyle.height === undefined
         ? 1
-        : ((parseDimension(this.computedStyle.height, maxH, 1) as number) ?? 1);
+        : parseDimension(this.computedStyle.height, maxH, 1);
+    this.measuredHeight = typeof h === "number" ? h : 1;
   }
 
   public override render(buffer: ScreenBuffer): void {
