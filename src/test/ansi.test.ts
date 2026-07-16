@@ -202,4 +202,104 @@ describe("AnsiTerminal", () => {
     t.write("a\x00\x07b"); // NUL + BEL carry no width
     expect(plain(t)).toEqual(["ab"]);
   });
+
+  test("a zero-width combining mark reaching putChar is dropped, not placed", () => {
+    // Unlike NUL/BEL, a bare combining accent is >= " " so it reaches
+    // putChar(); its stringWidth is 0, so it must still be skipped.
+    const t = new AnsiTerminal();
+    t.write("áb");
+    expect(plain(t)).toEqual(["ab"]);
+  });
+
+  test("a bare SGR reset (no params) clears the style", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[1mA\x1b[mB");
+    expect(t.lines[0][0].style.bold).toBe(true);
+    expect(t.lines[0][1].style.bold).toBeFalsy();
+  });
+
+  test("standard (non-bright) background colors 40-47 are handled", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[44mA");
+    expect(t.lines[0][0].style.background).toBe("blue");
+  });
+
+  test("unrecognized SGR params (e.g. blink) are silently ignored", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[5;1mA"); // 5 = blink, unhandled; 1 = bold, handled
+    expect(t.lines[0][0].style.bold).toBe(true);
+  });
+
+  test("standard 16-color and grayscale-ramp 256-color palette entries resolve", () => {
+    const t = new AnsiTerminal();
+    // n < 16: standard/bright palette lookup table.
+    t.write("\x1b[38;5;9mA"); // bright red
+    expect(t.lines[0][0].style.color).toBe("#ff0000");
+    // n >= 232: grayscale ramp.
+    t.write("\x1b[38;5;240mB");
+    expect(t.lines[0][1].style.color).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  test("an extended-color mode that's neither 5 (256) nor 2 (truecolor) sets no color", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[38;9mA");
+    expect(t.lines[0][0].style.color).toBeUndefined();
+  });
+
+  test("missing components in extended-color sequences default to 0", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[38;2mA"); // truecolor with no r/g/b at all
+    expect(t.lines[0][0].style.color).toBe("#000000");
+  });
+
+  test("a malformed (empty) SGR parameter falls back to 0", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b[;1mA"); // leading empty segment before the real param
+    expect(t.lines[0][0].style.bold).toBe(true);
+  });
+
+  test("erase-in-line with an unrecognized mode is a no-op", () => {
+    const t = new AnsiTerminal();
+    t.write("abc\x1b[9K"); // mode 9 matches none of 0/1/2
+    expect(plain(t)).toEqual(["abc"]);
+  });
+
+  test("cursor-forward without a column limit does not clamp", () => {
+    const t = new AnsiTerminal();
+    // cols defaults to 0 (wrapping disabled), so forward movement is unclamped.
+    t.write("\x1b[500CX");
+    expect(t.lines[0][500].ch).toBe("X");
+  });
+
+  test("a bare trailing ESC (no following byte) is buffered as pending", () => {
+    const t = new AnsiTerminal();
+    t.write("hi\x1b");
+    expect(plain(t)).toEqual(["hi"]);
+    t.write("[31mZ");
+    expect(t.lines[0][2].ch).toBe("Z");
+    expect(t.lines[0][2].style.color).toBe("red");
+  });
+
+  test("an OSC left dangling on ESC at the very end of the chunk is buffered", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b]0;title\x1b");
+    // Incomplete OSC terminator (ESC without the following '\\') is carried over.
+    expect(plain(t)).toEqual([""]);
+    t.write("\\X");
+    expect(plain(t)).toEqual(["X"]);
+  });
+
+  test("a two-byte escape that isn't a charset designator is just skipped", () => {
+    const t = new AnsiTerminal();
+    t.write("\x1b=X"); // ESC = (keypad mode) — not [, ], (, ), *, or +
+    expect(plain(t)).toEqual(["X"]);
+  });
+
+  test("an incomplete charset-designator escape at chunk end is buffered", () => {
+    const t = new AnsiTerminal();
+    t.write("hi\x1b(");
+    expect(plain(t)).toEqual(["hi"]);
+    t.write("BX");
+    expect(plain(t)).toEqual(["hiX"]);
+  });
 });
