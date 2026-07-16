@@ -4,6 +4,7 @@ import {
   type RasterizedIcon,
   rasterizeSVG,
 } from "../../render/icon-registry.ts";
+import { FALLBACK_DARK_BG } from "../../theme.ts";
 import { encodePNG } from "../../utils/png.ts";
 import type { TerminalCapabilities } from "../driver.ts";
 import { fallbackCellSize } from "./capabilities.ts";
@@ -104,7 +105,7 @@ export class TerminalGraphicsManager {
       const { width: cellWidth, height: cellHeight } = fallbackCellSize(capabilities);
       const w = cellWidth * 2;
       const h = cellHeight;
-      const bg = bgColor && bgColor !== "default" ? bgColor : "#1e1e2e";
+      const bg = bgColor && bgColor !== "default" ? bgColor : FALLBACK_DARK_BG;
       const key = `clear_${w}x${h}_${bg}`;
       let seq = this.clearCache.get(key);
       if (seq) {
@@ -151,7 +152,7 @@ export class TerminalGraphicsManager {
 
     if (capabilities.graphicsProtocol === "sixel") {
       const raster = this.getOrRasterize(name, icon.svg, fgColor, capabilities);
-      const bgClr = bgColor && bgColor !== "default" ? bgColor : "#1e1e2e";
+      const bgClr = bgColor && bgColor !== "default" ? bgColor : FALLBACK_DARK_BG;
       const cacheKey = `${fgColor}_${bgClr}`;
 
       const cacheKeyWithColor = `${name}_${fgColor}`;
@@ -231,7 +232,7 @@ export function rgbaToSixel(
   bgColor?: string,
 ): string {
   const fgRgb = parseColorToRGB(color || "white");
-  const bgRgb = parseColorToRGB(bgColor || "#1e1e2e");
+  const bgRgb = parseColorToRGB(bgColor || FALLBACK_DARK_BG);
 
   // Define 16 color registers: #0 (background) through #15 (foreground)
   let colorDefinitions = "";
@@ -300,7 +301,7 @@ export function fullColorRgbaToSixel(
   height: number,
   bgColor?: string,
 ): string {
-  const bgRgb = parseColorToRGB(bgColor || "#1e1e2e");
+  const bgRgb = parseColorToRGB(bgColor || FALLBACK_DARK_BG);
 
   const rLevels = [0, 36, 72, 109, 145, 182, 218, 255];
   const gLevels = [0, 36, 72, 109, 145, 182, 218, 255];

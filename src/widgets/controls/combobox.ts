@@ -4,6 +4,7 @@ import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { FALLBACK_DARK_BG } from "../../theme.ts";
 import type { SelectOption } from "./select.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
@@ -80,7 +81,8 @@ export class ComboboxOverlayWidget extends Widget {
 
   public override render(buffer: ScreenBuffer): void {
     const filtered = this.combobox.getFilteredOptions();
-    const bg = App.instance?.cssResolver.resolveVariable(this.combobox, "$surface") || "#1e1e2e";
+    const bg =
+      App.instance?.cssResolver.resolveVariable(this.combobox, "$surface") || FALLBACK_DARK_BG;
     const fg = App.instance?.cssResolver.resolveVariable(this.combobox, "$foreground") || "#ffffff";
     const primary =
       App.instance?.cssResolver.resolveVariable(this.combobox, "$primary") || "#4daafc";

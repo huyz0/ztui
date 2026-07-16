@@ -5,6 +5,7 @@ import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { charWidth, Segment, splitGraphemes, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { FALLBACK_DARK_BG } from "../../theme.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 /** A {@link Select} choice with a display label distinct from its value. */
@@ -98,7 +99,7 @@ export class DropdownOverlayWidget extends Widget {
   public override render(buffer: ScreenBuffer): void {
     // Backdrop is transparent, we don't draw anything on the full screen except the dropdown box
     const bg =
-      App.instance?.cssResolver.resolveVariable(this.selectWidget, "$surface") || "#1e1e2e";
+      App.instance?.cssResolver.resolveVariable(this.selectWidget, "$surface") || FALLBACK_DARK_BG;
     const fg =
       App.instance?.cssResolver.resolveVariable(this.selectWidget, "$foreground") || "#ffffff";
     const primary =

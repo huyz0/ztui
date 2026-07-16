@@ -4,6 +4,7 @@ import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { FALLBACK_DARK_BG } from "../../theme.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
 const WEEKDAY_HEADER = "Su Mo Tu We Th Fr Sa";
@@ -103,7 +104,8 @@ export class CalendarOverlayWidget extends Widget {
   }
 
   public override render(buffer: ScreenBuffer): void {
-    const bg = App.instance?.cssResolver.resolveVariable(this.datePicker, "$surface") || "#1e1e2e";
+    const bg =
+      App.instance?.cssResolver.resolveVariable(this.datePicker, "$surface") || FALLBACK_DARK_BG;
     const fg =
       App.instance?.cssResolver.resolveVariable(this.datePicker, "$foreground") || "#ffffff";
     const primary =

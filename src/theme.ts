@@ -4,6 +4,15 @@ import { logger } from "./utils/logger.ts";
 const BLEND_BLACK: RGB = { r: 0, g: 0, b: 0 };
 const BLEND_WHITE: RGB = { r: 255, g: 255, b: 255 };
 
+/**
+ * The dark UI background used as a fallback wherever no theme/resolver is
+ * available to ask (a standalone HTML export, the DevTools page, a browser
+ * canvas host, a terminal graphics-clear color) — the catppuccin-mocha theme's
+ * `background`. Kept as one constant so those independent fallbacks can't
+ * drift from each other.
+ */
+export const FALLBACK_DARK_BG = "#1e1e2e";
+
 /** A named palette. Its `colors` back the `$token` style values — see the Theming guide. */
 export interface Theme {
   /** Unique theme name passed to `ThemeManager.setTheme`. */
