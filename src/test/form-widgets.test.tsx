@@ -11,6 +11,8 @@ import {
   ToggleButton,
   VBox,
 } from "../react.ts";
+import { CheckboxWidget } from "../widgets/controls/checkbox.ts";
+import { ToggleButtonWidget } from "../widgets/controls/toggle-button.ts";
 import { mountApp } from "./harness.tsx";
 
 describe("ZTUI Form Widgets Suite", () => {
@@ -332,6 +334,15 @@ describe("ZTUI Form Widgets Suite", () => {
     tgl.handleKey({ key: " " });
     expect(toggled).toBe(false);
     expect(tgl.active).toBe(false);
+  });
+
+  test("ToggleButton respects an explicit width style", async () => {
+    const { findById } = await mountApp(
+      <ToggleButton id="tgl-wide" label="Feature" style={{ width: 20 }} />,
+      { cols: 30, rows: 5 },
+    );
+    const tgl = findById("tgl-wide");
+    expect(tgl.measuredWidth).toBe(20);
   });
 
   test("Form widgets measurement logic prevents zero width when height is specified", async () => {
@@ -696,5 +707,21 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(emailVal).toBe("");
     expect(selNarrow.value).toBe("ExtremelyLongBananaOptionName");
     expect(selectVal).toBe("ExtremelyLongBananaOptionName");
+  });
+
+  test("Checkbox measure() falls back to a height of 1 when computedStyle has no height", () => {
+    const chk = new CheckboxWidget();
+    chk.label = "Accept";
+    chk.computedStyle = {};
+    chk.measure(80, 24);
+    expect(chk.measuredHeight).toBe(1);
+  });
+
+  test("ToggleButton measure() falls back to a height of 1 when computedStyle has no height", () => {
+    const tgl = new ToggleButtonWidget();
+    tgl.label = "Feature";
+    tgl.computedStyle = {};
+    tgl.measure(80, 24);
+    expect(tgl.measuredHeight).toBe(1);
   });
 });
