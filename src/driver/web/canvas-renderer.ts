@@ -411,7 +411,10 @@ export function renderBufferToCanvas(
 
   // Pass 2: glyphs, box-drawing, block elements. Text sits on the font baseline
   // measured from the block glyph, so every cell lands on the same baseline.
-  const baseline = metrics.baseline;
+  // The measured baseline (ascent) is generally fractional; snap it to the
+  // same device-pixel grid as the row boundaries so glyph draws don't drift
+  // by sub-pixel amounts and blur, independent of the row's own position.
+  const baseline = snap(metrics.baseline);
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "center";
   for (let y = 0; y < rows; y++) {

@@ -326,6 +326,24 @@ describe("renderBufferToCanvas", () => {
     expect(glyphX).toBeCloseTo(bgX + bgW / 2, 5);
   });
 
+  test("snaps a fractional baseline to the device-pixel grid before drawing text", () => {
+    // Regression: `metrics.baseline` (the measured ascent) is generally
+    // fractional. The glyph draw used it raw (`cy + baseline`), landing text
+    // on a sub-pixel row and blurring it, even though row tops/heights are
+    // already snapped to the DPR grid.
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(1, 1);
+    buf.drawSegment(0, 0, new Segment("A"));
+    const metrics = { ...METRICS, baseline: 11.3 };
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, metrics, OPTS);
+    const call = calls.fillText.find((c) => c[0] === "A") as [string, number, number];
+    expect(call).toBeTruthy();
+    const [, , y] = call;
+    // At dpr=2 the grid step is 0.5px; a raw 11.3 baseline would put the row
+    // at y=11.3, off the grid entirely.
+    expect((y * OPTS.dpr) % 1).toBeCloseTo(0, 10);
+  });
+
   test("snaps cell boundaries so a filled run has no sub-pixel gap", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(3, 1);
