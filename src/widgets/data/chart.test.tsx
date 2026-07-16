@@ -188,6 +188,32 @@ describe("BarChart", () => {
     expect(findById("c")).toBeTruthy();
     expect(text()).not.toContain("NaN");
   });
+
+  test("measure() uses the intrinsic 40×items size when no style width/height is set at all", () => {
+    const w = new BarChartWidget();
+    w.items = [{ label: "a", value: 1 }];
+    w.measure(200, 200);
+    expect(w.measuredWidth).toBe(40);
+    expect(w.measuredHeight).toBe(1);
+  });
+
+  test("some items with, some without a label: unlabeled items get an empty label column", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <BarChart
+          id="c"
+          style={{ width: 20, height: 2 }}
+          items={[
+            { label: "a", value: 1 },
+            { value: 2 }, // no label, but hasLabels is still true overall
+          ]}
+        />
+      </VBox>,
+      { cols: 30, rows: 6 },
+    );
+    await settle();
+    expect(findById("c")).toBeTruthy();
+  });
 });
 
 describe("LinePlot", () => {
@@ -287,6 +313,14 @@ describe("LinePlot", () => {
     expect(w.measuredWidth).toBeGreaterThan(0);
     expect(w.measuredHeight).toBeGreaterThan(0);
   });
+
+  test("measure() uses the fixed 40×8 intrinsic size when no style width/height is set at all", () => {
+    const w = new LinePlotWidget();
+    w.data = [1, 2, 3];
+    w.measure(200, 200);
+    expect(w.measuredWidth).toBe(40);
+    expect(w.measuredHeight).toBe(8);
+  });
 });
 
 describe("ScatterPlot", () => {
@@ -368,6 +402,30 @@ describe("ScatterPlot", () => {
     await settle();
     expect(findById("s")).toBeTruthy();
   });
+
+  test("a point outside the pinned min/max range is not drawn", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <ScatterPlot
+          id="s"
+          style={{ width: 10, height: 4 }}
+          points={[
+            { x: 5, y: 5 },
+            { x: 100, y: 100 }, // well outside the pinned range below
+          ]}
+          minX={0}
+          maxX={10}
+          minY={0}
+          maxY={10}
+        />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await settle();
+    const r = findById("s").getClientRect();
+    // Only the in-range point is plotted; the out-of-range one is silently dropped.
+    expect(countIn(cellAt, r, isBraille)).toBe(1);
+  });
 });
 
 describe("AreaChart", () => {
@@ -409,6 +467,30 @@ describe("AreaChart", () => {
     expect(findById("a")).toBeTruthy();
   });
 
+  test("a flat series (zero span) fills at the vertical midpoint without dividing by zero", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <AreaChart id="a" style={{ width: 12, height: 4 }} data={[5, 5, 5, 5]} />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await settle();
+    const r = findById("a").getClientRect();
+    expect(countIn(cellAt, r, isBraille)).toBeGreaterThan(0);
+  });
+
+  test("a single-point series fills a single column without dividing by zero", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <AreaChart id="a" style={{ width: 12, height: 4 }} data={[7]} />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await settle();
+    const r = findById("a").getClientRect();
+    expect(countIn(cellAt, r, isBraille)).toBeGreaterThan(0);
+  });
+
   test("measure() falls back to intrinsic size for a non-numeric width/height", async () => {
     const { findById, settle } = await mountApp(
       <VBox>
@@ -420,6 +502,14 @@ describe("AreaChart", () => {
     const w = findById("a") as unknown as { measuredWidth: number; measuredHeight: number };
     expect(w.measuredWidth).toBeGreaterThan(0);
     expect(w.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("measure() uses the fixed 40×8 intrinsic size when no style width/height is set at all", () => {
+    const w = new AreaChartWidget();
+    w.data = [1, 2, 3];
+    w.measure(200, 200);
+    expect(w.measuredWidth).toBe(40);
+    expect(w.measuredHeight).toBe(8);
   });
 });
 
@@ -501,6 +591,61 @@ describe("PieChart", () => {
     );
     await empty.settle();
     expect(empty.findById("pie")).toBeTruthy(); // no throw
+  });
+
+  test("measure() falls back to intrinsic size for a non-numeric width/height", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <PieChart
+          id="pie"
+          style={{ width: "1fr", height: "1fr" }}
+          items={[{ label: "a", value: 1 }]}
+        />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    await settle();
+    const w = findById("pie") as unknown as { measuredWidth: number; measuredHeight: number };
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("measure() uses the intrinsic 40-wide size when no style width/height is set at all", () => {
+    const w = new PieChartWidget();
+    w.items = [{ label: "a", value: 1 }];
+    w.measure(200, 200);
+    expect(w.measuredWidth).toBe(40);
+    expect(w.measuredHeight).toBe(2); // 1 bar row + 1 legend row
+  });
+
+  test("a total of zero (all values non-positive) falls back to dividing by 1 instead of NaN", async () => {
+    const { findById, text, settle } = await mountApp(
+      <VBox>
+        <PieChart
+          id="pie"
+          style={{ width: 16 }}
+          items={[
+            { label: "a", value: 0 },
+            { label: "b", value: -3 },
+          ]}
+        />
+      </VBox>,
+      { cols: 24, rows: 6 },
+    );
+    await settle();
+    expect(findById("pie")).toBeTruthy();
+    expect(text()).not.toContain("NaN");
+  });
+
+  test("a legend item with no label truncates to an empty string instead of throwing", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <PieChart id="pie" style={{ width: 16 }} items={[{ value: 1 }]} />
+      </VBox>,
+      { cols: 24, rows: 6 },
+    );
+    await settle();
+    expect(findById("pie")).toBeTruthy();
   });
 });
 
