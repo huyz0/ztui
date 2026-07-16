@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { App } from "../../core/app.ts";
 import { Gauge, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
+import { GaugeWidget } from "./gauge.ts";
 
 // Eighth-blocks occupy U+2588 (█) … U+258F (▏).
 const isFill = (ch: string) =>
@@ -166,5 +167,26 @@ describe("Gauge", () => {
     // The label can't fit in a 1-wide bar — it must not appear at all, and
     // the single cell renders as bar fill/track, not a clipped label glyph.
     expect(text()).not.toContain("CPU");
+  });
+
+  test("measure() falls back to its intrinsic size when width/height style is unset", () => {
+    const w = new GaugeWidget();
+    w.label = "CPU";
+    w.value = 50;
+    // No style.width/height at all -> computedStyle.width/height are undefined,
+    // taking the intrinsic-size branch rather than parseDimension.
+    w.measure(80, 24);
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBe(1);
+  });
+
+  test("measure() falls back to the intrinsic default for a non-numeric (fr) width/height", () => {
+    const w = new GaugeWidget();
+    w.value = 50;
+    w.style.width = "1fr"; // parseDimension returns {fr}, not a number
+    w.style.height = "1fr";
+    w.measure(80, 24);
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBeGreaterThan(0);
   });
 });
