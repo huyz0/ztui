@@ -16,6 +16,38 @@ function fmtNum(n: number): string {
   return n.toFixed(1);
 }
 
+/**
+ * Shared `measure()` for the braille plot widgets (Line/Scatter/Area): a fixed
+ * 40×8 intrinsic box, honoring an explicit style width/height when set. All
+ * three plot kinds size identically since none has BarChart/PieChart's
+ * data-dependent intrinsic height.
+ */
+function measureFixedPlot(widget: Widget, maxW: number, maxH: number): void {
+  const b = widget.borderSize;
+  const p = widget.padding;
+  const w =
+    widget.computedStyle.width === undefined
+      ? 40
+      : parseDimension(widget.computedStyle.width, maxW, -1);
+  const h =
+    widget.computedStyle.height === undefined
+      ? 8
+      : parseDimension(widget.computedStyle.height, maxH, -1);
+  widget.measuredWidth = (typeof w === "number" ? w : 40) + b.width + p.width;
+  widget.measuredHeight = (typeof h === "number" ? h : 8) + b.height + p.height;
+}
+
+/**
+ * Resolve a plot widget's "single item vs. multi-series" data model: prefer
+ * `series` when it has at least one non-empty sub-series, else wrap `single`
+ * (dropped entirely when empty). Shared by Line/Area (`number[]`) and Scatter
+ * (`ScatterPoint[]`).
+ */
+function resolveSeries<T>(series: T[][] | undefined, single: T[]): T[][] {
+  if (series && series.length > 0) return series.filter((s) => s.length > 0);
+  return single.length > 0 ? [single] : [];
+}
+
 /** One bar in a {@link BarChartWidget}. */
 export interface BarChartItem {
   /** Row label shown before the bar (truncated as space tightens). */
@@ -270,23 +302,11 @@ export class LinePlotWidget extends Widget {
   }
 
   private allSeries(): number[][] {
-    if (this.series && this.series.length > 0) return this.series.filter((s) => s.length > 0);
-    return this.data.length > 0 ? [this.data] : [];
+    return resolveSeries(this.series, this.data);
   }
 
   public override measure(maxW: number, maxH: number): void {
-    const b = this.borderSize;
-    const p = this.padding;
-    const w =
-      this.computedStyle.width === undefined
-        ? 40
-        : parseDimension(this.computedStyle.width, maxW, -1);
-    const h =
-      this.computedStyle.height === undefined
-        ? 8
-        : parseDimension(this.computedStyle.height, maxH, -1);
-    this.measuredWidth = (typeof w === "number" ? w : 40) + b.width + p.width;
-    this.measuredHeight = (typeof h === "number" ? h : 8) + b.height + p.height;
+    measureFixedPlot(this, maxW, maxH);
   }
 
   public override render(buffer: ScreenBuffer): void {
@@ -373,23 +393,11 @@ export class ScatterPlotWidget extends Widget {
   }
 
   private allSeries(): ScatterPoint[][] {
-    if (this.series && this.series.length > 0) return this.series.filter((s) => s.length > 0);
-    return this.points.length > 0 ? [this.points] : [];
+    return resolveSeries(this.series, this.points);
   }
 
   public override measure(maxW: number, maxH: number): void {
-    const b = this.borderSize;
-    const p = this.padding;
-    const w =
-      this.computedStyle.width === undefined
-        ? 40
-        : parseDimension(this.computedStyle.width, maxW, -1);
-    const h =
-      this.computedStyle.height === undefined
-        ? 8
-        : parseDimension(this.computedStyle.height, maxH, -1);
-    this.measuredWidth = (typeof w === "number" ? w : 40) + b.width + p.width;
-    this.measuredHeight = (typeof h === "number" ? h : 8) + b.height + p.height;
+    measureFixedPlot(this, maxW, maxH);
   }
 
   public override render(buffer: ScreenBuffer): void {
@@ -460,23 +468,11 @@ export class AreaChartWidget extends Widget {
   }
 
   private allSeries(): number[][] {
-    if (this.series && this.series.length > 0) return this.series.filter((s) => s.length > 0);
-    return this.data.length > 0 ? [this.data] : [];
+    return resolveSeries(this.series, this.data);
   }
 
   public override measure(maxW: number, maxH: number): void {
-    const b = this.borderSize;
-    const p = this.padding;
-    const w =
-      this.computedStyle.width === undefined
-        ? 40
-        : parseDimension(this.computedStyle.width, maxW, -1);
-    const h =
-      this.computedStyle.height === undefined
-        ? 8
-        : parseDimension(this.computedStyle.height, maxH, -1);
-    this.measuredWidth = (typeof w === "number" ? w : 40) + b.width + p.width;
-    this.measuredHeight = (typeof h === "number" ? h : 8) + b.height + p.height;
+    measureFixedPlot(this, maxW, maxH);
   }
 
   public override render(buffer: ScreenBuffer): void {
