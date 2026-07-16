@@ -10,9 +10,10 @@ import {
   ValidationSummary,
   VBox,
 } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { CheckboxWidget } from "./checkbox.ts";
-import type { FieldErrorWidget } from "./field-error.ts";
+import { FieldErrorWidget } from "./field-error.ts";
 import type { FormWidget } from "./form.ts";
 import type { InputWidget } from "./input.ts";
 import type { SelectWidget } from "./select.ts";
@@ -288,6 +289,59 @@ describe("Form widget integration", () => {
     findById<CheckboxWidget>("terms")!.checked = true;
     findById<SelectWidget>("plan")!.value = "pro";
     expect(form.validate()).toBe(true);
+  });
+});
+
+describe("FieldErrorWidget branch coverage", () => {
+  test("targetId lookup works when the widget itself has no parent yet", () => {
+    const err = new FieldErrorWidget();
+    err.targetId = "does-not-exist";
+    // No parent -> rootOf() branch is skipped, `this` is used as the search
+    // root directly; findById() still returns null for a missing id.
+    expect(() => err.measure(40, 10)).not.toThrow();
+    expect(err.measuredHeight).toBe(0);
+  });
+
+  test("skips a non-validatable preceding sibling to find the field further back", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <Input id="a" validators={[required("Required")]} validateOn="submit" />
+        <Box id="spacer" />
+        <FieldError id="err" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const err = findById<FieldErrorWidget>("err")!;
+    err.measure(40, 10);
+    // The immediately-preceding sibling ("spacer") isn't validatable, so it
+    // walks further back to "a".
+    expect(err.measuredHeight).toBe(1);
+  });
+
+  test("render is a no-op when there is no message", () => {
+    const err = new FieldErrorWidget();
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => err.render(buffer)).not.toThrow();
+  });
+
+  test("render bails when the content rect has zero width or height", async () => {
+    const { findById } = await mountApp(
+      <Form id="form" style={{ width: 30 }}>
+        <Input id="a" validators={[required("Required")]} validateOn="submit" />
+        <FieldError id="err" style={{ width: 0, height: 0 }} />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const err = findById<FieldErrorWidget>("err")!;
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => err.render(buffer)).not.toThrow();
+  });
+
+  test("measure resolves a non-numeric dimension (fr) by falling back to maxW", () => {
+    const err = new FieldErrorWidget();
+    err.style = { width: "2fr" };
+    expect(() => err.measure(40, 10)).not.toThrow();
+    expect(err.measuredWidth).toBe(40);
   });
 });
 
