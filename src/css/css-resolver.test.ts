@@ -219,6 +219,48 @@ describe("CSSResolver Theming and Variables", () => {
     themeManager.setTheme("default-dark"); // restore
   });
 
+  test("$disabled doesn't recurse forever when the active theme leaves `dimmed` undefined", () => {
+    // Regression: getWidgetColorWithFallback excluded several tokens from its
+    // own recursive lookup to prevent a variable resolving back into itself,
+    // but "disabled" was missing — even though lookupVariable("disabled")
+    // just forwards to lookupVariable("dimmed"), which (when the theme has no
+    // `dimmed`) calls back into getWidgetColorWithFallback for the widget's
+    // own background/color, re-reading the *same* "$disabled" style value and
+    // recursing without end. Every built-in theme happens to define `dimmed`,
+    // which is why this went uncaught: reproduce with a custom theme that
+    // deliberately omits it.
+    const themeManager = ThemeManager.getInstance();
+    themeManager.register({
+      name: "no-dimmed-test-theme",
+      colors: {
+        primary: "#4daafc",
+        secondary: "#56b6c2",
+        background: "#1a1a1a",
+        foreground: "#d6d6d6",
+        surface: "#242424",
+        panel: "#2d2d2d",
+        accent: "#c586c0",
+        success: "#4ec07a",
+        warning: "#e5c07b",
+        error: "#e06c75",
+        // `dimmed` deliberately omitted.
+      },
+    });
+    themeManager.setTheme("no-dimmed-test-theme");
+    try {
+      const resolver = new CSSResolver([]);
+      const widget = new Widget("div");
+      widget.style.color = "$disabled";
+      let resolved: string | undefined;
+      expect(() => {
+        resolved = resolver.resolveStyles(widget, false).color;
+      }).not.toThrow();
+      expect(resolved?.startsWith("#")).toBe(true);
+    } finally {
+      themeManager.setTheme("default-dark");
+    }
+  });
+
   test("resolveAccent expands a stylesheet alias for $focus/$attention (e.g. $focus: $primary) instead of leaking the raw token", () => {
     // Regression: resolveAccent read stylesheetVariables[name] directly,
     // bypassing resolveVariable's recursive expansion, so it could return the

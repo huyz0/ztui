@@ -272,6 +272,13 @@ export class CSSResolver {
             varName !== "placeholder" &&
             varName !== "gutter" &&
             varName !== "dimmed" &&
+            // "disabled" forwards to "dimmed" in lookupVariable when a theme
+            // doesn't define its own — which itself calls back into this
+            // method for "background"/"color" on the same widget, re-reading
+            // a "$disabled" style value and recursing forever if "disabled"
+            // isn't excluded here too (only every theme happening to define
+            // `dimmed` masked this).
+            varName !== "disabled" &&
             varName !== "keyword" &&
             varName !== "string" &&
             varName !== "number" &&
