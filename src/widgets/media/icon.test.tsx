@@ -1,9 +1,14 @@
 import { describe, expect, test } from "vitest";
 import { iconRegistry } from "../../core.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { HeroIcon, Icon, VBox } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { registerHeroIcon, resolveHeroIcon } from "../../render/heroicons.ts";
 import { parseColorToRGB } from "../../render/icon-registry.ts";
 import { mountApp } from "../../test/harness.tsx";
+import type { IconWidget } from "./icon.ts";
 
 describe("resolveHeroIcon variants", () => {
   test("each variant resolves to a real SVG from a different size/style dir", () => {
@@ -162,6 +167,51 @@ describe("SVG Icon Support Engine", () => {
 });
 
 describe("IconWidget", () => {
+  test("skips writing cells when the client rect falls outside the buffer", async () => {
+    iconRegistry.registerIcon({ name: "test-home", svg: mockSvg, textFallback: "\ud83c\udfe0" });
+    const { findById, settle } = await mountApp(<Icon id="ic" name="test-home" />, {
+      cols: 40,
+      rows: 10,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+    const w = findById<IconWidget>("ic")!;
+    await settle();
+    // Push the widget's region off the right/bottom edge of a small buffer so
+    // getClientRect() returns coordinates >= buffer bounds.
+    (w as any).region = new Region(new Offset(5, 5), new Size(2, 1));
+    const buf = new ScreenBuffer(4, 4);
+    expect(() => w.render(buf)).not.toThrow();
+    expect(buf.cells[3][3].icon).toBeUndefined();
+  });
+
+  test("invisible widget skips rendering entirely", async () => {
+    iconRegistry.registerIcon({ name: "test-home", svg: mockSvg, textFallback: "\ud83c\udfe0" });
+    const { settle, cellAt } = await mountApp(<Icon id="ic" name="test-home" visible={false} />, {
+      cols: 40,
+      rows: 10,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+    await settle();
+    expect(cellAt(0, 0).icon).toBeUndefined();
+  });
+
+  test("does not write a wide-continuation cell when the icon sits at the last column", async () => {
+    iconRegistry.registerIcon({ name: "test-home", svg: mockSvg, textFallback: "\ud83c\udfe0" });
+    const { findById, settle } = await mountApp(<Icon id="ic" name="test-home" />, {
+      cols: 40,
+      rows: 10,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+    const w = findById<IconWidget>("ic")!;
+    await settle();
+    (w as any).region = new Region(new Offset(1, 0), new Size(2, 1));
+    const buf = new ScreenBuffer(2, 1);
+    w.render(buf);
+    const client = (w as any).getClientRect();
+    expect(client.x + 1).toBe(buf.width);
+    expect(buf.cells[0][client.x].icon).toBe("test-home");
+  });
+
   test("visibility toggling and border size limits render without error", async () => {
     const { app, settle, findById } = await mountApp(
       <VBox>
