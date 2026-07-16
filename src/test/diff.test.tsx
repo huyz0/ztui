@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { Diff, VBox } from "../react/components.tsx";
 import type { DiffWidget } from "../widgets/data/diff.ts";
+import { DiffWidget as DiffWidgetClass } from "../widgets/data/diff.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -306,6 +307,110 @@ describe("Diff", () => {
     // Lines are wider than the narrow panes, so they're clipped (no overflow row).
     const w = t.findById<DiffWidget>("d") as DiffWidget;
     expect(w.selectableLines().length).toBeGreaterThan(0);
+  });
+
+  test("a trailing newline doesn't produce a spurious empty final line", async () => {
+    // splitLines() must drop the empty string produced by a trailing "\n".
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff
+          id="d"
+          oldText={"line one\nline two\n"}
+          newText={"line one\nline TWO\n"}
+          context={Infinity}
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const lines = w.selectableLines();
+    // Two source lines in, two source lines out - no phantom trailing blank row.
+    expect(lines).toHaveLength(3); // "line one" (context) + del + add
+  });
+
+  test("hiding the toggle removes the header row and disables tab clicks", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} showToggle={false} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.text()).not.toContain("Unified");
+    expect(t.text()).not.toContain("Split");
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    expect(w.view).toBe("unified");
+  });
+
+  test("clicking the already-active tab is a no-op (doesn't fire onViewChange)", async () => {
+    let calls = 0;
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} onViewChange={() => calls++} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const hit = (w as unknown as { toggleHit: { y: number; unified: [number, number] } }).toggleHit;
+    // Click "Unified" while already unified.
+    w.handleMouse({
+      type: "press",
+      button: "left",
+      x: hit.unified[0],
+      y: hit.y,
+      handled: false,
+    } as never);
+    await t.settle();
+    expect(calls).toBe(0);
+    expect(w.view).toBe("unified");
+  });
+
+  test("a single isolated unchanged line collapses to a singular hunk marker", async () => {
+    // context=0 with two changes separated by exactly one untouched line: that
+    // one line folds to its own hunk, using the singular "line" wording.
+    const oldText = "keep1\nDROP\nmid\nDROP2\nkeep2";
+    const newText = "keep1\nADD\nmid\nADD2\nkeep2";
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" oldText={oldText} newText={newText} context={0} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("⋯ 1 unchanged line");
+    expect(text).not.toContain("⋯ 1 unchanged lines");
+  });
+
+  test("selectableLines() returns empty before the display has ever been built", () => {
+    const w = new DiffWidgetClass();
+    w.oldText = OLD;
+    w.newText = NEW;
+    // No mount/render happened yet, so displayWidth is still -1.
+    expect(w.selectableLines()).toEqual([]);
+  });
+
+  test("hides the line-number gutter in both unified and split view when lineNumbers=false", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff
+          id="d"
+          oldText={OLD}
+          newText={NEW}
+          context={Infinity}
+          lineNumbers={false}
+          view="split"
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const lines = w.selectableLines();
+    // No digits at the start of any line - the gutter is gone.
+    expect(lines.every((l) => !/^\s*\d/.test(l))).toBe(true);
   });
 
   test("keyboard scrolling only acts while focused (keys consumed)", async () => {
