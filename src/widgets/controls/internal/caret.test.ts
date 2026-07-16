@@ -1,5 +1,71 @@
-import { describe, expect, test } from "vitest";
-import { blendCaretColors, SMOOTH_CARET_PERIOD, smoothCaretIntensity } from "./caret.ts";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  blendCaretColors,
+  CaretBlink,
+  HARD_CARET_HALF_PERIOD,
+  SMOOTH_CARET_PERIOD,
+  SMOOTH_CARET_TICK,
+  smoothCaretIntensity,
+} from "./caret.ts";
+
+describe("CaretBlink", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("hard mode toggles visibility on each half-period tick", () => {
+    const repaint = vi.fn();
+    const blink = new CaretBlink(repaint);
+    blink.start();
+    expect(blink.visible).toBe(true);
+    vi.advanceTimersByTime(HARD_CARET_HALF_PERIOD);
+    expect(blink.visible).toBe(false);
+    expect(repaint).toHaveBeenCalled();
+    vi.advanceTimersByTime(HARD_CARET_HALF_PERIOD);
+    expect(blink.visible).toBe(true);
+    blink.stop();
+  });
+
+  test("smooth mode repaints at the animation cadence without toggling visible", () => {
+    const repaint = vi.fn();
+    const blink = new CaretBlink(repaint);
+    blink.smooth = true;
+    blink.start();
+    const calls = repaint.mock.calls.length;
+    vi.advanceTimersByTime(SMOOTH_CARET_TICK * 3);
+    expect(repaint.mock.calls.length).toBeGreaterThan(calls);
+    expect(blink.visible).toBe(true); // smooth mode never flips the boolean
+    blink.stop();
+  });
+
+  test("start() restarts an already-running blink loop (clears the prior interval)", () => {
+    const repaint = vi.fn();
+    const blink = new CaretBlink(repaint);
+    blink.start();
+    blink.start(); // second call must clear the first interval, not stack a second one
+    repaint.mockClear();
+    vi.advanceTimersByTime(HARD_CARET_HALF_PERIOD);
+    // Exactly one toggle's worth of repaint calls — not two overlapping loops.
+    expect(repaint).toHaveBeenCalledTimes(1);
+    blink.stop();
+  });
+
+  test("stop() clears the interval and hides the caret; is idempotent", () => {
+    const repaint = vi.fn();
+    const blink = new CaretBlink(repaint);
+    blink.start();
+    blink.stop();
+    expect(blink.visible).toBe(false);
+    repaint.mockClear();
+    vi.advanceTimersByTime(HARD_CARET_HALF_PERIOD * 2);
+    expect(repaint).not.toHaveBeenCalled();
+    // Calling stop() again with no active interval must be a no-op, not throw.
+    expect(() => blink.stop()).not.toThrow();
+  });
+});
 
 describe("smoothCaretIntensity", () => {
   test("is fully lit at the start of the cycle and dark at the midpoint", () => {
@@ -60,6 +126,10 @@ describe("blendCaretColors", () => {
 
   test("clamps intensity and tolerates unparseable colours", () => {
     expect(blendCaretColors(2, focus, bg, fg, true).color).toBe("rgb(0, 255, 255)");
+    // Negative intensity clamps to 0, same as the fully-dark endpoint.
+    expect(blendCaretColors(-1, focus, bg, fg, true)).toEqual(
+      blendCaretColors(0, focus, bg, fg, true),
+    );
     // Bad focus colour falls back to the lit endpoint rather than blanking.
     expect(blendCaretColors(0.5, "nonsense", bg, fg, true).color).toBe("nonsense");
   });
