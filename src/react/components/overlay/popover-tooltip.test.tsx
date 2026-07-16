@@ -1,8 +1,9 @@
 import { useRef } from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { Widget } from "../../../dom/widget.ts";
+import { unmount } from "../../../react/reconciler.ts";
 import { Button, Label, Popover, Tooltip, useTooltip, VBox } from "../../../react.ts";
-import { mountApp, waitFor } from "../../../test/harness.tsx";
+import { flush, mountApp, waitFor } from "../../../test/harness.tsx";
 
 describe("Popover", () => {
   function Harness({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -81,5 +82,71 @@ describe("Tooltip", () => {
 
     driver.simulateMouse(70, 20, "move", "none"); // move away
     await waitFor(() => !text().includes("Tip text"));
+  });
+
+  test("re-hovering before the delay elapses clears the pending timer", async () => {
+    // The trigger's onMouseEnter is a plain callback a consumer can invoke
+    // from any event source (not just the pointer-hover pipeline, which only
+    // re-fires it after an intervening leave). Calling it twice back-to-back
+    // exercises the defensive clearTimeout of an already-pending show timer.
+    let onMouseEnter!: () => void;
+    let onMouseLeave!: () => void;
+    function Harness3() {
+      const tip = useTooltip({ delay: 50 });
+      onMouseEnter = tip.triggerProps.onMouseEnter;
+      onMouseLeave = tip.triggerProps.onMouseLeave;
+      return (
+        <VBox>
+          <Button id="trigger2" ref={tip.ref} {...tip.triggerProps}>
+            Hover me
+          </Button>
+          <Tooltip {...tip.props}>
+            <Label>Tip text</Label>
+          </Tooltip>
+        </VBox>
+      );
+    }
+    const { text, settle } = await mountApp(<Harness3 />, { cols: 80, rows: 24 });
+    await settle();
+    onMouseEnter();
+    onMouseEnter(); // must clear the first pending timer, not schedule a second show
+    await waitFor(() => text().includes("Tip text"));
+    expect(text()).toContain("Tip text");
+
+    // Leaving twice in a row: the second call finds no pending timer to clear
+    // (already cleared by the first), exercising that falsy branch too.
+    onMouseLeave();
+    onMouseLeave();
+    await waitFor(() => !text().includes("Tip text"));
+  });
+
+  test("unmounting while a show-timer is pending clears it without error", async () => {
+    const clearSpy = vi.spyOn(global, "clearTimeout");
+    function Harness2() {
+      const tip = useTooltip({ delay: 1000 });
+      return (
+        <VBox>
+          <Button id="trigger3" ref={tip.ref} {...tip.triggerProps}>
+            Hover me
+          </Button>
+          <Tooltip {...tip.props}>
+            <Label>Tip text</Label>
+          </Tooltip>
+        </VBox>
+      );
+    }
+    const { findById, driver, settle, container } = await mountApp(<Harness2 />, {
+      cols: 80,
+      rows: 24,
+    });
+    await settle();
+    const r = findById("trigger3").getClientRect();
+    driver.simulateMouse(r.x + 1, r.y, "move", "none"); // schedule the show timer
+    await settle();
+    const callsBefore = clearSpy.mock.calls.length;
+    unmount(container);
+    await flush(10);
+    expect(clearSpy.mock.calls.length).toBeGreaterThan(callsBefore);
+    clearSpy.mockRestore();
   });
 });
