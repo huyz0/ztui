@@ -72,6 +72,49 @@ describe("hitTest", () => {
     expect(hitTest(t.screen, 0, 0)).toBe(t.findById("over"));
   });
 
+  test("a pointer-transparent widget (and its subtree) never captures the pointer", async () => {
+    const t = await mountApp(
+      <Box id="b" style={{ width: 10, height: 4 }}>
+        <Label id="child">x</Label>
+      </Box>,
+    );
+    await t.settle();
+    const b = t.findById("b");
+    expect(hitTest(t.screen, 0, 0)).toBe(t.findById("child"));
+    if (b) b.pointerTransparent = true;
+    // The decorative overlay itself, and its whole subtree, fall through.
+    expect(hitTest(t.screen, 0, 0)).toBe(t.screen);
+  });
+
+  test("overlays with differing z-index resolve highest-first regardless of add order", async () => {
+    const t = await mountApp(<Box style={{ width: 20, height: 6 }} />);
+    await t.settle();
+
+    const overlayLow = new Widget("overlay-low");
+    overlayLow.region = new Region(new Offset(0, 0), new Size(10, 4));
+    // No explicit zIndex — exercises the `?? 0` default alongside overlays
+    // that do set one, within the same needsSort=true comparator.
+    const overlayLow2 = new Widget("overlay-low-2");
+    overlayLow2.region = new Region(new Offset(0, 0), new Size(10, 4));
+    overlayLow2.style = { zIndex: 1 };
+    const overlayHigh = new Widget("overlay-high");
+    overlayHigh.region = new Region(new Offset(0, 0), new Size(10, 4));
+    overlayHigh.style = { zIndex: 10 };
+
+    // Added highest-z first (so plain reverse-of-insertion-order would pick
+    // a low-z overlay); the differing-z-index sort must still put the
+    // highest z-index overlay on top regardless of add order. The two
+    // same-z overlays also exercise the sort's tie-break (later index wins)
+    // within the same needsSort=true pass.
+    t.screen.addOverlay(overlayHigh);
+    t.screen.addOverlay(overlayLow);
+    t.screen.addOverlay(overlayLow2);
+
+    expect(hitTest(t.screen, 1, 1)).toBe(overlayHigh);
+    overlayHigh.pointerTransparent = true;
+    expect(hitTest(t.screen, 1, 1)).toBe(overlayLow2);
+  });
+
   test("isPointOnScrollbar is false for a non-scrollable widget", async () => {
     const t = await mountApp(<Box id="b" style={{ width: 10, height: 4 }} />);
     await t.settle();
