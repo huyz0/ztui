@@ -2,6 +2,7 @@ import { createElement, useCallback, useState } from "react";
 import type { OverlayPlacement } from "../../../dom/overlay.ts";
 import type { WidgetStyles } from "../../../dom/widget.ts";
 import type { MenuItem } from "../../../widgets/controls/menu.ts";
+import { OverlayRoot } from "./overlay-panel.tsx";
 import { useLayer } from "./use-layer.ts";
 
 export type { MenuItem, OverlayPlacement };
@@ -80,17 +81,17 @@ export function ContextMenu({
 
   if (!open) return null;
 
-  return createElement(
-    "ztui-overlay-root",
-    { ref: rootRef },
-    createElement("ztui-menu-list", {
-      items,
-      style: menuStyle,
-      onSelect: (item: MenuItem, index: number) => {
-        onSelect?.(item, index);
-        onClose?.();
-      },
-    }),
+  return (
+    <OverlayRoot rootRef={rootRef}>
+      {createElement("ztui-menu-list", {
+        items,
+        style: menuStyle,
+        onSelect: (item: MenuItem, index: number) => {
+          onSelect?.(item, index);
+          onClose?.();
+        },
+      })}
+    </OverlayRoot>
   );
 }
 

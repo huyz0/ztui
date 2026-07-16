@@ -1,8 +1,8 @@
-import { createElement, type ReactElement, type RefObject } from "react";
+import type { ReactElement, RefObject } from "react";
 import type { OverlayPlacement } from "../../../dom/overlay.ts";
 import type { Widget, WidgetStyles } from "../../../dom/widget.ts";
-import { Box } from "../layout/box.tsx";
 import type { ComponentProps } from "../types.ts";
+import { OverlayPanel } from "./overlay-panel.tsx";
 import { useLayer } from "./use-layer.ts";
 
 export interface PopoverProps extends ComponentProps {
@@ -72,11 +72,15 @@ export function Popover({
 
   if (!open) return null;
 
-  return createElement(
-    "ztui-overlay-root",
-    { ref: rootRef },
-    <Box {...rest} style={{ ...DEFAULT_PANEL, ...panelStyle, ...style }}>
+  return (
+    <OverlayPanel
+      rootRef={rootRef}
+      defaultPanelStyle={DEFAULT_PANEL}
+      panelStyle={panelStyle}
+      style={style}
+      {...rest}
+    >
       {children}
-    </Box>,
+    </OverlayPanel>
   );
 }

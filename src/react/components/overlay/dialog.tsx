@@ -1,8 +1,8 @@
-import { createElement, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { WidgetStyles } from "../../../dom/widget.ts";
 import { useAnimatedValue } from "../../use-animation.ts";
-import { Box } from "../layout/box.tsx";
 import type { ComponentProps } from "../types.ts";
+import { OverlayPanel } from "./overlay-panel.tsx";
 import { useLayer } from "./use-layer.ts";
 
 export interface DialogProps extends ComponentProps {
@@ -85,11 +85,15 @@ export function Dialog({
 
   if (!open) return null;
 
-  return createElement(
-    "ztui-overlay-root",
-    { ref: rootRef },
-    <Box {...rest} style={{ ...DEFAULT_PANEL, ...panelStyle, ...style }}>
+  return (
+    <OverlayPanel
+      rootRef={rootRef}
+      defaultPanelStyle={DEFAULT_PANEL}
+      panelStyle={panelStyle}
+      style={style}
+      {...rest}
+    >
       {children}
-    </Box>,
+    </OverlayPanel>
   );
 }

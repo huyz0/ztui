@@ -1,9 +1,9 @@
-import { createElement, type RefObject } from "react";
+import type { RefObject } from "react";
 import type { OverlayPlacement } from "../../../dom/overlay.ts";
 import type { Widget, WidgetStyles } from "../../../dom/widget.ts";
 import type { KeyEvent } from "../../../driver/driver.ts";
-import { Box } from "../layout/box.tsx";
 import type { ComponentProps } from "../types.ts";
+import { OverlayPanel } from "./overlay-panel.tsx";
 import { useLayer } from "./use-layer.ts";
 
 export interface StickyPanelProps extends ComponentProps {
@@ -110,11 +110,15 @@ export function StickyPanel({
 
   if (!open) return null;
 
-  return createElement(
-    "ztui-overlay-root",
-    { ref: rootRef },
-    <Box {...rest} style={{ ...DEFAULT_PANEL, ...panelStyle, ...style }}>
+  return (
+    <OverlayPanel
+      rootRef={rootRef}
+      defaultPanelStyle={DEFAULT_PANEL}
+      panelStyle={panelStyle}
+      style={style}
+      {...rest}
+    >
       {children}
-    </Box>,
+    </OverlayPanel>
   );
 }
