@@ -36,4 +36,17 @@ describe("motion preference", () => {
     motion.reset();
     expect(motion.enabled).toBe(true);
   });
+
+  test("defaults to on when there is no process.env at all (e.g. a browser-like host)", () => {
+    const realProcess = globalThis.process;
+    // @ts-expect-error deliberately simulating a host with no `process` global.
+    delete globalThis.process;
+    try {
+      motion.reset();
+      expect(motion.enabled).toBe(true);
+    } finally {
+      globalThis.process = realProcess;
+      motion.reset();
+    }
+  });
 });
