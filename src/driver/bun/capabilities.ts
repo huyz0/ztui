@@ -12,13 +12,35 @@ export function sixelUsable(capabilities: TerminalCapabilities): boolean {
   return capabilities.graphicsProtocol === "none";
 }
 
+/** True inside Windows Terminal (ConPTY), which has no cell-size query reply. */
+export function isWindowsTerminal(): boolean {
+  return !!process.env.WT_SESSION || !!process.env.WT_PROFILE_ID;
+}
+
+/**
+ * Best-guess cell pixel size when the terminal hasn't confirmed one via the
+ * cell-size probe (`capabilities.cellSize`): Windows Terminal's own default
+ * font metrics, or a generic terminal's otherwise. Shared so a fallback
+ * guess can't drift from the one {@link getBaselineCapabilities} seeds.
+ */
+export function fallbackCellSize(capabilities: TerminalCapabilities): {
+  width: number;
+  height: number;
+} {
+  const wt = isWindowsTerminal();
+  return {
+    width: capabilities.cellSize?.width || (wt ? 11 : 10),
+    height: capabilities.cellSize?.height || (wt ? 22 : 20),
+  };
+}
+
 export function getBaselineCapabilities(): TerminalCapabilities {
   const term = process.env.TERM || "";
   const colorterm = process.env.COLORTERM || "";
   const termProgram = process.env.TERM_PROGRAM || "";
   const lcTerminal = process.env.LC_TERMINAL || "";
 
-  const isWT = !!process.env.WT_SESSION || !!process.env.WT_PROFILE_ID;
+  const isWT = isWindowsTerminal();
 
   const truecolor =
     colorterm === "truecolor" ||

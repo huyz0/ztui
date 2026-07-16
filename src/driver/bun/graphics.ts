@@ -6,6 +6,7 @@ import {
 } from "../../render/icon-registry.ts";
 import { encodePNG } from "../../utils/png.ts";
 import type { TerminalCapabilities } from "../driver.ts";
+import { fallbackCellSize } from "./capabilities.ts";
 
 export { encodePNG };
 
@@ -70,9 +71,7 @@ export class TerminalGraphicsManager {
     color: string,
     capabilities: TerminalCapabilities,
   ): RasterizedIcon {
-    const isWT = !!process.env.WT_SESSION || !!process.env.WT_PROFILE_ID;
-    const cellWidth = capabilities.cellSize?.width || (isWT ? 11 : 10);
-    const cellHeight = capabilities.cellSize?.height || (isWT ? 22 : 20);
+    const { width: cellWidth, height: cellHeight } = fallbackCellSize(capabilities);
 
     const cacheKey = `${name}_${color}`;
     const cache = this.iconCacheGet(cacheKey);
@@ -102,9 +101,7 @@ export class TerminalGraphicsManager {
       return "\x1b_Ga=d,d=c\x1b\\";
     }
     if (capabilities.graphicsProtocol === "sixel") {
-      const isWT = !!process.env.WT_SESSION || !!process.env.WT_PROFILE_ID;
-      const cellWidth = capabilities.cellSize?.width || (isWT ? 11 : 10);
-      const cellHeight = capabilities.cellSize?.height || (isWT ? 22 : 20);
+      const { width: cellWidth, height: cellHeight } = fallbackCellSize(capabilities);
       const w = cellWidth * 2;
       const h = cellHeight;
       const bg = bgColor && bgColor !== "default" ? bgColor : "#1e1e2e";
