@@ -12,6 +12,7 @@ import {
   ToggleButton,
   VBox,
 } from "../react.ts";
+import { CheckboxWidget } from "../widgets/controls/checkbox.ts";
 import { SwitchWidget } from "../widgets/controls/switch.ts";
 import { ToggleButtonWidget } from "../widgets/controls/toggle-button.ts";
 import { mountApp } from "./harness.tsx";
@@ -887,6 +888,83 @@ describe("ZTUI Form Widgets Suite", () => {
     App.instance = null;
     try {
       expect(() => tgl.render(buffer)).not.toThrow();
+    } finally {
+      App.instance = savedInstance;
+    }
+  });
+
+  test("Checkbox: unmatched key, already-handled/non-left/non-press mouse events, non-numeric dimensions", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <Checkbox id="chk" label="Beta" />
+        <Checkbox id="chk-fr" label="Off" style={{ width: "2fr", height: "2fr" }} />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const chk = findById<CheckboxWidget>("chk") as CheckboxWidget;
+
+    chk.onKey?.({ key: "tab" } as any);
+    expect(chk.checked).toBe(false);
+
+    const handledEv: any = { type: "press", button: "left", handled: true };
+    chk.handleMouse(handledEv);
+    expect(chk.checked).toBe(false);
+
+    chk.handleMouse({ type: "press", button: "right" } as any);
+    expect(chk.checked).toBe(false);
+
+    chk.handleMouse({ type: "release", button: "left" } as any);
+    expect(chk.checked).toBe(false);
+
+    chk.handleMouse({ type: "press", button: "left" } as any);
+    expect(chk.checked).toBe(true);
+
+    // "2fr" style values resolve to a non-number dimension object, exercising
+    // the typeof-guard's false branch for both width and height in measure().
+    const chkFr = findById<CheckboxWidget>("chk-fr") as CheckboxWidget;
+    expect(chkFr.measuredWidth).toBeGreaterThan(0);
+  });
+
+  test("Checkbox: measure() falls back to intrinsic size before layout assigns computed width/height", () => {
+    const chk = new CheckboxWidget();
+    chk.label = "Hi";
+    chk.measure(80, 24);
+    expect(chk.measuredWidth).toBe(2 + "Hi".length);
+    expect(chk.measuredHeight).toBe(1);
+  });
+
+  test("Checkbox: mouse toggle repaints via App.instance when the widget isn't attached to an app", () => {
+    const chk = new CheckboxWidget();
+    expect(() => chk.handleMouse({ type: "press", button: "left" } as any)).not.toThrow();
+    expect(chk.checked).toBe(true);
+  });
+
+  test("Checkbox: color fallbacks kick in without a resolvable App/theme, and invalid state recolors it", async () => {
+    const { findById, screen, buffer } = await mountApp(
+      <VBox>
+        <Checkbox id="chk" label="Beta" />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const chk = findById<CheckboxWidget>("chk") as CheckboxWidget;
+
+    // A failed validator makes the checkbox invalid: resolveColor() returns a
+    // severity color, taking the `if (severityColor)` true branch in render().
+    chk.validation.validators = [() => "must be checked"];
+    chk.validation.validate();
+    expect(chk.validation.invalid).toBe(true);
+    expect(() => chk.render(buffer)).not.toThrow();
+
+    // Focus it too, so render() also exercises the focus-color path.
+    screen.focusWidget(chk);
+
+    // With no live App instance, every `App.instance?.cssResolver...` lookup
+    // in render() (focus color, primary color, disabled color) falls back to
+    // its hardcoded default instead of a resolved theme color.
+    const savedInstance = App.instance;
+    App.instance = null;
+    try {
+      expect(() => chk.render(buffer)).not.toThrow();
     } finally {
       App.instance = savedInstance;
     }
