@@ -12,6 +12,7 @@ import {
   VBox,
 } from "../react.ts";
 import { CheckboxWidget } from "../widgets/controls/checkbox.ts";
+import { RadioGroupWidget } from "../widgets/controls/radio-group.ts";
 import { SliderWidget } from "../widgets/controls/slider.ts";
 import { SwitchWidget } from "../widgets/controls/switch.ts";
 import { ToggleButtonWidget } from "../widgets/controls/toggle-button.ts";
@@ -740,5 +741,14 @@ describe("ZTUI Form Widgets Suite", () => {
     sl.computedStyle = {};
     sl.measure(80, 24);
     expect(sl.measuredHeight).toBe(1);
+  });
+
+  test("RadioGroup measure() honours an explicit numeric width/height in computedStyle", () => {
+    const rg = new RadioGroupWidget();
+    rg.options = ["Alpha", "Beta"];
+    rg.computedStyle = { width: 40, height: 5 };
+    rg.measure(80, 24);
+    expect(rg.measuredWidth).toBe(40);
+    expect(rg.measuredHeight).toBe(5);
   });
 });
