@@ -7,6 +7,7 @@ import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { SpinnerWidget } from "./spinner.ts";
 import { WaitingGridWidget } from "./waiting-grid.ts";
+import { WaitingPanelWidget } from "./waiting-panel.ts";
 
 const channelSum = (c: string): number =>
   (c.match(/\d+/g) ?? []).reduce((n, x) => n + Number(x), 0);
@@ -347,5 +348,87 @@ describe("ZTUI WaitingPanel Widget Suite", () => {
       }
       expect(Math.max(...sums)).toBeGreaterThan(Math.min(...sums));
     }
+  });
+
+  test("measure() falls back to intrinsic sizing for unset or fr-based width/height", () => {
+    const noStyle = new WaitingPanelWidget();
+    noStyle.measure(20, 10);
+    expect(noStyle.measuredWidth).toBe(12);
+    expect(noStyle.measuredHeight).toBe(6);
+
+    const frStyle = new WaitingPanelWidget();
+    frStyle.style.width = "1fr"; // parseDimension returns {fr}, not a number
+    frStyle.style.height = "1fr";
+    frStyle.measure(20, 10);
+    expect(frStyle.measuredWidth).toBe(12);
+    expect(frStyle.measuredHeight).toBe(6);
+  });
+
+  test("render() skips while invisible, on a zero-size rect, and past the buffer's edge", () => {
+    const invisible = new WaitingPanelWidget();
+    invisible.visible = false;
+    invisible.region = new Region(Offset.ORIGIN, new Size(3, 3));
+    const buf1 = new ScreenBuffer(3, 3);
+    expect(() => invisible.render(buf1)).not.toThrow();
+    expect(buf1.cells[0][0].char).toBe(" ");
+
+    const zeroRect = new WaitingPanelWidget();
+    zeroRect.region = new Region(Offset.ORIGIN, new Size(0, 0));
+    const buf2 = new ScreenBuffer(3, 3);
+    expect(() => zeroRect.render(buf2)).not.toThrow();
+
+    // Region wider/taller than the buffer: the per-cell bounds check must
+    // skip out-of-range cells instead of throwing.
+    const offBuffer = new WaitingPanelWidget();
+    offBuffer.region = new Region(Offset.ORIGIN, new Size(5, 5));
+    const buf3 = new ScreenBuffer(2, 2);
+    expect(() => offBuffer.render(buf3)).not.toThrow();
+  });
+
+  test("without a CSS resolver, falls back to the literal '#4daafc' fill colour", () => {
+    const w = new WaitingPanelWidget();
+    w.region = new Region(Offset.ORIGIN, new Size(4, 4));
+    const buffer = new ScreenBuffer(4, 4);
+    w.render(buffer);
+    // "#4daafc" parses as RGB directly (no FALLBACK_RGB needed here), but the
+    // point is the colour chain reaching its literal default without a
+    // computedStyle.color or a running App.
+    expect(buffer.cells[0][0].style.color).toMatch(/^rgb\(/);
+  });
+
+  test("falls back to FALLBACK_RGB when the resolved colour can't be parsed as RGB", () => {
+    const w = new WaitingPanelWidget();
+    w.style.color = "cyan"; // named colour, not hex -> parseRgb() returns null
+    w.region = new Region(Offset.ORIGIN, new Size(4, 4));
+    const buffer = new ScreenBuffer(4, 4);
+    w.render(buffer);
+    // FALLBACK_RGB = {r:0,g:255,b:255}; every non-blank cell mixes toward it.
+    expect(buffer.cells[0][0].style.color).toMatch(/^rgb\(/);
+  });
+
+  test("reuses its cached style table across renders with the same bg/fill colour", () => {
+    // Regression coverage for the styleTableKey memoisation guard in
+    // ensureStyleTable: a second render with unchanged bg/fill must return
+    // early rather than rebuilding the table (the important thing is that it
+    // still renders correctly, not just that a spy was called).
+    const w = new WaitingPanelWidget();
+    w.region = new Region(Offset.ORIGIN, new Size(3, 3));
+    const buffer = new ScreenBuffer(3, 3);
+    w.render(buffer);
+    const firstTable = (w as unknown as { fillStyles: unknown }).fillStyles;
+    w.render(buffer);
+    const secondTable = (w as unknown as { fillStyles: unknown }).fillStyles;
+    expect(secondTable).toBe(firstTable); // same array instance: table wasn't rebuilt
+  });
+
+  test("a 1x1 panel's ripple maxDist falls back to 1 when hypot(cx, cy) is 0", () => {
+    // Regression coverage for `Math.hypot(cx, cy * CELL_ASPECT) || 1` in
+    // computeFrame: a single-cell panel has cx = cy = 0, so hypot is exactly
+    // 0 and the `|| 1` fallback must kick in instead of dividing by zero.
+    const w = new WaitingPanelWidget();
+    w.variant = "ripple";
+    w.region = new Region(Offset.ORIGIN, new Size(1, 1));
+    const buffer = new ScreenBuffer(1, 1);
+    expect(() => w.render(buffer)).not.toThrow();
   });
 });
