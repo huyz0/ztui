@@ -256,6 +256,62 @@ describe("Markdown GFM tables", () => {
   });
 });
 
+describe("Markdown generative UI edge cases", () => {
+  test("a fence's `text` prop appends a text node", async () => {
+    const fence = [
+      "```ztui-label",
+      JSON.stringify({ id: "lbl", text: "hello from json" }),
+      "```",
+    ].join("\n");
+    const t = await mountApp(<Markdown>{fence}</Markdown>);
+    expect(t.text()).toContain("hello from json");
+  });
+
+  test("an unrecognized nested child type is silently dropped", async () => {
+    const fence = [
+      "```ztui-vbox",
+      JSON.stringify({
+        id: "root",
+        children: [{ type: "not-a-real-widget-tag" }, { type: "ztui-label", id: "ok", text: "ok" }],
+      }),
+      "```",
+    ].join("\n");
+    const t = await mountApp(<Markdown>{fence}</Markdown>);
+    expect(t.findById("root")).toBeDefined();
+    expect(t.findById("ok")).toBeDefined();
+  });
+
+  test("a plain fence with no language tag defaults to text syntax highlighting", () => {
+    const w = md("```\nplain code, no lang\n```");
+    expect(tags(w)).toEqual(["syntax"]);
+    const syntax = blocks(w)[0] as any;
+    expect(syntax.language).toBe("text");
+  });
+});
+
+describe("Markdown block-level layout options", () => {
+  test("trimTrailingMargin drops only the last block's bottom margin", () => {
+    const w = new MarkdownWidget();
+    w.trimTrailingMargin = true;
+    md("one\n\ntwo\n\nthree\n", w);
+    const b = blocks(w);
+    expect(b.length).toBe(3);
+    const bottom = (w2: Widget) => (w2.style.margin as { bottom?: number })?.bottom;
+    expect(bottom(b[0]!)).toBe(1);
+    expect(bottom(b[1]!)).toBe(1);
+    expect(bottom(b[2]!)).toBe(0); // last block flush, no trailing gap
+  });
+
+  test("an html block (no widget mapping) can be streamed away without error", () => {
+    const w = md("<div>raw</div>\n\nkept paragraph\n");
+    expect(blocks(w).length).toBe(1); // only the paragraph has a mapping
+    // Shrinking back to just the html block removes the surviving paragraph
+    // widget while the unmapped html block itself was already null.
+    expect(() => md("<div>raw</div>\n", w)).not.toThrow();
+    expect(blocks(w).length).toBe(0);
+  });
+});
+
 describe("Markdown theme propagation", () => {
   test("setting theme cascades to existing generated children", () => {
     const w = md("# Title\n\n```ts\nconst x = 1;\n```\n");
