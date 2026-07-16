@@ -80,6 +80,10 @@ describe("parseInput — SGR mouse decoding", () => {
 
     const rightPress = firstMouse("\x1b[<2;10;5M");
     expect(rightPress?.button).toBe("right");
+
+    const middlePress = firstMouse("\x1b[<1;10;5M");
+    expect(middlePress?.type).toBe("press");
+    expect(middlePress?.button).toBe("middle");
   });
 
   test("motion with no button held decodes as move", () => {
