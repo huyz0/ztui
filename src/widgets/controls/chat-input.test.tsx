@@ -817,7 +817,7 @@ describe("ChatInput additional branch coverage", () => {
     });
     type(w, "hello ");
     (w as unknown as { suggestion: string | null }).suggestion = "world";
-    (w as unknown as { refreshHints: () => void })["refreshHints"]();
+    (w as unknown as { refreshHints: () => void }).refreshHints();
     expect(hints.some((h) => h.keys === "^e")).toBe(true);
     key(w, "ctrl+e", { ctrl: true });
     expect(w.value).toContain("world");
@@ -967,7 +967,7 @@ describe("ChatInput additional branch coverage", () => {
   });
 
   test("a press that isn't a plain left-button click is ignored", async () => {
-    const { t, w } = await mountChat({});
+    const { w } = await mountChat({});
     const c = content(w);
     (w as unknown as { handleMouse: (e: unknown) => void }).handleMouse({
       x: c.x,

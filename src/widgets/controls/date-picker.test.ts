@@ -232,7 +232,7 @@ describe("DatePickerWidget", () => {
     test("falls back to the base implementation when not focused and no severity color", () => {
       const w = new DatePickerWidget();
       expect(() =>
-        (w as unknown as { resolveBorderColor(): string | undefined })["resolveBorderColor"](),
+        (w as unknown as { resolveBorderColor(): string | undefined }).resolveBorderColor(),
       ).not.toThrow();
     });
 
@@ -241,9 +241,9 @@ describe("DatePickerWidget", () => {
       w.validation.validators = [() => false];
       w.validation.touched = true;
       w.validation.validate();
-      const color = (w as unknown as { resolveBorderColor(): string | undefined })[
-        "resolveBorderColor"
-      ]();
+      const color = (
+        w as unknown as { resolveBorderColor(): string | undefined }
+      ).resolveBorderColor();
       expect(color).toBe("red");
     });
 
@@ -254,9 +254,9 @@ describe("DatePickerWidget", () => {
       app.activeScreen.appendChild(w);
       w.focused = true;
 
-      const color = (w as unknown as { resolveBorderColor(): string | undefined })[
-        "resolveBorderColor"
-      ]();
+      const color = (
+        w as unknown as { resolveBorderColor(): string | undefined }
+      ).resolveBorderColor();
       expect(typeof color).toBe("string");
 
       app.stop();
