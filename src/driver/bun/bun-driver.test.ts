@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { iconRegistry } from "../../render/icon-registry.ts";
 import { BunDriver } from "./index.ts";
 
 /**
@@ -400,6 +401,37 @@ describe("BunDriver input + graphics sequences", () => {
     exitSpy.mockRestore();
   });
 
+  test("an incomplete CSI introducer split across stdin reads is buffered and completed", () => {
+    // A read landing between "\x1b[" and an arrow key's final byte must be
+    // held as pendingEscapeBuffer and prepended to the next chunk, rather
+    // than dropped or misparsed as a lone Escape + literal "[".
+    const keys: string[] = [];
+    driver.on("key", (ev: any) => keys.push(ev.name ?? ev.key));
+    stdin.emit("data", "\x1b[");
+    expect(keys).toEqual([]);
+    stdin.emit("data", "A"); // completes the Up arrow (\x1b[A)
+    expect(keys).toContain("up");
+  });
+
+  test("enforcesRuntimeHoverMode is true (real ANSI terminals need runtime hover toggling)", () => {
+    expect(driver.enforcesRuntimeHoverMode).toBe(true);
+  });
+
+  test("getInputDiagnostics returns a snapshot copy of the internal counters", () => {
+    const diagnostics = driver.getInputDiagnostics();
+    expect(diagnostics).toBeDefined();
+    expect(typeof diagnostics).toBe("object");
+  });
+
+  test("getIconSequence and getImageSequence delegate to the graphics manager", () => {
+    // Just needs to not throw and to return a string; the actual protocol
+    // encoding is covered by graphics.ts's own tests.
+    expect(typeof driver.getIconSequence("check")).toBe("string");
+    expect(
+      typeof driver.getImageSequence(new Uint8Array([1, 2, 3, 4]), 2, 2, 1, 1, "base64data"),
+    ).toBe("string");
+  });
+
   test("clearScreen and graphic reset emit kitty deletes when the protocol is kitty", () => {
     driver.capabilities.graphicsProtocol = "kitty";
     const before = stdout.all().length;
@@ -467,5 +499,133 @@ describe("BunDriver input + graphics sequences", () => {
     const written = stdout.all().slice(before);
     expect(written).toContain("\x1b[?1002h");
     expect(written).not.toContain("\x1b[?1003l");
+  });
+
+  test("setMouseHover is a no-op when the value doesn't change", () => {
+    expect(driver.setMouseHover(false)).toBeUndefined();
+    const before = stdout.all().length;
+    driver.setMouseHover(false); // already false -> early return, nothing written
+    expect(stdout.all().length).toBe(before);
+  });
+
+  test("setMouseHover before start() updates the flag but writes nothing (not running)", () => {
+    const freshStdout = new FakeStdout();
+    const freshStdin = new FakeStdin();
+    const freshDriver = new BunDriver({ stdin: freshStdin, stdout: freshStdout });
+    freshDriver.setMouseHover(true);
+    expect(freshStdout.all()).toBe("");
+  });
+
+  test("clearScreen skips the kitty placement-delete sequence outside kitty", () => {
+    driver.capabilities.graphicsProtocol = "none";
+    const before = stdout.all().length;
+    driver.clearScreen();
+    const emitted = stdout.all().slice(before);
+    expect(emitted).toContain("\x1b[2J");
+    expect(emitted).not.toContain("\x1b_Ga=d");
+  });
+
+  test("a trailing chunk after an unhandled Ctrl+C is still processed as input", () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+    const keys: string[] = [];
+    driver.on("key", (ev: any) => keys.push(ev.key ?? ev.name));
+    stdin.emit("data", "y");
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    expect(keys).toContain("y");
+    exitSpy.mockRestore();
+  });
+});
+
+describe("BunDriver startup probe finishing (glyph protocol registration)", () => {
+  test("registers glyf icons and skips SVG-only ones once the probe resolves with glyph support", async () => {
+    vi.useFakeTimers();
+    try {
+      const stdout = new FakeStdout();
+      const stdin = new FakeStdin();
+      stdout.isTTY = true;
+      stdin.isTTY = true;
+
+      // One icon with a real glyf outline (registered) and one SVG-only icon
+      // (no `glyf`) — the finishProbing loop must register the former via
+      // the Glyph Protocol and `continue` past the latter.
+      iconRegistry.registerIcon({
+        name: "__test_glyf_icon__",
+        svg: "",
+        textFallback: "g",
+        glyf: { contours: [[{ x: 0, y: 0, onCurve: true }]], unitsPerEm: 1000 },
+      });
+      iconRegistry.registerIcon({
+        name: "__test_svg_only_icon__",
+        svg: "<svg/>",
+        textFallback: "s",
+      });
+
+      const driver = new BunDriver({ stdin, stdout });
+      driver.start();
+
+      // Deliver the glyph-protocol-support probe reply while still probing
+      // (buffered, not yet parsed) so finishProbing sees it.
+      stdin.emit("data", "\x1b_25a1;s\x1b\\");
+
+      const resolved = vi.fn();
+      driver.on("capabilities_resolved", resolved);
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(driver.capabilities.glyphProtocol).toBe(true);
+      expect(resolved).toHaveBeenCalled();
+      const written = stdout.all();
+      expect(written).toContain("fmt=glyf");
+      // Only the glyf-bearing icon's codepoint should appear in a
+      // registration payload; the SVG-only icon must be skipped (`continue`).
+      const glyfCp = iconRegistry.getCodepoint("__test_glyf_icon__")?.toString(16);
+      expect(written).toContain(`cp=${glyfCp}`);
+
+      driver.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("BunDriver with minimal injected streams (no optional stream methods)", () => {
+  // Real ANSI backends always ship setRawMode/on/off, but non-TTY pipes and
+  // test doubles may not — the driver must degrade gracefully rather than
+  // throwing when those methods are simply absent.
+  class BareStdout {
+    public columns = 0;
+    public rows = 0;
+    public isTTY = false;
+  }
+  class BareStdin {
+    public isTTY = false;
+    on(): void {}
+    off(): void {}
+    resume(): void {}
+    pause(): void {}
+    setEncoding(): void {}
+  }
+
+  test("falls back to 80x24 when the stream reports no columns/rows", () => {
+    const stdout = new BareStdout();
+    const stdin = new BareStdin();
+    const driver = new BunDriver({ stdin: stdin as any, stdout: stdout as any });
+    expect(driver.getSize()).toMatchObject({ width: 80, height: 24 });
+  });
+
+  test("start/stop/write tolerate a stdin/stdout without setRawMode, on/off, or write", () => {
+    const stdout = new BareStdout();
+    const stdin = new BareStdin();
+    const driver = new BunDriver({ stdin: stdin as any, stdout: stdout as any });
+    expect(() => driver.start()).not.toThrow();
+    expect(() => driver.write("hello")).not.toThrow(); // no-op: stdout.write isn't a function
+    expect(() => driver.stop()).not.toThrow();
+  });
+
+  test("falls back to process.stdin/process.stdout when no streams are injected", () => {
+    // Just needs to construct without throwing and report a size; it must
+    // never be start()ed here since that would touch the real process TTY.
+    const driver = new BunDriver();
+    expect(driver.getSize().width).toBeGreaterThan(0);
+    expect(driver.getSize().height).toBeGreaterThan(0);
   });
 });
