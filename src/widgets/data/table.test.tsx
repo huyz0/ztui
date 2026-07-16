@@ -587,6 +587,54 @@ describe("Table rich (widget-bearing) cells (phase 5)", () => {
     await t.settle();
     expect(clicked).toBe("Charlie");
   });
+
+  test("switching to grouped mode hides any leftover rich cell widgets", async () => {
+    // Grouped tables are text-only (the React layer skips `render` cells when
+    // `groups` is set), but layoutChildren() still guards against rich cell
+    // widgets left over from a prior flat render — e.g. a caller flips
+    // `groups` on without first letting React unmount them.
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      { key: "act", header: "Act", width: 14, render: (r) => <Label>act-{r.name}</Label> },
+    ];
+    const t = await mountApp(<Table data={people} columns={cols} style={{ height: "100%" }} />);
+    await t.settle();
+    await t.settle();
+    const w = findWidgetByType<TableWidget<Person>>(t, "TableWidget");
+    expect(w.layoutChildren()).toBe(true); // flat mode positions the rich cells
+
+    w.groups = [{ id: "g1", title: "Group", items: people }];
+    expect(w.layoutChildren()).toBe(true);
+    let anyVisible = false;
+    t.screen.walk((n: any) => {
+      if (n.constructor?.name === "TableCellWidget" && n.visible) anyVisible = true;
+    });
+    expect(anyVisible).toBe(false);
+  });
+
+  test("a cell scrolled outside the visible window is hidden", async () => {
+    const data = bigData(100);
+    const cols: TableColumn<Person>[] = [
+      { key: "name", header: "Name", width: 10 },
+      { key: "act", header: "Act", width: 14, render: (r) => <Label>act-{r.name}</Label> },
+    ];
+    const t = await mountApp(<Table data={data} columns={cols} style={{ height: 12 }} />, {
+      screenStyle: { flexDirection: "column" },
+    });
+    await t.settle();
+    await t.settle();
+    const w = findWidgetByType<TableWidget<Person>>(t, "TableWidget");
+    let farCell: any;
+    t.screen.walk((n: any) => {
+      if (n.constructor?.name === "TableCellWidget" && n.viewRow === 0) farCell = n;
+    });
+    expect(farCell).toBeDefined();
+    // Scroll the table so row 0's now-stale cell widget falls outside the
+    // current window before the next layout pass reconciles it away.
+    (w as any).scrollTop = 50;
+    w.layoutChildren();
+    expect(farCell.visible).toBe(false);
+  });
 });
 
 describe("Table body text selection", () => {
