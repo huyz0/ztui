@@ -239,6 +239,48 @@ export const CAPABILITY_REPLY_PATTERNS: readonly CapabilityReplyPattern[] = [
   },
 ];
 
+/** Every prefix a late-arriving capability reply can begin with, mirroring the
+ * cheap substring pre-check in {@link BunDriver}'s input handler. */
+const CAPABILITY_REPLY_PREFIXES = ["\x1b[?", "\x1b[>", "\x1b_", "\x1b]22;", "\x1b[4;", "\x1b[6;"];
+
+/** A reply is at most a few dozen bytes; anything longer than this after its
+ * prefix isn't a genuine in-progress split — treat it as unmatched input
+ * instead of buffering it forever. */
+const MAX_CAPABILITY_REPLY_PARTIAL = 128;
+
+/**
+ * If `data` ends with an unterminated capability-reply prefix (the read landed
+ * mid-reply), return that trailing slice so the caller can buffer it and
+ * prepend it to the next chunk instead of letting it fall through to the key
+ * parser as garbage input. Returns null when there's nothing to buffer.
+ */
+export function trailingIncompleteCapabilityReply(data: string): string | null {
+  let bestIdx = -1;
+  for (const prefix of CAPABILITY_REPLY_PREFIXES) {
+    const idx = data.lastIndexOf(prefix);
+    if (idx > bestIdx) bestIdx = idx;
+  }
+  if (bestIdx === -1) return null;
+  const suffix = data.slice(bestIdx);
+  if (suffix.length > MAX_CAPABILITY_REPLY_PARTIAL) return null;
+  if (suffix.includes("\x07") || suffix.includes("\x1b\\")) return null;
+  return suffix;
+}
+
+/**
+ * Terminal columns/rows for a capability-reply handler, falling back to a
+ * conservative 80×24 when the stream hasn't reported real dimensions yet
+ * (e.g. a non-TTY stdout, or a reply arriving before the first resize).
+ * Shared so the startup probe-finish path and the runtime late-reply path
+ * can't drift on what "no size yet" defaults to.
+ */
+export function capabilityReplyContext(stdout: {
+  columns?: number;
+  rows?: number;
+}): CapabilityReplyContext {
+  return { columns: stdout.columns || 80, rows: stdout.rows || 24 };
+}
+
 export function parseProbeResponse(
   probeBuffer: string,
   capabilities: TerminalCapabilities,

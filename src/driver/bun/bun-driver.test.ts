@@ -325,6 +325,34 @@ describe("BunDriver capability replies", () => {
     stdin.emit("data", "\x1b[6;32;16t");
     expect(driver.capabilities.cellSize).toEqual({ width: 16, height: 32 });
   });
+
+  test("a cell-size reply split across two stdin reads still resolves", () => {
+    // A read landing between "\x1b[6;32;" and the rest must be buffered and
+    // stitched back together, not misparsed as garbage key input from the
+    // first chunk and silently dropped from the second.
+    stdin.emit("data", "\x1b[6;32;");
+    expect(driver.capabilities.cellSize).not.toEqual({ width: 16, height: 32 });
+    stdin.emit("data", "16t");
+    expect(driver.capabilities.cellSize).toEqual({ width: 16, height: 32 });
+  });
+
+  test("a DA2 reply split mid-introducer still resolves and doesn't leak into key events", () => {
+    const keys: string[] = [];
+    driver.on("key", (ev: { key: string }) => keys.push(ev.key));
+    stdin.emit("data", "\x1b[>1;4");
+    stdin.emit("data", "000;0c");
+    expect(driver.capabilities.graphicsProtocol).not.toBe(undefined);
+    expect(keys).toEqual([]);
+  });
+
+  test("an over-long unterminated reply-prefix chunk isn't buffered forever", () => {
+    // A trailing "\x1b[?"-prefixed run longer than any real reply (no BEL/ST
+    // in sight) is treated as unmatched input rather than held onto — a later,
+    // genuine reply must still resolve normally afterward.
+    stdin.emit("data", `\x1b[?${"9".repeat(200)}`);
+    stdin.emit("data", "\x1b[6;32;16t");
+    expect(driver.capabilities.cellSize).toEqual({ width: 16, height: 32 });
+  });
 });
 
 describe("BunDriver input + graphics sequences", () => {

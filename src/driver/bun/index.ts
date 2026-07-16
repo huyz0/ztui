@@ -5,8 +5,10 @@ import { logger } from "../../utils/logger.ts";
 import { type Clipboard, Driver, type KeyEvent, type TerminalCapabilities } from "../driver.ts";
 import {
   CAPABILITY_REPLY_PATTERNS,
+  capabilityReplyContext,
   getBaselineCapabilities,
   parseProbeResponse,
+  trailingIncompleteCapabilityReply,
 } from "./capabilities.ts";
 import { ClipboardQueue } from "./clipboard-queue.ts";
 import { TerminalGraphicsManager } from "./graphics.ts";
@@ -35,6 +37,15 @@ export class BunDriver extends Driver {
   // Escape/CSI bytes left over from the previous chunk that looked truncated
   // (see parseInput's return value) — prepended to the next chunk before parsing.
   private pendingEscapeBuffer = "";
+  // A capability reply (DA1/DA2, kitty keyboard/graphics, hover, sync, glyph,
+  // pixel/cell size) split across two stdin reads: parseInput's own
+  // incomplete-escape buffer only recognizes a bare CSI/SS3 introducer
+  // (`\x1b[` or `\x1bO`), not the `?`/`>`/APC-prefixed introducers these
+  // replies use, so without this the tail half would misparse as garbage key
+  // input and the capability would never resolve. Bounded and cleared if the
+  // next chunk doesn't complete it, so a chunk that merely *starts* with one
+  // of these prefixes for unrelated reasons can't wedge the buffer forever.
+  private capabilityReplyPartial = "";
   private inputDiagnostics: InputDiagnostics = {
     chunks: 0,
     keyEvents: 0,
@@ -250,6 +261,10 @@ export class BunDriver extends Driver {
 
   private handleInputInternal = (chunk: string | Buffer): void => {
     let data = chunk.toString();
+    if (this.capabilityReplyPartial) {
+      data = this.capabilityReplyPartial + data;
+      this.capabilityReplyPartial = "";
+    }
 
     // Intercept OSC 52 clipboard responses. Gate the regex on a cheap substring
     // check — clipboard replies are rare, but this runs on every input chunk
@@ -286,7 +301,7 @@ export class BunDriver extends Driver {
       data.includes("\x1b[6;");
     if (!this.isProbing && mayBeCapabilityReply) {
       let matchedAny = false;
-      const ctx = { columns: this.stdout.columns || 80, rows: this.stdout.rows || 24 };
+      const ctx = capabilityReplyContext(this.stdout);
 
       for (const pattern of CAPABILITY_REPLY_PATTERNS) {
         // Late replies can arrive repeatedly mid-stream (unlike the one-shot
@@ -303,6 +318,12 @@ export class BunDriver extends Driver {
       if (matchedAny) {
         this.emit("capabilities_resolved");
       }
+
+      const partial = trailingIncompleteCapabilityReply(data);
+      if (partial) {
+        data = data.slice(0, data.length - partial.length);
+        this.capabilityReplyPartial = partial;
+      }
     }
 
     if (data.length === 0) return;
@@ -318,8 +339,7 @@ export class BunDriver extends Driver {
     this.isProbing = false;
     this.probeTimeout = null;
 
-    const columns = this.stdout.columns || 80;
-    const rows = this.stdout.rows || 24;
+    const { columns, rows } = capabilityReplyContext(this.stdout);
 
     const result = parseProbeResponse(this.probeBuffer, this.capabilities, columns, rows);
     const leftover = result.leftover;
