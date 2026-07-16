@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { TableColumn } from "../../core.ts";
 import { Button, Label, Table } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
-import { fitCell, type TableWidget } from "./table.ts";
+import type { TableWidget } from "./table.ts";
 
 interface Person {
   id: number;
@@ -28,27 +28,6 @@ function bigData(n: number): Person[] {
     age: i % 100,
   }));
 }
-
-describe("fitCell", () => {
-  test("pads short text to the exact width per alignment", () => {
-    expect(fitCell("hi", 5, "left")).toBe("hi   ");
-    expect(fitCell("hi", 5, "right")).toBe("   hi");
-    expect(fitCell("hi", 5, "center")).toBe(" hi  ");
-  });
-
-  test("truncates long text with an ellipsis at the exact width", () => {
-    expect(fitCell("Christopher", 5)).toBe("Chri…");
-    expect(fitCell("Christopher", 5).length).toBe(5);
-  });
-
-  test("returns empty for non-positive width", () => {
-    expect(fitCell("x", 0)).toBe("");
-  });
-
-  test("collapses to a single ellipsis at width 1", () => {
-    expect(fitCell("long", 1)).toBe("…");
-  });
-});
 
 describe("Table rendering (phase 1)", () => {
   test("renders the header and visible rows as text", async () => {

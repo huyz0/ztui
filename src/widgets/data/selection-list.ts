@@ -10,9 +10,9 @@ import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { fitCell } from "./cell-format.ts";
 import type { ListItem } from "./list-view.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
-import { fitCell } from "./table.ts";
 
 /** @internal Checkbox glyphs per set (unchecked, checked). */
 const BOXES = {

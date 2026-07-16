@@ -10,9 +10,9 @@ import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { fitCell } from "./cell-format.ts";
 import { buildGroupedRows, type GroupedRow, initialCollapsed, type RowGroup } from "./grouping.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
-import { fitCell } from "./table.ts";
 
 /** An item in a {@link ListViewWidget} / {@link SelectionListWidget}. */
 export interface ListItem {

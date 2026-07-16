@@ -11,8 +11,8 @@ import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { fitCell } from "./cell-format.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
-import { fitCell } from "./table.ts";
 
 /** A node in a {@link TreeWidget}: id, label, optional children and metadata. */
 export interface TreeNode {

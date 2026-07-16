@@ -8,9 +8,10 @@ import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { charWidth, Segment, stringWidth } from "../../render/segment.ts";
+import { Segment, stringWidth } from "../../render/segment.ts";
 import type { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
+import { fitCell } from "./cell-format.ts";
 import { buildGroupedRows, type GroupedRow, initialCollapsed, type RowGroup } from "./grouping.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 
@@ -962,41 +963,6 @@ export class TableWidget<Row = any> extends Widget {
       else buffer.setCell(x, yy, " ", track);
     }
   }
-}
-
-/** Pads or trims `text` to exactly `width` display cells, respecting alignment. */
-export function fitCell(
-  text: string,
-  width: number,
-  align: "left" | "center" | "right" = "left",
-): string {
-  if (width <= 0) return "";
-  const w = stringWidth(text);
-  if (w === width) return text;
-  if (w < width) {
-    const pad = width - w;
-    if (align === "right") return " ".repeat(pad) + text;
-    if (align === "center") {
-      const l = Math.floor(pad / 2);
-      return " ".repeat(l) + text + " ".repeat(pad - l);
-    }
-    return text + " ".repeat(pad);
-  }
-  // Truncate with an ellipsis.
-  if (width === 1) return "…";
-  const limit = width - 1;
-  let out = "";
-  let acc = 0;
-  for (const ch of text) {
-    const cw = charWidth(ch);
-    if (acc + cw > limit) break;
-    out += ch;
-    acc += cw;
-  }
-  out += "…";
-  const ow = stringWidth(out);
-  if (ow < width) out += " ".repeat(width - ow);
-  return out;
 }
 
 function padTo(text: string, width: number): string {
