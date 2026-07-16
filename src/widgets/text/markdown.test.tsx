@@ -3,6 +3,8 @@ import { TextNode } from "../../dom/text-node.ts";
 import { Widget } from "../../dom/widget.ts";
 import { reconciler } from "../../react/reconciler.ts";
 import { Markdown } from "../../react.ts";
+import { getMarked } from "../../render/rich/marked-loader.ts";
+import { RichText } from "../../render/rich/text.ts";
 import "../../markdown.ts";
 import "../../mermaid.ts";
 import { mountApp } from "../../test/harness.tsx";
@@ -514,5 +516,45 @@ A --> B
 
     const syntaxWidget = mdWidget.children[1] as any;
     expect(syntaxWidget.language).toBe("mermaid");
+  });
+});
+
+describe("Markdown error resilience", () => {
+  test("shows the raw text instead of blanking when the lexer itself throws", () => {
+    const w = new MarkdownWidget();
+    w.appendChild(new TextNode("some *markdown*"));
+    const spy = vi.spyOn(getMarked(), "lexer").mockImplementation(() => {
+      throw new Error("boom");
+    });
+    try {
+      w.measure(80, 24);
+      const fallback = blocks(w)[0] as any;
+      expect(fallback.tagName).toBe("richtext");
+      expect(fallback.getTextContent()).toContain("some *markdown*");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("a table cell whose markup fails to parse falls back to its raw text", () => {
+    const spy = vi.spyOn(RichText, "fromMarkup").mockImplementation(() => {
+      throw new Error("boom");
+    });
+    try {
+      const w = md(["| A |", "| - |", "| cell |"].join("\n"));
+      expect(tags(w)).toContain("table");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("trimTrailingMargin zeroes only the last block's bottom margin", () => {
+    const w = new MarkdownWidget();
+    w.trimTrailingMargin = true;
+    md("first paragraph\n\nsecond paragraph", w);
+    const blockWidgets = blocks(w);
+    expect(blockWidgets.length).toBe(2);
+    expect((blockWidgets[0].style.margin as any).bottom).toBe(1);
+    expect((blockWidgets[1].style.margin as any).bottom).toBe(0);
   });
 });
