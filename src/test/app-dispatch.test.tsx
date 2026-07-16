@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { Box, Input, RichLog, VBox } from "../react/components.tsx";
+import { Box, Input, RichLog, RichText, VBox } from "../react/components.tsx";
 import type { InputWidget } from "../widgets/controls/input.ts";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
@@ -76,6 +76,25 @@ describe("App key dispatch", () => {
     t.driver.simulateKey("ctrl+c", "c", true);
     await t.settle();
     expect(w.hasSelection()).toBe(true); // selection survives the copy
+  });
+
+  test("Ctrl+C with an active read-only (mouse) selection copies it, with no focused text widget involved", async () => {
+    const t = await mountApp(<RichText id="rt">hello world</RichText>, { cols: 40, rows: 5 });
+    await t.settle();
+    const rt = t.findById<any>("rt");
+    const r = rt.getContentRect();
+    // Drag-select "hello" over the display widget — not a focusable text
+    // control, so handleCtrlC's `focused?.copySelection?.()` path can't fire;
+    // only the readonly `host.selection.active` branch can satisfy this.
+    rt.handleMouse({ type: "press", button: "left", x: r.x, y: r.y });
+    rt.handleMouse({ type: "drag", button: "left", x: r.x + 5, y: r.y });
+    rt.handleMouse({ type: "release", button: "left", x: r.x + 5, y: r.y });
+    expect(t.app.selection.active).not.toBeNull();
+
+    await t.driver.clipboard.set(""); // clear what release's own auto-copy wrote
+    t.driver.simulateKey("ctrl+c", "c", true);
+    await t.settle();
+    expect(await t.driver.clipboard.get()).toBe("hello");
   });
 
   test("a hotkey registered on ctrl+c fires instead of the built-in copy/quit behavior", async () => {
