@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import type { ListItem } from "../../core.ts";
-import { ListView } from "../../react.ts";
+import { ListView, VBox, View } from "../../react.ts";
 import { findWidgetByType, mountApp } from "../../test/harness.tsx";
 import type { ListViewWidget } from "./list-view.ts";
 
@@ -385,5 +385,83 @@ describe("ListView additional branch coverage", () => {
     const list = findList(t);
     expect((list as unknown as { app?: unknown }).app).toBeTruthy();
     expect(() => t.text()).not.toThrow();
+  });
+
+  test("collapseCursorGroup returns false in grouped mode with no selection", async () => {
+    const groups = [{ id: "g1", title: "G1", items: [{ id: "a", label: "A" } as ListItem] }];
+    const t = await mountApp(<ListView groups={groups} style={{ height: "100%" }} />);
+    const list = findList(t);
+    expect(list.selectedId).toBeNull();
+    const ev = { name: "left", handled: false } as any;
+    list.handleKey(ev);
+    expect(ev.handled).toBe(false);
+  });
+
+  test("render() itself is a no-op when invisible (called directly, bypassing the parent's own visible-child filter)", async () => {
+    const t = await mountApp(<ListView items={fruits} style={{ height: "100%" }} />);
+    await t.settle();
+    const list = findList(t);
+    list.visible = false;
+    expect(() => list.render(t.app.buffer)).not.toThrow();
+  });
+
+  test("render is a no-op when the content rect has zero size", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 0, height: 0, overflowX: "hidden", overflowY: "hidden" }}>
+        <ListView items={fruits} />
+      </VBox>,
+    );
+    const list = findList(t);
+    await t.settle();
+    expect(() => list.render(t.app.buffer)).not.toThrow();
+  });
+
+  test("handleKey falls back to `ev.key` when `.name` is absent", async () => {
+    const onSelect = vi.fn();
+    const t = await mountApp(
+      <ListView items={fruits} onSelect={onSelect} style={{ height: "100%" }} />,
+    );
+    const list = findList(t);
+    list.handleKey({ key: "down", handled: false } as any); // no `.name`
+    expect(list.selectedId).toBe("apple");
+  });
+
+  test("clicking a grouped item row (not its header) selects the item", async () => {
+    const groups = [
+      {
+        id: "g1",
+        title: "G1",
+        items: [{ id: "a", label: "A" } as ListItem, { id: "b", label: "B" } as ListItem],
+      },
+    ];
+    const onSelect = vi.fn();
+    const t = await mountApp(
+      <ListView groups={groups} onSelect={onSelect} style={{ height: "100%" }} />,
+    );
+    const list = findList(t);
+    const content = list.getContentRect();
+    // Row 0 is the "G1" header; row 1 is item "a".
+    list.handleMouse({ type: "press", button: "left", x: content.x, y: content.y + 1 } as any);
+    expect(list.selectedId).toBe("a");
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  test("dragging the scrollbar on a single-row track is a no-op (track too short to scroll)", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <ListView items={bigList(50)} style={{ height: 1, flexGrow: 0, flexShrink: 0 }} />
+        <View style={{ flexGrow: 1 }} />
+      </VBox>,
+      { cols: 40, rows: 10 },
+    );
+    const list = findList(t);
+    await t.settle();
+    const content = list.getContentRect();
+    expect(content.height).toBe(1); // a single-row track: trackH <= 1
+    const sbX = content.right - 1;
+    list.handleMouse({ type: "press", button: "left", x: sbX, y: content.y, handled: false });
+    const scrollTopAfterPress = (list as unknown as { scrollTop: number }).scrollTop;
+    list.handleMouse({ type: "drag", x: sbX, y: content.y, handled: false });
+    expect((list as unknown as { scrollTop: number }).scrollTop).toBe(scrollTopAfterPress);
   });
 });
