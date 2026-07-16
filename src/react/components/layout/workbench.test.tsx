@@ -517,4 +517,38 @@ describe("Workbench", () => {
     await t.settle();
     expect(t.text()).toContain("FILES"); // Explorer re-docked to the bottom, still visible
   });
+
+  test("re-docking a non-active sibling doesn't disturb the source region's active panel", async () => {
+    // "explorer" is the active left panel; "search" is an inactive sibling.
+    // Moving "search" elsewhere must leave the left region's active panel
+    // (explorer) untouched — the source-repair logic only kicks in when the
+    // *active* panel is the one being moved.
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    expect(t.text()).toContain("FILES"); // explorer active on the left
+    await dragRailTo(t, "search", 79, 0); // drag the inactive sibling to the right zone
+    expect(t.text()).toContain("FILES"); // left's active panel is unchanged
+    expect(t.text()).toContain("SEARCHBODY"); // search now shows, re-docked to the right
+  });
+
+  test("panels with no left entries render without the left rail/dock", async () => {
+    const rightAndBottomOnly: WorkbenchPanel[] = [
+      { id: "outline", anchor: "right", title: "Outline", content: <Label>OUTLINEBODY</Label> },
+      { id: "terminal", anchor: "bottom", title: "Terminal", content: <Label>TERMBODY</Label> },
+    ];
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <Workbench panels={rightAndBottomOnly} initialOpen={["right"]}>
+          <Label>EDITOR</Label>
+        </Workbench>
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    expect(t.text()).toContain("EDITOR");
+    let leftRail: unknown;
+    t.screen.walk((n: any) => {
+      if (n.id === "rail-outline" || n.id === "rail-terminal") return;
+      if (typeof n.id === "string" && n.id.startsWith("rail-")) leftRail = n;
+    });
+    expect(leftRail).toBeUndefined();
+  });
 });
