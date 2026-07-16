@@ -2,6 +2,7 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
+import { truncate } from "../../render/text-wrap.ts";
 import { isValidatableField, type ValidatableField } from "./validation.ts";
 
 /**
@@ -73,11 +74,7 @@ export class FieldErrorWidget extends Widget {
     if (rect.height < 1 || rect.width < 1) return;
     const color = this.target()?.validation.resolveColor() || "red";
     const bg = this.findResolvedBackground();
-    let text = msg;
-    if (stringWidth(text) > rect.width) {
-      while (text.length > 1 && stringWidth(`${text}…`) > rect.width) text = text.slice(0, -1);
-      text = `${text}…`;
-    }
+    const text = stringWidth(msg) > rect.width ? truncate(msg, rect.width) : msg;
     buffer.drawSegment(
       rect.x,
       rect.y,

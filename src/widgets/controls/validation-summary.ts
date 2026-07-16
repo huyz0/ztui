@@ -3,6 +3,7 @@ import { Widget } from "../../dom/widget.ts";
 import { parseDimension } from "../../layout/layout.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
+import { truncate } from "../../render/text-wrap.ts";
 import { type FormWidget, isFormWidget } from "./form.ts";
 import { isValidatableField, type ValidatableField } from "./validation.ts";
 
@@ -155,11 +156,8 @@ export class ValidationSummaryWidget extends Widget {
         for (let x = rect.x; x < rect.right; x++)
           buffer.setCell(x, y, " ", this.cachedStyle({ background: rowBg }));
       }
-      let text = `${this.bullet}${field.validation.message ?? ""}`;
-      if (stringWidth(text) > rect.width) {
-        while (text.length > 1 && stringWidth(`${text}…`) > rect.width) text = text.slice(0, -1);
-        text = `${text}…`;
-      }
+      const full = `${this.bullet}${field.validation.message ?? ""}`;
+      const text = stringWidth(full) > rect.width ? truncate(full, rect.width) : full;
       buffer.drawSegment(
         rect.x,
         y,

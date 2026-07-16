@@ -3,6 +3,7 @@ import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { truncate } from "../../render/text-wrap.ts";
 import { BoxWidget } from "../layout/box.ts";
 import { isValidatableField, type ValidatableField } from "./validation.ts";
 
@@ -111,12 +112,8 @@ export class FormWidget extends BoxWidget {
     const color = focused?.validation.resolveColor() || "red";
     const bg = this.findResolvedBackground();
     const y = rect.bottom;
-    let text = msg;
-    if (stringWidth(text) > rect.width) {
-      // Truncate to fit the available width rather than wrapping onto a new row.
-      while (text.length > 1 && stringWidth(`${text}…`) > rect.width) text = text.slice(0, -1);
-      text = `${text}…`;
-    }
+    // Truncate to fit the available width rather than wrapping onto a new row.
+    const text = stringWidth(msg) > rect.width ? truncate(msg, rect.width) : msg;
     buffer.drawSegment(rect.x, y, new Segment(text, new Style({ color, background: bg })), rect);
   }
 }
