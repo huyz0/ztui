@@ -430,7 +430,7 @@ ApprovalPrompt.displayName = "ApprovalPrompt";
  * The union of every call's match patterns (falling back to its tool name), in
  * first-seen order — drives the "Allow matching" dropdown.
  */
-function distinctMatches(calls: ApprovalCall[]): string[] {
+export function distinctMatches(calls: ApprovalCall[]): string[] {
   const seen: string[] = [];
   for (const c of calls) {
     for (const pat of c.matches ?? [c.name]) if (!seen.includes(pat)) seen.push(pat);
@@ -438,8 +438,14 @@ function distinctMatches(calls: ApprovalCall[]): string[] {
   return seen;
 }
 
-/** A minimal glob → RegExp: `*` matches any run, `?` any single char. */
-function globToRegExp(glob: string): RegExp {
+/**
+ * A minimal glob → RegExp: `*` matches any run (including path separators —
+ * there's no per-segment anchoring like a real fs glob's `*` vs `**`; a
+ * pattern like `src/*.ts` also matches `src/a/b.ts`), `?` any single char.
+ * Deliberately loose since it matches against a free-form args string, not
+ * necessarily a file path.
+ */
+export function globToRegExp(glob: string): RegExp {
   const body = glob
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*/g, ".*")
