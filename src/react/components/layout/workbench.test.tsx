@@ -130,6 +130,19 @@ describe("Workbench", () => {
     await pressUntil(t, "b", () => t.text().includes("FILES")); // ctrl+b reopens
   });
 
+  test("Ctrl+Alt+B toggles the right region", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    expect(t.text()).not.toContain("OUTLINEBODY"); // right starts closed
+    // Terminals report Meta/Alt as one modifier, delivered as `meta` on the
+    // KeyEvent (see hotkeys.ts's MOD_ALIASES); simulateKey's 5th arg is meta.
+    const deadline = Date.now() + 2000;
+    while (!t.text().includes("OUTLINEBODY")) {
+      if (Date.now() >= deadline) throw new Error("Ctrl+Alt+B did not open the right region");
+      t.driver.simulateKey("b", "b", true, false, true); // ctrl+alt+b
+      await t.settle(20);
+    }
+  });
+
   test("the bottom toggle key opens the bottom region", async () => {
     const t = await mountApp(ui(), { cols: 80, rows: 24 });
     expect(t.text()).not.toContain("TERMBODY"); // bottom starts closed
@@ -159,6 +172,18 @@ describe("Workbench", () => {
     expect(t.text()).toContain("FILES");
     // ...and the left region repaired its active panel to the sibling (Search).
     expect(t.text()).toContain("SEARCHBODY");
+  });
+
+  test("dragging a rail icon to the dead-center zone doesn't re-dock it", async () => {
+    // The center band (not near an edge, not in the lower third) maps to no
+    // drop zone (zoneAt returns null); dragging there must leave the panel
+    // where it was instead of re-docking to some fallback region.
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    expect(t.text()).toContain("FILES"); // Explorer active on the left
+    expect(t.text()).not.toContain("SEARCHBODY");
+    await dragRailTo(t, "explorer", 40, 10); // dead-center of an 80x24 area
+    expect(t.text()).toContain("FILES"); // still on the left, unchanged
+    expect(t.text()).not.toContain("SEARCHBODY"); // sibling wasn't promoted
   });
 
   test("dragging the left splitter resizes the panel", async () => {
@@ -204,6 +229,56 @@ describe("Workbench", () => {
     expect(sp2.region.x).toBeLessThan(80);
     // The center content is still visible, not squeezed away entirely.
     expect(t.text()).toContain("EDITOR");
+  });
+
+  test("dragging the right splitter resizes the right panel", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    await tapRail(t, "outline"); // open the right region
+    expect(t.text()).toContain("OUTLINEBODY");
+
+    let sp: any;
+    t.screen.walk((n: any) => {
+      if (n.tagName === "splitter" && n.orientation === "vertical" && n.region.x > 40) sp = n;
+    });
+    expect(sp).toBeTruthy();
+    const startX = sp.region.x;
+    // Right grows leftward on a negative delta (dragging left widens it).
+    t.driver.simulateMouse(startX, 10, "press", "left");
+    t.driver.simulateMouse(startX - 6, 10, "drag", "left");
+    t.driver.simulateMouse(startX - 6, 10, "release", "left");
+    await t.settle();
+
+    let sp2: any;
+    t.screen.walk((n: any) => {
+      if (n.tagName === "splitter" && n.orientation === "vertical" && n.region.x < startX) sp2 = n;
+    });
+    expect(sp2.region.x).toBe(startX - 6);
+  });
+
+  test("dragging the bottom splitter resizes the bottom panel", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    await pressUntil(t, "space", () => t.text().includes("TERMBODY")); // open bottom
+
+    let sp: any;
+    t.screen.walk((n: any) => {
+      if (n.tagName === "splitter" && n.orientation === "horizontal") sp = n;
+    });
+    expect(sp).toBeTruthy();
+    const startY = sp.region.y;
+    // Bottom grows upward on a negative delta (dragging up widens it). The
+    // bottom splitter only spans the center column (not the left/right
+    // regions), so click within its own region rather than a hardcoded x.
+    const clickX = sp.region.x + 1;
+    t.driver.simulateMouse(clickX, startY, "press", "left");
+    t.driver.simulateMouse(clickX, startY - 3, "drag", "left");
+    t.driver.simulateMouse(clickX, startY - 3, "release", "left");
+    await t.settle();
+
+    let sp2: any;
+    t.screen.walk((n: any) => {
+      if (n.tagName === "splitter" && n.orientation === "horizontal") sp2 = n;
+    });
+    expect(sp2.region.y).toBe(startY - 3);
   });
 
   test("a tap (no movement) toggles instead of moving", async () => {
@@ -325,5 +400,121 @@ describe("Workbench", () => {
     expect(t.text()).toContain("NOTESBODY");
     expect(t.text()).toContain("SEARCHBODY");
     expect(t.text()).not.toContain("FILES");
+  });
+
+  test("dragging over the right rail tints it as the drop target", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    const explorer = railCenter(t, "explorer");
+    t.driver.simulateMouse(explorer.x, explorer.y, "press", "left");
+    t.driver.simulateMouse(79, 0, "drag", "left"); // hover over the right zone
+    await t.settle();
+
+    let rightRail: any;
+    t.screen.walk((n: any) => {
+      if (n.id === "rail-outline") rightRail = n;
+    });
+    expect(rightRail).toBeTruthy();
+    // ActivityRail's own background follows the same dropTarget prop; walk up
+    // to the rail VBox (the icon's parent) to read it.
+    expect((rightRail.parent as { style?: { background?: string } }).style?.background).toBe(
+      "$primary",
+    );
+
+    t.driver.simulateMouse(79, 0, "release", "left");
+    await t.settle();
+  });
+
+  test("panels with no right or bottom entries render without those docks", async () => {
+    const leftOnly: WorkbenchPanel[] = [
+      { id: "explorer", anchor: "left", title: "Explorer", content: <Label>FILES</Label> },
+    ];
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <Workbench panels={leftOnly} initialOpen={["left"]}>
+          <Label>EDITOR</Label>
+        </Workbench>
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    expect(t.text()).toContain("FILES");
+    expect(t.text()).toContain("EDITOR");
+    let horizontalSplitter: unknown;
+    let rightRail: unknown;
+    t.screen.walk((n: any) => {
+      if (n.tagName === "splitter" && n.orientation === "horizontal") horizontalSplitter = n;
+      if (n.id === "rail-outline") rightRail = n;
+    });
+    expect(horizontalSplitter).toBeUndefined();
+    expect(rightRail).toBeUndefined();
+  });
+
+  test("dragging within its own region is a no-op (doesn't re-dock)", async () => {
+    // A drag that ends inside the same zone it started in must not call
+    // move() — target === source, so it's treated the same as "not moved"
+    // for docking purposes even though the pointer did travel.
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    expect(t.text()).toContain("FILES");
+    expect(t.text()).not.toContain("SEARCHBODY");
+    const { x, y } = railCenter(t, "explorer");
+    t.driver.simulateMouse(x, y, "press", "left");
+    t.driver.simulateMouse(x + 2, y + 2, "drag", "left"); // still inside the left zone
+    t.driver.simulateMouse(x + 2, y + 2, "release", "left");
+    await t.settle();
+    expect(t.text()).toContain("FILES"); // unchanged: still active on the left
+    expect(t.text()).not.toContain("SEARCHBODY"); // sibling wasn't promoted
+  });
+
+  test("dragging the only bottom panel elsewhere leaves the bottom region empty and closed", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    await pressUntil(t, "space", () => t.text().includes("TERMBODY")); // open bottom
+    expect(t.text()).toContain("TERMBODY");
+
+    let terminalRail: any;
+    t.screen.walk((n: any) => {
+      if (n.id === "rail-terminal") terminalRail = n;
+    });
+    // The bottom tab is a Label, not a rail icon; find it directly.
+    let terminalTab: any;
+    t.screen.walk((n: any) => {
+      if (!terminalTab && n.tagName === "label" && n.getTextContent?.() === "Terminal") {
+        terminalTab = n;
+      }
+    });
+    expect(terminalTab).toBeTruthy();
+    const r = terminalTab.region;
+    t.driver.simulateMouse(r.x, r.y, "press", "left");
+    t.driver.simulateMouse(79, 0, "drag", "left"); // drag to the right zone
+    t.driver.simulateMouse(79, 0, "release", "left");
+    await t.settle();
+
+    // Terminal re-docked to the right; the bottom region is now empty and
+    // collapsed (no sibling to fall back to).
+    expect(t.text()).toContain("TERMBODY");
+    let horizontalSplitter: unknown;
+    t.screen.walk((n: any) => {
+      if (n.tagName === "splitter" && n.orientation === "horizontal") horizontalSplitter = n;
+    });
+    expect(horizontalSplitter).toBeUndefined();
+    void terminalRail;
+  });
+
+  test("dragging a rail icon down to the bottom zone re-docks it and tints the tab bar", async () => {
+    const t = await mountApp(ui(), { cols: 80, rows: 24 });
+    const { x, y } = railCenter(t, "explorer");
+    t.driver.simulateMouse(x, y, "press", "left");
+    t.driver.simulateMouse(40, 20, "drag", "left"); // lower third → bottom zone
+    await t.settle();
+
+    // While hovering, the bottom tab bar (a Box) tints to $primary.
+    let bottomBar: any;
+    t.screen.walk((n: any) => {
+      if (n.tagName === "box" && n.style?.dock === "bottom" && n.style?.height === 1) bottomBar = n;
+    });
+    expect(bottomBar).toBeTruthy();
+    expect(bottomBar.style.background).toBe("$primary");
+
+    t.driver.simulateMouse(40, 20, "release", "left");
+    await t.settle();
+    expect(t.text()).toContain("FILES"); // Explorer re-docked to the bottom, still visible
   });
 });
