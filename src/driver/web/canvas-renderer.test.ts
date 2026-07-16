@@ -107,6 +107,24 @@ describe("measureCellFromBlock", () => {
     expect(m.cellHeight).toBe(14); // round(ascent 11 + descent 3)
     expect(m.baseline).toBe(11); // ascent
   });
+
+  test("falls back to fontSize-derived defaults when the font metrics report zero", () => {
+    // A font/engine that reports no bounding box at all (width/ascent/descent
+    // all 0) must not leave the cell with zero size — fall back to fontSize
+    // ratios instead of dividing by / drawing at zero. fontSize itself is 0
+    // here so every fallback ratio (including the derived cellHeight) is
+    // actually exercised rather than short-circuited by a nonzero left side.
+    const { ctx } = mockCtx();
+    ctx.measureText = () => ({
+      width: 0,
+      actualBoundingBoxAscent: 0,
+      actualBoundingBoxDescent: 0,
+    });
+    const m = measureCellFromBlock(ctx, 0, "Mono");
+    expect(m.cellWidth).toBe(0);
+    expect(m.baseline).toBe(0);
+    expect(m.cellHeight).toBe(0);
+  });
 });
 
 describe("renderBufferToCanvas", () => {
@@ -354,6 +372,244 @@ describe("renderBufferToCanvas", () => {
     for (let i = 1; i < blocks.length; i++) {
       const prevRight = blocks[i - 1][0] + blocks[i - 1][2];
       expect(blocks[i][0]).toBeCloseTo(prevRight, 5);
+    }
+  });
+
+  test("an empty buffer (0 rows) renders without drawing anything out of bounds", () => {
+    const { ctx, calls } = mockCtx();
+    renderBufferToCanvas([], ctx, METRICS, OPTS);
+    expect(calls.fillRect.length).toBe(1); // just the (zero-size) clear rect
+  });
+
+  test("defaults dpr to 1 when omitted from render options", () => {
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(2, 1);
+    buf.setCell(0, 0, "█", new Style({ color: "cyan" }));
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, {
+      fontSize: 12,
+      fontFamily: "Mono",
+    });
+    // No dpr snapping distortion: the block fill spans exactly one cell width.
+    const block = calls.fillRect.find((r) => r[2] > 0 && r !== calls.fillRect[0]);
+    expect(block?.[2]).toBeCloseTo(METRICS.cellWidth, 5);
+  });
+
+  test("an even stroke width doesn't add the half-pixel odd-width snap", () => {
+    // t = max(1, round(fontSize/14)); fontSize 28 -> t=2 (even), which must
+    // skip the "+0.5" crisp-line offset used only for odd (1px-ish) strokes.
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(2, 1);
+    buf.setCell(0, 0, "─", new Style({ color: "white" }));
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, { ...OPTS, fontSize: 28 });
+    expect(calls.stroke).toBeGreaterThan(0);
+  });
+
+  test("a lone continuation cell (no preceding image) is skipped", () => {
+    const { ctx, calls } = mockCtx();
+    const cells: any[][] = [
+      [
+        { c: "", cont: true },
+        { c: "x", fg: "white" },
+      ],
+    ];
+    renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+    expect(calls.fillText.some((c) => c[0] === "x")).toBe(true);
+    expect(calls.fillText.some((c) => c[0] === "")).toBe(false);
+  });
+
+  test("an image cell without explicit gw/gh spans exactly one cell", () => {
+    class FakeImage {
+      onload: (() => void) | null = null;
+      complete = true;
+      naturalWidth = 16;
+      set src(_v: string) {}
+    }
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = FakeImage;
+    try {
+      const { ctx } = mockCtx();
+      const drawnSizes: any[] = [];
+      ctx.drawImage = (_img: any, _x: number, _y: number, w: number, h: number) =>
+        drawnSizes.push([w, h]);
+      const cells: any[][] = [[{ c: " ", img: "no-gw-gh-test" }]];
+      renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      expect(drawnSizes).toEqual([[METRICS.cellWidth, METRICS.cellHeight]]);
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
+  });
+
+  test("a wide (double-width) glyph spans two cells when centering its text", () => {
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(4, 1);
+    buf.drawSegment(0, 0, new Segment("📁", new Style({ color: "white" }))); // wide + continuation
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    const call = calls.fillText.find((c) => c[0] === "📁");
+    expect(call).toBeTruthy();
+    // Centered across 2 cells, not 1: x should be roughly cellWidth (not cellWidth/2).
+    const [, x] = call as [string, number, number];
+    expect(x).toBeGreaterThan(METRICS.cellWidth / 2 + 1);
+  });
+
+  test("an icon cell whose registered icon has no SVG falls back to centered text", () => {
+    // canvas-serialize.ts ships `icon: true` without `svg` when the icon has
+    // an empty svg (e.g. a Seti glyph that failed to load a font) — the
+    // canvas must still center the glyph's own ink box rather than throwing.
+    iconRegistry.registerIcon({ name: "no-svg-icon", svg: "", textFallback: "?" });
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(2, 1);
+    buf.cells[0][0] = {
+      char: "?",
+      style: new Style({ color: "white" }),
+      wideContinuation: false,
+      icon: "no-svg-icon",
+    };
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    expect(calls.fillText.some((c) => c[0] === "?")).toBe(true);
+  });
+
+  test("an icon cell with no measurable ink box falls back to a centered baseline", () => {
+    iconRegistry.registerIcon({ name: "no-ink-icon", svg: "", textFallback: "?" });
+    const { ctx, calls } = mockCtx();
+    ctx.measureText = () => ({ width: 9, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 });
+    const buf = new ScreenBuffer(2, 1);
+    buf.cells[0][0] = {
+      char: "?",
+      style: new Style({ color: "white" }),
+      wideContinuation: false,
+      icon: "no-ink-icon",
+    };
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    const call = calls.fillText.find((c) => c[0] === "?") as [string, number, number];
+    expect(call).toBeTruthy();
+    // inkAscent/inkDescent both fell back to 0, so the glyph centers exactly
+    // on the row's vertical middle.
+    const [, , y] = call;
+    expect(y).toBeCloseTo(0 + METRICS.cellHeight / 2, 5);
+  });
+
+  test("dashed box-drawing glyphs use the wider dash pattern (not dotted)", () => {
+    const { ctx, calls } = mockCtx();
+    const buf = new ScreenBuffer(2, 1);
+    buf.setCell(0, 0, "┄", new Style({ color: "white" })); // e/w, dash: "dashed"
+    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    expect(calls.stroke).toBeGreaterThan(0);
+  });
+
+  test("drawSvgCell/drawImageCell no-op without a global Image constructor", () => {
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = undefined;
+    try {
+      const { ctx, calls } = mockCtx();
+      const cells: any[][] = [
+        [
+          { c: "•", svg: "<svg/>", fg: "white" },
+          { c: " ", img: "some-src", gw: 1, gh: 1 },
+        ],
+      ];
+      expect(() => renderBufferToCanvas(cells, ctx, METRICS, OPTS)).not.toThrow();
+      expect(calls.fillRect.length).toBeGreaterThan(0); // still drew the background/clear
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
+  });
+
+  test("drawSvgCell/drawImageCell skip drawImage while the image hasn't loaded yet", () => {
+    class NotLoadedImage {
+      onload: (() => void) | null = null;
+      complete = false; // still decoding
+      naturalWidth = 0;
+      set src(_v: string) {}
+    }
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = NotLoadedImage;
+    try {
+      const { ctx } = mockCtx();
+      let drawImageCalls = 0;
+      ctx.drawImage = () => {
+        drawImageCalls++;
+      };
+      const cells: any[][] = [
+        [
+          { c: "•", svg: "<svg/>unique-not-loaded", fg: "white" },
+          { c: " ", img: "unique-not-loaded-src", gw: 1, gh: 1 },
+        ],
+      ];
+      renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      expect(drawImageCalls).toBe(0);
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
+  });
+
+  test("drawSvgCell/drawImageCell call requestRepaint once the image finishes decoding", () => {
+    const instances: any[] = [];
+    class TrackedImage {
+      onload: (() => void) | null = null;
+      complete = false;
+      naturalWidth = 0;
+      constructor() {
+        instances.push(this);
+      }
+      set src(_v: string) {}
+    }
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = TrackedImage;
+    try {
+      const { ctx } = mockCtx();
+      ctx.drawImage = () => {};
+      let repaints = 0;
+      const cells: any[][] = [
+        [
+          { c: "•", svg: "<svg/>onload-test-svg", fg: "white" },
+          { c: " ", img: "onload-test-img", gw: 1, gh: 1 },
+        ],
+      ];
+      renderBufferToCanvas(cells, ctx, METRICS, {
+        ...OPTS,
+        requestRepaint: () => {
+          repaints++;
+        },
+      });
+      expect(instances.length).toBe(2); // one for the svg icon, one for the image
+      for (const img of instances) img.onload?.();
+      expect(repaints).toBe(2);
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
+  });
+
+  test("drawSvgCell/drawImageCell reuse a cached Image on a repeat render (no re-fetch)", () => {
+    let constructedCount = 0;
+    class CountingImage {
+      onload: (() => void) | null = null;
+      complete = true;
+      naturalWidth = 16;
+      constructor() {
+        constructedCount++;
+      }
+      set src(_v: string) {}
+    }
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = CountingImage;
+    try {
+      const { ctx } = mockCtx();
+      ctx.drawImage = () => {};
+      const cells: any[][] = [
+        [
+          { c: "•", svg: "<svg/>cache-hit-test", fg: "white" },
+          { c: " ", img: "cache-hit-test-src", gw: 1, gh: 1 },
+        ],
+      ];
+      renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      const afterFirst = constructedCount;
+      expect(afterFirst).toBeGreaterThan(0);
+      renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      // Second render with the same svg/img keys must hit the cache, not
+      // construct new Image instances.
+      expect(constructedCount).toBe(afterFirst);
+    } finally {
+      (globalThis as any).Image = prevImage;
     }
   });
 });
