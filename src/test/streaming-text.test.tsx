@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { App } from "../core/app.ts";
 import type { DOMNode } from "../dom/dom.ts";
-import { StreamingText } from "../react/components.tsx";
+import { Label, StreamingText } from "../react/components.tsx";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -52,5 +52,22 @@ describe("StreamingText", () => {
     expect(lines.length).toBeGreaterThan(1);
     // The tail word survived the wrap (it was not clipped off the first row).
     expect(t.text()).toContain("rho");
+  });
+
+  test("a numeric child is rendered as text", async () => {
+    const t = await mountApp(<StreamingText streaming={false}>{42}</StreamingText>, OPTS);
+    await t.settle();
+    expect(t.text()).toContain("42");
+  });
+
+  test("non-text children are rendered as-is (no auto-wrap Label)", async () => {
+    const t = await mountApp(
+      <StreamingText streaming={false}>
+        <Label>custom node</Label>
+      </StreamingText>,
+      OPTS,
+    );
+    await t.settle();
+    expect(t.text()).toContain("custom node");
   });
 });
