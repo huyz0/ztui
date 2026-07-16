@@ -355,6 +355,85 @@ describe("DevTools panel", () => {
     expect(latestRegion.y).toBe(firstRegion.y + 2);
   });
 
+  test("selecting a tree node shows its details and reports its region via onInspect", async () => {
+    let rootRef: Widget | null = null;
+    const reports: unknown[] = [];
+    const t = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <VBox
+          id="inspected"
+          ref={(w: Widget | null) => {
+            rootRef = w;
+          }}
+        >
+          <Button id="alpha">Alpha</Button>
+        </VBox>
+        <DevTools root={rootRef} onInspect={(r) => reports.push(r)} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    reconciler.updateContainer(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <VBox
+          id="inspected"
+          ref={(w: Widget | null) => {
+            rootRef = w;
+          }}
+        >
+          <Button id="alpha">Alpha</Button>
+        </VBox>
+        <DevTools root={rootRef} onInspect={(r) => reports.push(r)} />
+      </VBox>,
+      t.container,
+      null,
+      () => {},
+    );
+    await t.settle();
+
+    let treeWidget: Widget | undefined;
+    t.screen.walk((n) => {
+      if ((n as Widget).constructor?.name === "TreeWidget") treeWidget = n as Widget;
+    });
+    expect(treeWidget).toBeTruthy();
+    (treeWidget as Widget).handleKey({ name: "down", handled: false } as never); // select the root
+    await t.settle();
+    expect(t.text()).not.toContain("Select a node…"); // detail list now shown instead
+    (treeWidget as Widget).handleKey({ name: "down", handled: false } as never); // select "alpha"
+    await t.settle();
+    expect(reports.length).toBeGreaterThan(0);
+    expect(t.text()).toContain("tag");
+  });
+
+  test("a full-frame reason list renders '● full' with its reasons", async () => {
+    const t = await mountApp(
+      <DevTools
+        root={null}
+        frame={{
+          full: true,
+          seq: 1,
+          widgetsRendered: 5,
+          bytes: 64,
+          reasons: ["resize", "theme-change", "extra-reason"],
+        }}
+      />,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("● full");
+    expect(text).toContain("resize, theme-change"); // only the first 2 reasons
+  });
+
+  test("a minimal frame (no bytes/reasons/sparkline history) still renders the profiler strip", async () => {
+    const t = await mountApp(<DevTools root={null} frame={{ full: false, seq: 1 }} />, OPTS);
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("○ scoped");
+    expect(text).toContain("0 rendered");
+    expect(text).toContain("0B");
+  });
+
   test("null region renders nothing", async () => {
     const t = await mountApp(
       <VBox style={{ width: "100%", height: "100%" }}>
