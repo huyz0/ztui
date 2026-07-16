@@ -184,4 +184,80 @@ describe("ChatBuffer", () => {
     expect(b.value).toBe("hi");
     expect(b.redo()).toBe(false);
   });
+
+  test("undo history is capped so a long session can't grow without bound", () => {
+    const b = new ChatBuffer();
+    // Each insertText below is its own "structural"-coalescing boundary via a
+    // distinct kind, forcing 205 separate undo steps to push past the 200 cap.
+    for (let i = 0; i < 205; i++) {
+      b.insertText(String(i), `kind-${i}`);
+    }
+    // The oldest steps were shifted out; undoing everything available should
+    // land short of the full "empty buffer" state (proving the cap kicked in)
+    // rather than throwing or growing unbounded.
+    let undone = 0;
+    while (b.undo()) undone++;
+    expect(undone).toBe(200);
+    expect(b.value).not.toBe("");
+  });
+
+  test("selectedText is empty with no active selection", () => {
+    const b = new ChatBuffer();
+    b.insertText("abc");
+    expect(b.hasSelection()).toBe(false);
+    expect(b.selectedText()).toBe("");
+  });
+
+  test("selectedText serializes a chip inside the selected range", () => {
+    const b = new ChatBuffer((t) => `<${t.label}>`);
+    b.insertText("a");
+    b.insertChip(chip("x.ts"));
+    b.insertText("b");
+    b.anchor = 0;
+    b.caret = 3; // select all 3 atoms: "a", chip, "b"
+    expect(b.selectedText()).toBe("a<x.ts>b");
+  });
+
+  test("moveLineEdge(extend) keeps an existing anchor instead of resetting it", () => {
+    const b = new ChatBuffer();
+    b.insertText("abc");
+    b.caret = 1;
+    b.moveHorizontal(1, true); // anchor = 1, caret = 2
+    b.moveLineEdge(1, true); // extend again: anchor must stay at 1, not reset to 2
+    expect(b.selectionRange()).toEqual([1, 3]);
+  });
+
+  test('insertText("") is a no-op', () => {
+    const b = new ChatBuffer();
+    b.insertText("abc");
+    const before = b.value;
+    const undoDepth = (b as unknown as { undoStack: unknown[] }).undoStack.length;
+    b.insertText("");
+    expect(b.value).toBe(before);
+    expect((b as unknown as { undoStack: unknown[] }).undoStack.length).toBe(undoDepth);
+  });
+
+  test("backspace at the start of the buffer is a no-op", () => {
+    const b = new ChatBuffer();
+    b.insertText("abc");
+    b.caret = 0;
+    b.backspace();
+    expect(b.value).toBe("abc");
+  });
+
+  test("clear on an already-empty buffer is a no-op (doesn't push undo history)", () => {
+    const b = new ChatBuffer();
+    const undoDepth = (b as unknown as { undoStack: unknown[] }).undoStack.length;
+    b.clear();
+    expect(b.value).toBe("");
+    expect((b as unknown as { undoStack: unknown[] }).undoStack.length).toBe(undoDepth);
+  });
+
+  test("moveHorizontal clamps the caret below the start of the buffer", () => {
+    const b = new ChatBuffer();
+    b.insertText("ab");
+    b.caret = 0;
+    b.moveHorizontal(-1, true); // dir -1 past 0, with extend so no selection to collapse into
+    expect(b.caret).toBe(0);
+  });
 });
