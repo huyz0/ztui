@@ -95,6 +95,50 @@ describe("BarChart", () => {
     await empty.settle();
     expect(empty.findById("c")).toBeTruthy(); // no throw
   });
+
+  test("measure() falls back to intrinsic size for a non-numeric width/height", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <BarChart
+          id="c"
+          style={{ width: "1fr", height: "1fr" }}
+          items={[{ label: "a", value: 1 }]}
+        />
+      </VBox>,
+      { cols: 30, rows: 6 },
+    );
+    await settle();
+    const w = findById("c") as unknown as { measuredWidth: number; measuredHeight: number };
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("items with no labels skip the label column entirely", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <BarChart id="c" style={{ width: 20, height: 2 }} items={[{ value: 1 }, { value: 2 }]} />
+      </VBox>,
+      { cols: 30, rows: 6 },
+    );
+    await settle();
+    expect(findById("c")).toBeTruthy(); // no throw; hasLabels is false
+  });
+
+  test("a non-finite value formats to an empty string instead of throwing", async () => {
+    const { findById, text, settle } = await mountApp(
+      <VBox>
+        <BarChart
+          id="c"
+          style={{ width: 20, height: 1 }}
+          items={[{ label: "n", value: Number.NaN }]}
+        />
+      </VBox>,
+      { cols: 30, rows: 6 },
+    );
+    await settle();
+    expect(findById("c")).toBeTruthy();
+    expect(text()).not.toContain("NaN");
+  });
 });
 
 describe("LinePlot", () => {
@@ -181,6 +225,19 @@ describe("LinePlot", () => {
     }
     expect(colors.size).toBeGreaterThanOrEqual(2); // two series → two colours
   });
+
+  test("measure() falls back to intrinsic size for a non-numeric width/height", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <LinePlot id="p" style={{ width: "1fr", height: "1fr" }} data={[1, 2, 3]} />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    await settle();
+    const w = findById("p") as unknown as { measuredWidth: number; measuredHeight: number };
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBeGreaterThan(0);
+  });
 });
 
 describe("ScatterPlot", () => {
@@ -229,6 +286,39 @@ describe("ScatterPlot", () => {
     await empty.settle();
     expect(empty.findById("s")).toBeTruthy(); // no throw
   });
+
+  test("measure() falls back to intrinsic size for a non-numeric width/height", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <ScatterPlot id="s" style={{ width: "1fr", height: "1fr" }} points={[{ x: 1, y: 1 }]} />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await settle();
+    const w = findById("s") as unknown as { measuredWidth: number; measuredHeight: number };
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("a flat x or y range (minX===maxX) plots without dividing by zero", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <ScatterPlot
+          id="s"
+          style={{ width: 12, height: 4 }}
+          points={[
+            { x: 5, y: 1 },
+            { x: 5, y: 9 },
+          ]}
+          minX={5}
+          maxX={5}
+        />
+      </VBox>,
+      { cols: 20, rows: 6 },
+    );
+    await settle();
+    expect(findById("s")).toBeTruthy();
+  });
 });
 
 describe("AreaChart", () => {
@@ -268,6 +358,19 @@ describe("AreaChart", () => {
     );
     await settle();
     expect(findById("a")).toBeTruthy();
+  });
+
+  test("measure() falls back to intrinsic size for a non-numeric width/height", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <AreaChart id="a" style={{ width: "1fr", height: "1fr" }} data={[1, 2, 3]} />
+      </VBox>,
+      { cols: 30, rows: 8 },
+    );
+    await settle();
+    const w = findById("a") as unknown as { measuredWidth: number; measuredHeight: number };
+    expect(w.measuredWidth).toBeGreaterThan(0);
+    expect(w.measuredHeight).toBeGreaterThan(0);
   });
 });
 
