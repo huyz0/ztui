@@ -9,9 +9,18 @@ function SelectDemo() {
     <VBox style={{ padding: 1, width: 40 }}>
       <Header>Select</Header>
       <Label style={{ margin: { top: 1 } }}>Language</Label>
-      <Select options={["TypeScript", "Rust", "Go", "Python"]} value={lang} onChange={setLang} />
+      <Select
+        options={["TypeScript", "Rust", "Go", "Python"]}
+        value={lang}
+        onChange={(val) => setLang(Array.isArray(val) ? val[0] : val)}
+      />
       <Label style={{ margin: { top: 1 } }}>Tags (multiple)</Label>
-      <Select options={["cli", "tui", "web", "lib"]} value={tags} multiple onChange={setTags} />
+      <Select
+        options={["cli", "tui", "web", "lib"]}
+        value={tags}
+        multiple
+        onChange={(val) => setTags(Array.isArray(val) ? val : [val])}
+      />
     </VBox>
   );
 }

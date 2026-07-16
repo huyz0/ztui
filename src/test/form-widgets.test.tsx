@@ -148,7 +148,7 @@ describe("ZTUI Form Widgets Suite", () => {
         value={selectVal}
         options={["Apple", "Banana", "Cherry"]}
         onChange={(val) => {
-          selectVal = val;
+          selectVal = Array.isArray(val) ? val[0] : val;
         }}
       />,
       { cols: 40, rows: 15 },
@@ -201,7 +201,7 @@ describe("ZTUI Form Widgets Suite", () => {
         value={selectVal}
         options={["A", "B", "C"]}
         onChange={(val) => {
-          selectVal = val;
+          selectVal = Array.isArray(val) ? val : [val];
         }}
       />,
       { cols: 40, rows: 15 },
@@ -410,7 +410,7 @@ describe("ZTUI Form Widgets Suite", () => {
             id="sel"
             value={selectVal}
             options={["Apple", "Banana", "Cherry"]}
-            onChange={setSelectVal}
+            onChange={(val) => setSelectVal(Array.isArray(val) ? val[0] : val)}
           />
         </VBox>
       );
@@ -535,7 +535,7 @@ describe("ZTUI Form Widgets Suite", () => {
             value={sel}
             options={["ExtremelyLongBananaOptionName", "B"]}
             style={{ width: 5 }}
-            onChange={setSel}
+            onChange={(val) => setSel(Array.isArray(val) ? val[0] : val)}
           />
           <ToggleButton
             id="tgl-children"

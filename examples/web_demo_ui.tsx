@@ -171,7 +171,11 @@ function ControlsTab() {
       />
       <View style={{ height: 1 }} />
       <Label style={{ color: "$dimmed" }}>Favorite fruit</Label>
-      <Select options={["apple", "banana", "cherry", "date"]} value={fruit} onChange={setFruit} />
+      <Select
+        options={["apple", "banana", "cherry", "date"]}
+        value={fruit}
+        onChange={(val) => setFruit(Array.isArray(val) ? val[0] : val)}
+      />
       <View style={{ height: 1 }} />
       <Label style={{ color: "$dimmed" }}>Volume: {volume}</Label>
       <Slider

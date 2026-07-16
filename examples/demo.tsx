@@ -135,7 +135,7 @@ function DemoApp() {
           <Select
             options={["Admin", "Developer", "Designer", "Tester"]}
             value={role}
-            onChange={(val) => setRole(val)}
+            onChange={(val) => setRole(Array.isArray(val) ? val[0] : val)}
           />
 
           {/* Multi Select Dropdown */}
@@ -147,7 +147,7 @@ function DemoApp() {
             options={["TypeScript", "React", "Rust", "Go", "Python", "Mermaid"]}
             value={skills}
             placeholder="Select skills..."
-            onChange={(val) => setSkills(val)}
+            onChange={(val) => setSkills(Array.isArray(val) ? val : [val])}
           />
 
           <View style={{ height: 1 }} />

@@ -28,7 +28,7 @@ function OverlayApp() {
         id="the-select"
         options={["alpha", "beta", "gamma"]}
         value={selected === "none" ? undefined : selected}
-        onChange={(v) => setSelected(v)}
+        onChange={(v) => setSelected(Array.isArray(v) ? v[0] : v)}
       />
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
         <Label>Dialog Content</Label>

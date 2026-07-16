@@ -11,7 +11,7 @@ export interface SelectProps extends ComponentProps, FieldValidationProps {
   /** Allow selecting multiple options. */
   multiple?: boolean;
   /** Called with the new selection (string, or string[] when `multiple`). */
-  onChange?: (val: any) => void;
+  onChange?: (val: string | string[]) => void;
   /** Hint text shown when nothing is selected. */
   placeholder?: string;
 }
