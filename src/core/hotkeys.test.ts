@@ -37,6 +37,10 @@ describe("normalizeKey", () => {
     expect(normalizeKey("shift+?")).toBe("?");
     expect(normalizeKey("?")).toBe("?");
   });
+
+  test("a trailing '+' means the base key is a literal plus sign", () => {
+    expect(normalizeKey("ctrl++")).toBe("ctrl++");
+  });
 });
 
 describe("eventToKey", () => {
@@ -53,6 +57,10 @@ describe("eventToKey", () => {
 
   test("plain characters ignore reported shift", () => {
     expect(eventToKey(key({ key: "?", name: "?", shift: true }))).toBe("?");
+  });
+
+  test("falls back to `key` when the driver reports no `name`", () => {
+    expect(eventToKey(key({ key: "s", name: "", ctrl: true }))).toBe("ctrl+s");
   });
 });
 
@@ -142,6 +150,55 @@ describe("registry", () => {
     expect(reg.context).toBe("editor");
     expect(editor).toBe(1);
     expect(global).toBe(1);
+  });
+
+  test("popContext on an empty stack is a no-op", () => {
+    const reg = HotkeyRegistry.getInstance();
+    expect(reg.context).toBeNull();
+    reg.popContext(); // must not throw or change anything
+    expect(reg.context).toBeNull();
+  });
+
+  test("disposing an already-shadowed-then-removed binding a second time is a no-op", () => {
+    const reg = HotkeyRegistry.getInstance();
+    const dispose = reg.register({ key: "ctrl+z", name: "Undo", handler: () => {} });
+    dispose();
+    expect(reg.list()).toEqual([]);
+    expect(() => dispose()).not.toThrow(); // second call: already removed, nothing to emit
+    expect(reg.list()).toEqual([]);
+  });
+
+  test("a hotkey scoped to an array of contexts matches any of them", () => {
+    const reg = HotkeyRegistry.getInstance();
+    let ran = 0;
+    reg.register({
+      key: "ctrl+p",
+      name: "Palette",
+      context: ["editor", "browser"],
+      handler: () => ran++,
+    });
+
+    reg.setContext("browser");
+    expect(reg.dispatch(key({ key: "ctrl+p", name: "p", ctrl: true }), "priority")).toBe(true);
+    expect(ran).toBe(1);
+
+    reg.setContext("other");
+    expect(reg.dispatch(key({ key: "ctrl+p", name: "p", ctrl: true }), "priority")).toBe(false);
+    expect(ran).toBe(1);
+  });
+
+  test("setContext(null) clears the whole context stack, including any pushed contexts", () => {
+    const reg = HotkeyRegistry.getInstance();
+    reg.setContext("editor");
+    reg.pushContext("browser");
+    expect(reg.context).toBe("browser");
+
+    reg.setContext(null);
+    expect(reg.context).toBeNull();
+    // popContext has nothing left to pop back to — the whole stack is gone,
+    // not just the top pushed frame.
+    reg.popContext();
+    expect(reg.context).toBeNull();
   });
 
   test("enabled() gates dispatch and listing", () => {
