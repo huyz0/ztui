@@ -101,6 +101,34 @@ describe("ToastManager", () => {
     expect(mgr.pendingCount).toBe(2);
   });
 
+  test("toast.show raises a toast from full options", () => {
+    const mgr = ToastManager.getInstance();
+    const id = toast.show({ level: "success", message: "saved" });
+    expect(mgr.getToasts().find((t) => t.id === id)).toMatchObject({
+      level: "success",
+      message: "saved",
+    });
+  });
+
+  test("maxVisible clamps a value below 1 up to the 1-toast floor", () => {
+    const mgr = ToastManager.getInstance();
+    mgr.maxVisible = 0;
+    expect(mgr.maxVisible).toBe(1);
+    mgr.maxVisible = -5;
+    expect(mgr.maxVisible).toBe(1);
+  });
+
+  test("dismissing an id that matches nothing (visible or pending) is a no-op", () => {
+    const mgr = ToastManager.getInstance();
+    let pings = 0;
+    mgr.notify({ message: "a" });
+    const unsub = mgr.subscribe(() => pings++);
+    mgr.dismiss(999999); // no toast has this id
+    expect(mgr.getToasts()).toHaveLength(1);
+    expect(pings).toBe(0);
+    unsub();
+  });
+
   test("queuing an overflow toast and dismissing a still-queued toast both notify subscribers", () => {
     // Regression: notify()'s overflow-queue branch and dismiss()'s
     // pending-queue branch mutated `_pending` without calling emit(), unlike
