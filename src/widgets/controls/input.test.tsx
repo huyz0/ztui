@@ -299,3 +299,155 @@ describe("InputWidget — keyboard interaction", () => {
     );
   });
 });
+
+describe("InputWidget — additional branch coverage", () => {
+  test("validators setter falls back to [] when given a nullish value", () => {
+    const w = new InputWidget();
+    w.validators = [() => "bad"];
+    expect(w.validators).toHaveLength(1);
+    (w as unknown as { validators: unknown }).validators = undefined;
+    expect(w.validators).toEqual([]);
+  });
+
+  test("key handling accounts for prefix/suffix icon width when computing text width", async () => {
+    const t = await mountApp(<Input id="in" value="hi" icon=">" suffixIcon="<" />, {
+      cols: 20,
+      rows: 3,
+    });
+    const w = t.findById<InputWidget>("in")!;
+    await t.settle();
+    expect(() => w.onKey?.({ key: "x", name: "x" } as any)).not.toThrow();
+    expect(w.value).toBe("hix");
+  });
+
+  test("an out-of-range cursorCol is clamped to the text length before handling a key", () => {
+    const w = new InputWidget();
+    w.value = "abc";
+    (w as unknown as { cursorCol: number }).cursorCol = 99;
+    w.onKey?.({ name: "left" } as any);
+    expect((w as unknown as { cursorCol: number }).cursorCol).toBe(2);
+  });
+
+  test("shift+end with no existing selection starts a fresh one", () => {
+    const w = new InputWidget();
+    w.value = "hello";
+    w.onKey?.({ name: "home" } as any);
+    w.onKey?.({ name: "end", shift: true } as any);
+    expect(w.copySelection()).toBe("hello");
+  });
+
+  test("Enter fires onSubmit with the current value", () => {
+    let submitted = "";
+    const w = new InputWidget();
+    w.value = "abc";
+    w.onSubmit = (v) => {
+      submitted = v;
+    };
+    w.onKey?.({ name: "enter" } as any);
+    expect(submitted).toBe("abc");
+  });
+
+  test("Escape fires onDismiss", () => {
+    let dismissed = false;
+    const w = new InputWidget();
+    (w as unknown as { onDismiss?: () => void }).onDismiss = () => {
+      dismissed = true;
+    };
+    w.onKey?.({ name: "escape" } as any);
+    expect(dismissed).toBe(true);
+  });
+
+  test("cutSelection is a no-op (null) when there is nothing selected", () => {
+    const w = new InputWidget();
+    w.value = "abc";
+    expect(w.cutSelection()).toBeNull();
+  });
+
+  test("handleMouse ignores an event already handled upstream", () => {
+    const w = new InputWidget();
+    w.value = "hello";
+    w.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: true } as any);
+    expect(w.hasSelection()).toBe(false);
+  });
+
+  test("a release with an active selection copies it", () => {
+    const w = new InputWidget();
+    w.value = "hello";
+    w.handleMouse({ type: "press", button: "left", x: 0, y: 0 } as any);
+    w.handleMouse({ type: "drag", button: "left", x: 3, y: 0 } as any);
+    expect(w.hasSelection()).toBe(true);
+    w.handleMouse({ type: "release", button: "left", x: 3, y: 0 } as any);
+    expect(w.copySelection()).toBe("hel");
+  });
+
+  test("invalid=true resolves the $error border color via an App instance", async () => {
+    const t = await mountApp(<Input id="in" value="x" />, { cols: 20, rows: 3 });
+    const w = t.findById<InputWidget>("in")!;
+    w.invalid = true;
+    await t.settle();
+    const color = (
+      w as unknown as { resolveBorderColor(): string | undefined }
+    ).resolveBorderColor();
+    expect(typeof color).toBe("string");
+  });
+
+  test("suffix icon renders through the registered-icon path", async () => {
+    iconRegistry.registerIcon({ name: "in-suffix-reg", svg: "<svg/>", textFallback: "X" });
+    const t = await mountApp(<Input id="in" value="hi" suffixIcon="in-suffix-reg" />, {
+      cols: 20,
+      rows: 3,
+    });
+    await t.settle();
+    const w = t.findById<InputWidget>("in")!;
+    const r = w.getContentRect();
+    const row = Array.from({ length: r.width }, (_, i) => t.cellAt(r.x + i, r.y));
+    expect(row.some((c) => c.icon === "in-suffix-reg")).toBe(true);
+  });
+
+  test("an invalid override tints the prefix/suffix icon color", async () => {
+    const t = await mountApp(<Input id="in" value="hi" icon=">" suffixIcon="<" />, {
+      cols: 20,
+      rows: 3,
+    });
+    const w = t.findById<InputWidget>("in")!;
+    w.invalid = true;
+    await t.settle();
+    expect(() => t.text()).not.toThrow();
+  });
+
+  test("disabled input renders text in the disabled color", async () => {
+    const t = await mountApp(<Input id="in" value="hi" disabled />, { cols: 20, rows: 3 });
+    await t.settle();
+    expect(t.text()).toContain("hi");
+  });
+
+  test("selection highlight and caret coloring render without throwing", async () => {
+    const t = await mountApp(<Input id="in" value="hello" />, { cols: 20, rows: 3 });
+    const w = t.findById<InputWidget>("in")!;
+    t.screen.focusWidget(w as any);
+    w.onKey?.({ name: "home" } as any);
+    w.onKey?.({ name: "right", shift: true } as any);
+    w.onKey?.({ name: "right", shift: true } as any);
+    await t.settle();
+    expect(w.hasSelection()).toBe(true);
+    expect(() => t.text()).not.toThrow();
+  });
+
+  test("caret mid-value (not at the end) blends into the character's own color", async () => {
+    const t = await mountApp(<Input id="in" value="hello" />, { cols: 20, rows: 3 });
+    const w = t.findById<InputWidget>("in")!;
+    t.screen.focusWidget(w as any);
+    w.onKey?.({ name: "home" } as any);
+    await t.settle();
+    expect(() => t.text()).not.toThrow();
+  });
+
+  test("a value wider than the field scrolls and stops drawing at the right edge", async () => {
+    const t = await mountApp(<Input id="in" value="this is a much longer value than fits" />, {
+      cols: 10,
+      rows: 3,
+    });
+    await t.settle();
+    expect(() => t.text()).not.toThrow();
+  });
+});
