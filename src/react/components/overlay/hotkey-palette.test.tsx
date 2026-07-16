@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import type { Widget } from "../../../dom/widget.ts";
 import { HotkeyPalette, useHotkey, VBox } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
@@ -100,6 +101,26 @@ describe("HotkeyPalette", () => {
     expect(ran).toEqual(["find"]);
   });
 
+  test("up navigation moves the selection back, clamped at the first item", async () => {
+    ran.length = 0;
+    const t = await mountApp(<Host />, { cols: 80, rows: 24 });
+    await open(t);
+    // Move down to the last item, then back up to the first.
+    await press(t, "down");
+    await press(t, "down");
+    await press(t, "up");
+    await press(t, "enter");
+    await t.settle();
+    expect(ran).toEqual(["open"]);
+
+    // Up from the first item clamps at 0 (no underrun / wraparound).
+    await open(t);
+    await press(t, "up");
+    await press(t, "enter");
+    await t.settle();
+    expect(ran).toEqual(["open", "save"]);
+  });
+
   test("PageDown pages through a long, windowed list", async () => {
     const hit: string[] = [];
     function Many() {
@@ -127,6 +148,56 @@ describe("HotkeyPalette", () => {
     await press(t, "enter");
     await t.settle();
     expect(hit).toEqual(["cmd14"]);
+  });
+
+  test("PageUp pages back through a long, windowed list", async () => {
+    const hit: string[] = [];
+    function Many() {
+      for (let i = 0; i < 20; i++) {
+        // biome-ignore lint/correctness/useHookAtTopLevel: fixed-length loop, stable order
+        useHotkey({
+          key: `ctrl+${i}`,
+          name: `cmd${i}`,
+          group: "G",
+          handler: () => hit.push(`cmd${i}`),
+        });
+      }
+      return (
+        <VBox style={{ width: "100%", height: "100%" }}>
+          <HotkeyPalette toggleKey="f2" maxVisible={14} />
+        </VBox>
+      );
+    }
+    const t = await mountApp(<Many />, { cols: 80, rows: 30 });
+    await open(t);
+    await press(t, "pagedown"); // 0 -> 14
+    await press(t, "pagedown"); // 14 -> 19 (clamped at last item)
+    await press(t, "pageup"); // 19 -> 5
+    await press(t, "enter");
+    await t.settle();
+    expect(hit).toEqual(["cmd5"]);
+  });
+
+  test("clicking a row runs its command (mouse path, not just Enter)", async () => {
+    ran.length = 0;
+    const t = await mountApp(<Host />, { cols: 80, rows: 24 });
+    await open(t);
+    // Find the HBox row for "Open File" and click it directly, exercising the
+    // row's own onClick handler (and the "selected" background branch for a
+    // row that isn't the currently keyboard-selected one).
+    let row: Widget | undefined;
+    t.screen.layers[0].root.walk((n: unknown) => {
+      const w = n as Widget;
+      if ((w as { getTextContent?: () => string }).getTextContent?.() === "Open File" && w.parent) {
+        row = w.parent as Widget;
+      }
+    });
+    expect(row).toBeDefined();
+    const r = (row as Widget).region;
+    t.driver.simulateMouse(r.x, r.y, "press", "left");
+    await t.settle();
+    expect(ran).toEqual(["open"]);
+    expect(t.text()).not.toContain("Commands"); // palette closed after running
   });
 
   test("Escape closes the palette", async () => {
