@@ -839,9 +839,22 @@ export class App extends DOMNode {
     } else if (layoutType === "grid") {
       new GridLayout(parent.computedStyle.gridColumns ?? 2).resolve(parent);
     } else {
-      const inner = parent.getContentRect();
-      for (const child of parent.children) {
-        if (child instanceof Widget && child.visible) {
+      // No layout/display style resolved. A single visible child fills the
+      // full content rect (the common "wrapper" case — a root/decorator
+      // widget stretching its one child to the space it was given, unrelated
+      // to box-model stacking). With two or more, fill-to-the-same-rect would
+      // silently overlap them — Widget.measure() already sizes such a parent
+      // as if its children stack vertically (its own default when nothing
+      // else matches), so match that here instead of leaving them stacked on
+      // top of each other.
+      const visibleChildren = parent.children.filter(
+        (c): c is Widget => c instanceof Widget && c.visible,
+      );
+      if (visibleChildren.length > 1) {
+        new BoxLayout("vertical").resolve(parent);
+      } else {
+        const inner = parent.getContentRect();
+        for (const child of visibleChildren) {
           child.region = inner.clone();
         }
       }
