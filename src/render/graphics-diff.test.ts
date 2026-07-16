@@ -8,10 +8,16 @@ import {
 } from "./buffer.ts";
 import { Style } from "./style.ts";
 
+// Shared by default so `makeGraphic()` calls represent the common case: the
+// widget layer reuses the *same* cached pixel buffer instance across rebuilds
+// rather than reallocating an equivalent one. Tests exercising a genuinely
+// different buffer pass their own `pixelBuffer` override.
+const sharedPixelBuffer = new Uint8Array(4);
+
 function makeGraphic(overrides: Partial<GraphicMetadata> = {}): GraphicMetadata {
   return {
     type: "image",
-    pixelBuffer: new Uint8Array(4),
+    pixelBuffer: sharedPixelBuffer,
     pixelWidth: 20,
     pixelHeight: 20,
     cellWidth: 2,
@@ -53,6 +59,12 @@ describe("graphicsEqual: value comparison for cell graphics", () => {
     expect(graphicsEqual(base, makeGraphic({ pixelHeight: 40 }))).toBe(false);
     expect(graphicsEqual(base, makeGraphic({ zIndex: -1 }))).toBe(false);
     expect(graphicsEqual(base, makeGraphic({ svg: "<svg/>" }))).toBe(false);
+  });
+
+  test("differing pixelBuffer with matching dims/base64 is not equal", () => {
+    const base = makeGraphic();
+    const changed = makeGraphic({ pixelBuffer: new Uint8Array([1, 2, 3, 4]) });
+    expect(graphicsEqual(base, changed)).toBe(false);
   });
 });
 

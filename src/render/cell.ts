@@ -48,7 +48,12 @@ export function graphicsEqual(a?: GraphicMetadata, b?: GraphicMetadata): boolean
     a.pixelWidth === b.pixelWidth &&
     a.pixelHeight === b.pixelHeight &&
     a.zIndex === b.zIndex &&
-    a.svg === b.svg
+    a.svg === b.svg &&
+    // Reference comparison is sufficient: every producer (image.ts, svg-image.ts,
+    // mermaid.ts) assigns a freshly-built Uint8Array wholesale on each rebuild
+    // rather than mutating an existing buffer in place, so `===` here correctly
+    // distinguishes "same cached buffer, unchanged" from "rebuilt with new pixels".
+    a.pixelBuffer === b.pixelBuffer
   );
 }
 
