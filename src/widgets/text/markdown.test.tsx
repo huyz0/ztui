@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { TextNode } from "../../dom/text-node.ts";
 import { Widget } from "../../dom/widget.ts";
+import type { MouseEvent } from "../../driver/driver.ts";
 import { reconciler } from "../../react/reconciler.ts";
 import { Markdown } from "../../react.ts";
 import { getMarked } from "../../render/rich/marked-loader.ts";
@@ -113,6 +114,14 @@ describe("Markdown GFM alerts", () => {
       void icon; // icon coverage is asserted in the render test above
     }
     expect(tags(md("> just a quote"))).toEqual(["blockquote"]);
+  });
+
+  test("a blockquote child block with no widget mapping is skipped, not appended", () => {
+    const w = md("> <div>raw html inside quote</div>\n");
+    expect(tags(w)).toEqual(["blockquote"]);
+    const body = blocks(w)[0].children.find((c: any) => c.tagName === "blockquote_body");
+    // The html child produced no widget, so the body stays empty.
+    expect(body?.children.length).toBe(0);
   });
 });
 
@@ -247,6 +256,13 @@ describe("Markdown GFM tables", () => {
     expect(tags(w)).toContain("table");
   });
 
+  test("a ragged row shorter than the header pads its missing cells", async () => {
+    const table = ["| A | B | C |", "| - | - | - |", "| 1 |"].join("\n");
+    const t = await mountApp(<Markdown>{table}</Markdown>, { cols: 40, rows: 8 });
+    await t.settle();
+    expect(t.text()).toContain("1");
+  });
+
   test("a GFM task list renders checkbox glyphs by completion", async () => {
     const list = ["- [x] done item", "- [ ] todo item"].join("\n");
     const t = await mountApp(<Markdown>{list}</Markdown>, { cols: 40, rows: 6 });
@@ -291,6 +307,36 @@ describe("Markdown generative UI edge cases", () => {
     const syntax = blocks(w)[0] as any;
     expect(syntax.language).toBe("text");
   });
+
+  test("fence props without id/action and with non-object margin/padding are applied as-is", async () => {
+    const fence = [
+      "```ztui-label",
+      JSON.stringify({ text: "no id or action", style: { margin: 1, padding: 2 } }),
+      "```",
+    ].join("\n");
+    const t = await mountApp(<Markdown>{fence}</Markdown>);
+    expect(t.text()).toContain("no id or action");
+    const w = md(fence);
+    const label = blocks(w)[0] as any;
+    expect(label.id).toBe("");
+    expect(label.onClick).toBeUndefined();
+    expect(label.style.margin).toBe(1);
+    expect(label.style.padding).toBe(2);
+  });
+
+  test("nested JSON children skip a null entry and one missing a `type`", async () => {
+    const fence = [
+      "```ztui-vbox",
+      JSON.stringify({
+        id: "root",
+        children: [null, {}, { type: "ztui-label", id: "ok", text: "ok" }],
+      }),
+      "```",
+    ].join("\n");
+    const t = await mountApp(<Markdown>{fence}</Markdown>);
+    expect(t.findById("root")).toBeDefined();
+    expect(t.findById("ok")).toBeDefined();
+  });
 });
 
 describe("Markdown block-level layout options", () => {
@@ -313,6 +359,13 @@ describe("Markdown block-level layout options", () => {
     // widget while the unmapped html block itself was already null.
     expect(() => md("<div>raw</div>\n", w)).not.toThrow();
     expect(blocks(w).length).toBe(0);
+  });
+
+  test("removing a trailing block that had no widget mapping doesn't try to remove a null child", () => {
+    const w = md("kept paragraph\n\n<div>raw</div>\n");
+    expect(blocks(w).length).toBe(1);
+    expect(() => md("kept paragraph\n", w)).not.toThrow();
+    expect(blocks(w).length).toBe(1);
   });
 });
 
@@ -572,6 +625,62 @@ A --> B
 
     const syntaxWidget = mdWidget.children[1] as any;
     expect(syntaxWidget.language).toBe("mermaid");
+  });
+});
+
+describe("Markdown GFM alerts (empty body)", () => {
+  test("an alert marker with no following body text renders just the heading", () => {
+    const w = md("> [!NOTE]\n");
+    expect(tags(w)).toEqual(["alert"]);
+    // No body tokens: the quote row is still built, just with no child blocks.
+    const alert = blocks(w)[0];
+    const body = alert.children.find((c: any) => c.tagName === "blockquote_body");
+    expect(body?.children.length ?? 0).toBe(0);
+  });
+});
+
+describe("Markdown scroll wheel handling", () => {
+  test("a scroll_down event handled by the scrollable base short-circuits selection handling", async () => {
+    const lines = Array.from({ length: 40 }, (_, i) => `line ${i}`).join("\n\n");
+    const { app, settle } = await mountApp(<Markdown>{lines}</Markdown>, { cols: 20, rows: 5 });
+    await settle();
+    const w = app.activeScreen.children[0] as MarkdownWidget;
+    const before = w.scrollOffset.y;
+    w.handleScroll({ x: 0, y: 0, type: "scroll_down", button: "none", handled: false });
+    expect(w.scrollOffset.y).toBeGreaterThan(before);
+  });
+});
+
+describe("Markdown mouse selection", () => {
+  test("a press on rendered content anchors a selection via the readonly-selection helper", async () => {
+    const { app, settle } = await mountApp(<Markdown>{"Some paragraph text here."}</Markdown>, {
+      cols: 40,
+      rows: 8,
+    });
+    await settle();
+    const w = app.activeScreen.children[0] as MarkdownWidget;
+    expect(app.selection.active).toBeFalsy();
+    w.handleMouse({ x: 1, y: 0, type: "press", button: "left", clickCount: 1 });
+    expect(app.selection.active).toBeDefined();
+  });
+
+  test("a press on the vertical scrollbar thumb is consumed by the base and skips selection", async () => {
+    const lines = Array.from({ length: 60 }, (_, i) => `line ${i}`).join("\n\n");
+    const { app, settle } = await mountApp(<Markdown>{lines}</Markdown>, { cols: 20, rows: 6 });
+    await settle();
+    const w = app.activeScreen.children[0] as MarkdownWidget;
+    const line = w.getViewportRect().right - 1;
+    const ev: MouseEvent = {
+      x: line,
+      y: 0,
+      type: "press",
+      button: "left",
+      clickCount: 1,
+      handled: false,
+    };
+    w.handleMouse(ev);
+    expect(ev.handled).toBe(true);
+    expect(app.selection.active).toBeFalsy();
   });
 });
 
