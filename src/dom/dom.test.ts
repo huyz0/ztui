@@ -352,6 +352,169 @@ describe("DOM and layout resolution", () => {
     expect(top2.region.y + top2.region.height).toBe(20);
   });
 
+  test("DockLayout skips invisible, absolute, and non-Widget children", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+
+    const hidden = new Widget("box");
+    hidden.style.dock = "top";
+    hidden.style.height = 3;
+    hidden.visible = false;
+
+    const absolute = new Widget("box");
+    absolute.style.dock = "left";
+    absolute.style.width = 3;
+    absolute.style.position = "absolute";
+
+    const textNode = new TextNode("hello");
+
+    const fill = new Widget("box");
+
+    parent.appendChild(hidden);
+    parent.appendChild(absolute);
+    parent.appendChild(textNode);
+    parent.appendChild(fill);
+
+    new DockLayout().resolve(parent);
+
+    // Neither the invisible nor the absolutely-positioned dock child should
+    // have claimed any space from `remaining` — the fill child gets the
+    // whole rect.
+    expect(fill.region.width).toBe(10);
+    expect(fill.region.height).toBe(10);
+  });
+
+  test("DockLayout resolves left/right docks with fixed widths and auto (measured) widths", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 10));
+
+    const left = new Widget("box");
+    left.style.dock = "left";
+    left.style.width = 4;
+
+    const right = new Widget("button"); // auto width -> falls back to measuredWidth
+    right.style.dock = "right";
+
+    parent.appendChild(left);
+    parent.appendChild(right);
+
+    new DockLayout().resolve(parent);
+
+    expect(left.region.x).toBe(0);
+    expect(left.region.width).toBe(4);
+    // The auto-width right dock claims its measured width from the right edge.
+    expect(right.region.x).toBe(20 - right.measuredWidth);
+    expect(right.region.width).toBe(right.measuredWidth);
+  });
+
+  test("DockLayout resolves top/bottom docks with auto (measured) heights", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(10, 10));
+
+    const top = new Widget("button"); // auto height -> falls back to measuredHeight
+    top.style.dock = "top";
+
+    const bottom = new Widget("button");
+    bottom.style.dock = "bottom";
+
+    parent.appendChild(top);
+    parent.appendChild(bottom);
+
+    new DockLayout().resolve(parent);
+
+    expect(top.region.y).toBe(0);
+    expect(top.region.height).toBe(top.measuredHeight);
+    expect(bottom.region.y).toBe(10 - bottom.measuredHeight);
+    expect(bottom.region.height).toBe(bottom.measuredHeight);
+  });
+
+  test("DockLayout resolves left dock with an auto (measured) width", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 10));
+
+    const left = new Widget("button"); // auto width -> falls back to measuredWidth
+    left.style.dock = "left";
+
+    parent.appendChild(left);
+
+    new DockLayout().resolve(parent);
+
+    expect(left.region.x).toBe(0);
+    expect(left.region.width).toBe(left.measuredWidth);
+  });
+
+  test("DockLayout treats an explicit 'auto' height/width the same as unset", () => {
+    // Exercises the `=== "auto" || === undefined` check's first operand
+    // (the tests above only left the property unset, hitting the second).
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 10));
+
+    const bottom = new Widget("button");
+    bottom.style.dock = "bottom";
+    bottom.style.height = "auto";
+
+    const right = new Widget("button");
+    right.style.dock = "right";
+    right.style.width = "auto";
+
+    parent.appendChild(bottom);
+    parent.appendChild(right);
+
+    new DockLayout().resolve(parent);
+
+    expect(bottom.region.height).toBe(bottom.measuredHeight);
+    expect(right.region.width).toBe(right.measuredWidth);
+  });
+
+  test("DockLayout falls back to remaining space for percentage/fr bottom and right docks", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 20));
+
+    const bottom = new Widget("box");
+    bottom.style.dock = "bottom";
+    bottom.style.height = "1fr";
+
+    const right = new Widget("box");
+    right.style.dock = "right";
+    right.style.width = "1fr";
+
+    parent.appendChild(bottom);
+    parent.appendChild(right);
+
+    new DockLayout().resolve(parent);
+
+    // Non-numeric dimension results fall back to claiming all of `remaining`.
+    expect(bottom.region.height).toBe(20);
+    expect(right.region.width).toBe(20);
+  });
+
+  test("DockLayout falls back to remaining space for percentage/fr dock dimensions", () => {
+    const parent = new Widget("view");
+    parent.region = new Region(Offset.ORIGIN, new Size(20, 20));
+
+    const top = new Widget("box");
+    top.style.dock = "top";
+    top.style.height = "1fr"; // parseDimension returns {fr}, not a number
+
+    const left = new Widget("box");
+    left.style.dock = "left";
+    left.style.width = "1fr";
+
+    parent.appendChild(top);
+    parent.appendChild(left);
+
+    new DockLayout().resolve(parent);
+
+    // Non-numeric dimension results (fr weights) fall back to claiming all of
+    // `remaining` rather than being treated as a concrete size.
+    expect(top.region.height).toBe(20);
+    expect(top.region.width).toBe(20);
+    // `left`'s fr width also falls back to remaining.width (20), but no
+    // vertical space is left after `top` consumed the full rect.
+    expect(left.region.width).toBe(20);
+    expect(left.region.height).toBe(0);
+  });
+
   test("DOM tree insertBefore and removeChild", () => {
     const parent = new DOMNode("view");
     const child1 = new DOMNode("button");
