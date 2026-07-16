@@ -101,6 +101,131 @@ describe("ButtonGroup", () => {
     expect(t.screen.focusedWidget).toBe(b);
   });
 
+  test("an unrelated key is ignored and left unhandled", async () => {
+    const t = await mountApp(
+      <ButtonGroup>
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const [a] = buttons(t);
+    t.screen.focusWidget(a);
+    const g = group(t);
+    const ev = { name: "tab", key: "tab" } as never;
+    g.handleKey(ev);
+    expect((ev as any).handled).toBeFalsy();
+    expect(t.screen.focusedWidget).toBe(a);
+  });
+
+  test("does not wrap past the end when wrap is false", async () => {
+    const t = await mountApp(
+      <ButtonGroup wrap={false}>
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const [, b] = buttons(t);
+    t.screen.focusWidget(b);
+    const g = group(t);
+    const ev = { name: "right", key: "right" } as never;
+    g.handleKey(ev);
+    expect((ev as any).handled).toBe(true);
+    expect(t.screen.focusedWidget).toBe(b); // stayed put, no wrap to a
+  });
+
+  test("clicking outside any button is a no-op", async () => {
+    const t = await mountApp(
+      <ButtonGroup>
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const [a] = buttons(t);
+    t.screen.focusWidget(a);
+    // Click well outside the group's bounds — no button region contains it.
+    t.driver.emit("mouse", { type: "press", button: "left", x: 39, y: 7 });
+    await t.settle();
+    expect(t.screen.focusedWidget).toBe(a);
+  });
+
+  test("Home/End jump to the first/last enabled button", async () => {
+    const t = await mountApp(
+      <ButtonGroup>
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+        <Button id="c">C</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const [a, , c] = buttons(t);
+    t.screen.focusWidget(a);
+    const g = group(t);
+    g.handleKey({ name: "end", key: "end" } as never);
+    expect(t.screen.focusedWidget).toBe(c);
+    g.handleKey({ name: "home", key: "home" } as never);
+    expect(t.screen.focusedWidget).toBe(a);
+  });
+
+  test("handleKey falls back to `key` when `name` is absent", async () => {
+    const t = await mountApp(
+      <ButtonGroup>
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const [a, b] = buttons(t);
+    t.screen.focusWidget(a);
+    const g = group(t);
+    g.handleKey({ key: "right" } as never);
+    expect(t.screen.focusedWidget).toBe(b);
+  });
+
+  test("handleKey is a no-op when no buttons are enabled", async () => {
+    const t = await mountApp(
+      <ButtonGroup>
+        <Button id="a" disabled>
+          A
+        </Button>
+        <Button id="b" disabled>
+          B
+        </Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const g = group(t);
+    // Nothing focused, no enabled buttons — should return without throwing.
+    expect(() => g.handleKey({ name: "right", key: "right" } as never)).not.toThrow();
+  });
+
+  test("handleKey with nothing focused falls back to the stored active index", async () => {
+    const t = await mountApp(
+      <ButtonGroup>
+        <Button id="a">A</Button>
+        <Button id="b">B</Button>
+        <Button id="c">C</Button>
+      </ButtonGroup>,
+      OPTS,
+    );
+    await t.settle();
+    const [, , c] = buttons(t);
+    const g = group(t);
+    // No widget is focused at all, so `idx` must fall back to `activeIndex` (0).
+    expect(t.screen.focusedWidget).toBeFalsy();
+    g.handleKey({ name: "right", key: "right" } as never);
+    const focused = t.screen.focusedWidget;
+    expect(focused).not.toBe(c);
+  });
+
   test("Enter on a focused button fires its onClick natively", async () => {
     let clicked = "";
     const t = await mountApp(
