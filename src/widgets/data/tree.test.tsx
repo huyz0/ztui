@@ -1,8 +1,12 @@
 import { describe, expect, test } from "vitest";
 import type { TreeNode } from "../../core.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { Tree } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { findWidgetByType, mountApp, waitFor } from "../../test/harness.tsx";
-import type { TreeWidget } from "./tree.ts";
+import { TreeWidget } from "./tree.ts";
 
 const workspace: TreeNode[] = [
   {
@@ -431,6 +435,127 @@ describe("Tree accessibility", () => {
     tree.selectedId = "src";
     node = tree.getAccessibleNode();
     expect(node?.state).toContain("expanded");
+  });
+});
+
+describe("Tree — additional branch coverage", () => {
+  test("setExpanded is a no-op when the requested state already matches", async () => {
+    let calls = 0;
+    const t = await mountApp(
+      <Tree data={workspace} onExpandedChange={() => calls++} style={{ height: "100%" }} />,
+    );
+    const tree = findTree(t);
+    tree.setExpanded("src", false); // already collapsed by default
+    expect(calls).toBe(0);
+  });
+
+  test("getAccessibleNode returns null when the tree isn't visible", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    tree.visible = false;
+    expect(tree.getAccessibleNode()).toBeNull();
+  });
+
+  test("getAccessibleNode reports focused/disabled state and singular item count", async () => {
+    const single: TreeNode[] = [{ id: "only", label: "only" }];
+    const t = await mountApp(<Tree data={single} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    t.screen.focusWidget(tree);
+    expect(tree.getAccessibleNode()?.state).toContain("focused");
+    expect(tree.getAccessibleNode()?.state).toContain("1 item");
+  });
+
+  test("getAccessibleNode reports the disabled state", async () => {
+    const t = await mountApp(<Tree data={workspace} disabled style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    expect(tree.getAccessibleNode()?.state).toContain("disabled");
+  });
+
+  test("getAccessibleNode reports 'collapsed' for an expandable node that's not expanded", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    tree.selectedId = "src";
+    expect(tree.getAccessibleNode()?.state).toContain("collapsed");
+  });
+
+  test("selectIndex ignores an out-of-range index", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    (tree as any).selectIndex(999);
+    expect(tree.selectedId).toBeNull();
+  });
+
+  test("moveSelection before any layout falls back to a viewport height of 1", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    (tree as any).lastVisibleRows = 0;
+    tree.handleKey({ name: "down" } as any);
+    expect(tree.selectedId).not.toBeNull();
+  });
+
+  test("handleKey/handleScroll/handleMouse ignore already-handled events", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    tree.handleKey({ name: "down", handled: true } as any);
+    expect(tree.selectedId).toBeNull();
+    const before = (tree as any).scrollTop;
+    tree.handleScroll({ type: "scroll_down", handled: true } as any);
+    expect((tree as any).scrollTop).toBe(before);
+    tree.handleMouse({ type: "press", button: "left", x: 0, y: 0, handled: true } as any);
+    expect(tree.selectedId).toBeNull();
+  });
+
+  test("handleMouse ignores non-press/non-left events and clicks outside the content rect", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    const c = tree.getContentRect();
+    tree.handleMouse({ type: "move", button: "left", x: c.x, y: c.y } as any);
+    expect(tree.selectedId).toBeNull();
+    tree.handleMouse({ type: "press", button: "left", x: c.x - 5, y: c.y } as any);
+    expect(tree.selectedId).toBeNull();
+    tree.handleMouse({ type: "press", button: "left", x: c.x, y: c.y - 5 } as any);
+    expect(tree.selectedId).toBeNull();
+  });
+
+  test("clicking past the last row does nothing", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: 20 }} />, {
+      screenStyle: { flexDirection: "column" },
+    });
+    const tree = findTree(t);
+    const c = tree.getContentRect();
+    tree.handleMouse({ type: "press", button: "left", x: c.x, y: c.bottom - 1 } as any);
+    expect(tree.selectedId).toBeNull();
+  });
+
+  test("moveSelection is a no-op on an empty tree", async () => {
+    const t = await mountApp(<Tree data={[]} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    t.screen.focusWidget(tree);
+    expect(() => tree.handleKey({ name: "down" } as any)).not.toThrow();
+    expect(tree.selectedId).toBeNull();
+  });
+
+  test("a zero-size tree's render bails out cleanly", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ width: 0, height: 0 }} />);
+    expect(() => t.app.queueRender()).not.toThrow();
+    await expect(t.settle()).resolves.not.toThrow();
+  });
+
+  test("an invisible tree's render() is a no-op", async () => {
+    const t = await mountApp(<Tree data={workspace} style={{ height: "100%" }} />);
+    const tree = findTree(t);
+    tree.visible = false;
+    expect(() => tree.render(t.buffer)).not.toThrow();
+  });
+
+  test("resolves selected-row and guide colors to plain fallbacks when no App is running", () => {
+    const tree = new TreeWidget();
+    tree.data = workspace;
+    tree.showGuides = true;
+    tree.selectedId = "src";
+    tree.region = new Region(new Offset(0, 0), new Size(20, 5));
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => tree.render(buffer)).not.toThrow();
   });
 });
 
