@@ -167,6 +167,24 @@ describe("subtree-damage: geometry-verified queueRepaintWidget", () => {
     expect(f?.widgetsRendered).toBeLessThan(10); // not the whole 11-widget tree
   });
 
+  test("a dirty widget detached from the tree before its frame runs keeps the frame full", async () => {
+    // Regression net for scopedRepaintDowngrade's isInActiveTree filter: a
+    // widget queued via queueRepaintWidget but detached (or collapsed to zero
+    // height) before the scheduled frame actually runs must not be trusted for
+    // a scoped region — with no qualifying widget left, the frame must stay
+    // full rather than downgrade to an empty/bogus band.
+    const t = await mountApp(tree, { cols: 30, rows: 40 });
+    await t.settle();
+    const w = findWidgets(t.app.activeScreen, "label")[10];
+
+    t.app.queueRepaintWidget(w, "test");
+    w.parent = null; // detach before the microtask-scheduled frame runs
+    await flush();
+
+    const f = t.app.getLastFrame();
+    expect(f?.full).toBe(true); // no dirty widget passed the filter -> stays full
+  });
+
   test("a mouse press on a fixed-size control scopes end-to-end (focus + handle)", async () => {
     const t = await mountApp(
       <VBox>
@@ -193,5 +211,35 @@ describe("subtree-damage: geometry-verified queueRepaintWidget", () => {
     const f = t.app.getLastFrame();
     expect(f?.full).toBe(false);
     expect(f?.widgetsRendered).toBeLessThan(10); // not the whole 11-widget tree
+  });
+});
+
+describe("subtree-damage: scopedRepaintDowngrade ignores stale/collapsed dirty widgets", () => {
+  const rows = Array.from({ length: 10 }, (_, i) => `row ${i}`);
+  const tree = (
+    <VBox>
+      {rows.map((r) => (
+        <Label key={r}>{r}</Label>
+      ))}
+    </VBox>
+  );
+
+  test("a dirty widget detached from the tree before the frame runs is excluded from the downgrade band", async () => {
+    const t = await mountApp(tree, { cols: 30, rows: 12 });
+    await t.settle();
+    const [target, other] = findWidgets(t.app.activeScreen, "label");
+
+    t.app.queueRepaintWidget(target, "test:stale");
+    t.app.queueRepaintWidget(other, "test:live");
+    // Detach `target` synchronously, before the scheduled microtask frame runs —
+    // isInActiveTree(target) must now read false, so only `other`'s region
+    // contributes to the downgrade band.
+    target.parent = null;
+    await flush();
+
+    const f = t.app.getLastFrame();
+    expect(f?.full).toBe(false); // `other` alone still qualifies for a scoped downgrade
+    expect(f?.damageY0).toBe(other.region.y);
+    expect(f?.damageY1).toBe(other.region.bottom);
   });
 });

@@ -184,6 +184,13 @@ describe("pointer-shape on hover (OSC 22)", () => {
     expect(new App(new MockDriver(), { pointerShapes: false }).pointerShapes).toBe(false);
   });
 
+  test("setting pointerShapes to its current value is a no-op", () => {
+    const app = new App(new MockDriver());
+    expect(app.pointerShapes).toBe(true);
+    app.pointerShapes = true; // already true: must not throw or reset the pointer
+    expect(app.pointerShapes).toBe(true);
+  });
+
   test("emits nothing when the terminal lacks pointer-shape support", async () => {
     const t = await mountApp(
       <Box id="link" style={{ cursor: "pointer", width: 20, height: 4 }} />,

@@ -175,6 +175,34 @@ describe("Dialog", () => {
   });
 });
 
+describe("App frame pipeline with an open overlay", () => {
+  test("a scoped repaint with an overlay open skips restyle and layout for the overlay pass", async () => {
+    // An open overlay forces the *whole* frame full (arbitrary rows can be
+    // touched), but queueRepaint(region) alone never sets needsLayout or
+    // touches the css resolver — so layoutOverlaysPhase's own restyle/doLayout
+    // checks must both come out false here, reusing the overlay's prior style
+    // and layout instead of redoing them.
+    function App() {
+      return (
+        <Dialog open>
+          <Label>Hi</Label>
+        </Dialog>
+      );
+    }
+    const t = await mountApp(<App />);
+    await t.settle();
+    expect(t.screen.overlays.length).toBeGreaterThan(0);
+
+    t.app.queueRepaint({ y: 0, bottom: 1 }, "test:scoped-with-overlay");
+    await t.settle();
+
+    const f = t.app.getLastFrame();
+    expect(f?.relayout).toBe(false); // doLayout stayed false
+    expect(f?.restyle).toBe(false); // and so did restyle
+    expect(f?.full).toBe(true); // yet the overlay still forced the frame full
+  });
+});
+
 describe("StickyPanel", () => {
   test("does not steal focus and lets keys reach the focused control", async () => {
     const typed: string[] = [];
