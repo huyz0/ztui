@@ -20,4 +20,11 @@ describe("fitCell", () => {
   test("collapses to a single ellipsis at width 1", () => {
     expect(fitCell("long", 1)).toBe("…");
   });
+
+  test("pads the truncated output when a wide char forces an early break", () => {
+    // The trailing double-width char can't fit within the truncation limit,
+    // so the loop stops early and the truncated "aa…" (width 3) falls short
+    // of the target width 4, requiring a trailing pad space.
+    expect(fitCell("aa漢x", 4)).toBe("aa… ");
+  });
 });
