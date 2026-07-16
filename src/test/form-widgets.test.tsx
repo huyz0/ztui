@@ -13,6 +13,7 @@ import {
   VBox,
 } from "../react.ts";
 import { SwitchWidget } from "../widgets/controls/switch.ts";
+import { ToggleButtonWidget } from "../widgets/controls/toggle-button.ts";
 import { mountApp } from "./harness.tsx";
 
 describe("ZTUI Form Widgets Suite", () => {
@@ -800,5 +801,94 @@ describe("ZTUI Form Widgets Suite", () => {
     const sw = new SwitchWidget();
     expect(() => sw.handleMouse({ type: "press", button: "left" } as any)).not.toThrow();
     expect(sw.active).toBe(true);
+  });
+
+  test("ToggleButton: unmatched key and non-left/non-press mouse events don't toggle", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <ToggleButton id="tgl" label="Beta" />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const tgl = findById<ToggleButtonWidget>("tgl") as ToggleButtonWidget;
+
+    tgl.onKey?.({ key: "tab" } as any);
+    expect(tgl.active).toBe(false);
+
+    tgl.handleMouse({ type: "press", button: "right" } as any);
+    expect(tgl.active).toBe(false);
+
+    tgl.handleMouse({ type: "release", button: "left" } as any);
+    expect(tgl.active).toBe(false);
+
+    const handledEv: any = { type: "press", button: "left", handled: true };
+    tgl.handleMouse(handledEv);
+    expect(tgl.active).toBe(false);
+  });
+
+  test("ToggleButton: mouse/key toggles repaint via App.instance when unattached", () => {
+    const tgl = new ToggleButtonWidget();
+    expect(() => tgl.handleMouse({ type: "press", button: "left" } as any)).not.toThrow();
+    expect(tgl.active).toBe(true);
+
+    expect(() => tgl.onKey?.({ name: "space" } as any)).not.toThrow();
+    expect(tgl.active).toBe(false);
+  });
+
+  test("ToggleButton: measure() handles explicit numeric and non-numeric width/height", async () => {
+    const { findById } = await mountApp(
+      <VBox>
+        <ToggleButton id="tgl-pct" label="A" style={{ width: "50%", height: "50%" }} />
+        <ToggleButton id="tgl-fr" label="B" style={{ width: "1fr", height: "1fr" }} />
+      </VBox>,
+      { cols: 40, rows: 10 },
+    );
+    const pct = findById<ToggleButtonWidget>("tgl-pct") as ToggleButtonWidget;
+    const fr = findById<ToggleButtonWidget>("tgl-fr") as ToggleButtonWidget;
+    // "50%" resolves to a concrete number; "1fr" resolves to a weight object,
+    // exercising the typeof-guard's false (fallback to intrinsic size) branch.
+    expect(pct.measuredWidth).toBeGreaterThan(0);
+    expect(fr.measuredWidth).toBeGreaterThan(0);
+    expect(fr.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("ToggleButton: measure() falls back to intrinsic size before layout assigns computed width/height", () => {
+    const tgl = new ToggleButtonWidget();
+    tgl.label = "Hi";
+    tgl.measure(80, 24);
+    expect(tgl.measuredWidth).toBe(4 + "Hi".length);
+    expect(tgl.measuredHeight).toBe(1);
+  });
+
+  test("ToggleButton: render exercises active/focused color branches and the no-App-instance fallback", async () => {
+    const { findById, screen, buffer } = await mountApp(
+      <VBox>
+        <ToggleButton id="tgl" label="Beta" active />
+        <ToggleButton id="tgl-disabled" label="Off" disabled />
+      </VBox>,
+      { cols: 30, rows: 5 },
+    );
+    const tgl = findById<ToggleButtonWidget>("tgl") as ToggleButtonWidget;
+    const tglDisabled = findById<ToggleButtonWidget>("tgl-disabled") as ToggleButtonWidget;
+
+    // Active (not focused): fg/bg take the "$primary"/"$selectionBg" branches.
+    expect(() => tgl.render(buffer)).not.toThrow();
+    // Focused: fg/bg take "$background"/"$focus".
+    screen.focusWidget(tgl);
+    expect(() => tgl.render(buffer)).not.toThrow();
+    // Disabled: fg takes "$disabled".
+    expect(tglDisabled.isDisabled()).toBe(true);
+    expect(() => tglDisabled.render(buffer)).not.toThrow();
+
+    // With no live App instance, render() must skip resolving fg/bg through
+    // the cssResolver (the `if (App.instance)` false branch) instead of
+    // throwing, leaving fg/bg as their raw token/color strings.
+    const savedInstance = App.instance;
+    App.instance = null;
+    try {
+      expect(() => tgl.render(buffer)).not.toThrow();
+    } finally {
+      App.instance = savedInstance;
+    }
   });
 });
