@@ -1,6 +1,11 @@
 import { createElement } from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { FileIcon } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
+import { iconRegistry } from "../../render/icon-registry.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { FileIconWidget } from "./file-icon.ts";
 
@@ -64,6 +69,64 @@ describe("FileIconWidget rendering", () => {
     await t.settle();
     const client = (w as any).getClientRect();
     expect(t.cellAt(client.x, client.y).style.color).toBe("#ff0000");
+  });
+});
+
+describe("FileIconWidget render guards", () => {
+  test("invisible widget skips rendering entirely", async () => {
+    const t = await mountApp(fileIconEl({ id: "ic", filename: "main.ts", visible: false }));
+    const w = t.findById<FileIconWidget>("ic")!;
+    await t.settle();
+    const client = (w as any).getClientRect();
+    expect(t.cellAt(client.x, client.y).icon).toBeUndefined();
+  });
+
+  test("a box too small to fit the icon (width < 2) skips writing cells", async () => {
+    const t = await mountApp(fileIconEl({ id: "ic", filename: "main.ts" }));
+    const w = t.findById<FileIconWidget>("ic")!;
+    await t.settle();
+    // Force a sub-2-column client rect to hit the early-return guard directly.
+    (w as any).region = new Region(new Offset(0, 0), new Size(1, 1));
+    t.buffer.cells[0][0].icon = undefined;
+    w.render(t.buffer);
+    expect(t.cellAt(0, 0).icon).toBeUndefined();
+  });
+
+  test("explicit background bypasses the theme-default background fallback", async () => {
+    const t = await mountApp(
+      fileIconEl({ id: "ic", filename: "main.ts", style: { background: "#00ff00" } }),
+    );
+    const w = t.findById<FileIconWidget>("ic")!;
+    await t.settle();
+    const client = (w as any).getClientRect();
+    expect(t.cellAt(client.x, client.y).style.background).toBe("#00ff00");
+  });
+
+  test("falls back to a two-space placeholder when the resolved icon isn't registered", async () => {
+    const getSpy = vi.spyOn(iconRegistry, "get").mockReturnValue(undefined);
+    try {
+      const t = await mountApp(fileIconEl({ id: "ic", filename: "main.ts" }));
+      const w = t.findById<FileIconWidget>("ic")!;
+      await t.settle();
+      const client = (w as any).getClientRect();
+      expect(t.cellAt(client.x, client.y).char).toBe("  ");
+    } finally {
+      getSpy.mockRestore();
+    }
+  });
+
+  test("does not write a wide-continuation cell when the icon sits at the last column", async () => {
+    const t = await mountApp(fileIconEl({ id: "ic", filename: "main.ts" }));
+    const w = t.findById<FileIconWidget>("ic")!;
+    await t.settle();
+    // Render into a 2-wide buffer with the widget flush against the right edge
+    // so client.x + 1 === buffer.width and the wide-continuation write is skipped.
+    (w as any).region = new Region(new Offset(1, 0), new Size(2, 1));
+    const buf = new ScreenBuffer(2, 1);
+    w.render(buf);
+    const client = (w as any).getClientRect();
+    expect(client.x + 1).toBe(buf.width);
+    expect(buf.cells[0][client.x].icon).toBeTruthy();
   });
 });
 
