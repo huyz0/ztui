@@ -111,6 +111,53 @@ describe("JSONUIWidget", () => {
     expect(widget1.children.length).toBe(0);
   });
 
+  test("defaults absent margin/padding sides to 0 and skips a click with no onAction handler", async () => {
+    const json = `{
+      "type": "ztui-box",
+      "id": "container",
+      "style": { "margin": {"right": 3, "left": 4}, "padding": {"right": 1, "left": 1} },
+      "children": [
+        {"type": "not-a-real-widget-tag"},
+        {"no-type-field": true},
+        {"type": "ztui-button", "id": "btn", "text": "Go", "action": "go"},
+        {"type": "ztui-label"}
+      ]
+    }`;
+
+    const { app, settle } = await mountApp(<JSONUI>{json}</JSONUI>, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
+    });
+    await settle();
+
+    const box = (app.activeScreen.children[0] as any).children[0];
+    expect(box.margin.top).toBe(0);
+    expect(box.margin.bottom).toBe(0);
+    expect(box.margin.right).toBe(3);
+    // The unknown tag and the type-less object yield no widget, so only the
+    // button and the id-less label are appended.
+    expect(box.children.length).toBe(2);
+
+    const btn = box.children[0];
+    expect(btn.id).toBe("btn");
+    // The trailing label has no "id" field, so its widget.id is untouched.
+    expect(box.children[1].id).toBe("");
+    // No onAction was passed to <JSONUI>, so the click handler is a no-op.
+    expect(() => btn.onClick({ x: 0, y: 0 })).not.toThrow();
+  });
+
+  test("a JSON primitive (not an object) parses but builds no widget tree", async () => {
+    const { app, settle } = await mountApp(<JSONUI>{"42"}</JSONUI>, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
+    });
+    await settle();
+    const jsonuiWidget = app.activeScreen.children[0] as any;
+    expect(jsonuiWidget.children.length).toBe(0);
+  });
+
   test("DOM API (appendChild/insertBefore/removeChild) can be driven directly", () => {
     const jsonui = new JSONUIWidget();
     const txt3 = new TextNode("C");

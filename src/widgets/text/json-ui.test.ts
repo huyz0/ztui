@@ -32,4 +32,10 @@ describe("parsePartialJson", () => {
   test("returns null for input that can't be repaired into JSON", () => {
     expect(parsePartialJson("not json at all")).toBeNull();
   });
+
+  test("pops the array off the stack on a properly matched closing bracket", () => {
+    // Only the outer object is left unclosed; the `]` here matches the `[`
+    // pushed for the array, exercising the matching (not mismatched) branch.
+    expect(parsePartialJson('{"items":[1,2]')).toEqual({ items: [1, 2] });
+  });
 });
