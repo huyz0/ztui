@@ -71,6 +71,43 @@ describe("ChatBubble", () => {
     expect(ab.borderRight).toBeFalsy();
   });
 
+  test("background={null} suppresses the role's default tint", async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="assistant" background={null}>
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const cs = (t.findById<Widget>("b") as Widget).computedStyle;
+    expect(cs.background).toBeFalsy();
+  });
+
+  test("an explicit background overrides the role's default tint", async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="assistant" background="#123456">
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const cs = (t.findById<Widget>("b") as Widget).computedStyle;
+    expect(cs.background).toBe("#123456");
+  });
+
+  test("an icon with no author still renders the header row (icon only)", async () => {
+    const t = await mountApp(
+      <ChatBubble icon={<Label>{">"}</Label>}>
+        <Label>body</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain(">");
+    expect(text).toContain("body");
+  });
+
   test("accent override replaces only the named facet", async () => {
     const t = await mountApp(
       <ChatBubble id="b" role="user" accent={{ side: "left" }} author="You">
