@@ -140,6 +140,33 @@ describe("ZTUI Form Widgets Suite", () => {
     expect(sliderVal).toBe(100);
   });
 
+  test("Slider renders in a disabled and a zero-range state without breaking", async () => {
+    // range===0 (min===max) must not divide by zero into a NaN knob position,
+    // and a disabled slider takes the disabled-color branch instead of the
+    // focused/primary ones.
+    const t = await mountApp(<Slider id="s3" value={5} min={5} max={5} disabled />, {
+      cols: 30,
+      rows: 5,
+    });
+    await t.settle();
+    const s = t.findById("s3");
+    expect(s.isDisabled()).toBe(true);
+    expect(t.text().length).toBeGreaterThan(0);
+  });
+
+  test("Slider measure() falls back to intrinsic size for a non-numeric width/height", async () => {
+    // An `fr`-unit width/height resolves to a non-number from parseDimension,
+    // so measure() must fall back to the intrinsic 15/1 sizing instead.
+    const { findById } = await mountApp(
+      <Slider id="s4" value={0} style={{ width: "1fr", height: "1fr" }} />,
+      { cols: 30, rows: 5 },
+    );
+    const s = findById("s4");
+    s.measure(30, 5);
+    expect(s.measuredWidth).toBeGreaterThan(0);
+    expect(s.measuredHeight).toBeGreaterThan(0);
+  });
+
   test("Select dropdown open/close and keyboard choices", async () => {
     let selectVal = "";
     const { screen, findById } = await mountApp(
