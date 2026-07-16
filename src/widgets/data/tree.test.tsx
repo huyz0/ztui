@@ -180,6 +180,53 @@ describe("Tree scrolling & paging", () => {
     await t.settle();
     expect(t.text()).not.toContain("item-0");
   });
+
+  test("dragging the scrollbar thumb continues scrolling; release ends the drag", async () => {
+    const t = await mountApp(
+      <Tree data={bigTree(1000)} expanded={["root"]} style={{ height: 12 }} />,
+      { screenStyle: { flexDirection: "column" } },
+    );
+    const tree = findTree(t);
+    const c = tree.getContentRect();
+    tree.handleMouse({
+      type: "press",
+      button: "left",
+      x: c.right - 1,
+      y: c.y,
+    } as any);
+    await t.settle();
+    expect(t.text()).toContain("item-0");
+
+    const ev = {
+      type: "drag",
+      button: "left",
+      x: c.right - 1,
+      y: c.bottom - 1,
+      handled: false,
+    } as any;
+    tree.handleMouse(ev);
+    await t.settle();
+    expect(ev.handled).toBe(true);
+    expect(t.text()).not.toContain("item-0"); // dragged the thumb further down
+
+    const releaseEv = { type: "release", button: "left", handled: false } as any;
+    tree.handleMouse(releaseEv);
+    expect(releaseEv.handled).toBe(true);
+    expect((tree as unknown as { draggingScrollbar: boolean }).draggingScrollbar).toBe(false);
+  });
+
+  test("cursorShapeAt reverts to the default arrow over the scrollbar gutter", async () => {
+    const t = await mountApp(
+      <Tree data={bigTree(1000)} expanded={["root"]} style={{ height: 12 }} />,
+      { screenStyle: { flexDirection: "column" } },
+    );
+    const tree = findTree(t);
+    const c = tree.getContentRect();
+    // Over the scrollbar column: no pointer cursor (falls back to default).
+    expect(tree.cursorShapeAt(c.right - 1, c.y)).toBeNull();
+    // Elsewhere in the content area: the widget's own `pointer` cursor.
+    expect(tree.cursorShapeAt(c.x, c.y)).toBe("pointer");
+  });
 });
 
 describe("Tree keyboard navigation", () => {
