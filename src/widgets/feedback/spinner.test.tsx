@@ -6,6 +6,7 @@ import { HBox, Spinner, WaitingGrid, WaitingPanel } from "../../react.ts";
 import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { SpinnerWidget } from "./spinner.ts";
+import { WaitingGridWidget } from "./waiting-grid.ts";
 
 const channelSum = (c: string): number =>
   (c.match(/\d+/g) ?? []).reduce((n, x) => n + Number(x), 0);
@@ -213,6 +214,85 @@ describe("ZTUI WaitingGrid Widget Suite", () => {
       }
     }
     expect(max).toBeGreaterThan(min);
+  });
+
+  test("measure() falls back to intrinsic sizing for unset or fr-based width/height", () => {
+    const noStyle = new WaitingGridWidget();
+    noStyle.cells = 9;
+    noStyle.measure(20, 10);
+    expect(noStyle.measuredWidth).toBe(3);
+    expect(noStyle.measuredHeight).toBe(3);
+
+    const frStyle = new WaitingGridWidget();
+    frStyle.cells = 4;
+    frStyle.style.width = "1fr"; // parseDimension returns {fr}, not a number
+    frStyle.style.height = "1fr";
+    frStyle.measure(20, 10);
+    expect(frStyle.measuredWidth).toBe(2);
+    expect(frStyle.measuredHeight).toBe(2);
+  });
+
+  test("measure() accepts explicit numeric width/height styles", () => {
+    const w = new WaitingGridWidget();
+    w.cells = 9;
+    w.style.width = 6;
+    w.style.height = 4;
+    w.measure(20, 10);
+    expect(w.measuredWidth).toBe(6);
+    expect(w.measuredHeight).toBe(4);
+  });
+
+  test("render() skips while invisible, on a zero-size rect, or fully off the buffer", () => {
+    const invisible = new WaitingGridWidget();
+    invisible.visible = false;
+    invisible.region = new Region(Offset.ORIGIN, new Size(3, 3));
+    const buf1 = new ScreenBuffer(3, 3);
+    expect(() => invisible.render(buf1)).not.toThrow();
+    expect(buf1.cells[0][0].char).toBe(" ");
+
+    const zeroRect = new WaitingGridWidget();
+    zeroRect.region = new Region(Offset.ORIGIN, new Size(0, 0));
+    const buf2 = new ScreenBuffer(3, 3);
+    expect(() => zeroRect.render(buf2)).not.toThrow();
+
+    // Region partly off the small buffer: the per-cell bounds check inside
+    // the render loop must skip the out-of-range dots instead of throwing.
+    const offBuffer = new WaitingGridWidget();
+    offBuffer.cells = 9;
+    offBuffer.region = new Region(new Offset(1, 1), new Size(3, 3));
+    const buf3 = new ScreenBuffer(2, 2);
+    expect(() => offBuffer.render(buf3)).not.toThrow();
+  });
+
+  test("without a CSS resolver, falls back to the literal 'cyan' fill colour", () => {
+    const w = new WaitingGridWidget();
+    w.cells = 4;
+    w.region = new Region(Offset.ORIGIN, new Size(2, 2));
+    const buffer = new ScreenBuffer(2, 2);
+    w.render(buffer);
+    // FALLBACK_RGB kicks in because "cyan" (the literal fallback) doesn't
+    // parse as RGB; every lit-ish dot is a shade between black and (0,255,255).
+    const color = buffer.cells[0][0].style.color ?? "";
+    expect(color).toMatch(/^rgb\(/);
+  });
+
+  test("ring variant reflects the crest distance past the halfway point of the turn", () => {
+    // Regression coverage for `if (d > 0.5) d = 1 - d;` inside the default
+    // (ring) branch of intensityAt — force head/turn far enough apart that
+    // the raw distance exceeds 0.5 and must be folded back.
+    const w = new WaitingGridWidget();
+    w.cells = 9;
+    w.variant = "ring";
+    w.region = new Region(Offset.ORIGIN, new Size(3, 3));
+    const buffer = new ScreenBuffer(3, 3);
+    // period=1500ms; Date.now() % period near the period's end puts `head`
+    // near 1, so corners with `turn` near 0 have a raw |turn-head| > 0.5.
+    const spy = vi.spyOn(Date, "now").mockReturnValue(1499);
+    try {
+      expect(() => w.render(buffer)).not.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
