@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  Box,
   Button,
   Checkbox,
   FieldError,
@@ -155,6 +156,31 @@ describe("Form widget integration", () => {
     await settle();
     // No targetId → reports on the immediately-preceding Input.
     expect(text()).toContain("Name is required");
+  });
+
+  test("FieldError with no preceding validatable sibling stays collapsed", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <FieldError id="err" />
+      </Form>,
+    );
+    const err = findById<FieldErrorWidget>("err")!;
+    err.measure(40, 10);
+    expect(err.measuredHeight).toBe(0);
+  });
+
+  test("targetId resolves a field nested inside a wrapper, not just a direct child", async () => {
+    const { findById, settle, text } = await mountApp(
+      <Form id="form">
+        <Box>
+          <Input id="a" validators={[required("Nested required")]} validateOn="submit" />
+        </Box>
+        <FieldError id="err" targetId="a" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    expect(text()).toContain("Nested required");
   });
 
   test("FieldError truncates a message wider than its box", async () => {
@@ -358,5 +384,23 @@ describe("ValidationSummary", () => {
     findById<FormWidget>("form")!.validate();
     await settle();
     expect(text()).toContain("A required"); // resolved the form by id across the tree
+  });
+
+  test("binds to a form by id nested several levels deeper than a direct sibling", async () => {
+    const { findById, settle, text } = await mountApp(
+      <VBox>
+        <ValidationSummary id="summary" formId="form" />
+        <Box>
+          <Box>
+            <Form id="form">
+              <Input id="a" validators={[required("Deeply nested required")]} validateOn="submit" />
+            </Form>
+          </Box>
+        </Box>
+      </VBox>,
+    );
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    expect(text()).toContain("Deeply nested required");
   });
 });
