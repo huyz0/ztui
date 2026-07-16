@@ -104,4 +104,52 @@ describe("logger", () => {
     logger.error("x", "dropped");
     expect(read()).toBe("");
   });
+
+  test("serializes a string payload as-is (no quoting)", () => {
+    logger.init();
+    logger.info("net", "hi", "extra-string-payload");
+    expect(read()).toContain("hi extra-string-payload");
+  });
+
+  test("serializes an Error without a stack as `name: message`", () => {
+    logger.init();
+    const err = new Error("no-stack-here");
+    err.stack = undefined;
+    logger.error("net", "boom", err);
+    expect(read()).toContain("Error: no-stack-here");
+  });
+
+  test("falls back to String(data) when a payload can't be JSON-serialized", () => {
+    logger.init();
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    logger.info("x", "circular", circular);
+    expect(read()).toContain("[object Object]");
+  });
+
+  test("reset() picks up ZTUI_LOG_FILE from the environment", () => {
+    const prevFile = process.env.ZTUI_LOG_FILE;
+    const prevLevel = process.env.ZTUI_LOG_LEVEL;
+    try {
+      process.env.ZTUI_LOG_FILE = logFile;
+      process.env.ZTUI_LOG_LEVEL = "debug";
+      logger.reset();
+      expect(logger.getFilePath()).toBe(logFile);
+      logger.info("env", "from-env-file");
+      expect(read()).toContain("from-env-file");
+    } finally {
+      if (prevFile === undefined) delete process.env.ZTUI_LOG_FILE;
+      else process.env.ZTUI_LOG_FILE = prevFile;
+      if (prevLevel === undefined) delete process.env.ZTUI_LOG_LEVEL;
+      else process.env.ZTUI_LOG_LEVEL = prevLevel;
+    }
+  });
+
+  test("configure({ filePath: '' }) clears the file target and silences the logger", () => {
+    logger.configure({ filePath: "" });
+    expect(logger.getFilePath()).toBeNull();
+    logger.init();
+    logger.error("x", "dropped-by-empty-path");
+    expect(read()).toBe("");
+  });
 });
