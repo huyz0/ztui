@@ -24,6 +24,21 @@ function move(t: Mounted, x: number, y: number): void {
   (t.driver as any).emit("mouse", { x, y, type: "move", button: "none" });
 }
 
+/** Find the (single) CopyButtonWidget mounted under the app's active screen. */
+function findCopyButton(t: Mounted): { onMouseLeave?: (ev: unknown) => void } {
+  function find(w: any): any {
+    if (w.constructor?.name === "CopyButtonWidget") return w;
+    for (const c of w.children ?? []) {
+      const r = find(c);
+      if (r) return r;
+    }
+    return null;
+  }
+  const found = find((t as any).app.activeScreen);
+  if (!found) throw new Error("CopyButtonWidget not found");
+  return found;
+}
+
 describe("copy button", () => {
   test("syntax: a routed click on the glyph copies the raw code", async () => {
     const t = await mountApp(<Syntax language="ts">{"const x = 1;"}</Syntax>);
@@ -62,6 +77,30 @@ describe("copy button", () => {
     const hoverBg = t.cellAt(g.x, g.y).style.background;
     expect(hoverBg).toBeTruthy();
     expect(hoverBg).not.toBe(t.cellAt(g.x - 2, g.y).style.background);
+  });
+
+  test("leaving hover reverts the pill back to the idle background", async () => {
+    const t = await mountApp(
+      <Syntax language="ts" style={{ background: "$surface" }}>
+        {"const x = 1;"}
+      </Syntax>,
+    );
+    await t.settle();
+    const g = glyphAt(t);
+    move(t, g.x, g.y);
+    await t.settle();
+    const hoverBg = t.cellAt(g.x, g.y).style.background;
+    expect(hoverBg).toBeTruthy();
+
+    // Drive onMouseLeave directly (rather than through hit-testing a "move
+    // away" event, which the mock driver may coalesce/skip): it's the same
+    // handler the app's real hover-tracking machinery calls on any hit change.
+    const btn = findCopyButton(t);
+    btn.onMouseLeave?.({} as never);
+    await t.settle();
+    // Back to idle: the glyph blends with its surroundings again, rather than
+    // keeping the raised hover pill.
+    expect(t.cellAt(g.x, g.y).style.background).toBe(t.cellAt(g.x - 2, g.y).style.background);
   });
 
   test("a click away from the glyph does not copy", async () => {
