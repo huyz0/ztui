@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { charWidth, Segment, splitGraphemes, stringWidth } from "./segment.ts";
 
 // User-perceived characters that span multiple code points.
@@ -29,6 +29,29 @@ describe("splitGraphemes", () => {
     // A string that is ASCII except for one non-ASCII char must NOT take the
     // fast path — it still clusters correctly.
     expect(splitGraphemes(`ab${ACCENT}c`)).toEqual(["a", "b", ACCENT, "c"]);
+  });
+
+  describe("without Intl.Segmenter (ancient-runtime fallback)", () => {
+    afterEach(() => {
+      vi.doUnmock("./segment.ts");
+      vi.resetModules();
+    });
+
+    it("falls back to code-point iteration for non-ASCII text", async () => {
+      vi.resetModules();
+      const realSegmenter = Intl.Segmenter;
+      // @ts-expect-error simulating a runtime without Intl.Segmenter
+      delete Intl.Segmenter;
+      try {
+        const fresh = await import("./segment.ts");
+        // The family emoji is 4 code points; without Segmenter it splits on
+        // code points instead of staying one grapheme cluster.
+        expect(fresh.splitGraphemes(FAMILY)).toEqual([...FAMILY]);
+        expect(fresh.splitGraphemes(FAMILY).length).toBeGreaterThan(1);
+      } finally {
+        (Intl as { Segmenter?: typeof Intl.Segmenter }).Segmenter = realSegmenter;
+      }
+    });
   });
 });
 
@@ -100,5 +123,13 @@ describe("Segment.crop", () => {
   it("an inverted (negative-width) crop window also emits no cells", () => {
     const seg = new Segment("あX");
     expect(seg.crop(2, 1).text).toBe("");
+  });
+
+  it("pads a wide glyph that starts before startCell and extends into a non-empty window", () => {
+    // "あ" (width 2) occupies cells [0,2). Cropping [1,3) starts mid-glyph:
+    // the glyph is replaced by a single padding space (cell 1), then "X"
+    // (cell 2) is kept whole.
+    const seg = new Segment("あX");
+    expect(seg.crop(1, 3).text).toBe(" X");
   });
 });
