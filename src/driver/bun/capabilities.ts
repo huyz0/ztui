@@ -100,6 +100,123 @@ export function getBaselineCapabilities(): TerminalCapabilities {
   };
 }
 
+/** Context a capability-reply pattern's handler needs beyond the match itself. */
+export interface CapabilityReplyContext {
+  columns: number;
+  rows: number;
+}
+
+/**
+ * One recognized capability-reply escape sequence: its regex and what to do
+ * with a match. Shared between {@link parseProbeResponse} (startup: each reply
+ * arrives once, in one buffer) and the bun driver's runtime input handler
+ * (late-arriving replies can repeat, so it loops each pattern until no match)
+ * so the two call sites can't drift on what a given reply means.
+ */
+export interface CapabilityReplyPattern {
+  regex: RegExp;
+  handle(
+    capabilities: TerminalCapabilities,
+    match: RegExpMatchArray,
+    ctx: CapabilityReplyContext,
+  ): void;
+}
+
+export const CAPABILITY_REPLY_PATTERNS: readonly CapabilityReplyPattern[] = [
+  // DA1: \x1b[?<params>c
+  {
+    regex: /\x1b\[\?([\d;]+)c/,
+    handle(capabilities, match) {
+      const params = match[1].split(";");
+      if (params.includes("4") && sixelUsable(capabilities)) {
+        capabilities.graphicsProtocol = "sixel";
+      }
+    },
+  },
+  // DA2: \x1b[><params>c
+  {
+    regex: /\x1b\[>([\d;]*)c/,
+    handle() {},
+  },
+  // Kitty Keyboard query response: \x1b[?<flags>u
+  {
+    regex: /\x1b\[\?(\d+)u/,
+    handle(capabilities) {
+      capabilities.kittyKeyboard = true;
+    },
+  },
+  // Kitty Graphics response: \x1b_Gi=31;<status>\x1b\\
+  {
+    regex: /\x1b_Gi=31;([^\x1b]+)\x1b\\/,
+    handle(capabilities, match) {
+      if (match[1].includes("OK")) {
+        capabilities.graphicsProtocol = "kitty";
+      }
+    },
+  },
+  // Mouse Hover DECRQM response: \x1b[?1003;<status>$y
+  {
+    regex: /\x1b\[\?1003;([0-4])\$y/,
+    handle(capabilities, match) {
+      if (match[1] === "1" || match[1] === "2") {
+        capabilities.mouseHover = true;
+      }
+    },
+  },
+  // OSC 22 pointer-shape query response: \x1b]22;<1|0>(ST|BEL). We query
+  // `?default`; a leading "1" means the terminal supports named pointer shapes.
+  {
+    regex: /\x1b\]22;([01])(?:\x1b\\|\x07)/,
+    handle(capabilities, match) {
+      if (match[1] === "1") {
+        capabilities.pointerShapes = true;
+      }
+    },
+  },
+  // Synchronized Updates DECRQM response: \x1b[?2026;<status>$y
+  {
+    regex: /\x1b\[\?2026;([0-4])\$y/,
+    handle(capabilities, match) {
+      if (match[1] === "1" || match[1] === "2") {
+        capabilities.synchronizedUpdates = true;
+      }
+    },
+  },
+  // Glyph Protocol support query response: \x1b_25a1;s;fmt=<formats>\x1b\\ or \x1b_25a1;s\x1b\\
+  {
+    regex: /\x1b_25a1;s(?:;[^\x1b]*)?\x1b\\/,
+    handle(capabilities) {
+      capabilities.glyphProtocol = true;
+    },
+  },
+  // Window pixel size response: \x1b[4;height;widtht — derives a cell size,
+  // superseded below by an explicit cell-size reply when the terminal sends one.
+  {
+    regex: /\x1b\[4;(\d+);(\d+)t/,
+    handle(capabilities, match, ctx) {
+      const height = Number.parseInt(match[1], 10);
+      const width = Number.parseInt(match[2], 10);
+      if (width > 0 && height > 0) {
+        capabilities.cellSize = {
+          width: Math.round(width / ctx.columns),
+          height: Math.round(height / ctx.rows),
+        };
+      }
+    },
+  },
+  // Character cell size response: \x1b[6;height;widtht
+  {
+    regex: /\x1b\[6;(\d+);(\d+)t/,
+    handle(capabilities, match) {
+      const height = Number.parseInt(match[1], 10);
+      const width = Number.parseInt(match[2], 10);
+      if (width > 0 && height > 0) {
+        capabilities.cellSize = { width, height };
+      }
+    },
+  },
+];
+
 export function parseProbeResponse(
   probeBuffer: string,
   capabilities: TerminalCapabilities,
@@ -107,101 +224,14 @@ export function parseProbeResponse(
   stdoutRows: number,
 ): { leftover: string } {
   let leftover = probeBuffer;
+  const ctx: CapabilityReplyContext = { columns: stdoutColumns, rows: stdoutRows };
 
-  // Parse DA1 check
-  const da1Match = leftover.match(/\x1b\[\?([\d;]+)c/);
-  if (da1Match) {
-    const params = da1Match[1].split(";");
-    if (params.includes("4") && sixelUsable(capabilities)) {
-      capabilities.graphicsProtocol = "sixel";
+  for (const pattern of CAPABILITY_REPLY_PATTERNS) {
+    const match = leftover.match(pattern.regex);
+    if (match) {
+      pattern.handle(capabilities, match, ctx);
+      leftover = leftover.replace(match[0], "");
     }
-    leftover = leftover.replace(da1Match[0], "");
-  }
-
-  // Parse DA2 check
-  const da2Match = leftover.match(/\x1b\[>([\d;]*)c/);
-  if (da2Match) {
-    leftover = leftover.replace(da2Match[0], "");
-  }
-
-  // Parse Kitty Keyboard query response: \x1b[?<flags>u
-  const kittyKeyMatch = leftover.match(/\x1b\[\?(\d+)u/);
-  if (kittyKeyMatch) {
-    capabilities.kittyKeyboard = true;
-    leftover = leftover.replace(kittyKeyMatch[0], "");
-  }
-
-  // Parse Kitty Graphics response: \x1b_Gi=31;<status>\x1b\\
-  const kittyGraphMatch = leftover.match(/\x1b_Gi=31;([^\x1b]+)\x1b\\/);
-  if (kittyGraphMatch) {
-    if (kittyGraphMatch[1].includes("OK")) {
-      capabilities.graphicsProtocol = "kitty";
-    }
-    leftover = leftover.replace(kittyGraphMatch[0], "");
-  }
-
-  // Parse Mouse Hover DECRQM response: \x1b[?1003;<status>$y
-  const hoverMatch = leftover.match(/\x1b\[\?1003;([0-4])\$y/);
-  if (hoverMatch) {
-    const status = hoverMatch[1];
-    if (status === "1" || status === "2") {
-      capabilities.mouseHover = true;
-    }
-    leftover = leftover.replace(hoverMatch[0], "");
-  }
-
-  // Parse OSC 22 pointer-shape query response: \x1b]22;<1|0>(ST|BEL). We query
-  // `?default`; a leading "1" means the terminal supports named pointer shapes.
-  const pointerMatch = leftover.match(/\x1b\]22;([01])(?:\x1b\\|\x07)/);
-  if (pointerMatch) {
-    if (pointerMatch[1] === "1") {
-      capabilities.pointerShapes = true;
-    }
-    leftover = leftover.replace(pointerMatch[0], "");
-  }
-
-  // Parse Synchronized Updates DECRQM response: \x1b[?2026;<status>$y
-  const syncMatch = leftover.match(/\x1b\[\?2026;([0-4])\$y/);
-  if (syncMatch) {
-    const status = syncMatch[1];
-    if (status === "1" || status === "2") {
-      capabilities.synchronizedUpdates = true;
-    }
-    leftover = leftover.replace(syncMatch[0], "");
-  }
-
-  // Parse Glyph Protocol support query response: \x1b_25a1;s;fmt=<formats>\x1b\\ or \x1b_25a1;s\x1b\\
-  const glyphMatch = leftover.match(/\x1b_25a1;s(?:;[^\x1b]*)?\x1b\\/);
-  if (glyphMatch) {
-    capabilities.glyphProtocol = true;
-    leftover = leftover.replace(glyphMatch[0], "");
-  }
-
-  // Parse window pixel size response: \x1b[4;height;widtht
-  const pixelSizeMatch = leftover.match(/\x1b\[4;(\d+);(\d+)t/);
-  let probedCellWidth = 0;
-  let probedCellHeight = 0;
-  if (pixelSizeMatch) {
-    const height = Number.parseInt(pixelSizeMatch[1], 10);
-    const width = Number.parseInt(pixelSizeMatch[2], 10);
-    if (width > 0 && height > 0) {
-      probedCellWidth = Math.round(width / stdoutColumns);
-      probedCellHeight = Math.round(height / stdoutRows);
-    }
-    leftover = leftover.replace(pixelSizeMatch[0], "");
-  }
-
-  // Parse character cell size response: \x1b[6;height;widtht
-  const cellSizeMatch = leftover.match(/\x1b\[6;(\d+);(\d+)t/);
-  if (cellSizeMatch) {
-    const height = Number.parseInt(cellSizeMatch[1], 10);
-    const width = Number.parseInt(cellSizeMatch[2], 10);
-    if (width > 0 && height > 0) {
-      capabilities.cellSize = { width, height };
-    }
-    leftover = leftover.replace(cellSizeMatch[0], "");
-  } else if (probedCellWidth > 0 && probedCellHeight > 0) {
-    capabilities.cellSize = { width: probedCellWidth, height: probedCellHeight };
   }
 
   // Sync capabilities to style module config
