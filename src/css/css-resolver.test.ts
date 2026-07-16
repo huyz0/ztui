@@ -3,7 +3,7 @@ import { motion } from "../anim/motion.ts";
 import { Widget } from "../dom/widget.ts";
 import { adjustLightness, deriveTheme, ThemeManager } from "../theme.ts";
 import { parseTCSS } from "./css-parser.ts";
-import { CSSResolver } from "./css-resolver.ts";
+import { blendColors, CSSResolver } from "./css-resolver.ts";
 
 describe("CSSResolver Theming and Variables", () => {
   test("TCSS parses top-level variables", () => {
@@ -552,5 +552,205 @@ describe("CSSResolver performance helpers", () => {
     const resolver = new CSSResolver(rules);
     expect(resolver.resolveStyles(new Widget("label"), false).color).toBe("#00ff00");
     expect(resolver.resolveStyles(new Widget("box"), false).color).toBe("#00ff00");
+  });
+});
+
+describe("blendColors", () => {
+  test("returns neutral gray when either input is missing or non-hex", () => {
+    expect(blendColors("", "#ffffff")).toBe("#808080");
+    expect(blendColors("#ffffff", "")).toBe("#808080");
+    expect(blendColors("red", "#ffffff")).toBe("#808080");
+    expect(blendColors("#ffffff", "blue")).toBe("#808080");
+  });
+
+  test("expands 3-digit hex shorthand for both colors", () => {
+    // #f00 -> #ff0000, #0f0 -> #00ff00; an even blend averages each channel.
+    expect(blendColors("#f00", "#0f0", 0.5)).toBe("#808000");
+  });
+});
+
+describe("CSSResolver additional branch coverage", () => {
+  test("addRules re-applies variables carried on the new rule set", () => {
+    const resolver = new CSSResolver([]);
+    const rules = parseTCSS("$late-var: #123456; div { color: $late-var; }");
+    resolver.addRules(rules);
+    const w = new Widget("div");
+    expect(resolver.resolveStyles(w, false).color).toBe("#123456");
+  });
+
+  test("addRules with a plain array (no .variables property) doesn't throw", () => {
+    const resolver = new CSSResolver([]);
+    resolver.addRules([{ selector: "div", properties: { color: "#654321" } }]);
+    const w = new Widget("div");
+    expect(resolver.resolveStyles(w, false).color).toBe("#654321");
+  });
+
+  test("resolveAccent falls back to its hardcoded default when the theme defines neither the accent nor its sibling", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.register({
+      name: "no-accent-test-theme",
+      colors: {
+        secondary: "#56b6c2",
+        background: "#1a1a1a",
+        foreground: "#d6d6d6",
+        surface: "#242424",
+        panel: "#2d2d2d",
+        accent: "#c586c0",
+        success: "#4ec07a",
+        error: "#e06c75",
+        // primary and warning deliberately omitted.
+      } as never,
+    });
+    themeManager.setTheme("no-accent-test-theme");
+    try {
+      motion.set(false);
+      const resolver = new CSSResolver([]);
+      const widget = new Widget("div");
+      const accessor = resolver as unknown as {
+        resolveAccent: (w: Widget, name: "focus" | "attention") => string;
+      };
+      expect(accessor.resolveAccent(widget, "focus")).toBe("#4daafc");
+      expect(accessor.resolveAccent(widget, "attention")).toBe("#e5c07b");
+    } finally {
+      motion.reset();
+      themeManager.setTheme("default-dark");
+    }
+  });
+
+  test("resolveAccent breaks the cycle starting from 'attention' too", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    resolver.addVariables({ focus: "$attention", attention: "$focus" });
+    const widget = new Widget("div");
+    const direct = (
+      resolver as unknown as {
+        resolveAccent: (w: Widget, name: "focus" | "attention") => string;
+      }
+    ).resolveAccent(widget, "attention");
+    expect(direct.startsWith("#")).toBe(true);
+  });
+
+  test("getWidgetColorWithFallback returns a hex value directly without walking further", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    const widget = new Widget("div");
+    widget.style.background = "#abcdef";
+    const found = (
+      resolver as unknown as {
+        getWidgetColorWithFallback: (
+          w: Widget,
+          prop: "color" | "background",
+          def: string,
+        ) => string;
+      }
+    ).getWidgetColorWithFallback(widget, "background", "#unused");
+    expect(found).toBe("#abcdef");
+  });
+
+  test("getWidgetColorWithFallback resolves a var(--name) style value", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-dark");
+    const resolver = new CSSResolver([]);
+    resolver.addVariables({ "my-bg": "#123123" });
+    const widget = new Widget("div");
+    widget.style.background = "var(--my-bg)";
+    const found = (
+      resolver as unknown as {
+        getWidgetColorWithFallback: (
+          w: Widget,
+          prop: "color" | "background",
+          def: string,
+        ) => string;
+      }
+    ).getWidgetColorWithFallback(widget, "background", "#unused");
+    expect(found).toBe("#123123");
+  });
+
+  test("semantic/diff/selection fallbacks work even when the theme omits background, foreground, success, and error", () => {
+    // Every built-in theme happens to define background/foreground/success/
+    // error, which masks the `|| "#fallback"` defaults in lookupVariable and
+    // getWidgetColorWithFallback's callers. Register a deliberately sparse
+    // theme so those fallback branches actually run.
+    const themeManager = ThemeManager.getInstance();
+    themeManager.register({
+      name: "sparse-test-theme",
+      colors: {
+        primary: "#4daafc",
+        secondary: "#56b6c2",
+        surface: "#242424",
+        panel: "#2d2d2d",
+        accent: "#c586c0",
+        warning: "#e5c07b",
+        // background, foreground, success, error deliberately omitted.
+      } as never,
+    });
+    themeManager.setTheme("sparse-test-theme");
+    try {
+      const resolver = new CSSResolver([]);
+      const w = new Widget("div");
+
+      w.style.color = "$border";
+      expect(resolver.resolveStyles(w, false).color?.startsWith("#")).toBe(true);
+
+      w.style.color = "$selectionBg";
+      expect(resolver.resolveStyles(w, false).color?.startsWith("#")).toBe(true);
+
+      w.style.color = "$selectionFg";
+      expect(typeof resolver.resolveStyles(w, false).color).toBe("string");
+
+      w.style.color = "$shadow";
+      expect(typeof resolver.resolveStyles(w, false).color).toBe("string");
+
+      w.style.color = "$diff-added";
+      expect(resolver.resolveStyles(w, false).color).toBe("bright-green");
+
+      w.style.color = "$diff-removed";
+      expect(resolver.resolveStyles(w, false).color).toBe("bright-red");
+
+      w.style.color = "$diff-added-bg";
+      expect(resolver.resolveStyles(w, false).color?.startsWith("#")).toBe(true);
+    } finally {
+      themeManager.setTheme("default-dark");
+    }
+  });
+
+  test("a non-boolean 'checked' field does not satisfy :checked", () => {
+    const resolver = new CSSResolver(
+      parseTCSS("checkbox { color: #111111; } checkbox:checked { color: #00ff00; }"),
+    );
+    const w = new Widget("checkbox") as Widget & { checked?: unknown };
+    w.checked = "yes"; // truthy but not a boolean
+    expect(resolver.resolveStyles(w, false).color).toBe("#111111");
+  });
+
+  test("coerceValue parses valid numeric top/right/bottom values", () => {
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    w.style.top = "3" as never;
+    w.style.right = "4" as never;
+    w.style.bottom = "5" as never;
+    const s = resolver.resolveStyles(w, false);
+    expect(s.top).toBe(3);
+    expect(s.right).toBe(4);
+    expect(s.bottom).toBe(5);
+  });
+
+  test("focusGlow/focusGlowPair use the light-theme contrast pole when motion is on", () => {
+    const themeManager = ThemeManager.getInstance();
+    themeManager.setTheme("default-light");
+    const resolver = new CSSResolver([]);
+    const w = new Widget("button");
+    motion.set(true);
+    try {
+      expect(resolver.focusGlow(w, "#ff0000").length).toBeGreaterThan(0);
+      const pair = resolver.focusGlowPair(w, "#00ff00");
+      expect(pair.bg.length).toBeGreaterThan(0);
+      expect(pair.fg.length).toBeGreaterThan(0);
+    } finally {
+      motion.reset();
+      themeManager.setTheme("default-dark");
+    }
   });
 });
