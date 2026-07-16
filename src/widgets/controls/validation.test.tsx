@@ -93,6 +93,24 @@ describe("runValidators", () => {
     expect(normalizeResult(false)).toEqual({ valid: false, severity: "error" });
     expect(normalizeResult("bad")).toEqual({ valid: false, message: "bad", severity: "error" });
   });
+
+  test("normalizeResult passes through a valid ValidationResult that already carries a severity", () => {
+    const result = { valid: true, severity: "warning" as const, message: "heads up" };
+    expect(normalizeResult(result)).toBe(result); // same object, untouched
+  });
+
+  test("normalizeResult defaults a valid ValidationResult with no severity to 'success'", () => {
+    expect(normalizeResult({ valid: true, message: "ok" })).toEqual({
+      valid: true,
+      message: "ok",
+      severity: "success",
+    });
+  });
+
+  test("minLength/maxLength treat a nullish value as length 0", () => {
+    expect(minLength(1)(undefined as unknown as string)).toBeTruthy();
+    expect(maxLength(0)(undefined as unknown as string)).toBeNull();
+  });
 });
 
 describe("Form widget integration", () => {
@@ -292,6 +310,88 @@ describe("Form widget integration", () => {
     findById<CheckboxWidget>("terms")!.checked = true;
     findById<SelectWidget>("plan")!.value = "pro";
     expect(form.validate()).toBe(true);
+  });
+});
+
+describe("FieldValidation — trigger and severity branches", () => {
+  test("maybeValidate re-validates on the matching trigger even before the field is touched", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <Input id="a" validators={[required("Required")]} validateOn="change" />
+      </Form>,
+    );
+    const input = findById<InputWidget>("a")!;
+    expect(input.validation.touched).toBe(false);
+    input.value = "x";
+    input.handleKey({ key: "backspace" } as any); // triggers "change"
+    expect(input.validation.touched).toBe(true);
+  });
+
+  test("maybeValidate re-validates on any change once touched, even if validateOn is 'blur'", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <Input id="a" validators={[required("Required")]} validateOn="blur" />
+      </Form>,
+    );
+    const input = findById<InputWidget>("a")!;
+    input.value = "x";
+    input.validation.touched = true;
+    input.validation.result = { valid: false, severity: "error" };
+    input.handleKey({ key: "y" } as any); // not "blur", but touched + "change" still re-validates
+    expect(input.validation.result.valid).toBe(true);
+  });
+
+  test("maybeValidate is a no-op for a mismatched trigger while untouched", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <Input id="a" validators={[required("Required")]} validateOn="submit" />
+      </Form>,
+    );
+    const input = findById<InputWidget>("a")!;
+    input.value = "x";
+    input.handleKey({ key: "y" } as any); // "change" event, but validateOn is "submit" and not yet touched
+    expect(input.validation.touched).toBe(false);
+  });
+
+  test("severity defaults to 'error' when the validator result carries none", () => {
+    const { validation } = new InputWidget();
+    validation.validators = [() => ({ valid: false })];
+    validation.validate();
+    expect(validation.severity).toBe("error");
+  });
+
+  test("resolveColor resolves the warning and success theme tokens too", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <Input id="a" />
+      </Form>,
+    );
+    const input = findById<InputWidget>("a")!;
+    input.validation.validators = [() => ({ valid: false, severity: "warning", message: "hmm" })];
+    input.validation.validate();
+    expect(input.validation.severity).toBe("warning");
+    expect(input.validation.resolveColor()).toBeTruthy();
+
+    input.validation.validators = [() => ({ valid: true, severity: "success" })];
+    input.validation.validate();
+    // A "success" result is valid, so `invalid`/`severity` report undefined —
+    // resolveColor sees no severity and returns null.
+    expect(input.validation.resolveColor()).toBeNull();
+  });
+
+  test("severity getter falls back to 'error' when the stored result has no severity at all", () => {
+    const input = new InputWidget();
+    input.validation.touched = true;
+    input.validation.result = { valid: false }; // no `severity` key present
+    expect(input.validation.severity).toBe("error");
+  });
+
+  test("resolveColor falls back to plain red when there's no App to resolve the theme token", () => {
+    const input = new InputWidget();
+    input.validators = [() => "Bad"];
+    input.validation.touched = true;
+    input.validation.validate();
+    expect(input.validation.resolveColor()).toBe("red");
   });
 });
 
