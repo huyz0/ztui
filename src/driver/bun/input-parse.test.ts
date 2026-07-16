@@ -374,3 +374,80 @@ describe("parseInput — move coalescing", () => {
     expect(mice[1]).toMatchObject({ x: 5, y: 5 });
   });
 });
+
+describe("parseInput — realistic multi-chunk stdin streams", () => {
+  /**
+   * Feeds `full` through parseInput split at every offset in `cutPoints`
+   * (each a chunk boundary), carrying the leftover buffer and mouse-parse
+   * state across calls exactly as BunDriver's handleInputInternal does —
+   * so a sequence split at an arbitrary byte offset (not just "one byte
+   * short") still decodes identically to feeding it in one shot.
+   */
+  function streamInChunks(
+    full: string,
+    cutPoints: number[],
+  ): { keys: KeyEvent[]; mice: MouseEvent[] } {
+    const keys: KeyEvent[] = [];
+    const mice: MouseEvent[] = [];
+    const mouseState = { buttonDown: false, pressedAt: 0 };
+    let leftover = "";
+    let pos = 0;
+    for (const cut of [...cutPoints, full.length]) {
+      const chunk = leftover + full.slice(pos, cut);
+      leftover = parseInput(
+        chunk,
+        (k) => keys.push(k),
+        (m) => mice.push(m),
+        mouseState,
+      );
+      pos = cut;
+    }
+    return { keys, mice };
+  }
+
+  test("typed text split into single-character chunks still decodes in order", () => {
+    const full = "hello";
+    const { keys } = streamInChunks(full, [1, 2, 3, 4]);
+    expect(keys.map((k) => k.key)).toEqual(["h", "e", "l", "l", "o"]);
+  });
+
+  // Only a trailing "\x1b[..." (or "\x1bO") is recognized as an incomplete
+  // introducer worth buffering — a lone trailing "\x1b" with nothing after it
+  // is not (see input.ts's incomplete-CSI comment), so cut points below always
+  // leave at least the "\x1b[" pair together in one chunk, matching what an
+  // actual pty read boundary landing mid-sequence looks like.
+  test("an SGR mouse press sequence split at every offset past the CSI introducer decodes as one press", () => {
+    const full = "\x1b[<0;10;20M"; // left button press at (9, 19) 0-based
+    for (let cut = 2; cut < full.length; cut++) {
+      const { mice } = streamInChunks(full, [cut]);
+      expect(mice).toHaveLength(1);
+      expect(mice[0]).toMatchObject({ type: "press", button: "left", x: 9, y: 19 });
+    }
+  });
+
+  test("a Kitty CSI-u sequence split mid-escape decodes the same modifiers as unsplit", () => {
+    const full = "\x1b[122;6u"; // 'z' (122) with ctrl+shift (modifier 6 = 1 + 1(shift) + 4(ctrl))
+    const wholeKey = firstKey(full);
+    for (let cut = 2; cut < full.length; cut++) {
+      const { keys } = streamInChunks(full, [cut]);
+      expect(keys).toHaveLength(1);
+      expect(keys[0]).toMatchObject({ key: wholeKey?.key, ctrl: true, shift: true });
+    }
+  });
+
+  test("a press-drag-release mouse sequence split across several small chunks preserves order and state", () => {
+    // Left press, drag to a new cell, then release — the classic click-drag
+    // gesture, split into small chunks that don't align with escape boundaries.
+    const full = "\x1b[<0;5;5M\x1b[<32;8;8M\x1b[<0;8;8m";
+    const { mice } = streamInChunks(full, [4, 14, 24]);
+    expect(mice.map((m) => m.type)).toEqual(["press", "drag", "release"]);
+    expect(mice[0]).toMatchObject({ x: 4, y: 4 });
+    expect(mice[2]).toMatchObject({ x: 7, y: 7 });
+  });
+
+  test("plain keys interleaved with a split arrow escape all decode, in order", () => {
+    const full = "ab\x1b[Ccd"; // 'a', 'b', right-arrow, 'c', 'd'
+    const { keys } = streamInChunks(full, [2, 4]);
+    expect(keys.map((k) => k.name ?? k.key)).toEqual(["a", "b", "right", "c", "d"]);
+  });
+});
