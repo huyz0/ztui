@@ -74,6 +74,42 @@ describe("GalleryView", () => {
     expect(wide).toBe(expectedColumns(findBox(t).getContentRect().width, 10));
   });
 
+  test("retries auto-measurement while the box reports zero width, then gives up after the cap", async () => {
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const before = columnCount(t);
+    expect(before).toBeGreaterThan(1);
+
+    // Force the width measurement to read zero, then trigger a re-render (via
+    // resize) so the auto-column effect re-runs against it — it should retry
+    // on a short timer instead of collapsing back to 1 column immediately.
+    const box = findBox(t);
+    const realGetContentRect = box.getContentRect.bind(box);
+    box.getContentRect = () => ({ width: 0, height: 0 });
+    t.driver.simulateResize(90, 16);
+    // Past the App's resize debounce (30ms) + all 30 16ms measurement retries
+    // (the cap), so the effect gives up instead of retrying forever.
+    await t.settle(1200);
+    // Still reporting the last good column count — a zero-width read doesn't
+    // reset autoColumns back to the 1-column fallback.
+    expect(columnCount(t)).toBe(before);
+
+    // Restore the real measurement and let it recover on the next re-render.
+    box.getContentRect = realGetContentRect;
+    t.driver.simulateResize(64, 16);
+    await t.settle(200);
+    expect(columnCount(t)).toBe(before);
+  });
+
   test("respects an explicit columns override", async () => {
     const t = await mountApp(
       <GalleryView
