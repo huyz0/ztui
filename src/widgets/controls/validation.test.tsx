@@ -1,4 +1,7 @@
 import { describe, expect, test } from "vitest";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import {
   Box,
   Button,
@@ -15,7 +18,7 @@ import { mountApp } from "../../test/harness.tsx";
 import type { CheckboxWidget } from "./checkbox.ts";
 import { FieldErrorWidget } from "./field-error.ts";
 import type { FormWidget } from "./form.ts";
-import type { InputWidget } from "./input.ts";
+import { InputWidget } from "./input.ts";
 import type { SelectWidget } from "./select.ts";
 import {
   custom,
@@ -29,7 +32,7 @@ import {
   required,
   runValidators,
 } from "./validation.ts";
-import type { ValidationSummaryWidget } from "./validation-summary.ts";
+import { ValidationSummaryWidget } from "./validation-summary.ts";
 
 describe("built-in validators", () => {
   test("required rejects empty values", () => {
@@ -481,5 +484,159 @@ describe("ValidationSummary", () => {
     findById<FormWidget>("form")!.validate();
     await settle();
     expect(text()).toContain("Deeply nested required");
+  });
+
+  test("falls back to scanning its own descendants when there's no bound form at all", async () => {
+    const { findById } = await mountApp(
+      <VBox id="root">
+        <ValidationSummary id="summary" formId="does-not-exist">
+          <Input id="a" validators={[required("A required")]} validateOn="submit" />
+        </ValidationSummary>
+      </VBox>,
+    );
+    const input = findById<InputWidget>("a")!;
+    input.validation.touched = true;
+    input.validation.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.measure(40, 10);
+    // No form found by id, and no ancestor <Form> either -> falls back to
+    // scanning the summary's own descendants, finding the nested Input.
+    expect(summary.measuredHeight).toBe(1);
+  });
+
+  test("onKey resolves the key from ev.key when ev.name is absent", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.focused = true;
+    summary.onKey?.({ key: "enter", handled: false });
+    expect(app.activeScreen.focusedWidget?.id).toBe("a");
+  });
+
+  test("finds the ancestor form through intermediate non-form wrapper widgets", async () => {
+    const { findById, settle, text } = await mountApp(
+      <Form id="form">
+        <Box>
+          <Box>
+            <ValidationSummary id="summary" />
+          </Box>
+        </Box>
+        <Input id="a" validators={[required("Wrapped required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    await settle();
+    expect(text()).toContain("Wrapped required");
+  });
+
+  test("space (literal ' ' key) also jumps to the selected field", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.focused = true;
+    summary.handleKey({ key: " ", handled: false } as any);
+    expect(app.activeScreen.focusedWidget?.id).toBe("a");
+  });
+
+  test("measure resolves a non-numeric dimension (fr) by falling back to maxW", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" style={{ width: "2fr" }} />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    summary.measure(40, 10);
+    expect(summary.measuredWidth).toBe(40);
+  });
+
+  test("handleMouse ignores an event already handled upstream", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    const rect = summary.getContentRect();
+    summary.handleMouse({ type: "press", button: "left", x: rect.x, y: rect.y, handled: true });
+    expect(app.activeScreen.focusedWidget?.id).not.toBe("a");
+  });
+
+  test("handleMouse row math accounts for the title row when present", async () => {
+    const { app, findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" title="Fix these:" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+        <Input id="b" validators={[required("B required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    const rect = summary.getContentRect();
+    // Row 0 of the content rect is the title; row 1 is the first message.
+    summary.handleMouse({
+      type: "press",
+      button: "left",
+      x: rect.x,
+      y: rect.y + 1,
+      handled: false,
+    });
+    expect(app.activeScreen.focusedWidget?.id).toBe("a");
+  });
+
+  test("render falls back to the plain theme colors when no App is running", () => {
+    const summary = new ValidationSummaryWidget();
+    const input = new InputWidget();
+    input.validators = [() => "Bad value"];
+    input.validation.touched = true;
+    input.validation.validate();
+    summary.appendChild(input);
+    summary.region = new Region(new Offset(0, 0), new Size(20, 5));
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => summary.render(buffer)).not.toThrow();
+  });
+
+  test("render is a no-op when the form is valid", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" />
+      </Form>,
+    );
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => summary.render(buffer)).not.toThrow();
+  });
+
+  test("render clamps a stale selectedIndex to the shrunken item list", async () => {
+    const { findById } = await mountApp(
+      <Form id="form">
+        <ValidationSummary id="summary" />
+        <Input id="a" validators={[required("A required")]} validateOn="submit" />
+        <Input id="b" validators={[required("B required")]} validateOn="submit" />
+      </Form>,
+    );
+    findById<FormWidget>("form")!.validate();
+    const summary = findById<ValidationSummaryWidget>("summary")!;
+    (summary as unknown as { selectedIndex: number }).selectedIndex = 5;
+    const buffer = new ScreenBuffer(20, 5);
+    expect(() => summary.render(buffer)).not.toThrow();
+
+    findById<InputWidget>("b")!.value = "fixed"; // only "a" stays invalid
+    (summary as unknown as { selectedIndex: number }).selectedIndex = 5;
+    expect(() => summary.render(buffer)).not.toThrow();
   });
 });
