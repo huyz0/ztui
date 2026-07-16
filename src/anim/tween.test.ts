@@ -93,6 +93,33 @@ describe("Tween", () => {
     expect(done).toHaveBeenCalledTimes(1);
     expect(t.animating).toBe(false);
   });
+
+  test("uses the default duration when none is given for a new target", () => {
+    vi.useFakeTimers();
+    try {
+      const t = new Tween(0);
+      t.to(100); // no duration/easing supplied
+      expect(t.animating).toBe(true);
+      // Not settled immediately, so a positive default duration was applied.
+      expect(t.value).not.toBe(100);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("clamps a negative elapsed time (clock skew) to the start of the ease", () => {
+    vi.useFakeTimers();
+    try {
+      const t = new Tween(0);
+      t.to(100, { duration: 100, easing: "linear" });
+      // Simulate the clock moving backward relative to startTime.
+      vi.setSystemTime(Date.now() - 50);
+      // t < 0 must clamp to 0, not extrapolate past the target.
+      expect(t.value).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("ColorTween", () => {
