@@ -133,6 +133,54 @@ describe("ListView keyboard navigation", () => {
     expect(onActivate).toHaveBeenCalledTimes(2);
     expect(onActivate.mock.calls[0][0].id).toBe("apple");
   });
+
+  test("enter/space with no selection is a no-op and leaves the event unhandled", async () => {
+    const onActivate = vi.fn();
+    const t = await mountApp(<ListView items={fruits} onActivate={onActivate} />);
+    const list = findList(t);
+    const ev = { name: "enter", handled: false } as any;
+    list.handleKey(ev);
+    expect(onActivate).not.toHaveBeenCalled();
+    expect(ev.handled).toBe(false);
+  });
+
+  test("moveSelection falls back to searching backward when the forward walk runs off the edge", async () => {
+    const items: ListItem[] = [
+      { id: "a", label: "A" },
+      { id: "b", label: "B", disabled: true },
+      { id: "c", label: "C", disabled: true },
+    ];
+    const t = await mountApp(<ListView items={items} selectedId="a" />);
+    const list = findList(t);
+    list.handleKey({ name: "down" } as any);
+    // b and c are disabled, so walking down off the end falls back to the
+    // nearest selectable row searching backward from the target, landing
+    // back on "a".
+    expect(list.selectedId).toBe("a");
+  });
+
+  test("an unrecognized key is left unhandled", async () => {
+    const t = await mountApp(<ListView items={fruits} />);
+    const list = findList(t);
+    const ev = { name: "x", handled: false } as any;
+    list.handleKey(ev);
+    expect(ev.handled).toBe(false);
+  });
+
+  test("collapseCursorGroup is a no-op when the group is already in the requested state", async () => {
+    const onToggleGroup = vi.fn();
+    const groups = [{ id: "g1", title: "Group 1", items: [{ id: "a", label: "A" } as ListItem] }];
+    const t = await mountApp(
+      <ListView groups={groups} selectedId="a" onToggleGroup={onToggleGroup} />,
+    );
+    const list = findList(t);
+    // Group starts expanded; asking to expand again is a no-op that leaves
+    // the key event unhandled.
+    const ev = { name: "right", handled: false } as any;
+    list.handleKey(ev);
+    expect(onToggleGroup).not.toHaveBeenCalled();
+    expect(ev.handled).toBe(false);
+  });
 });
 
 describe("ListView mouse", () => {
