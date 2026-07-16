@@ -160,3 +160,24 @@ describe("SVG Icon Support Engine", () => {
     expect(parseColorToRGB("invalid-color-name")).toEqual({ r: 255, g: 255, b: 255 });
   });
 });
+
+describe("IconWidget", () => {
+  test("visibility toggling and border size limits render without error", async () => {
+    const { app, settle } = await mountApp(
+      <VBox>
+        <Icon name="home" style={{ width: 1 }} />
+        <Icon name="home" id="icon-to-hide" />
+        <Icon name="home" /> {/* default styling resolved background */}
+      </VBox>,
+      { cols: 80, rows: 25, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+    );
+
+    const vbox = app.activeScreen.children[0];
+    const iconToHide = vbox.children[1] as any;
+    iconToHide.visible = false;
+    app.queueRender();
+    await settle();
+
+    expect(app.buffer).toBeDefined();
+  });
+});

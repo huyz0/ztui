@@ -419,4 +419,44 @@ describe("TextArea — selection & clipboard", () => {
     expect(cell.style.background).toBeDefined();
     expect(cell.style.background).not.toBe("default");
   });
+
+  test("multiline syntax coloring, line numbers, scrolling, and editing", async () => {
+    let val = "line1\nline2";
+    const onChange = (v: string) => {
+      val = v;
+    };
+    const { screen } = await mountApp(
+      <TextArea value={val} onChange={onChange} lineNumbers={true} language="typescript" />,
+      { cols: 30, rows: 8, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+    );
+
+    const textWidget = screen.children[0] as any;
+    expect(textWidget.value).toBe("line1\nline2");
+
+    // Click at row 1, col 2 ('n' of line2). Gutter width is 2 digits + " │ " = 5.
+    textWidget.handleMouse({
+      type: "press",
+      button: "left",
+      x: textWidget.getContentRect().x + 5 + 2,
+      y: textWidget.getContentRect().y + 1,
+    });
+    expect(textWidget.cursorRow).toBe(1);
+    expect(textWidget.cursorCol).toBe(2);
+
+    textWidget.onKey({ key: "up", name: "up", ctrl: false, meta: false, shift: false });
+    expect(textWidget.cursorRow).toBe(0);
+    expect(textWidget.cursorCol).toBe(2); // keeps same column
+
+    // Enter inserts a newline: 'li\nne1\nline2'.
+    textWidget.onKey({ key: "enter", name: "enter", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("li\nne1\nline2");
+    expect(textWidget.cursorRow).toBe(1);
+    expect(textWidget.cursorCol).toBe(0);
+
+    // Typing a character: 'li\nxne1\nline2'.
+    textWidget.onKey({ key: "x", name: "x", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("li\nxne1\nline2");
+    expect(textWidget.cursorRow).toBe(1);
+    expect(textWidget.cursorCol).toBe(1);
+  });
 });

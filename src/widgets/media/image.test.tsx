@@ -346,4 +346,24 @@ describe("Image & SVG Image Widgets", () => {
     });
     expect(r.cellAt(0, 0).graphic?.pngBase64).toBeTruthy(); // canvas draws this PNG
   });
+
+  test("Image decode error draws the error placeholder", async () => {
+    const { app } = await mountApp(<ztui-image buffer={new Uint8Array([1, 2, 3])} />, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+    const buffer = app.buffer;
+    expect(buffer.cells[0][0].char).toBe("D"); // 'D' of "Decode error"
+  });
+
+  test("SvgImage invalid svg draws the render-error placeholder", async () => {
+    const { app } = await mountApp(<SvgImage src="<svg viewBox='invalid'></svg>" />, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+    const buffer = app.buffer;
+    expect(buffer.cells[0][0].char).toBe("R"); // 'R' of "Render error"
+  });
 });

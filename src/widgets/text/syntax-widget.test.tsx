@@ -35,4 +35,39 @@ describe("SyntaxWidget", () => {
     for (const row of rows) expect(row.length).toBeLessThanOrEqual(20);
     expect(t.findById("s")).toBeDefined();
   });
+
+  test("renders a code block with line numbers and theme support", async () => {
+    const tsCode = "const a = 12;\nconst b = 'str';";
+    const { app } = await mountApp(
+      <VBox>
+        <Syntax language="typescript" lineNumbers={true} theme="default-dark">
+          {tsCode}
+        </Syntax>
+        <Syntax language="typescript" lineNumbers={false} theme="default-light">
+          {"const x = true;"}
+        </Syntax>
+        <Syntax language="diff" lineNumbers={false}>
+          {"- old line\n+ new line"}
+        </Syntax>
+        <Syntax language="unknown" lineNumbers={false}>
+          {"plain text"}
+        </Syntax>
+      </VBox>,
+      { cols: 40, rows: 15, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+    );
+
+    const buffer = app.buffer;
+
+    // Gutter for a 2-line block: max 1 digit + " │ " = 4 chars wide -> " 1 │ const a = 12;"
+    expect(buffer.cells[0][0].char).toBe(" ");
+    expect(buffer.cells[0][1].char).toBe("1");
+    expect(buffer.cells[0][2].char).toBe(" ");
+    expect(buffer.cells[0][3].char).toBe("│");
+
+    // Line 2: no line numbers.
+    expect(buffer.cells[2][0].char).toBe("c");
+
+    // Line 3: diff.
+    expect(buffer.cells[3][0].char).toBe("-");
+  });
 });

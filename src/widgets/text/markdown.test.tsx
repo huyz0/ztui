@@ -1,8 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 import { TextNode } from "../../dom/text-node.ts";
-import type { Widget } from "../../dom/widget.ts";
+import { Widget } from "../../dom/widget.ts";
+import { reconciler } from "../../react/reconciler.ts";
 import { Markdown } from "../../react.ts";
 import "../../markdown.ts";
+import "../../mermaid.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { MarkdownWidget } from "./markdown.ts";
 
@@ -315,5 +317,202 @@ describe("Markdown wrapping", () => {
     const leaf = firstLeaf(w);
     expect(leaf.wrap).toBe(false);
     expect(leaf.measuredHeight).toBe(1);
+  });
+});
+
+describe("Markdown rendering integration", () => {
+  test("renders headers, lists, blockquotes, images, links and styles", async () => {
+    const mdText = `# Header 1
+> Blockquote text with **bold**
+> - Item in blockquote
+> # Header in blockquote
+~~strikethrough~~ and [link](http://domain.com) and ![alt](img.png)
+- bullet 1
+1. ordered 1`;
+
+    const { app } = await mountApp(<Markdown>{mdText}</Markdown>, {
+      cols: 50,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+
+    const buffer = app.buffer;
+    expect(buffer.cells[0][0].char).toBe("H"); // "Header 1"
+    expect(buffer.cells[1][0].char).toBe("━"); // header underline rule
+    expect(buffer.cells[3][0].char).toBe("▌"); // blockquote bar
+    expect(buffer.cells[3][2].char).toBe("B"); // 'B' of Blockquote
+  });
+
+  test("builds a dynamic widget tree, supports ztui elements in code blocks, and routes events", async () => {
+    let actionNameReceived = "";
+    let actionDataReceived: any = null;
+    const onAction = (name: string, data: any) => {
+      actionNameReceived = name;
+      actionDataReceived = data;
+    };
+
+    const mdContent = `# Title
+> Quote
+
+- Item
+
+\`\`\`ztui-button
+{
+  "id": "test-btn",
+  "text": "Interactive Button",
+  "action": "btn-clicked",
+  "style": { "color": "bright-green" }
+}
+\`\`\``;
+
+    const { app } = await mountApp(<Markdown onAction={onAction}>{mdContent}</Markdown>, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+
+    const mdWidget = app.activeScreen.children[0] as any;
+    expect(mdWidget.tagName).toBe("markdown");
+    expect(blocks(mdWidget).length).toBe(4);
+
+    const heading = mdWidget.children[0];
+    expect(heading.tagName).toBe("heading");
+    const blockquote = mdWidget.children[1];
+    expect(blockquote.tagName).toBe("blockquote");
+    const list = mdWidget.children[2];
+    expect(list.tagName).toBe("bullet_list");
+    const button = mdWidget.children[3];
+    expect(button.tagName).toBe("button");
+    expect(button.id).toBe("test-btn");
+    expect(button.style.color).toBe("bright-green");
+
+    expect(button.onClick).toBeDefined();
+    button.onClick({ x: 0, y: 0 });
+    expect(actionNameReceived).toBe("btn-clicked");
+    expect(actionDataReceived).toBeDefined();
+    expect(actionDataReceived.id).toBe("test-btn");
+    expect(actionDataReceived.type).toBe("button");
+  });
+
+  test("MarkdownWidget's DOM API can be driven directly", () => {
+    const w = new MarkdownWidget();
+    const txt1 = new TextNode("A");
+    const txt2 = new TextNode("B");
+    const normalWidget = new Widget("test");
+
+    w.appendChild(txt1);
+    expect(w.getRawMarkdown()).toBe("A");
+
+    w.insertBefore(txt2, txt1);
+    expect(w.getRawMarkdown()).toBe("B"); // sets textNode
+
+    w.removeChild(txt2);
+    expect(w.getRawMarkdown()).toBe("");
+
+    // non-text widget branches
+    w.appendChild(normalWidget);
+    expect(w.children[0]).toBe(normalWidget);
+    w.insertBefore(normalWidget, txt1);
+    w.removeChild(normalWidget);
+  });
+
+  test("reuses unchanged block widgets across an update (remend keeps object identity)", async () => {
+    // "This is **bold" has an open bold formatting which remend should complete.
+    const initialText = "# Header 1\n\nThis is **bold";
+    const { screen, container, settle } = await mountApp(<Markdown>{initialText}</Markdown>, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+
+    const mdWidget = screen.children[0] as MarkdownWidget;
+    expect(blocks(mdWidget).length).toBe(2);
+
+    const firstBlockWidget = mdWidget.children[0];
+    const secondBlockWidget = mdWidget.children[1];
+    expect(firstBlockWidget.tagName).toBe("heading");
+    expect(secondBlockWidget.tagName).toBe("paragraph");
+
+    // Verify remend worked: paragraph text node has balanced bold tags.
+    const pRichText = secondBlockWidget.children[0];
+    const pText = (pRichText.children[0] as TextNode).text;
+    expect(pText).toContain("[bold]bold[/]");
+
+    // Update markdown by appending a new block.
+    const updatedText = "# Header 1\n\nThis is **bold**\n\n- Item 1\n- Item 2";
+    reconciler.updateContainer(<Markdown>{updatedText}</Markdown>, container, null, () => {});
+    await settle();
+
+    expect(blocks(mdWidget).length).toBe(3);
+    expect(mdWidget.children[0].tagName).toBe("heading");
+    expect(mdWidget.children[1].tagName).toBe("paragraph");
+    expect(mdWidget.children[2].tagName).toBe("bullet_list");
+
+    // CRITICAL: object references are strictly identical (widget reuse).
+    expect(mdWidget.children[0]).toBe(firstBlockWidget);
+    expect(mdWidget.children[1]).toBe(secondBlockWidget);
+  });
+
+  test("renders a full demo document (headers, lists, code, mermaid) without crashing", async () => {
+    const mdText = `# Markdown Render Demo
+
+This is a paragraph featuring **bold text**, *italic emphasis*, and \`inline code\`.
+
+## Blockquotes & Code Blocks
+> This is a quote block.
+> And it can contain nested quotes.
+
+\`\`\`ts
+const value = "Hello World";
+console.log(value);
+\`\`\`
+
+## Lists
+- Bullet list item 1
+- Bullet list item 2
+  - Nested list item
+
+1. Ordered list item 1
+2. Ordered list item 2
+
+## Mermaid Diagram
+\`\`\`mermaid
+graph TD
+Start[Start Demo] --> Select[Select Tab]
+Select -->|Markup| MarkupTab[Show markup details]
+Select -->|Syntax| SyntaxTab[Show highlighted code]
+Select -->|Markdown| MarkdownTab[Show rendered markdown]
+\`\`\`
+`;
+
+    await mountApp(<Markdown>{mdText}</Markdown>, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+  });
+
+  test("renders mermaid code blocks into a SyntaxWidget", async () => {
+    const mdContent = `
+# Mermaid test
+\`\`\`mermaid
+graph TD
+A --> B
+\`\`\`
+`;
+
+    const { app } = await mountApp(<Markdown>{mdContent}</Markdown>, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+
+    const mdWidget = app.activeScreen.children[0] as MarkdownWidget;
+    expect(blocks(mdWidget).length).toBe(2);
+    expect(mdWidget.children[0].tagName).toBe("heading");
+    expect(mdWidget.children[1].tagName).toBe("syntax");
+
+    const syntaxWidget = mdWidget.children[1] as any;
+    expect(syntaxWidget.language).toBe("mermaid");
   });
 });

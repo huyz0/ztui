@@ -199,3 +199,103 @@ describe("InputWidget — mouse selection", () => {
     expect(w.hasSelection()).toBe(false);
   });
 });
+
+describe("InputWidget — keyboard interaction", () => {
+  test("typing, backspace, and an ignored control key all update onChange as expected", async () => {
+    let val = "";
+    const onChange = (v: string) => {
+      val = v;
+    };
+    const { app } = await mountApp(<Input value="init" onChange={onChange} />, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" },
+    });
+    const inputWidget = app.activeScreen.children[0] as any;
+    expect(inputWidget.value).toBe("init");
+
+    inputWidget.onKey({ key: "a", name: "a", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("inita");
+
+    inputWidget.onKey({
+      key: "backspace",
+      name: "backspace",
+      ctrl: false,
+      meta: false,
+      shift: false,
+    });
+    expect(val).toBe("init");
+
+    inputWidget.onKey({ key: "enter", name: "enter", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.value).toBe("init");
+  });
+
+  test("enhanced navigation, editing, and placeholder rendering", async () => {
+    let val = "";
+    const onChange = (v: string) => {
+      val = v;
+    };
+    const { app, settle } = await mountApp(
+      <Input value="hello" onChange={onChange} placeholder="empty..." />,
+      { cols: 20, rows: 3, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+    );
+    const inputWidget = app.activeScreen.children[0] as any;
+    expect(inputWidget.value).toBe("hello");
+
+    // Click inside to position cursor (click col = 2 -> character 'l').
+    inputWidget.handleMouse({
+      type: "press",
+      button: "left",
+      x: inputWidget.getContentRect().x + 2,
+      y: inputWidget.getContentRect().y,
+    });
+    expect(inputWidget.cursorCol).toBe(2);
+
+    inputWidget.onKey({ key: "left", name: "left", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(1);
+
+    inputWidget.onKey({ key: "right", name: "right", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(2);
+
+    inputWidget.onKey({ key: "home", name: "home", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(0);
+
+    inputWidget.onKey({ key: "end", name: "end", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(5);
+
+    // Insert character '!' at end (cursor is at 5).
+    inputWidget.onKey({ key: "!", name: "!", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("hello!");
+    expect(inputWidget.cursorCol).toBe(6);
+
+    // Backspace at 6 deletes '!'.
+    inputWidget.onKey({
+      key: "backspace",
+      name: "backspace",
+      ctrl: false,
+      meta: false,
+      shift: false,
+    });
+    expect(val).toBe("hello");
+    expect(inputWidget.cursorCol).toBe(5);
+
+    // Move left twice to col 3 (after 'l').
+    inputWidget.onKey({ key: "left", name: "left", ctrl: false, meta: false, shift: false });
+    inputWidget.onKey({ key: "left", name: "left", ctrl: false, meta: false, shift: false });
+    expect(inputWidget.cursorCol).toBe(3);
+
+    // Delete at 3 deletes 'l' (so 'hello' -> 'helo').
+    inputWidget.onKey({ key: "delete", name: "delete", ctrl: false, meta: false, shift: false });
+    expect(val).toBe("helo");
+    expect(inputWidget.cursorCol).toBe(3);
+
+    // Placeholder rendering once emptied.
+    inputWidget.value = "";
+    app.queueRender();
+    await settle();
+    const buffer = app.buffer;
+    expect(buffer.cells[inputWidget.getContentRect().y][inputWidget.getContentRect().x].char).toBe(
+      "e",
+    );
+  });
+});
