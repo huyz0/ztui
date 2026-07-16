@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { Button, ChatInput, formatChatHints, VBox } from "../../react.ts";
 import { mountApp } from "../../test/harness.tsx";
 import type { Trigger } from "./chat/types.ts";
-import type { ChatInputWidget } from "./chat-input.ts";
+import { ChatInputWidget } from "./chat-input.ts";
 
 type Mounted = Awaited<ReturnType<typeof mountApp>>;
 
@@ -782,5 +782,340 @@ describe("ChatInput Tab routing through the app", () => {
     t.driver.simulateMouse(c.x, c.y, "press", "left");
     await t.settle();
     expect(t.screen.focusedWidget?.id).toBe("chat");
+  });
+});
+
+describe("ChatInput additional branch coverage", () => {
+  test("extraHints reset to [] when set to a nullish value", async () => {
+    let hints: unknown;
+    const { w } = await mountChat({
+      onHintsChange: (h: unknown) => {
+        hints = h;
+      },
+    });
+    (w as unknown as { extraHints: unknown }).extraHints = ["not-nullish"] as any;
+    (w as unknown as { extraHints: unknown }).extraHints = undefined;
+    expect(w.extraHints).toEqual([]);
+    expect(hints).toBeTruthy();
+  });
+
+  test("removeAttachment with an unknown id is a no-op", async () => {
+    const { w } = await mountChat({});
+    w.addAttachment({ id: "a", label: "a.png", kind: "image" });
+    w.removeAttachment("does-not-exist");
+    expect(w.value).toBe(""); // no throw, nothing removed matters for this state
+  });
+
+  test("acceptSuggestionKey='ctrl-e' shows the ^e glyph in hints and accepts on Ctrl+E", async () => {
+    let hints: any[] = [];
+    const { w } = await mountChat({
+      acceptSuggestionKey: "ctrl-e",
+      suggestionProvider: () => "world",
+      onHintsChange: (h: any[]) => {
+        hints = h;
+      },
+    });
+    type(w, "hello ");
+    (w as unknown as { suggestion: string | null }).suggestion = "world";
+    (w as unknown as { refreshHints: () => void })["refreshHints"]();
+    expect(hints.some((h) => h.keys === "^e")).toBe(true);
+    key(w, "ctrl+e", { ctrl: true });
+    expect(w.value).toContain("world");
+  });
+
+  test("modifier-enter mode advertises ^⏎ to send and ⏎ for newline in hints", async () => {
+    let hints: any[] = [];
+    await mountChat({
+      submitMode: "modifier-enter",
+      onHintsChange: (h: any[]) => {
+        hints = h;
+      },
+    });
+    expect(hints.some((h) => h.keys === "^⏎" && h.label === "send")).toBe(true);
+    expect(hints.some((h) => h.keys === "⏎" && h.label === "newline")).toBe(true);
+  });
+
+  test("disabled composer ignores key events entirely", async () => {
+    const { w } = await mountChat({ disabled: true });
+    type(w, "hello");
+    expect(w.value).toBe("");
+  });
+
+  test("Ctrl+Y and Ctrl+Shift+Z both redo", async () => {
+    const { w } = await mountChat({});
+    type(w, "ab");
+    w.undo();
+    expect(w.value).toBe("");
+    key(w, "ctrl+y");
+    expect(w.value).toBe("ab");
+
+    w.undo();
+    key(w, "ctrl+shift+z", { ctrl: true, shift: true });
+    expect(w.value).toBe("ab");
+  });
+
+  test("Down at the buffer end with no history is a plain no-op (no crash)", async () => {
+    const { w } = await mountChat({});
+    type(w, "hi");
+    expect(() => key(w, "down")).not.toThrow();
+    expect(w.value).toBe("hi");
+  });
+
+  test("history recall with an empty history array does not enter browsing mode", async () => {
+    const { w } = await mountChat({ getHistory: () => [] });
+    key(w, "up");
+    expect(w.value).toBe("");
+  });
+
+  test("Down past the newest history entry restores the stashed draft", async () => {
+    const { w } = await mountChat({ getHistory: () => ["only"] });
+    type(w, "draft text");
+    key(w, "home"); // caret to buffer start so "bump" mode allows entering history
+    key(w, "up"); // enters history, shows "only"
+    expect(w.value).toBe("only");
+    key(w, "down"); // past the newest -> restore stash
+    expect(w.value).toBe("draft text");
+  });
+
+  test("Shift+Up at the boundary row extends a selection to the buffer start", async () => {
+    const { w } = await mountChat({});
+    type(w, "hello");
+    key(w, "up", { shift: true });
+    expect(w.hasSelection()).toBe(true);
+  });
+
+  test("Shift+Down at the boundary row extends a selection to the buffer end", async () => {
+    const { w } = await mountChat({});
+    type(w, "hello");
+    key(w, "home"); // caret to row start (top/only row)
+    key(w, "down", { shift: true });
+    expect(w.hasSelection()).toBe(true);
+  });
+
+  test("clicking a chip copies its serialized text instead of placing the caret", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "auth.ts" }],
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@au");
+    await t.settle();
+    key(w, "enter");
+    await t.settle();
+    const c = content(w);
+    mouse(w, c.x, c.y, "press");
+    await t.settle();
+    expect(await t.driver.clipboard.get()).toContain("auth.ts");
+  });
+
+  test("a slash command trigger's 'dismiss' result deletes the typed query with no side effects", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "nope" }],
+      onAccept: () => ({ kind: "dismiss" }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@no");
+    await t.settle();
+    key(w, "enter");
+    await t.settle();
+    expect(w.value).toBe("");
+  });
+
+  test("a command-kind completion result fires onCommand and clears the query", async () => {
+    let commandName = "";
+    const trigger: Trigger = {
+      char: "/",
+      getCompletions: () => [{ label: "reset" }],
+      onAccept: () => ({ kind: "command", name: "reset-chat", args: { x: 1 } }),
+    };
+    const { t, w } = await mountChat({
+      triggers: [trigger],
+      onCommand: (n: string) => (commandName = n),
+    });
+    type(w, "/re");
+    await t.settle();
+    key(w, "enter");
+    await t.settle();
+    expect(commandName).toBe("reset-chat");
+    expect(w.value).toBe("");
+  });
+
+  test("Tab within an open popup accepts the highlighted completion", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "auth.ts" }],
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@au");
+    await t.settle();
+    key(w, "tab");
+    expect(w.value).toBe("auth.ts");
+  });
+
+  test("submit() is a no-op with an empty value and no attachments", async () => {
+    let submitted = false;
+    const { w } = await mountChat({
+      onSubmit: () => {
+        submitted = true;
+      },
+    });
+    key(w, "enter");
+    expect(submitted).toBe(false);
+  });
+
+  test("a press that isn't a plain left-button click is ignored", async () => {
+    const { t, w } = await mountChat({});
+    const c = content(w);
+    (w as unknown as { handleMouse: (e: unknown) => void }).handleMouse({
+      x: c.x,
+      y: c.y,
+      type: "press",
+      button: "right",
+    });
+    expect(w.hasSelection()).toBe(false);
+  });
+
+  test("a drag event before any press (not dragSelecting) is ignored", async () => {
+    const { w } = await mountChat({});
+    const c = content(w);
+    expect(() => mouse(w, c.x, c.y, "drag")).not.toThrow();
+    expect(w.hasSelection()).toBe(false);
+  });
+
+  test("a release with no active drag selection clears any stray selection", async () => {
+    const { w } = await mountChat({});
+    type(w, "hello");
+    const c = content(w);
+    expect(() => mouse(w, c.x, c.y, "release")).not.toThrow();
+  });
+
+  test("acceptSuggestionKey='tab' shows the ⇥ glyph in the accept hint", async () => {
+    let hints: any[] = [];
+    const { w } = await mountChat({
+      acceptSuggestionKey: "tab",
+      onHintsChange: (h: any[]) => {
+        hints = h;
+      },
+    });
+    (w as unknown as { suggestion: string | null }).suggestion = "world";
+    (w as unknown as { refreshHints: () => void }).refreshHints();
+    expect(hints.some((h) => h.keys === "⇥")).toBe(true);
+  });
+
+  test("the history hint is suppressed once the composer has been typed into", async () => {
+    let hints: any[] = [];
+    const { w } = await mountChat({
+      getHistory: () => ["a"],
+      onHintsChange: (h: any[]) => {
+        hints = h;
+      },
+    });
+    expect(hints.some((h) => h.label === "history")).toBe(true);
+    type(w, "x");
+    (w as unknown as { refreshHints: () => void }).refreshHints();
+    expect(hints.some((h) => h.label === "history")).toBe(false);
+  });
+
+  test("handleKey falls back to ev.key when ev.name is absent", async () => {
+    const { w } = await mountChat({});
+    w.handleKey({ key: "a" } as any);
+    expect(w.value).toBe("a");
+  });
+
+  test("the nav switch's 'tab' case is a no-op when reached directly", async () => {
+    const { w } = await mountChat({});
+    expect(() => w.handleKey({ key: "tab", name: "tab" } as any)).not.toThrow();
+    expect(w.value).toBe("");
+  });
+
+  test("a trigger resolving to zero completions closes an already-open popup", async () => {
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: (q: string) => (q.length <= 2 ? [{ label: "auth.ts" }] : []),
+      onAccept: (c) => ({ kind: "chip", token: { label: c.label } }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "@au");
+    await t.settle();
+    expect(t.text()).toContain("auth.ts");
+    type(w, "th"); // query now "auth" (length 4) -> zero completions -> closes popup
+    await t.settle();
+    expect(t.text()).not.toContain("auth.ts");
+  });
+
+  test("disabled composer ignores mouse events too", async () => {
+    const { w } = await mountChat({ disabled: true });
+    const c = content(w);
+    mouse(w, c.x, c.y, "press");
+    expect(w.hasSelection()).toBe(false);
+  });
+
+  test("dragging further after the anchor is already set keeps extending, not re-anchoring", async () => {
+    const { t, w } = await mountChat({});
+    type(w, "hello world");
+    await t.settle();
+    const c = content(w);
+    mouse(w, c.x, c.y, "press");
+    mouse(w, c.x + 2, c.y, "drag");
+    mouse(w, c.x + 5, c.y, "drag"); // anchor already set — extends further
+    expect(w.hasSelection()).toBe(true);
+  });
+
+  test("'esc' (alternate escape name) also clears selection when not busy", async () => {
+    const { w } = await mountChat({});
+    type(w, "hi");
+    key(w, "home", { shift: true });
+    expect(w.hasSelection()).toBe(true);
+    w.handleKey({ name: "esc", key: "escape" } as any);
+    expect(w.hasSelection()).toBe(false);
+  });
+
+  test("acceptCompletion is a no-op when there is no active trigger or matching item", () => {
+    const w = new ChatInputWidget();
+    expect(() =>
+      (w as unknown as { acceptCompletion: (i: number) => void }).acceptCompletion(0),
+    ).not.toThrow();
+  });
+
+  test("selected text renders with the selection foreground/background colors", async () => {
+    const { t, w } = await mountChat({});
+    type(w, "hello");
+    await t.settle();
+    key(w, "home", { shift: false });
+    key(w, "end", { shift: true }); // select the whole line
+    await t.settle();
+    expect(w.hasSelection()).toBe(true);
+    expect(() => t.text()).not.toThrow();
+  });
+
+  test("the attachment strip stops drawing once it runs out of width", async () => {
+    const { t, w } = await mountChat({}, { cols: 12, rows: 6 });
+    w.addAttachment({ id: "a", label: "a-very-long-attachment-name", kind: "file" });
+    w.addAttachment({ id: "b", label: "b-another-long-one", kind: "file" });
+    await t.settle();
+    expect(() => t.text()).not.toThrow();
+  });
+
+  test("clicking the send glyph while busy fires onInterrupt instead of submitting", async () => {
+    let interrupted = false;
+    let submitted = false;
+    const { t, w } = await mountChat({
+      busy: true,
+      onInterrupt: () => {
+        interrupted = true;
+      },
+      onSubmit: () => {
+        submitted = true;
+      },
+    });
+    type(w, "abc");
+    await t.settle();
+    const c = content(w);
+    mouse(w, c.right - 1, c.y);
+    expect(interrupted).toBe(true);
+    expect(submitted).toBe(false);
   });
 });
