@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { TodoList } from "../react/components.tsx";
+import { Label, TodoList } from "../react/components.tsx";
 import "../widgets/index.ts";
 import { mountApp } from "./harness.tsx";
 
@@ -34,6 +34,17 @@ describe("TodoList", () => {
     const text = t.text();
     expect(text).toContain("Plan");
     expect(text).toContain("1/4"); // one completed of four
+  });
+
+  test("title with an icon shows the icon beside the heading", async () => {
+    const t = await mountApp(
+      <TodoList title="Plan" icon={<Label>{"★"}</Label>} items={items} />,
+      OPTS,
+    );
+    await t.settle();
+    const text = t.text();
+    expect(text).toContain("★");
+    expect(text).toContain("Plan");
   });
 
   test("empty list renders nothing fatal", async () => {
