@@ -22,6 +22,11 @@ describe("RichText Engine", () => {
     expect(s3.underline).toBe(true);
     expect(s3.underlineStyle).toBe("curly");
     expect(s3.underlineColor).toBe("red");
+
+    expect(parseStyleString("reverse").reverse).toBe(true);
+
+    // A trailing "on" with nothing after it has no background to consume.
+    expect(parseStyleString("bold on").background).toBeUndefined();
   });
 
   test("RichText.fromMarkup simple tag parsing", () => {
@@ -53,6 +58,78 @@ describe("RichText Engine", () => {
     expect(rich.plain).toBe("This is [not a tag] and this is");
     expect(rich.spans.length).toBe(1);
     expect(rich.spans[0].style.bold).toBe(true);
+  });
+
+  test("RichText.fromMarkup treats a backslash-prefixed tag-looking match as literal text", () => {
+    // The tag regex itself captures leading backslashes; an odd count means
+    // the whole "[...]" is escaped and rendered as literal text, not a tag.
+    const rich = RichText.fromMarkup("Show \\[bold] literally");
+    expect(rich.plain).toBe("Show [bold] literally");
+    expect(rich.spans.length).toBe(0);
+  });
+
+  test("adjacent (non-overlapping) tags sharing a boundary offset order correctly", () => {
+    // The closing endpoint of [bold] and the opening endpoint of [red] land
+    // on the same plain-text offset; leaving must sort before entering there.
+    const rich = RichText.fromMarkup("[bold]A[/][red]B[/]");
+    const segments = rich.toSegments();
+    expect(segments.map((s) => s.text)).toEqual(["A", "B"]);
+    expect(segments[0].style.bold).toBe(true);
+    expect(segments[1].style.color).toBe("red");
+  });
+
+  test("a named close tag skips past a non-matching innermost open tag", () => {
+    // [/red] must close [red], searching past the innermost [bold] which
+    // doesn't match — exercising the mismatch branch of the name search.
+    const rich = RichText.fromMarkup("[red][bold]x[/red]y");
+    expect(rich.plain).toBe("xy");
+    expect(rich.spans).toHaveLength(2);
+    const red = rich.spans.find((s) => s.style.color === "red")!;
+    const bold = rich.spans.find((s) => s.style.bold)!;
+    expect(red.start).toBe(0);
+    expect(red.end).toBe(1);
+    // The unmatched [bold] implicitly closes at the very end of the markup.
+    expect(bold.end).toBe(2);
+  });
+
+  test("a close tag with no matching open tag is dropped (no span emitted)", () => {
+    const rich = RichText.fromMarkup("[/nonexistent]hello");
+    expect(rich.plain).toBe("hello");
+    expect(rich.spans).toHaveLength(0);
+  });
+
+  test("toSegments ignores a span whose end does not exceed its start", () => {
+    const rich = new RichText("abc", [{ start: 1, end: 1, style: new Style({ bold: true }) }]);
+    const segments = rich.toSegments();
+    expect(segments).toHaveLength(1);
+    expect(segments[0].text).toBe("abc");
+    expect(segments[0].style.bold).toBeFalsy();
+  });
+
+  test("an unclosed tag implicitly closes at the end of the markup", () => {
+    const rich = RichText.fromMarkup("[bold]never closed");
+    expect(rich.plain).toBe("never closed");
+    expect(rich.spans.length).toBe(1);
+    expect(rich.spans[0].start).toBe(0);
+    expect(rich.spans[0].end).toBe(rich.plain.length);
+    expect(rich.spans[0].style.bold).toBe(true);
+  });
+
+  test("toSegments sorts endpoints correctly even when spans arrive out of start order", () => {
+    // Three adjacent (non-overlapping) spans covering [0,1) [1,2) [2,3), handed
+    // to the constructor out of start order — exercises the endpoint sort's
+    // tie-break (an exit and an entry landing on the same offset).
+    const rich = new RichText("abc", [
+      { start: 0, end: 1, style: new Style({ color: "a" }) },
+      { start: 2, end: 3, style: new Style({ color: "c" }) },
+      { start: 1, end: 2, style: new Style({ color: "b" }) },
+    ]);
+    const segments = rich.toSegments();
+    expect(segments.map((s) => [s.text, s.style.color])).toEqual([
+      ["a", "a"],
+      ["b", "b"],
+      ["c", "c"],
+    ]);
   });
 
   test("toSegments converts correctly with active styles stack", () => {
