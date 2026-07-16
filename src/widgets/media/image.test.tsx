@@ -13,8 +13,8 @@ vi.mock("node:fs", async (importOriginal) => {
 import { fullColorRgbaToSixel } from "../../driver/bun/graphics.ts";
 import { reconciler } from "../../react/reconciler.ts";
 import { Image, SvgImage, VBox, View } from "../../react.ts";
-import { mountApp, waitFor } from "../../test/harness.tsx";
-import { decodeImage, resizeImage } from "./image.ts";
+import { findWidgetByType, mountApp, waitFor } from "../../test/harness.tsx";
+import { decodeImage, ImageWidget, resizeImage } from "./image.ts";
 
 const TINY_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
@@ -388,5 +388,137 @@ describe("Image & SVG Image Widgets", () => {
     });
     const buffer = app.buffer;
     expect(buffer.cells[0][0].char).toBe("R"); // 'R' of "Render error"
+  });
+
+  test("An invisible Image skips rendering entirely", async () => {
+    const t = await mountApp(<Image src={pngDataUri} style={{ width: 4, height: 2 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "none" },
+    });
+    const widget = findWidgetByType<ImageWidget>(t, "ImageWidget");
+    widget.visible = false;
+    // Should not throw and should leave the buffer untouched by the image path.
+    expect(() => widget.render(t.app.buffer)).not.toThrow();
+  });
+
+  test("A zero-size client rect is a no-op (no decode, no error placeholder)", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 0, height: 0, overflowX: "hidden", overflowY: "hidden" }}>
+        <Image src={pngDataUri} />
+      </VBox>,
+      { cols: 10, rows: 5, capabilities: { graphicsProtocol: "none" } },
+    );
+    const widget = findWidgetByType<ImageWidget>(t, "ImageWidget");
+    expect(() => widget.render(t.app.buffer)).not.toThrow();
+    expect(t.cellAt(0, 0).char).not.toBe("E"); // no error placeholder drawn
+  });
+
+  test("Falls back to the default cell size when the driver reports none", async () => {
+    const { cellAt } = await mountApp(<Image src={pngDataUri} style={{ width: 4, height: 2 }} />, {
+      cols: 10,
+      rows: 5,
+      capabilities: { graphicsProtocol: "sixel", cellSize: undefined },
+    });
+    const cell = cellAt(0, 0);
+    // Default fallback (10x20) rather than VTEDriver's own default cellSize (8x16);
+    // the buffer floors to a minimum of 80x24 cells regardless of the requested
+    // `cols`/`rows`, so the widget (unconstrained width/height) stretches to fill it.
+    expect(cell.graphic?.pixelWidth).toBe(80 * 10);
+    expect(cell.graphic?.pixelHeight).toBe(24 * 20);
+  });
+
+  test("A non-Error thrown while reading the file source is stringified in the placeholder", async () => {
+    const readSpy = fs.readFileSync as unknown as ReturnType<typeof vi.fn>;
+    readSpy.mockImplementationOnce(() => {
+      // biome-ignore lint/style/useThrowOnlyError: regression test for the non-Error branch
+      throw "disk exploded";
+    });
+    const { cellAt } = await mountApp(
+      <Image src="/some/path.png" style={{ width: 20, height: 2 }} />,
+      {
+        cols: 30,
+        rows: 5,
+        capabilities: { graphicsProtocol: "none" },
+      },
+    );
+    expect(cellAt(0, 0).char).toBe("E"); // "Error reading: disk exploded"
+  });
+
+  test("Uses a custom resolved background (not the theme default) when blending transparency", async () => {
+    const { cellAt } = await mountApp(
+      <Image src={pngDataUri} style={{ width: 4, height: 2, background: "#123456" }} />,
+      { cols: 10, rows: 5, capabilities: { graphicsProtocol: "sixel" } },
+    );
+    expect(cellAt(0, 0).graphic).toBeDefined();
+  });
+
+  test("Uses a custom resolved background in ANSI fallback mode too", async () => {
+    const { cellAt } = await mountApp(
+      <Image src={pngDataUri} style={{ width: 4, height: 2, background: "#123456" }} />,
+      { cols: 10, rows: 5, capabilities: { graphicsProtocol: "none" } },
+    );
+    expect([" ", "█"]).toContain(cellAt(0, 0).char);
+  });
+
+  test("Caches on a buffer-provided image (no `src`) in graphics mode", async () => {
+    const buf = new Uint8Array(Buffer.from(TINY_PNG_BASE64, "base64"));
+    const { cellAt, app } = await mountApp(
+      <ztui-image buffer={buf} style={{ width: 4, height: 2 }} />,
+      { cols: 10, rows: 5, capabilities: { graphicsProtocol: "sixel" } },
+    );
+    expect(cellAt(0, 0).graphic).toBeDefined();
+    // A repeat render with nothing changed should hit the cache path.
+    app.queueRender();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(cellAt(0, 0).graphic).toBeDefined();
+  });
+
+  test("An error message wider than the buffer is clipped instead of overflowing", async () => {
+    const { app } = await mountApp(
+      <Image src="invalid_non_existent_file.png" style={{ width: 5, height: 1 }} />,
+      { cols: 5, rows: 3, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+    );
+    // No throw despite a message far longer than the 5-column-wide viewport.
+    const buffer = app.buffer;
+    expect(buffer.cells[0][0].char).toBe("E");
+  });
+
+  test("An error message that overruns the right edge mid-chunk is clipped, not overflowed", async () => {
+    // An explicit width far wider than the buffer (not clipped by layout, since
+    // it's an intrinsic size rather than an offset past the parent's edge)
+    // forces the per-row chunk write to hit the real buffer edge mid-chunk.
+    const t = await mountApp(
+      <Image
+        src="invalid_non_existent_file.png"
+        style={{ position: "absolute", left: 0, top: 0, width: 1000, height: 2 }}
+      />,
+      { cols: 6, rows: 3, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+    );
+    expect(() => t.app.queueRender()).not.toThrow();
+    await t.settle();
+    expect(t.cellAt(0, 0).char).toBe("E");
+    expect(t.cellAt(5, 0).char).not.toBe("");
+  });
+
+  test("An error placeholder positioned partly off-screen is clipped without throwing", async () => {
+    // `position: absolute` with a negative left/top pushes rows/columns of the
+    // error placeholder's client rect outside the buffer entirely, exercising
+    // renderError's own bounds checks (not just its inner-loop clipping above).
+    const t = await mountApp(
+      <Image
+        src="invalid_non_existent_file.png"
+        style={{
+          position: "absolute",
+          left: -3,
+          top: -1,
+          width: 10,
+          height: 4,
+        }}
+      />,
+      { cols: 6, rows: 3, capabilities: { glyphProtocol: false, graphicsProtocol: "none" } },
+    );
+    expect(() => t.app.queueRender()).not.toThrow();
+    await t.settle();
   });
 });
