@@ -460,6 +460,43 @@ describe("Diff", () => {
     expect(w.view).toBe("unified");
   });
 
+  test("controlled view: clicking a tab fires onViewChange but doesn't self-manage state", async () => {
+    // When `view` is passed (controlled), the component must call onViewChange
+    // and rely on the parent to update the prop - it must not flip its own
+    // internal state. Since this test never updates the `view` prop, the
+    // rendered view should remain "unified" even after clicking "Split".
+    let lastView: string | undefined;
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff
+          id="d"
+          oldText={OLD}
+          newText={NEW}
+          view="unified"
+          context={Infinity}
+          onViewChange={(v) => {
+            lastView = v;
+          }}
+        />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    const hit = (w as unknown as { toggleHit: { y: number; split: [number, number] } }).toggleHit;
+    w.handleMouse({
+      type: "press",
+      button: "left",
+      x: hit.split[0],
+      y: hit.y,
+      handled: false,
+    } as never);
+    await t.settle();
+    expect(lastView).toBe("split");
+    // Prop never changed, so the widget stays on "unified".
+    expect(w.view).toBe("unified");
+  });
+
   test("a single isolated unchanged line collapses to a singular hunk marker", async () => {
     // context=0 with two changes separated by exactly one untouched line: that
     // one line folds to its own hunk, using the singular "line" wording.
