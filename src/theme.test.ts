@@ -270,14 +270,13 @@ describe("every light theme's muted text tokens clear WCAG AA", () => {
     }
   });
 
-  test.each(lightThemes.map((t) => [t.name, t] as const))(
-    "%s: foreground/comment/placeholder/gutter/dimmed >= 4.5:1 against background",
-    (_name, theme) => {
-      for (const key of ["foreground", "comment", "placeholder", "gutter", "dimmed"] as const) {
-        const value = theme.colors[key];
-        if (!value?.startsWith("#")) continue; // only concrete hex tokens are checked here
-        expect(contrastRatio(value, theme.colors.background)).toBeGreaterThanOrEqual(4.5);
-      }
-    },
-  );
+  test.each(
+    lightThemes.map((t) => [t.name, t] as const),
+  )("%s: foreground/comment/placeholder/gutter/dimmed >= 4.5:1 against background", (_name, theme) => {
+    for (const key of ["foreground", "comment", "placeholder", "gutter", "dimmed"] as const) {
+      const value = theme.colors[key];
+      if (!value?.startsWith("#")) continue; // only concrete hex tokens are checked here
+      expect(contrastRatio(value, theme.colors.background)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

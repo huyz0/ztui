@@ -158,7 +158,12 @@ export class WebInspector {
         family,
         padding,
         bg,
-      }: { fontSize: number; family: string; padding: number; bg: string }) => {
+      }: {
+        fontSize: number;
+        family: string;
+        padding: number;
+        bg: string;
+      }) => {
         (window as any).__ztuiView = (window as any).ztuiCanvas.create(
           document.getElementById("screen"),
           fontSize,

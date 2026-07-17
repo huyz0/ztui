@@ -456,7 +456,12 @@ describe("renderBufferToCanvas", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(3, 1);
     for (let x = 0; x < 3; x++) buf.setCell(x, 0, "█", new Style({ color: "cyan" }));
-    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, { ...METRICS, cellWidth: 7.225 }, OPTS);
+    renderBufferToCanvas(
+      serializeForCanvas(buf).cells,
+      ctx,
+      { ...METRICS, cellWidth: 7.225 },
+      OPTS,
+    );
     // Each block's right edge equals the next block's left edge (snapped to 1/dpr).
     const blocks = calls.fillRect.filter((r) => r[2] > 0).slice(1); // drop the clear rect
     for (let i = 1; i < blocks.length; i++) {
