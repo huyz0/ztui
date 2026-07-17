@@ -94,6 +94,12 @@ function detectAlert(bq: Tokens.Blockquote): { type: string; bodyTokens: Token[]
 
 export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
   private readonly copyButton = new CopyButtonWidget();
+  // Prose leaves (paragraphs, headings) opt into wrapping the `wrap` prop
+  // controls; table cells, rules, and list bullets render manually
+  // column-padded single lines and must never wrap regardless of it.
+  // Tracked explicitly rather than checking `child.wrap` (its current value)
+  // so a later `wrap` toggle can re-sync only the leaves that opted in.
+  private readonly wrapEligible = new WeakSet<RichTextWidget>();
   private _markdownTheme?: string = "theme";
   public override get theme(): string | undefined {
     return this._markdownTheme;
@@ -371,10 +377,14 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
     super.measure(maxW, maxH);
   }
 
-  /** Propagate the viewport wrap width to every wrap-enabled RichText leaf. */
+  /** Propagate the viewport wrap width to every wrap-eligible RichText leaf. */
   private setWrapHints(widget: Widget, hint: number): void {
     for (const child of widget.children) {
       if (child instanceof RichTextWidget) {
+        // Only prose leaves (paragraphs/headings) opted in at construction —
+        // table cells, rules, and list bullets render manually padded single
+        // lines and must never be forced into wrapping.
+        if (!this.wrapEligible.has(child)) continue;
         child.wrap = this.wrap;
         if (child.wrap) child.wrapWidthHint = hint;
       } else if (child instanceof Widget) {
@@ -464,6 +474,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
 
       const richText = new RichTextWidget();
       richText.wrap = this.wrap; // a long heading flows instead of clipping
+      this.wrapEligible.add(richText);
       richText.style.bold = true;
       richText.style.color = color;
       richText.appendChild(new TextNode(`[bold]${content}[/]`));
@@ -494,6 +505,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
 
       const richText = new RichTextWidget();
       richText.wrap = this.wrap; // body prose word-wraps to the content width
+      this.wrapEligible.add(richText);
       richText.appendChild(new TextNode(content));
       container.appendChild(richText);
 

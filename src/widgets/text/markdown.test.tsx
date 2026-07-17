@@ -459,6 +459,40 @@ describe("Markdown wrapping", () => {
     expect(leafAfter.wrap).toBe(true);
     expect(leafAfter.measuredHeight).toBeGreaterThan(1);
   });
+
+  test("toggling wrap doesn't force-wrap table cells or list bullets (structural chrome stays unwrapped)", () => {
+    // Regression: an earlier fix for the prose-wrap-toggle bug above made
+    // setWrapHints() propagate `wrap` onto *every* RichText leaf, including
+    // table header/rule/body-row cells and list bullets, which render
+    // manually column-padded single lines and must never wrap — doing so
+    // breaks column alignment against the header/rule.
+    const allRichText = (w: Widget): any[] => {
+      const out: any[] = [];
+      const visit = (n: any) => {
+        if (n.tagName === "richtext") out.push(n);
+        for (const c of n.children ?? []) visit(c);
+      };
+      visit(w);
+      return out;
+    };
+
+    const table = ["| Name | Age |", "| :--- | ---: |", "| Alice | 30 |"].join("\n");
+    const listDoc = ["- one", "- two"].join("\n");
+    const w = new MarkdownWidget();
+    w.wrap = false;
+    md(`${table}\n\n${listDoc}`, w);
+
+    w.wrap = true;
+    md(`${table}\n\n${listDoc}`, w); // same content: exercises setWrapHints(), not a rebuild
+
+    for (const leaf of allRichText(w)) {
+      if (leaf.selectable === false || !leaf.parent || leaf.parent.tagName === "table") {
+        // Table rows/rule and list bullets are marked `selectable = false` or
+        // live under a `table` container — chrome, never wrap-eligible.
+        expect(leaf.wrap).toBe(false);
+      }
+    }
+  });
 });
 
 describe("Markdown rendering integration", () => {

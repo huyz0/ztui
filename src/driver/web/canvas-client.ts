@@ -54,10 +54,8 @@ window.ztuiCanvas = {
     // change, doesn't leave the backing store rendering at a stale ratio.
     let dpr = window.devicePixelRatio || 1;
     let rows = 0;
-    let cols = 0;
 
     const resize = (c: number, r: number) => {
-      cols = c;
       rows = r;
       dpr = window.devicePixelRatio || 1;
       const wpx = c * cellWidth + 2 * padding;
@@ -77,13 +75,13 @@ window.ztuiCanvas = {
     let lastCells: CanvasCell[][] = [];
     const render = (cells: CanvasCell[][]) => {
       lastCells = cells;
-      // Re-check the shape on every call, not just when the canvas has never
-      // been sized — a `resize()` call racing an in-flight `render(cells)`
-      // carrying the old grid shape would otherwise paint through a
-      // transform sized for stale dimensions.
-      const r = cells.length;
-      const c = cells[0]?.length ?? 0;
-      if (r > 0 && (r !== rows || c !== cols)) resize(c, r);
+      // Bootstrap only: size the canvas from the first frame if the caller
+      // never called `resize()` explicitly. Once sized, `resize()` is the
+      // sole authority — re-deriving dimensions from every `cells` shape
+      // here would fight a caller's own explicit resize (e.g. ahead of a
+      // frame that hasn't caught up to the new size yet), causing a
+      // visible resize-then-resize-back flash instead of one clean change.
+      if (rows === 0 && cells.length) resize(cells[0]?.length ?? 0, cells.length);
       renderBufferToCanvas(cells, ctx, metrics, {
         fontSize,
         fontFamily,
