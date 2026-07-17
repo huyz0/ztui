@@ -1,5 +1,13 @@
-import { createElement, type ReactElement, type ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  createElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import type { ComponentProps } from "../types.ts";
+import { ChatBubble, type ChatBubbleProps } from "./chat-bubble.tsx";
 
 export interface TranscriptProps extends ComponentProps {
   /**
@@ -10,6 +18,33 @@ export interface TranscriptProps extends ComponentProps {
   followTail?: boolean;
   /** The turns — `ChatBubble`s, `ToolRender`s, `Reasoning`s, anything. */
   children: ReactNode;
+}
+
+/**
+ * Insert a blank line above each `ChatBubble` whose role differs from the
+ * previous `ChatBubble` sibling — consecutive turns from the same speaker
+ * stay tight, a role switch gets a visual break. Non-`ChatBubble` children
+ * (a `ToolRender`, a `Reasoning`) reset the run: whatever `ChatBubble` comes
+ * after one always gets the gap.
+ */
+function withRoleSpacing(children: ReactNode): ReactNode {
+  let prevRole: ChatBubbleProps["role"] | undefined;
+  let isFirst = true;
+  return Children.map(children, (child) => {
+    if (!isValidElement(child) || child.type !== ChatBubble) {
+      prevRole = undefined; // force a gap before the next bubble, even same-role
+      return child;
+    }
+    const props = child.props as ChatBubbleProps;
+    const role = props.role ?? "assistant";
+    const needsGap = !isFirst && prevRole !== role;
+    prevRole = role;
+    isFirst = false;
+    if (!needsGap) return child;
+    return cloneElement(child, {
+      style: { margin: { top: 1 }, ...props.style },
+    } as Partial<ChatBubbleProps>);
+  });
 }
 
 /**
@@ -47,7 +82,7 @@ export function Transcript({
         ...rest.style,
       },
     },
-    children,
+    withRoleSpacing(children),
   );
 }
 Transcript.displayName = "Transcript";
