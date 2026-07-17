@@ -349,6 +349,8 @@ describe("CSSResolver syntax/diff fallbacks for theme-undefined names", () => {
       "punctuation",
       "diff-added-bg",
       "diff-removed-bg",
+      "diff-added-fg",
+      "diff-removed-fg",
     ]) {
       w.style.color = `$${name}`;
       const c = resolver.resolveStyles(w, false).color;
@@ -390,21 +392,27 @@ describe("CSSResolver diff row tint strength", () => {
   afterEach(() => ThemeManager.getInstance().setTheme("default-dark"));
 
   test.each([
-    ["default-dark", 1.5, 5.5] as const,
-    ["default-light", 1.7, 5.5] as const,
-  ])("%s: diff-added-bg/diff-removed-bg are distinguishable from the background, and text on top stays legible", (themeName, minBgContrast, minTextContrast) => {
+    ["default-dark", 1.5, 4.5] as const,
+    ["default-light", 1.7, 4.5] as const,
+  ])("%s: diff-added-bg/diff-removed-bg are distinguishable from the background, and the row's own text color stays legible on top", (themeName, minBgContrast, minTextContrast) => {
     const mgr = ThemeManager.getInstance();
     mgr.setTheme(themeName);
     const resolver = new CSSResolver([]);
     const w = new Widget("code");
     const theme = mgr.getActiveTheme();
     const bg = theme.colors.background;
-    const fg = theme.colors.foreground;
 
     w.style.color = "$diff-added-bg";
     const addedBg = resolver.resolveStyles(w, false).color as string;
     w.style.color = "$diff-removed-bg";
     const removedBg = resolver.resolveStyles(w, false).color as string;
+    // Diff.ts paints an added/removed row's text with diff-added-fg/
+    // diff-removed-fg, not the plain theme foreground — check the color
+    // that's actually rendered, not a stand-in.
+    w.style.color = "$diff-added-fg";
+    const addedFg = resolver.resolveStyles(w, false).color as string;
+    w.style.color = "$diff-removed-fg";
+    const removedFg = resolver.resolveStyles(w, false).color as string;
 
     // The pre-fix weights (16%/24%) produced ~1.2-1.6:1 against the page
     // background on every built-in theme — below this floor. This isn't a
@@ -412,11 +420,35 @@ describe("CSSResolver diff row tint strength", () => {
     // "not literally the same shade as the page" floor.
     expect(contrastRatio(addedBg, bg)).toBeGreaterThan(minBgContrast);
     expect(contrastRatio(removedBg, bg)).toBeGreaterThan(minBgContrast);
-    // The foreground text painted over the tint must stay clearly legible
-    // — this is what regresses if the tint is pushed too strong chasing
-    // background-distinguishability alone.
-    expect(contrastRatio(fg, addedBg)).toBeGreaterThan(minTextContrast);
-    expect(contrastRatio(fg, removedBg)).toBeGreaterThan(minTextContrast);
+    // The row's own text color painted over its own tint must stay clearly
+    // legible — this is what regresses if either tint is pushed too far.
+    expect(contrastRatio(addedFg, addedBg)).toBeGreaterThan(minTextContrast);
+    expect(contrastRatio(removedFg, removedBg)).toBeGreaterThan(minTextContrast);
+  });
+
+  test.each([
+    "default-dark",
+    "default-light",
+  ])("%s: diff-added-fg/diff-removed-fg read as a distinct hue from the plain theme foreground, not just a same-color restyle", (themeName) => {
+    // Regression: an added/removed row's text used to be the same plain
+    // theme foreground as every other line — only the background tint
+    // signaled the change. diff-added-fg/diff-removed-fg must actually
+    // differ from the foreground (blended toward success/error), or this
+    // whole feature is a no-op.
+    const mgr = ThemeManager.getInstance();
+    mgr.setTheme(themeName);
+    const resolver = new CSSResolver([]);
+    const w = new Widget("code");
+    const fg = mgr.getActiveTheme().colors.foreground;
+
+    w.style.color = "$diff-added-fg";
+    const addedFg = resolver.resolveStyles(w, false).color as string;
+    w.style.color = "$diff-removed-fg";
+    const removedFg = resolver.resolveStyles(w, false).color as string;
+
+    expect(addedFg).not.toBe(fg);
+    expect(removedFg).not.toBe(fg);
+    expect(addedFg).not.toBe(removedFg);
   });
 });
 

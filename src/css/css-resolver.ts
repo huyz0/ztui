@@ -461,6 +461,28 @@ export class CSSResolver {
       );
       return blendColors(base, bg, isLight ? 0.42 : 0.3);
     }
+    // Row text: half foreground, half success/error, so an added/removed
+    // line's own text reads as visibly green/red rather than relying on the
+    // background tint alone to carry the signal (blending toward the
+    // success/error color's own luminance directly — as diff-added-bg does —
+    // would put text at nearly the same lightness as this row's now-tinted
+    // background, actually *hurting* contrast, which is why this blends
+    // toward the theme's normal foreground instead: it inherits the
+    // foreground's contrast-tuned luminance and only borrows the hue).
+    if (name === "diff-added-fg" || name === "diff-removed-fg") {
+      const base =
+        name === "diff-added-fg"
+          ? this.lookupVariable(widget, "success") || "#4caf50"
+          : this.lookupVariable(widget, "error") || "#f44336";
+      // A straight theme-level lookup, not `getWidgetColorWithFallback(widget,
+      // "color", …)`: that walks the widget's own `.style.color` for an
+      // override, which for a cell painted with this very token (diff.ts
+      // never sets a widget's `.style.color` to it, only a raw Style's, but a
+      // caller theoretically could) would recurse into resolving itself.
+      const fg =
+        this.lookupVariable(widget, "foreground") || activeTheme?.colors?.foreground || "#e0e0e0";
+      return blendColors(base, fg, 0.5);
+    }
 
     return undefined;
   }

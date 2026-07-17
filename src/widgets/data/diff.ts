@@ -255,12 +255,15 @@ export class DiffWidget extends Widget {
           plain: text,
         };
       }
-      // Added/removed rows get a tinted background across the full width (gutter
-      // included); the row color alone marks the change, so there's no +/- sign.
+      // Added/removed rows get a tinted background across the full width
+      // (gutter included) *and* their own text tint — the row color alone
+      // marks the change, so there's no +/- sign.
       const fillBg =
         r.kind === "add" ? "$diff-added-bg" : r.kind === "del" ? "$diff-removed-bg" : undefined;
+      const rowFg =
+        r.kind === "add" ? "$diff-added-fg" : r.kind === "del" ? "$diff-removed-fg" : fg;
       const rowBg = fillBg ?? this.findResolvedBackground();
-      const codeBase = this.styleFor(fg, rowBg);
+      const codeBase = this.styleFor(rowFg, rowBg);
 
       const segs: Segment[] = [];
       let plain = "";
@@ -308,19 +311,22 @@ export class DiffWidget extends Widget {
     let adds: DiffRow[] = [];
     const out: DisplayRow[] = [];
 
-    // Render one pane, tinted by its kind and padded with that tint to `paneW`.
+    // Render one pane, tinted by its kind (background and text) and padded
+    // with that tint to `paneW`.
     const renderPane = (c: Cell): Segment[] => {
       const bg =
         c.kind === "add" ? "$diff-added-bg" : c.kind === "del" ? "$diff-removed-bg" : widgetBg;
+      const paneFg =
+        c.kind === "add" ? "$diff-added-fg" : c.kind === "del" ? "$diff-removed-fg" : fg;
       const segs: Segment[] = [];
       if (numW > 0) {
         const num = (c.no ? String(c.no) : "").padStart(numW);
         segs.push(new Segment(`${num} `, this.styleFor("$gutter", bg).merge({ dim: true })));
       }
-      if (c.text.length > 0) segs.push(...this.codeSegments(c.text, this.styleFor(fg, bg)));
+      if (c.text.length > 0) segs.push(...this.codeSegments(c.text, this.styleFor(paneFg, bg)));
       const clamped = clampSegments(segs, paneW);
       const w = clamped.reduce((s, x) => s + stringWidth(x.text), 0);
-      if (w < paneW) clamped.push(new Segment(" ".repeat(paneW - w), this.styleFor(fg, bg)));
+      if (w < paneW) clamped.push(new Segment(" ".repeat(paneW - w), this.styleFor(paneFg, bg)));
       return clamped;
     };
 
