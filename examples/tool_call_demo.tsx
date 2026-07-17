@@ -22,10 +22,11 @@ import type { Demo } from "./gallery/types.ts";
 
 // An agent transcript built from the Agent Kit primitives. Each turn is a
 // ChatBubble whose accent bar says who's speaking (orange right = you, blue
-// left = assistant, silver left = tool). Messages pack tight — the bars and bold
-// authors separate turns, so no blank rows are spent between them. The tool
-// turn's Bash run cycles pending → running → success; a batch approval gate for
-// three tool calls closes the transcript.
+// left = assistant, silver left = tool) — align="right"/"left" pushes it to
+// that edge too, content-sized rather than full-width. Consecutive same-role
+// turns pack tight (Transcript only inserts a blank row on a role switch).
+// The tool turn's Bash run cycles pending → running → success; a batch
+// approval gate for three tool calls closes the transcript.
 function ToolCallDemoApp() {
   const [live, setLive] = useState<ToolCallStatus>("pending");
   const [rule, setRule] = useState<string | null>(null);
@@ -47,11 +48,11 @@ function ToolCallDemoApp() {
         {/* Transcript tails: it stays pinned to the newest turn as the agent
             streams, until you scroll up to read back. */}
         <Transcript style={{ height: "1fr" }}>
-          <ChatBubble role="user">
+          <ChatBubble role="user" align="right">
             <Markdown trimTrailingMargin>Run the **tests** and clean the `build` dir.</Markdown>
           </ChatBubble>
 
-          <ChatBubble role="assistant">
+          <ChatBubble role="assistant" align="left">
             <TaskTree
               title="Plan"
               items={[
@@ -88,7 +89,7 @@ function ToolCallDemoApp() {
             </HBox>
           </ChatBubble>
 
-          <ChatBubble role="tool">
+          <ChatBubble role="tool" align="left">
             {/* ToolRender picks a built-in renderer by tool name: Bash →
               syntax-highlighted command + streaming output; Edit → a diff. */}
             <ToolRender
@@ -156,7 +157,7 @@ function ToolCallDemoApp() {
             <Label style={{ color: "$dimmed" }}>$ ls some/folder</Label>
           </ApprovalPrompt>
         ) : (
-          <ChatBubble role="tool">
+          <ChatBubble role="tool" align="left">
             <Label style={{ color: "$success" }}>Rule → {rule}</Label>
           </ChatBubble>
         )}
@@ -199,7 +200,7 @@ function ToolCallDemoApp() {
             }
           />
         ) : (
-          <ChatBubble role="tool">
+          <ChatBubble role="tool" align="left">
             <Label style={{ color: "$success" }}>Resolved → {outcome}</Label>
           </ChatBubble>
         )}
