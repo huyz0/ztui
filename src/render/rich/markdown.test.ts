@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Markdown, parseInlineMarkdown } from "./markdown.ts";
+import { Markdown, parseInlineMarkdown, tokensToMarkup } from "./markdown.ts";
 
 describe("Markdown Engine", () => {
   test("parseInlineMarkdown translates styles", () => {
@@ -109,5 +109,64 @@ describe("Markdown Engine", () => {
     // Verify thematic break rule in blockquote
     const hrLine = lines.find((l) => l.plain.includes("─") && l.plain.includes("▌"));
     expect(hrLine).toBeDefined();
+  });
+
+  test("tokensToMarkup handles undefined token list", () => {
+    expect(tokensToMarkup(undefined)).toBe("");
+  });
+
+  test("tokensToMarkup falls back for link/image without href or alt text", () => {
+    const markup = tokensToMarkup([
+      { type: "link", href: "", tokens: [{ type: "text", text: "bare link" }] } as any,
+      { type: "image", href: "", text: "" } as any,
+    ]);
+    expect(markup).toContain("[bright-blue underline link=]bare link[/]");
+    expect(markup).toContain("🖼️  image ()");
+  });
+
+  test("tokensToMarkup handles escape, br, generic tokens-passthrough, and raw fallback", () => {
+    const markup = tokensToMarkup([
+      { type: "escape", text: "&amp;" } as any,
+      { type: "br" } as any,
+      { type: "unknown-with-tokens", tokens: [{ type: "text", text: "nested" }] } as any,
+      { type: "unknown-raw", raw: "raw-fallback" } as any,
+    ]);
+    expect(markup).toBe("&amp;\nnestedraw-fallback");
+  });
+
+  test("Markdown.renderToLines renders fenced code block with no language as plain text", () => {
+    const mdText = "```\nplain block\n```";
+    const lines = Markdown.renderToLines(mdText);
+    expect(lines[1].plain).toContain("plain block");
+  });
+
+  test("Markdown.renderToLines handles a top-level (non-blockquote) paragraph", () => {
+    const mdText = "just a plain paragraph";
+    const lines = Markdown.renderToLines(mdText);
+    expect(lines[0].plain).toBe("just a plain paragraph");
+  });
+
+  test("Markdown.renderToLines handles ragged table rows with fewer cells than the header", () => {
+    const mdText = "| A | B | C |\n|---|---|---|\n| 1 |\n";
+    const lines = Markdown.renderToLines(mdText);
+    expect(lines[0].plain).toContain("A");
+    // The ragged row should still render without throwing, padding missing cells as blank.
+    const raggedRow = lines.find((l) => l.plain.trimStart().startsWith("1"));
+    expect(raggedRow).toBeDefined();
+  });
+
+  test("Markdown.renderToLines handles an ordered list with an explicit start index", () => {
+    const mdText = "5. fifth\n6. sixth";
+    const lines = Markdown.renderToLines(mdText);
+    expect(lines[0].plain).toBe("  5. fifth");
+    expect(lines[1].plain).toBe("  6. sixth");
+  });
+
+  test("Markdown.renderToLines handles a list item containing only a nested sub-list", () => {
+    const mdText = "- outer\n  - inner a\n  - inner b";
+    const lines = Markdown.renderToLines(mdText);
+    expect(lines[0].plain).toBe("  •  outer");
+    expect(lines.some((l) => l.plain.includes("inner a"))).toBe(true);
+    expect(lines.some((l) => l.plain.includes("inner b"))).toBe(true);
   });
 });
