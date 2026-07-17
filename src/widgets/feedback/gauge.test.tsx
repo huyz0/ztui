@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { App } from "../../core/app.ts";
+import { Offset } from "../../geometry/offset.ts";
+import { Region } from "../../geometry/region.ts";
+import { Size } from "../../geometry/size.ts";
 import { Gauge, VBox } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { GaugeWidget } from "./gauge.ts";
 
@@ -188,5 +192,36 @@ describe("Gauge", () => {
     w.measure(80, 24);
     expect(w.measuredWidth).toBeGreaterThan(0);
     expect(w.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("a non-finite value produces an empty readout instead of NaN/Infinity text", async () => {
+    const { text } = await mountApp(
+      <VBox>
+        <Gauge id="g" style={{ width: 20 }} value={Number.POSITIVE_INFINITY} unit="MB" />
+      </VBox>,
+      { cols: 30, rows: 4 },
+    );
+    // fmtNum(Infinity) -> "" (bails on !Number.isFinite), so the readout is
+    // just the bare unit, not "InfinityMB".
+    expect(text()).toContain("MB");
+    expect(text()).not.toContain("Infinity");
+    expect(text()).not.toContain("NaN");
+  });
+
+  test("render() is a no-op when the widget is invisible", () => {
+    const w = new GaugeWidget();
+    w.value = 50;
+    w.region = new Region(Offset.ORIGIN, new Size(10, 1));
+    w.visible = false;
+    const buffer = new ScreenBuffer(10, 1);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("render() is a no-op when the content rect has zero width or height", () => {
+    const w = new GaugeWidget();
+    w.value = 50;
+    w.region = Region.EMPTY;
+    const buffer = new ScreenBuffer(1, 1);
+    expect(() => w.render(buffer)).not.toThrow();
   });
 });
