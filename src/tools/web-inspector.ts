@@ -20,6 +20,7 @@ import {
   HTML_FONT_SIZE,
   HTML_PADDING,
 } from "../render/html-renderer.ts";
+import { ThemeManager } from "../theme.ts";
 
 /**
  * Headless-browser debug harness for the web backend.
@@ -147,16 +148,26 @@ export class WebInspector {
     await this.page.setContent(doc, { waitUntil: "load" });
     await this.page.evaluate(() => (document as any).fonts.ready);
     await this.page.addScriptTag({ content: await canvasClientScript() });
+    // The real theme background, so the canvas's initial CSS background
+    // (before the first render() call lands) matches instead of flashing a
+    // hardcoded dark color first — most visible on a light theme.
+    const initialBg = ThemeManager.getInstance().getActiveTheme().colors.background;
     await this.page.evaluate(
-      ({ fontSize, family, padding }: { fontSize: number; family: string; padding: number }) => {
+      ({
+        fontSize,
+        family,
+        padding,
+        bg,
+      }: { fontSize: number; family: string; padding: number; bg: string }) => {
         (window as any).__ztuiView = (window as any).ztuiCanvas.create(
           document.getElementById("screen"),
           fontSize,
           family,
           padding,
+          bg,
         );
       },
-      { fontSize: HTML_FONT_SIZE, family: HTML_FONT_FAMILY, padding: HTML_PADDING },
+      { fontSize: HTML_FONT_SIZE, family: HTML_FONT_FAMILY, padding: HTML_PADDING, bg: initialBg },
     );
     this.viewReady = true;
   }

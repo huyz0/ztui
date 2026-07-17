@@ -1,8 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 import { ScreenBuffer } from "../../render/buffer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { Segment } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
+import { ThemeManager } from "../../theme.ts";
 import {
   _imageCacheSizeForTest,
   type CanvasMetrics,
@@ -53,7 +54,7 @@ describe("serializeForCanvas", () => {
     const buf = new ScreenBuffer(6, 1);
     buf.drawSegment(0, 0, new Segment("Hi", new Style({ color: "cyan", bold: true })));
     buf.drawSegment(3, 0, new Segment("📁")); // wide glyph + continuation
-    const cells = serializeForCanvas(buf);
+    const cells = serializeForCanvas(buf).cells;
     expect(cells[0][0]).toMatchObject({ c: "H", bold: true });
     expect(cells[0][0].fg).toMatch(/^#/); // "cyan" resolved to a hex color
     expect(cells[0][4]).toMatchObject({ c: "", cont: true }); // continuation cell
@@ -62,7 +63,7 @@ describe("serializeForCanvas", () => {
   test("reverse swaps fg/bg", () => {
     const buf = new ScreenBuffer(3, 1);
     buf.drawSegment(0, 0, new Segment("x", new Style({ color: "red", reverse: true })));
-    const cell = serializeForCanvas(buf)[0][0];
+    const cell = serializeForCanvas(buf).cells[0][0];
     expect(cell.bg).toMatch(/^#/); // the fg became the background
   });
 
@@ -89,13 +90,33 @@ describe("serializeForCanvas", () => {
       graphic: { pngBase64: "AAAA", cellWidth: 1, cellHeight: 1 } as any,
     };
 
-    const cells = serializeForCanvas(buf);
+    const cells = serializeForCanvas(buf).cells;
     expect(cells[0][0]).toMatchObject({ underline: true, uStyle: "curly", strike: true });
     expect(cells[0][0].uColor).toMatch(/^#/);
     expect(cells[0][1]).toMatchObject({ icon: true, svg: "<svg/>" });
     expect(cells[0][2].img).toMatch(/^data:image\/svg\+xml,/);
     expect(cells[0][2]).toMatchObject({ gw: 2, gh: 1 });
     expect(cells[0][3].img).toMatch(/^data:image\/png;base64,/);
+  });
+
+  describe("theme-aware default colors", () => {
+    afterEach(() => ThemeManager.getInstance().setTheme("default-dark"));
+
+    test("reports the active theme's foreground/background as defaults", () => {
+      ThemeManager.getInstance().setTheme("default-light");
+      const frame = serializeForCanvas(new ScreenBuffer(1, 1));
+      expect(frame.defaultFg).toBe("#1f2328"); // default-light foreground
+      expect(frame.defaultBg).toBe("#ffffff"); // default-light background
+    });
+
+    test("switching themes changes the reported defaults on the next serialize", () => {
+      ThemeManager.getInstance().setTheme("catppuccin-mocha");
+      const dark = serializeForCanvas(new ScreenBuffer(1, 1));
+      ThemeManager.getInstance().setTheme("default-light");
+      const light = serializeForCanvas(new ScreenBuffer(1, 1));
+      expect(dark.defaultFg).not.toBe(light.defaultFg);
+      expect(dark.defaultBg).not.toBe(light.defaultBg);
+    });
   });
 });
 
@@ -132,7 +153,7 @@ describe("renderBufferToCanvas", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(4, 1);
     buf.drawSegment(0, 0, new Segment("ab", new Style({ background: "blue" })));
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     expect(calls.fillRect.length).toBeGreaterThanOrEqual(2); // clear + bg run
   });
 
@@ -142,10 +163,26 @@ describe("renderBufferToCanvas", () => {
     buf.setCell(0, 0, "╭", new Style({ color: "white" }));
     buf.setCell(1, 0, "─", new Style({ color: "white" }));
     buf.setCell(2, 0, "A", new Style());
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     expect(calls.arcTo).toBeGreaterThan(0); // ╭ rounded corner
     expect(calls.stroke).toBeGreaterThan(0);
     expect(calls.fillText.some((c) => c[0] === "A")).toBe(true);
+  });
+
+  test("an unstyled glyph paints with the caller's defaultFg, not a hardcoded constant", () => {
+    // Regression: a cell with no explicit color (the common case — leaving
+    // `color` unset is normal for a terminal app, where it means "the
+    // terminal's own default") used to always fall back to a hardcoded
+    // catppuccin-mocha foreground regardless of the active theme, unreadable
+    // against a light theme's background. `defaultFg` must be honored.
+    const { ctx } = mockCtx();
+    const buf = new ScreenBuffer(1, 1);
+    buf.setCell(0, 0, "A", new Style()); // no explicit color
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, {
+      ...OPTS,
+      defaultFg: "#1f2328", // default-light's foreground
+    });
+    expect(ctx.fillStyle).toBe("#1f2328");
   });
 
   test("draws block elements as rectangles (full block and shade)", () => {
@@ -153,7 +190,7 @@ describe("renderBufferToCanvas", () => {
     const buf = new ScreenBuffer(4, 1);
     buf.setCell(0, 0, "█", new Style({ color: "cyan" }));
     buf.setCell(1, 0, "░", new Style({ color: "cyan" }));
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     // clear + two block fills, at least.
     expect(calls.fillRect.length).toBeGreaterThanOrEqual(3);
   });
@@ -167,7 +204,7 @@ describe("renderBufferToCanvas", () => {
     glyphs.forEach((g, i) => {
       buf.setCell(i, 0, g, new Style({ color: "white" }));
     });
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     expect(calls.arcTo).toBeGreaterThan(0); // ╮ ╰ ╯ corners
     expect(calls.stroke).toBeGreaterThan(glyphs.length); // double glyphs stroke twice
   });
@@ -181,7 +218,7 @@ describe("renderBufferToCanvas", () => {
     buf.setCell(3, 0, "d", new Style({ underlineStyle: "double" }));
     buf.setCell(4, 0, "e", new Style({ underlineStyle: "dotted" }));
     buf.setCell(5, 0, "f", new Style({ underlineStyle: "dashed" }));
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     expect(calls.stroke).toBeGreaterThan(0);
     expect(calls.fillText.length).toBeGreaterThanOrEqual(6); // each glyph painted
   });
@@ -197,7 +234,7 @@ describe("renderBufferToCanvas", () => {
       fontAtDraw = ctx.font;
       return origFillText(...a);
     };
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     expect(fontAtDraw).toContain("italic");
     expect(fontAtDraw).toContain("bold");
   });
@@ -234,7 +271,7 @@ describe("renderBufferToCanvas", () => {
         wideContinuation: false,
         graphic: { pngBase64: "AAAA", cellWidth: 1, cellHeight: 1 } as any,
       };
-      renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+      renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
       expect(drawImageCalls).toBeGreaterThanOrEqual(2); // icon SVG + inline image
     } finally {
       (globalThis as any).Image = prevImage;
@@ -384,7 +421,7 @@ describe("renderBufferToCanvas", () => {
     // A fractional cell width whose drift compounds noticeably by column 6.
     const metrics = { ...METRICS, cellWidth: 7.225 };
     buf.drawSegment(6, 0, new Segment("G", new Style({ background: "blue" })));
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, metrics, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, metrics, OPTS);
 
     const bgRun = calls.fillRect.find((r) => r[2] > 0 && r !== calls.fillRect[0]);
     expect(bgRun).toBeTruthy();
@@ -406,7 +443,7 @@ describe("renderBufferToCanvas", () => {
     const buf = new ScreenBuffer(1, 1);
     buf.drawSegment(0, 0, new Segment("A"));
     const metrics = { ...METRICS, baseline: 11.3 };
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, metrics, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, metrics, OPTS);
     const call = calls.fillText.find((c) => c[0] === "A") as [string, number, number];
     expect(call).toBeTruthy();
     const [, , y] = call;
@@ -419,7 +456,7 @@ describe("renderBufferToCanvas", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(3, 1);
     for (let x = 0; x < 3; x++) buf.setCell(x, 0, "█", new Style({ color: "cyan" }));
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, { ...METRICS, cellWidth: 7.225 }, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, { ...METRICS, cellWidth: 7.225 }, OPTS);
     // Each block's right edge equals the next block's left edge (snapped to 1/dpr).
     const blocks = calls.fillRect.filter((r) => r[2] > 0).slice(1); // drop the clear rect
     for (let i = 1; i < blocks.length; i++) {
@@ -438,7 +475,7 @@ describe("renderBufferToCanvas", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(2, 1);
     buf.setCell(0, 0, "█", new Style({ color: "cyan" }));
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, {
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, {
       fontSize: 12,
       fontFamily: "Mono",
     });
@@ -453,7 +490,7 @@ describe("renderBufferToCanvas", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(2, 1);
     buf.setCell(0, 0, "─", new Style({ color: "white" }));
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, { ...OPTS, fontSize: 28 });
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, { ...OPTS, fontSize: 28 });
     expect(calls.stroke).toBeGreaterThan(0);
   });
 
@@ -496,7 +533,7 @@ describe("renderBufferToCanvas", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(4, 1);
     buf.drawSegment(0, 0, new Segment("📁", new Style({ color: "white" }))); // wide + continuation
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     const call = calls.fillText.find((c) => c[0] === "📁");
     expect(call).toBeTruthy();
     // Centered across 2 cells, not 1: x should be roughly cellWidth (not cellWidth/2).
@@ -517,7 +554,7 @@ describe("renderBufferToCanvas", () => {
       wideContinuation: false,
       icon: "no-svg-icon",
     };
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     expect(calls.fillText.some((c) => c[0] === "?")).toBe(true);
   });
 
@@ -532,7 +569,7 @@ describe("renderBufferToCanvas", () => {
       wideContinuation: false,
       icon: "no-ink-icon",
     };
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     const call = calls.fillText.find((c) => c[0] === "?") as [string, number, number];
     expect(call).toBeTruthy();
     // inkAscent/inkDescent both fell back to 0, so the glyph centers exactly
@@ -545,7 +582,7 @@ describe("renderBufferToCanvas", () => {
     const { ctx, calls } = mockCtx();
     const buf = new ScreenBuffer(2, 1);
     buf.setCell(0, 0, "┄", new Style({ color: "white" })); // e/w, dash: "dashed"
-    renderBufferToCanvas(serializeForCanvas(buf), ctx, METRICS, OPTS);
+    renderBufferToCanvas(serializeForCanvas(buf).cells, ctx, METRICS, OPTS);
     expect(calls.stroke).toBeGreaterThan(0);
   });
 

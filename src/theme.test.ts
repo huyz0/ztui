@@ -233,3 +233,51 @@ describe("ThemeManager.setTheme", () => {
     expect(mgr.getActiveThemeName()).toBe(before); // unchanged
   });
 });
+
+describe("every light theme's muted text tokens clear WCAG AA", () => {
+  // Regression: default-light's placeholder/gutter (#8c959f, 3.04:1),
+  // catppuccin-latte's and solarized-light's comment/placeholder/gutter/
+  // dimmed (4.37:1, 4.13:1), and gruvbox-light's (3.24:1, plus a
+  // catastrophic 1.92:1 for placeholder) all fell under WCAG AA's 4.5:1
+  // minimum for normal-size body text against their own background — some
+  // barely, one badly. These tokens back visible UI text (help/hint text,
+  // input placeholders, disabled state, gutters), not decoration, so they
+  // need to actually be readable, not just technically present.
+  function relativeLuminance(hex: string): number {
+    const lin = (c: number) => {
+      const s = c / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    const r = Number.parseInt(hex.slice(1, 3), 16);
+    const g = Number.parseInt(hex.slice(3, 5), 16);
+    const b = Number.parseInt(hex.slice(5, 7), 16);
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  }
+  function contrastRatio(a: string, b: string): number {
+    const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  const lightThemes = ThemeManager.getInstance()
+    .listThemes()
+    .filter((t) => isThemeLight(t));
+  // Sanity-check the filter itself found the themes this test is meant to
+  // guard — an empty list would make every `test.each` below vacuously pass.
+  test("finds at least the four known light themes", () => {
+    const names = lightThemes.map((t) => t.name);
+    for (const n of ["default-light", "catppuccin-latte", "gruvbox-light", "solarized-light"]) {
+      expect(names).toContain(n);
+    }
+  });
+
+  test.each(lightThemes.map((t) => [t.name, t] as const))(
+    "%s: foreground/comment/placeholder/gutter/dimmed >= 4.5:1 against background",
+    (_name, theme) => {
+      for (const key of ["foreground", "comment", "placeholder", "gutter", "dimmed"] as const) {
+        const value = theme.colors[key];
+        if (!value?.startsWith("#")) continue; // only concrete hex tokens are checked here
+        expect(contrastRatio(value, theme.colors.background)).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+});

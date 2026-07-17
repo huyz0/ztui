@@ -8,7 +8,14 @@
  *   bun run demo:web   →  open http://localhost:3010
  */
 import { createElement } from "react";
-import { App, HTML_FONT_FAMILY, HTML_FONT_SIZE, HTML_PADDING, WebDriver } from "../src/core.ts";
+import {
+  App,
+  HTML_FONT_FAMILY,
+  HTML_FONT_SIZE,
+  HTML_PADDING,
+  ThemeManager,
+  WebDriver,
+} from "../src/core.ts";
 import { canvasClientScript } from "../src/driver/web/canvas-bundle.ts";
 import { serializeForCanvas } from "../src/driver/web/canvas-serialize.ts";
 import {
@@ -32,6 +39,10 @@ const fonts = [
   ...bundledFontFaces("/fonts/regular.woff2", "/fonts/bold.woff2"),
   setiFontFace("/fonts/seti.woff"),
 ];
+// The real theme background, so the canvas's initial CSS background (before
+// the first `/cells` frame lands) matches instead of flashing a hardcoded
+// dark color first — most visible on a light theme's white background.
+const initialBg = ThemeManager.getInstance().getActiveTheme().colors.background;
 
 const PAGE = `<!doctype html><meta charset="utf-8"><title>ztui web demo (canvas)</title>
 <style>${webHostStyles(fonts)}</style>
@@ -43,7 +54,7 @@ const PADDING = ${HTML_PADDING};
 const screen = document.getElementById("screen");
 await document.fonts.load("${HTML_FONT_SIZE}px '${HTML_FONT_FAMILY.split(",")[0].replace(/'/g, "")}'").catch(() => {});
 while (!window.ztuiCanvas) await new Promise((r) => setTimeout(r, 10));
-const view = window.ztuiCanvas.create(screen, ${HTML_FONT_SIZE}, "${HTML_FONT_FAMILY}", PADDING);
+const view = window.ztuiCanvas.create(screen, ${HTML_FONT_SIZE}, "${HTML_FONT_FAMILY}", PADDING, ${JSON.stringify(initialBg)});
 const cw = view.cellWidth, chh = view.cellHeight;
 
 let lastCols = 0, lastRows = 0;

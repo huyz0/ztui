@@ -301,7 +301,11 @@ export class ThemeManager {
     });
 
     // 2. default-light — neutral light palette; warning/success are darkened
-    // so they stay legible as text on white.
+    // so they stay legible as text on white. comment/dimmed and
+    // placeholder/gutter are darkened from their original #6e7781/#8c959f —
+    // 4.55:1 and 3.04:1 against #ffffff respectively, the latter well under
+    // WCAG AA's 4.5:1 for body text — to ~5:1, with real margin instead of a
+    // borderline pass.
     this.register({
       name: "default-light",
       colors: {
@@ -315,10 +319,10 @@ export class ThemeManager {
         success: "#1a7f37",
         warning: "#9a6700",
         error: "#cf222e",
-        comment: "#6e7781",
-        placeholder: "#8c959f",
-        gutter: "#8c959f",
-        dimmed: "#6e7781",
+        comment: "#677079",
+        placeholder: "#6a7179",
+        gutter: "#6a7179",
+        dimmed: "#677079",
         keyword: "#cf222e",
         string: "#0a3069",
         number: "#0550ae",
@@ -409,7 +413,9 @@ export class ThemeManager {
       },
     });
 
-    // 6. catppuccin-latte
+    // 6. catppuccin-latte — comment/placeholder/gutter/dimmed darkened from
+    // the upstream Catppuccin #6c6f85 (4.37:1 against #eff1f5, just under
+    // WCAG AA's 4.5:1 for body text) to ~4.9:1.
     this.register({
       name: "catppuccin-latte",
       colors: {
@@ -423,10 +429,10 @@ export class ThemeManager {
         success: "#40a02b",
         warning: "#df8e1d",
         error: "#d20f39",
-        comment: "#6c6f85",
-        placeholder: "#6c6f85",
-        gutter: "#6c6f85",
-        dimmed: "#6c6f85",
+        comment: "#64677c",
+        placeholder: "#64677c",
+        gutter: "#64677c",
+        dimmed: "#64677c",
         keyword: "#8839ef",
         string: "#40a02b",
         number: "#df8e1d",
@@ -521,7 +527,10 @@ export class ThemeManager {
       },
     });
 
-    // 10. gruvbox-light
+    // 10. gruvbox-light — comment/gutter/dimmed and placeholder darkened from
+    // the upstream Gruvbox #928374/#bdae93 — 3.24:1 and a catastrophic 1.92:1
+    // against #fbf1c7, respectively — to ~4.7:1, clearing WCAG AA for body
+    // text with margin.
     this.register({
       name: "gruvbox-light",
       colors: {
@@ -535,10 +544,10 @@ export class ThemeManager {
         success: "#79740e",
         warning: "#b57614",
         error: "#9d0006",
-        comment: "#928374",
-        placeholder: "#bdae93",
-        gutter: "#928374",
-        dimmed: "#928374",
+        comment: "#75695d",
+        placeholder: "#736a5a",
+        gutter: "#75695d",
+        dimmed: "#75695d",
         keyword: "#9d0006",
         string: "#79740e",
         number: "#8f3f71",
@@ -700,7 +709,9 @@ export class ThemeManager {
       },
     });
 
-    // 17. solarized-light
+    // 17. solarized-light — comment/placeholder/gutter/dimmed darkened from
+    // the upstream Solarized #657b83 (4.13:1 against #fdf6e3, just under
+    // WCAG AA's 4.5:1 for body text) to ~4.7:1.
     this.register({
       name: "solarized-light",
       colors: {
@@ -714,10 +725,10 @@ export class ThemeManager {
         success: "#859900",
         warning: "#b58900",
         error: "#dc322f",
-        comment: "#657b83",
-        placeholder: "#657b83",
-        gutter: "#657b83",
-        dimmed: "#657b83",
+        comment: "#5e727a",
+        placeholder: "#5e727a",
+        gutter: "#5e727a",
+        dimmed: "#5e727a",
         keyword: "#859900",
         string: "#2aa198",
         number: "#b58900",

@@ -1,11 +1,19 @@
 import type { ScreenBuffer } from "../../render/buffer.ts";
 import { normalizeColorForCSS } from "../../render/html-renderer.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
-import type { CanvasCell } from "./canvas-renderer.ts";
+import { ThemeManager } from "../../theme.ts";
+import type { CanvasCell, SerializedFrame } from "./canvas-renderer.ts";
 
 /**
  * Flatten a {@link ScreenBuffer} into the compact, JSON-serializable grid the
- * canvas client consumes (colors resolved to CSS up front). This is the
+ * canvas client consumes (colors resolved to CSS up front), alongside the
+ * active theme's foreground/background — the fallback for any cell that
+ * never resolved an explicit color (most plain text: leaving `color` unset
+ * is normal and correct for a terminal app, where "unset" means "the
+ * terminal's own default"). A canvas has no such terminal-default concept,
+ * so it must paint *some* concrete color; without this, it fell back to a
+ * hardcoded catppuccin-mocha foreground regardless of the active theme —
+ * fine by coincidence on dark themes, unreadable on light ones. This is the
  * **server-side** half of the canvas backend: it may touch the icon registry
  * (and, transitively, Node-only deps), so it is kept out of `canvas-renderer.ts`
  * — which must bundle cleanly for the browser.
@@ -14,7 +22,7 @@ import type { CanvasCell } from "./canvas-renderer.ts";
  * and shipped on the cell, so the client can rasterize them natively at the
  * device pixel ratio instead of drawing an emoji/glyph text fallback.
  */
-export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
+export function serializeForCanvas(buffer: ScreenBuffer): SerializedFrame {
   const rows: CanvasCell[][] = [];
   for (let y = 0; y < buffer.height; y++) {
     const row: CanvasCell[] = [];
@@ -64,5 +72,6 @@ export function serializeForCanvas(buffer: ScreenBuffer): CanvasCell[][] {
     }
     rows.push(row);
   }
-  return rows;
+  const theme = ThemeManager.getInstance().getActiveTheme();
+  return { cells: rows, defaultFg: theme.colors.foreground, defaultBg: theme.colors.background };
 }

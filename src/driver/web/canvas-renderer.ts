@@ -61,6 +61,17 @@ export interface CanvasCell {
   gh?: number;
 }
 
+/**
+ * The wire payload {@link serializeForCanvas} produces: the cell grid plus
+ * the active theme's foreground/background — the fallback colors for any
+ * cell that never resolved an explicit `fg`/`bg` (see {@link CanvasCell}).
+ */
+export interface SerializedFrame {
+  cells: CanvasCell[][];
+  defaultFg: string;
+  defaultBg: string;
+}
+
 /** Pixel geometry of one cell, derived by measuring the font. */
 export interface CanvasMetrics {
   /** Cell width in px. */
@@ -233,8 +244,14 @@ function drawImageCell(
   }
 }
 
-const DEFAULT_FG = "#cdd6f4";
-const DEFAULT_BG = "#1e1e2e";
+// Last-resort fallback when a caller genuinely supplies no defaultFg/defaultBg
+// (e.g. before the first real frame — which now always carries the active
+// theme's actual colors via {@link SerializedFrame} — has arrived). Not tied
+// to any specific theme; previously hardcoded to catppuccin-mocha's palette,
+// which every cell with an unresolved color silently fell back to regardless
+// of the active theme, unreadable against a light background.
+const DEFAULT_FG = "#e0e0e0";
+const DEFAULT_BG = "#202020";
 
 // --- block elements (U+2580–U+259F) as fractional rectangles -----------------
 
