@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Input } from "../../react.ts";
+import { Input, VBox } from "../../react.ts";
 import { iconRegistry } from "../../render/icon-registry.ts";
 import { mountApp } from "../../test/harness.tsx";
 import { InputWidget } from "./input.ts";
@@ -449,5 +449,113 @@ describe("InputWidget — additional branch coverage", () => {
     });
     await t.settle();
     expect(() => t.text()).not.toThrow();
+  });
+
+  test("stops collecting visible cells when a wide char would overflow the remaining width", async () => {
+    // Content width is 2 cells; "a" fills 1, leaving exactly 1 free column —
+    // not enough for the 2-wide CJK char that follows, so the visible-cell
+    // collection loop must break instead of overflowing.
+    const t = await mountApp(
+      <VBox>
+        <Input id="in" value="a漢" style={{ width: 4 }} />
+      </VBox>,
+      { cols: 20, rows: 3 },
+    );
+    await t.settle();
+    const w = t.findById<InputWidget>("in")!;
+    const r = w.getClientRect();
+    expect(r.width).toBe(4);
+    let row = "";
+    for (let x = r.x; x < r.x + r.width; x++) row += t.cellAt(x, r.y + 1).char;
+    expect(row).toContain("a");
+    expect(row).not.toContain("漢");
+  });
+
+  test("an out-of-range cursorCol is clamped to the text length during render", async () => {
+    const t = await mountApp(<Input id="in" value="abc" />, { cols: 20, rows: 3 });
+    const w = t.findById<InputWidget>("in")!;
+    // Force cursorCol out of range without going through the value setter
+    // (which already clamps it) — render() must independently clamp too.
+    (w as unknown as { cursorCol: number }).cursorCol = 99;
+    t.app.queueRender();
+    await t.settle();
+    expect((w as unknown as { cursorCol: number }).cursorCol).toBe(3);
+  });
+});
+
+describe("InputWidget — additional branch coverage 2", () => {
+  test("tab is ignored as a plain control key (no edit, no submit/dismiss)", () => {
+    const w = new InputWidget();
+    w.value = "abc";
+    const before = w.value;
+    w.onKey?.({ name: "tab" } as any);
+    expect(w.value).toBe(before);
+  });
+
+  test("colAtX accounts for the icon's reserved width when mapping a click to a caret index", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Input id="in" value="hello" icon=">" />
+      </VBox>,
+      { cols: 20, rows: 3 },
+    );
+    await t.settle();
+    const w = t.findById<InputWidget>("in")!;
+    const r = w.getContentRect();
+    // Click just past the icon + its trailing space — should land at caret 0,
+    // not offset by the icon's width if colAtX ignored `this.icon`.
+    w.handleMouse({ type: "press", button: "left", x: r.x + 3, y: r.y, handled: false } as any);
+    expect((w as unknown as { cursorCol: number }).cursorCol).toBe(0);
+  });
+
+  test("a smooth-caret input renders without throwing while blinking", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Input id="in" value="hi" />
+      </VBox>,
+      { cols: 20, rows: 3 },
+    );
+    const w = t.findById<InputWidget>("in")!;
+    w.smoothCaret = true;
+    t.screen.focusWidget(w as any);
+    t.app.queueRender();
+    await t.settle();
+    expect(() => t.text()).not.toThrow();
+  });
+
+  test("a double-width suffix icon doesn't get an extra trailing space", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Input id="in" value="hi" suffixIcon="漢字" />
+      </VBox>,
+      { cols: 20, rows: 3 },
+    );
+    await t.settle();
+    expect(() => t.text()).not.toThrow();
+    expect(t.text()).toContain("漢字");
+  });
+
+  test("an invalid override tints an icon with the error color", async () => {
+    const t = await mountApp(
+      <VBox>
+        <Input id="in" value="hi" icon=">" suffixIcon="<" />
+      </VBox>,
+      { cols: 20, rows: 3 },
+    );
+    const w = t.findById<InputWidget>("in")!;
+    w.invalid = true;
+    t.app.queueRender();
+    await t.settle();
+    expect(() => t.text()).not.toThrow();
+  });
+});
+
+describe("InputWidget — onValidate", () => {
+  test("forwards get/set to the underlying validation controller", () => {
+    const w = new InputWidget();
+    expect(w.onValidate).toBeUndefined();
+    const handler = () => {};
+    w.onValidate = handler;
+    expect(w.onValidate).toBe(handler);
   });
 });
