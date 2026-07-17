@@ -363,7 +363,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
     // can scroll horizontally), but prose should wrap to the *viewport*. Hand the
     // wrap-enabled RichText leaves the real content width so their measured height
     // counts the rows they will actually occupy.
-    if (this.wrap) {
+    {
       const hint = Math.max(0, maxW - this.borderSize.width - this.padding.width);
       this.setWrapHints(this, hint);
     }
@@ -375,6 +375,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
   private setWrapHints(widget: Widget, hint: number): void {
     for (const child of widget.children) {
       if (child instanceof RichTextWidget) {
+        child.wrap = this.wrap;
         if (child.wrap) child.wrapWidthHint = hint;
       } else if (child instanceof Widget) {
         this.setWrapHints(child, hint);

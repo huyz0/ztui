@@ -49,11 +49,17 @@ window.ztuiCanvas = {
     // Derive the cell box and baseline from the full-block glyph `█`.
     const metrics = measureCellFromBlock(ctx, fontSize, fontFamily);
     const { cellWidth, cellHeight } = metrics;
-    const dpr = window.devicePixelRatio || 1;
+    // Re-read on every resize (not just captured once at create()) so
+    // dragging the window to a different-DPI monitor, or a browser zoom
+    // change, doesn't leave the backing store rendering at a stale ratio.
+    let dpr = window.devicePixelRatio || 1;
     let rows = 0;
+    let cols = 0;
 
     const resize = (c: number, r: number) => {
+      cols = c;
       rows = r;
+      dpr = window.devicePixelRatio || 1;
       const wpx = c * cellWidth + 2 * padding;
       const hpx = r * cellHeight + 2 * padding;
       canvas.style.width = `${wpx}px`;
@@ -71,7 +77,13 @@ window.ztuiCanvas = {
     let lastCells: CanvasCell[][] = [];
     const render = (cells: CanvasCell[][]) => {
       lastCells = cells;
-      if (rows === 0 && cells.length) resize(cells[0]?.length ?? 0, cells.length);
+      // Re-check the shape on every call, not just when the canvas has never
+      // been sized — a `resize()` call racing an in-flight `render(cells)`
+      // carrying the old grid shape would otherwise paint through a
+      // transform sized for stale dimensions.
+      const r = cells.length;
+      const c = cells[0]?.length ?? 0;
+      if (r > 0 && (r !== rows || c !== cols)) resize(c, r);
       renderBufferToCanvas(cells, ctx, metrics, {
         fontSize,
         fontFamily,

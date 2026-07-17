@@ -442,6 +442,23 @@ describe("Markdown wrapping", () => {
     expect(leaf.wrap).toBe(false);
     expect(leaf.measuredHeight).toBe(1);
   });
+
+  test("toggling wrap prop without changing content reflows existing children", () => {
+    const w = new MarkdownWidget();
+    w.wrap = false;
+    md(longLine, w);
+    const leaf = firstLeaf(w);
+    expect(leaf.wrap).toBe(false);
+    expect(leaf.measuredHeight).toBe(1);
+
+    // Same text content, only the wrap prop flips — the content-rebuild branch
+    // in measure() is skipped, so this exercises the fallback setWrapHints() path.
+    w.wrap = true;
+    md(longLine, w);
+    const leafAfter = firstLeaf(w);
+    expect(leafAfter.wrap).toBe(true);
+    expect(leafAfter.measuredHeight).toBeGreaterThan(1);
+  });
 });
 
 describe("Markdown rendering integration", () => {

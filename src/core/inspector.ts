@@ -246,6 +246,22 @@ async function handleRequest(app: InspectableApp, req: Request): Promise<Respons
   );
 }
 
+/**
+ * Whether `w` is still attached under `screen` — `removeChild` only nulls the
+ * removed node's own `.parent`, it doesn't clear whatever external reference
+ * (like `Screen.focusedWidget`/`App`'s hovered-widget tracking) still points
+ * at it, so a widget removed while focused/hovered leaves a dangling ref
+ * until the next focus/pointer event recomputes it.
+ */
+function isAttached(w: Widget, screen: Screen): boolean {
+  let node: { parent: unknown } | null = w;
+  while (node) {
+    if (node === screen) return true;
+    node = node.parent as { parent: unknown } | null;
+  }
+  return false;
+}
+
 /** High-level snapshot of the running app, for quick human/LLM diagnosis. */
 function dumpAppState(app: InspectableApp): any {
   const screen = app.activeScreen;
@@ -265,8 +281,8 @@ function dumpAppState(app: InspectableApp): any {
   return {
     terminalSize: size,
     screenStackDepth: app.screenStack.length,
-    focusedWidget: focused ? focused.describe() : null,
-    hoveredWidget: hovered ? hovered.describe() : null,
+    focusedWidget: focused && isAttached(focused, screen) ? focused.describe() : null,
+    hoveredWidget: hovered && isAttached(hovered, screen) ? hovered.describe() : null,
     activeTheme: ThemeManager.getInstance().getActiveTheme().name,
     capabilities: driver.capabilities,
     mouseDiagnostics: app.getMouseDiagnostics ? app.getMouseDiagnostics() : null,

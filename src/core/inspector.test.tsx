@@ -63,6 +63,32 @@ describe("inspector endpoints", () => {
     expect(state.capabilities).toHaveProperty("graphicsProtocol");
   });
 
+  test("GET /state reports focusedWidget as null once the focused widget is detached", async () => {
+    // Regression: `removeChild` only nulls the removed node's own `.parent`
+    // — it doesn't clear `Screen.focusedWidget`, which keeps pointing at the
+    // now-detached widget until the next focus event recomputes it. Without
+    // an attachment check, dumpAppState() reported stale widget data for a
+    // widget that no longer exists in the tree.
+    let panel: import("../dom/widget.ts").Widget | undefined;
+    app.activeScreen.walk((n: any) => {
+      if (n?.id === "panel") panel = n;
+    });
+    if (!panel) throw new Error("panel widget not found");
+    app.activeScreen.focusWidget(panel);
+
+    const before = await (await fetch(`${BASE}/state`)).json();
+    expect(before.focusedWidget).toContain("panel");
+
+    panel.parent?.removeChild(panel); // detach without clearing focusedWidget
+
+    const after = await (await fetch(`${BASE}/state`)).json();
+    expect(after.focusedWidget).toBeNull();
+
+    // Restore the tree for later tests in this file (GET /tree, /dom, etc.
+    // expect `panel` to still be present).
+    app.activeScreen.appendChild(panel);
+  });
+
   test("GET /log returns log text and honors ?lines", async () => {
     const text = await (await fetch(`${BASE}/log?lines=5`)).text();
     expect(typeof text).toBe("string");
