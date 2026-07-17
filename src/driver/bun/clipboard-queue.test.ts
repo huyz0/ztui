@@ -33,6 +33,20 @@ describe("ClipboardQueue", () => {
     await expect(second).resolves.toBe("real-value");
   });
 
+  it("does not grow the pending queue unboundedly when the terminal never answers reads", async () => {
+    const queue = new ClipboardQueue();
+    const write = () => {};
+
+    for (let i = 0; i < 50; i++) {
+      const p = queue.get(write);
+      vi.advanceTimersByTime(500); // timeout, falls back to local mirror
+      await p;
+      vi.advanceTimersByTime(2000); // grace window for a late reply elapses
+    }
+
+    expect((queue as unknown as { pending: unknown[] }).pending.length).toBe(0);
+  });
+
   it("coalesces concurrent get() calls into a single in-flight query", () => {
     const queue = new ClipboardQueue();
     const writes: string[] = [];

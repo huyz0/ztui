@@ -564,6 +564,34 @@ describe("ApprovalPrompt — batch", () => {
     expect(resolved).toEqual({ "1": "deny", "2": "deny", "3": "deny" });
   });
 
+  test("a different action's hotkey while a submenu is open is ignored, not fired behind an orphaned menu", async () => {
+    // Regression: activate() opens the "Allow matching" ContextMenu and sets
+    // `openMenu`, but onKey only guarded on `inputAction`. Pressing "d" (Deny
+    // all) while the submenu was open fired the top-level action via
+    // onResolve without ever closing the menu, so a host that keeps the
+    // ApprovalPrompt mounted after a decision (e.g. a batch-approval log)
+    // was left with an orphaned ContextMenu overlay and a decision resolved
+    // "behind" it. The hotkey must be a no-op while the submenu is open —
+    // same as while the inline input field is open.
+    let resolved: Record<string, string> | null = null;
+    const t = await mountApp(
+      <ApprovalPrompt id="ap" prompt="Run:" calls={calls} onResolve={(d) => (resolved = d)} />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+
+    root.handleKey({ name: "m", handled: false } as never); // open "Allow matching"
+    await t.settle();
+    expect(findMenuList(t.app)).toBeDefined();
+
+    root.handleKey({ name: "d", handled: false } as never); // Deny all, while submenu open
+    await t.settle();
+
+    expect(findMenuList(t.app)).toBeDefined(); // submenu still open, not orphaned mid-close
+    expect(resolved).toBeNull(); // and the unrelated hotkey never fired
+  });
+
   test("a new batch of calls (same mounted prompt) seeds its own decisions from defaultDecision", async () => {
     // Regression: the decisions state's lazy initializer only ran once, at
     // mount. A host that keeps one ApprovalPrompt mounted across a session

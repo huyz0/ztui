@@ -321,7 +321,12 @@ export function ApprovalPrompt({
   };
 
   const onKey = (ev: any) => {
-    if (ev.handled || inputAction) return;
+    // While an inline field or a submenu (e.g. "Always" ▾) is open, ignore
+    // other top-level hotkeys — firing one (say "d" for Deny) without going
+    // through the menu would otherwise leave `openMenu`/the `ContextMenu`
+    // overlay open, orphaned behind whatever the fired action did. Esc /
+    // outside-click still close the menu via its own layer.
+    if (ev.handled || inputAction || openMenu) return;
     const pressed = String(ev.name ?? ev.key ?? "").toLowerCase();
     if (denyOnEscape && (pressed === "escape" || pressed === "esc")) {
       if (isBatch) resolveAll("deny");

@@ -128,6 +128,18 @@ describe("FileIconWidget render guards", () => {
     expect(client.x + 1).toBe(buf.width);
     expect(buf.cells[0][client.x].icon).toBeTruthy();
   });
+
+  test("skips writing cells when the client rect falls outside the buffer", async () => {
+    const t = await mountApp(fileIconEl({ id: "ic", filename: "main.ts" }));
+    const w = t.findById<FileIconWidget>("ic")!;
+    await t.settle();
+    // Push the widget's region off the right/bottom edge of a small buffer so
+    // getClientRect() returns coordinates >= buffer bounds.
+    (w as any).region = new Region(new Offset(5, 5), new Size(2, 1));
+    const buf = new ScreenBuffer(4, 4);
+    expect(() => w.render(buf)).not.toThrow();
+    expect(buf.cells[3][3].icon).toBeUndefined();
+  });
 });
 
 describe("React <FileIcon> component", () => {

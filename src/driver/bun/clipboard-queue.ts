@@ -45,9 +45,20 @@ export class ClipboardQueue {
         if (entry.abandoned) return;
         entry.abandoned = true;
         // Terminal never answered — use our local mirror. Leave the slot in
-        // `pending` (marked abandoned) so a reply that arrives afterwards is
-        // discarded rather than shifted onto the next resolver.
+        // `pending` (marked abandoned) so a reply that arrives shortly
+        // afterwards is discarded rather than shifted onto the next
+        // resolver.
         resolve(this.lastClipboard);
+        // Most terminals that will ever reply to an OSC 52 read do so
+        // promptly; a reply arriving long after abandonment is vanishingly
+        // unlikely. Give it a further grace window to land, then drop the
+        // slot so a terminal that never answers reads at all (the common
+        // case — see file docstring) doesn't leak one entry per get() call
+        // for the life of the process.
+        setTimeout(() => {
+          const i = this.pending.indexOf(entry);
+          if (i !== -1) this.pending.splice(i, 1);
+        }, 2000);
       }, 500);
     });
     this.pendingGet = promise;
