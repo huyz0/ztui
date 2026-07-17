@@ -446,6 +446,42 @@ describe("Table selection (phase 2/4)", () => {
       | undefined;
     expect(stillSelected).toEqual(people[1]); // Alice
   });
+
+  test("re-anchors by data index (not row identity) across a sort, so duplicate row values aren't confused", async () => {
+    // Regression guard: an earlier version of the sort-selection fix re-found
+    // the selected row via `data.indexOf(selectedRow)`, which is ambiguous
+    // when the same value/reference appears more than once in `data` — it
+    // always resolves to the *first* occurrence, silently moving selection
+    // to the wrong (earlier) duplicate instead of tracking the actual row
+    // the user selected. Using the row's own stable data index (valid
+    // whenever `data` itself hasn't changed, only the sort has) avoids that
+    // ambiguity: it re-anchors to the same *slot*, not the same-looking value.
+    const dupData = ["Bob", "Alice", "Bob"]; // "Bob" appears at data index 0 and 2
+    const dupColumns: TableColumn<string>[] = [
+      {
+        key: "name",
+        header: "Name",
+        width: 10,
+        sortable: true,
+        compare: (a, b) => a.localeCompare(b),
+      },
+    ];
+    const t = await mountApp(
+      <Table data={dupData} columns={dupColumns} style={{ height: "100%" }} />,
+    );
+    const widget = findTable<string>(t);
+
+    // Select the *third* row (data index 2, the second "Bob") — not the first.
+    widget.selectedIndex = 2;
+    widget.toggleSort("name"); // stable sort: "Alice", then both "Bob"s in original order
+    await t.settle();
+
+    // Correct: still anchored to data index 2's new slot (view index 2).
+    // The bug would instead resolve to data index 0's new slot (view index 1),
+    // since `indexOf("Bob")` always finds the first "Bob" regardless of which
+    // occurrence was actually selected.
+    expect(widget.selectedIndex).toBe(2);
+  });
 });
 
 describe("Table navigation & layout edge cases", () => {

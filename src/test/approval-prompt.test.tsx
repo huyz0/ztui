@@ -592,6 +592,31 @@ describe("ApprovalPrompt — batch", () => {
     expect(resolved).toBeNull(); // and the unrelated hotkey never fired
   });
 
+  test("Escape still denies (and closes the menu) while a submenu is open", async () => {
+    // Regression: guarding onKey's whole body on `openMenu` (to fix the test
+    // above) also swallowed denyOnEscape — Escape while a submenu was open
+    // no longer denied at all, only the ContextMenu's own layer closed it,
+    // requiring a second Escape press. Escape must still work as a universal
+    // "get me out of here" key even with a submenu open, unlike other
+    // top-level action hotkeys.
+    let resolved: Record<string, string> | null = null;
+    const t = await mountApp(
+      <ApprovalPrompt id="ap" prompt="Run:" calls={calls} onResolve={(d) => (resolved = d)} />,
+      OPTS,
+    );
+    await t.settle();
+    const root = t.findById<Widget>("ap") as Widget;
+
+    root.handleKey({ name: "m", handled: false } as never); // open "Allow matching"
+    await t.settle();
+    expect(findMenuList(t.app)).toBeDefined();
+
+    root.handleKey({ name: "escape", handled: false } as never);
+    await t.settle();
+
+    expect(resolved).toEqual({ "1": "deny", "2": "deny", "3": "deny" });
+  });
+
   test("a new batch of calls (same mounted prompt) seeds its own decisions from defaultDecision", async () => {
     // Regression: the decisions state's lazy initializer only ran once, at
     // mount. A host that keeps one ApprovalPrompt mounted across a session

@@ -321,19 +321,24 @@ export function ApprovalPrompt({
   };
 
   const onKey = (ev: any) => {
-    // While an inline field or a submenu (e.g. "Always" ▾) is open, ignore
-    // other top-level hotkeys — firing one (say "d" for Deny) without going
-    // through the menu would otherwise leave `openMenu`/the `ContextMenu`
-    // overlay open, orphaned behind whatever the fired action did. Esc /
-    // outside-click still close the menu via its own layer.
-    if (ev.handled || inputAction || openMenu) return;
+    if (ev.handled || inputAction) return;
     const pressed = String(ev.name ?? ev.key ?? "").toLowerCase();
+    // Escape is a universal "get me out of here" key: it must still deny even
+    // while a submenu (e.g. "Always" ▾) is open, so it explicitly closes the
+    // menu itself rather than relying on the guard below or ContextMenu's own
+    // layer (which would otherwise require a second Escape press to deny).
     if (denyOnEscape && (pressed === "escape" || pressed === "esc")) {
+      setOpenMenu(null);
       if (isBatch) resolveAll("deny");
       else if (actions.some((a) => a.id === "deny")) onAction?.("deny");
       ev.handled = true;
       return;
     }
+    // While an inline field or a submenu is open, ignore other top-level
+    // hotkeys — firing one (say "d" for Deny) without going through the menu
+    // would otherwise leave `openMenu`/the `ContextMenu` overlay open,
+    // orphaned behind whatever the fired action did.
+    if (openMenu) return;
     const hit = rowActions.find((a) => a.key && a.key.toLowerCase() === pressed);
     if (hit) {
       activate(hit);

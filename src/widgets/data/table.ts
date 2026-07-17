@@ -217,9 +217,17 @@ export class TableWidget<Row = any> extends Widget {
     // `selectedIndex` is a view-order position; rebuilding `viewIndex` below
     // (new data, or a different sort) would otherwise leave it pointing at
     // whatever row now happens to land in that same view slot. Re-anchor it
-    // to the previously-selected row's identity instead.
+    // instead. When only the sort changed (`data` itself is the same array),
+    // the row's *data* index is still valid and unambiguous — use that
+    // directly rather than searching by row identity, which would find the
+    // wrong occurrence for duplicate values/references in `data`.
+    const dataUnchanged = this.lastData === this.data;
+    const prevSelectedDataIndex =
+      dataUnchanged && this.selectedIndex >= 0 && this.selectedIndex < this.viewIndex.length
+        ? this.viewIndex[this.selectedIndex]
+        : -1;
     const selectedRow =
-      this.selectedIndex >= 0 && this.selectedIndex < this.viewIndex.length
+      !dataUnchanged && this.selectedIndex >= 0 && this.selectedIndex < this.viewIndex.length
         ? this.data[this.viewIndex[this.selectedIndex]]
         : undefined;
 
@@ -250,7 +258,13 @@ export class TableWidget<Row = any> extends Widget {
     this.lastData = this.data;
     this.lastSortSig = sig;
 
-    if (selectedRow !== undefined) {
+    if (prevSelectedDataIndex !== -1) {
+      this.selectedIndex = this.viewIndex.indexOf(prevSelectedDataIndex);
+    } else if (selectedRow !== undefined) {
+      // `data` itself changed (not just the sort): fall back to a best-effort
+      // identity search. Imprecise for duplicate primitive values/references,
+      // but strictly better than leaving `selectedIndex` pointing at an
+      // unrelated row.
       const newDataIndex = this.data.indexOf(selectedRow);
       this.selectedIndex = newDataIndex === -1 ? -1 : this.viewIndex.indexOf(newDataIndex);
     }
