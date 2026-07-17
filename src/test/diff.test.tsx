@@ -1,5 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { Diff, VBox } from "../react/components.tsx";
+import { Syntax } from "../render/rich/syntax.ts";
 import type { DiffWidget } from "../widgets/data/diff.ts";
 import { DiffWidget as DiffWidgetClass } from "../widgets/data/diff.ts";
 import "../widgets/index.ts";
@@ -126,10 +127,76 @@ describe("Diff", () => {
     );
     await t.settle();
     const w = t.findById<DiffWidget>("d") as DiffWidget;
-    w.style.width = "1fr"; // parseDimension returns {fr}, not a number
-    w.style.height = "1fr";
+    // Mutating `w.style` alone is inert here: once CSS resolution has run,
+    // `computedStyle` is a distinct resolved object, not `style` itself, so
+    // `measure()` (which reads `computedStyle`) would silently keep seeing
+    // the old fixed width. Mutate `computedStyle` directly so the fr branch
+    // of parseDimension (an object, not a number) actually gets exercised.
+    w.computedStyle.width = "1fr"; // parseDimension returns {fr}, not a number
+    w.computedStyle.height = "1fr";
     expect(() => w.measure(80, 20)).not.toThrow();
     expect(w.getClientRect().width).toBeGreaterThan(0);
+  });
+
+  test("auto-sizes width/height when no style dimension is set at all", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 56 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    // No width/height dimension at all: parseDimension(undefined, ...) returns
+    // its `-1` default, taking the same auto-measure path as an `fr` weight
+    // (measure the actual rendered content instead of a fixed value).
+    w.computedStyle.width = undefined;
+    w.computedStyle.height = undefined;
+    expect(() => w.measure(80, 20)).not.toThrow();
+    expect(w.getClientRect().width).toBeGreaterThan(0);
+    expect(w.getClientRect().height).toBeGreaterThan(0);
+  });
+
+  test("falls back to plain, unhighlighted text when syntax highlighting throws", async () => {
+    const spy = vi.spyOn(Syntax, "highlight").mockImplementation(() => {
+      throw new Error("boom");
+    });
+    try {
+      const t = await mountApp(
+        <VBox style={{ width: 50 }}>
+          <Diff id="d" oldText={OLD} newText={NEW} language="ts" context={Infinity} />
+        </VBox>,
+        OPTS,
+      );
+      await t.settle();
+      // Still renders the diff content, just without highlighting.
+      expect(t.text()).toContain("line one");
+      expect(t.text()).toContain("line 2");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("falls back to App.instance when rendered detached from the widget tree", async () => {
+    const t = await mountApp(
+      <VBox style={{ width: 50 }}>
+        <Diff id="d" oldText={OLD} newText={NEW} context={Infinity} />
+      </VBox>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<DiffWidget>("d") as DiffWidget;
+    // Detach from the tree so `this.app` (which walks up `parent`) resolves to
+    // null; render() should then fall back to the `App.instance` singleton
+    // (still set by mountApp) to record selectable runs.
+    const parent = w.parent;
+    w.parent = null;
+    try {
+      const buffer = t.buffer;
+      expect(() => w.render(buffer)).not.toThrow();
+    } finally {
+      w.parent = parent;
+    }
   });
 
   test("scrolls when the diff overflows the viewport", async () => {
