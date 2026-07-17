@@ -661,13 +661,6 @@ export class CSSResolver {
       if (parts.length === 4) return new Spacing(parts[0], parts[1], parts[2], parts[3]);
       return 0;
     }
-    if (key === "minWidth" || key === "minHeight" || key === "maxWidth" || key === "maxHeight") {
-      const parsed = Number.parseInt(val, 10);
-      // An unparseable value (e.g. a keyword like "auto") must not poison the
-      // widget's measured size — Math.max/Math.min with a NaN operand always
-      // return NaN, permanently corrupting layout for that widget's lifetime.
-      return Number.isNaN(parsed) ? undefined : parsed;
-    }
     if (
       key === "left" ||
       key === "right" ||

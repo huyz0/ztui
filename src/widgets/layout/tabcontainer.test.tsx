@@ -596,6 +596,25 @@ describe("TabContainer Widget Suite", () => {
     expect(w.measuredHeight).toBe(2);
   });
 
+  test("measure() ignores an fr-shaped min/max constraint instead of crashing", () => {
+    // parseDimension returns { fr: n } for an "Nfr" string — nonsensical for
+    // a min/max constraint (there's no flex distribution to apply it to
+    // here), but it must be skipped rather than poison measuredWidth/Height.
+    const w = new TabContainerWidget();
+    const p0 = new BoxWidget();
+    p0.label = "A";
+    w.appendChild(p0);
+    w.style.minWidth = "1fr" as never;
+    w.style.maxWidth = "1fr" as never;
+    w.style.minHeight = "1fr" as never;
+    w.style.maxHeight = "1fr" as never;
+    w.region = new Region(Offset.ORIGIN, new Size(40, 5));
+
+    expect(() => w.measure(40, 5)).not.toThrow();
+    expect(Number.isNaN(w.measuredWidth)).toBe(false);
+    expect(Number.isNaN(w.measuredHeight)).toBe(false);
+  });
+
   test("moveTab/reorderTabMetrics bail out defensively on an out-of-range fromIndex", () => {
     // These are internal helpers invoked only from handleMouse's drag path,
     // which always derives fromIndex from a live draggingIndex — so an

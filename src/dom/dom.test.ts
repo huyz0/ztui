@@ -579,7 +579,49 @@ describe("DOM and layout resolution", () => {
     expect((style.margin as Spacing).right).toBe(2);
     expect((style.padding as Spacing).top).toBe(5);
     expect((style.padding as Spacing).right).toBe(5);
-    expect(style.minWidth).toBe(100);
+    // minWidth/maxWidth/minHeight/maxHeight now pass through as raw strings
+    // (like width/height) so a "%" cap can be resolved later by
+    // parseDimension against the space actually offered — this stays "100",
+    // not 100.
+    expect(style.minWidth).toBe("100");
+  });
+
+  test("maxWidth as a percentage caps a content-sized widget against the space it was offered", () => {
+    const w = new Widget("label");
+    w.style.border = "none";
+    w.style.maxWidth = "50%";
+    // No explicit width: content-sized (auto), so this exercises the min/max
+    // clamp branch, not the "own width is a concrete size" branch. The text
+    // must be longer than the 50-cell cap or the clamp never engages.
+    w.appendChild(
+      new TextNode("a very long line of text that runs well past fifty cells wide indeed"),
+    );
+    w.measure(100, 10);
+    expect(w.measuredWidth).toBe(50);
+  });
+
+  test("an fr-shaped min/max constraint is skipped rather than poisoning measure()", () => {
+    // parseDimension returns { fr: n } for an "Nfr" string — meaningless for
+    // a min/max constraint, but the guard must skip it, not crash or NaN.
+    const w = new Widget("view");
+    w.style.minWidth = "1fr";
+    w.style.maxWidth = "1fr";
+    w.style.minHeight = "1fr";
+    w.style.maxHeight = "1fr";
+    expect(() => w.measure(40, 20)).not.toThrow();
+    expect(Number.isNaN(w.measuredWidth)).toBe(false);
+    expect(Number.isNaN(w.measuredHeight)).toBe(false);
+  });
+
+  test("maxWidth/minWidth/maxHeight/minHeight of 'auto' never poison measure() with NaN", () => {
+    const w = new Widget("view");
+    w.style.minWidth = "auto";
+    w.style.maxWidth = "auto";
+    w.style.minHeight = "auto";
+    w.style.maxHeight = "auto";
+    w.measure(40, 20);
+    expect(Number.isNaN(w.measuredWidth)).toBe(false);
+    expect(Number.isNaN(w.measuredHeight)).toBe(false);
   });
 
   test("BoxLayout horizontal resolution", () => {

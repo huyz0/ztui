@@ -146,9 +146,11 @@ export class BoxLayout extends Layout {
           if (typeof size !== "number" || size <= 0) return null;
           const factor = children[i].computedStyle.flexShrink ?? 0;
           if (factor <= 0) return null;
-          const min = isVert
-            ? (children[i].computedStyle.minHeight ?? 0)
-            : (children[i].computedStyle.minWidth ?? 0);
+          const minStyle = isVert
+            ? children[i].computedStyle.minHeight
+            : children[i].computedStyle.minWidth;
+          const minParsed = minStyle === undefined ? 0 : parseDimension(minStyle, mainLength, 0);
+          const min = typeof minParsed === "number" ? minParsed : 0;
           return { i, weight: factor * size, min };
         })
         .filter((s): s is { i: number; weight: number; min: number } => s !== null);

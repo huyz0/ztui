@@ -131,12 +131,12 @@ describe("ChatBubble", () => {
     );
     await t.settle();
     const w = t.findById<Widget>("b") as Widget;
-    expect(w.computedStyle.width).toBeUndefined(); // no width cap applied
+    expect(w.computedStyle.maxWidth).toBeUndefined(); // no width cap applied
     // No extra flex-spacer sibling — parent is the mounted root, not an HBox wrapper.
     expect(w.parent?.children.length).toBe(1);
   });
 
-  test('align="right" caps the bubble width and pushes it past a trailing spacer', async () => {
+  test('align="right" caps the bubble width (content-sized, not stretched) and pushes it past a trailing spacer', async () => {
     const t = await mountApp(
       <ChatBubble id="b" role="user" align="right">
         <Label>hi</Label>
@@ -145,7 +145,8 @@ describe("ChatBubble", () => {
     );
     await t.settle();
     const w = t.findById<Widget>("b") as Widget;
-    expect(w.computedStyle.width).toBe("75%");
+    expect(w.computedStyle.maxWidth).toBe("75%");
+    expect(w.computedStyle.width).toBeUndefined(); // shrinks to content, not a fixed width
     // Wrapped in an HBox: [spacer, bubble] — the spacer comes first.
     const siblings = w.parent?.children ?? [];
     expect(siblings.length).toBe(2);
@@ -162,23 +163,38 @@ describe("ChatBubble", () => {
     );
     await t.settle();
     const w = t.findById<Widget>("b") as Widget;
-    expect(w.computedStyle.width).toBe("75%");
+    expect(w.computedStyle.maxWidth).toBe("75%");
     const siblings = w.parent?.children ?? [];
     expect(siblings.length).toBe(2);
     expect(siblings[0]).toBe(w);
     expect(siblings[1]).not.toBe(w);
   });
 
-  test("bubbleWidth overrides the default 75% cap", async () => {
+  test("maxWidth overrides the default 75% cap", async () => {
     const t = await mountApp(
-      <ChatBubble id="b" role="user" align="right" bubbleWidth="50%">
+      <ChatBubble id="b" role="user" align="right" maxWidth="50%">
         <Label>hi</Label>
       </ChatBubble>,
       OPTS,
     );
     await t.settle();
     const w = t.findById<Widget>("b") as Widget;
-    expect(w.computedStyle.width).toBe("50%");
+    expect(w.computedStyle.maxWidth).toBe("50%");
+  });
+
+  test("a short message renders a bubble narrower than the cap — no trailing blank space", async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="user" align="right">
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<Widget>("b") as Widget;
+    // "hi" + 1-cell padding each side = 4 cells wide, nowhere near 75% of a
+    // 50-col panel — proves the bubble shrank to content instead of
+    // stretching to the cap.
+    expect(w.measuredWidth).toBeLessThan(10);
   });
 
   test("align has no effect on the accent bar side — that's still governed by role/accent", async () => {

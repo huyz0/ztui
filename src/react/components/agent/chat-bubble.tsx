@@ -36,14 +36,15 @@ export interface ChatBubbleProps extends ComponentProps {
   background?: string | null;
   /**
    * Where the bubble sits within the conversation panel. `"full"` (the
-   * default) spans the panel's full width, as today. `"left"`/`"right"` caps
-   * the bubble at {@link bubbleWidth} and pushes it to that edge —
-   * iMessage-style, useful when user/assistant turns should visually split
-   * the panel instead of stacking as full-width blocks.
+   * default) spans the panel's full width, as today. `"left"`/`"right"`
+   * shrinks the bubble to fit its text (capped at {@link maxWidth}) and
+   * pushes it to that edge — iMessage-style, useful when user/assistant
+   * turns should visually split the panel instead of stacking as
+   * full-width blocks.
    */
   align?: "left" | "right" | "full";
-  /** Bubble width when {@link align} is `"left"`/`"right"`: cells or a `"%"` string. Defaults to `"75%"`. */
-  bubbleWidth?: string | number;
+  /** Bubble width cap when {@link align} is `"left"`/`"right"`: cells or a `"%"` string. Defaults to `"75%"`. */
+  maxWidth?: string | number;
   /** Message body — text, Markdown, a `ToolCall`, anything. */
   children: ReactNode;
 }
@@ -71,7 +72,7 @@ export function ChatBubble({
   accent,
   background,
   align = "full",
-  bubbleWidth = "75%",
+  maxWidth = "75%",
   children,
   ...rest
 }: ChatBubbleProps): ReactElement {
@@ -100,7 +101,10 @@ export function ChatBubble({
         ...accentStyle(resolved),
         ...(fill != null ? { background: fill } : {}),
         padding: { left: 1, right: 1, bottom: padBottom },
-        ...(align !== "full" ? { width: bubbleWidth } : {}),
+        // Content-sized (not a fixed width) so a short "hi" doesn't stretch
+        // into a wide box with trailing blank space — just capped so a long
+        // message can't fill the whole panel.
+        ...(align !== "full" ? { maxWidth } : {}),
         ...rest.style,
       }}
     >

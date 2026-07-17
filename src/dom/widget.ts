@@ -89,14 +89,14 @@ export interface WidgetStyles {
   width?: string | number;
   /** Height: cells, `"%"`, `"fr"`, or `"auto"`. */
   height?: string | number;
-  /** Minimum width in cells. */
-  minWidth?: number;
-  /** Minimum height in cells. */
-  minHeight?: number;
-  /** Maximum width in cells. */
-  maxWidth?: number;
-  /** Maximum height in cells. */
-  maxHeight?: number;
+  /** Minimum width: cells or a `"%"` string (of the space this widget was offered). */
+  minWidth?: string | number;
+  /** Minimum height: cells or a `"%"` string. */
+  minHeight?: string | number;
+  /** Maximum width: cells or a `"%"` string (of the space this widget was offered). */
+  maxWidth?: string | number;
+  /** Maximum height: cells or a `"%"` string. */
+  maxHeight?: string | number;
   /** Space outside the border: number (all sides), per-side object, or {@link Spacing}. */
   margin?: Spacing | number | { top?: number; right?: number; bottom?: number; left?: number };
   /** Space inside the border, before content. */
@@ -1140,18 +1140,25 @@ export class Widget extends DOMNode {
       this.measuredHeight = hVal as number;
     }
 
-    // Apply min/max constraints
+    // Apply min/max constraints. Percentages resolve against maxW/maxH — the
+    // space THIS widget was offered by its parent — same as `width`/`height`
+    // above, so e.g. `maxWidth: "75%"` caps a content-sized bubble at 75% of
+    // its container rather than always stretching to fill it.
     if (this.computedStyle.minWidth !== undefined) {
-      this.measuredWidth = Math.max(this.measuredWidth, this.computedStyle.minWidth);
+      const v = parseDimension(this.computedStyle.minWidth, maxW, this.measuredWidth);
+      if (typeof v === "number") this.measuredWidth = Math.max(this.measuredWidth, v);
     }
     if (this.computedStyle.maxWidth !== undefined) {
-      this.measuredWidth = Math.min(this.measuredWidth, this.computedStyle.maxWidth);
+      const v = parseDimension(this.computedStyle.maxWidth, maxW, this.measuredWidth);
+      if (typeof v === "number") this.measuredWidth = Math.min(this.measuredWidth, v);
     }
     if (this.computedStyle.minHeight !== undefined) {
-      this.measuredHeight = Math.max(this.measuredHeight, this.computedStyle.minHeight);
+      const v = parseDimension(this.computedStyle.minHeight, maxH, this.measuredHeight);
+      if (typeof v === "number") this.measuredHeight = Math.max(this.measuredHeight, v);
     }
     if (this.computedStyle.maxHeight !== undefined) {
-      this.measuredHeight = Math.min(this.measuredHeight, this.computedStyle.maxHeight);
+      const v = parseDimension(this.computedStyle.maxHeight, maxH, this.measuredHeight);
+      if (typeof v === "number") this.measuredHeight = Math.min(this.measuredHeight, v);
     }
   }
 }

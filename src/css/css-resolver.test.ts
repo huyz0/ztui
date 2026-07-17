@@ -575,18 +575,39 @@ describe("CSSResolver value coercion and glow", () => {
     w.style.minWidth = "10" as never;
     const s = resolver.resolveStyles(w, false);
     expect(s.zIndex).toBe(5);
-    expect(s.minWidth).toBe(10);
+    // minWidth/maxWidth/minHeight/maxHeight pass through as raw strings, like
+    // width/height — so a "%" cap can be resolved later by parseDimension
+    // against the space actually offered, not eagerly parsed here.
+    expect(s.minWidth).toBe("10");
 
     w.style.left = "auto" as never;
     expect(resolver.resolveStyles(w, false).left).toBe("auto"); // NaN -> passthrough
   });
 
-  test("an unparseable minWidth/minHeight/maxWidth/maxHeight doesn't poison layout with NaN", () => {
-    // Regression: unlike margin/padding (fall back to 0) and left/right/top/
-    // bottom/zIndex (fall back to the raw string), these four keys had no
-    // NaN guard at all — a keyword-like value ("auto") produced a bare NaN,
-    // which then poisons Math.max(measuredWidth, NaN)/Math.min(..., NaN) in
-    // widget.ts permanently (NaN propagates through every subsequent layout).
+  test("minWidth/minHeight/maxWidth/maxHeight accept percentage strings, passed through unparsed", () => {
+    // These resolve like width/height (parseDimension at measure() time), not
+    // eagerly at style-resolution time — a "%" cap on a content-sized bubble
+    // (e.g. ChatBubble's align="left"/"right") needs the parent's actual
+    // offered width, which isn't known until layout.
+    const resolver = new CSSResolver([]);
+    const w = new Widget("div");
+    w.style.minWidth = "10%" as never;
+    w.style.maxWidth = "75%" as never;
+    w.style.minHeight = "10%" as never;
+    w.style.maxHeight = "75%" as never;
+    const s = resolver.resolveStyles(w, false);
+    expect(s.minWidth).toBe("10%");
+    expect(s.maxWidth).toBe("75%");
+    expect(s.minHeight).toBe("10%");
+    expect(s.maxHeight).toBe("75%");
+  });
+
+  test("an unparseable minWidth/minHeight/maxWidth/maxHeight ('auto') passes through — parseDimension guards against NaN at measure() time", () => {
+    // The NaN-safety guarantee moved from coerceValue (eager, string-only) to
+    // parseDimension (see geometry/parse-dimension.test.ts's "no result is
+    // ever NaN") plus the `typeof v === "number"` guard in Widget.measure(),
+    // which now also has to handle the `{ fr: number }` return shape that
+    // percentage-aware parsing can produce.
     const resolver = new CSSResolver([]);
     const w = new Widget("div");
     w.style.minWidth = "auto" as never;
@@ -594,10 +615,10 @@ describe("CSSResolver value coercion and glow", () => {
     w.style.minHeight = "auto" as never;
     w.style.maxHeight = "auto" as never;
     const s = resolver.resolveStyles(w, false);
-    expect(s.minWidth).toBeUndefined();
-    expect(s.maxWidth).toBeUndefined();
-    expect(s.minHeight).toBeUndefined();
-    expect(s.maxHeight).toBeUndefined();
+    expect(s.minWidth).toBe("auto");
+    expect(s.maxWidth).toBe("auto");
+    expect(s.minHeight).toBe("auto");
+    expect(s.maxHeight).toBe("auto");
   });
 
   test("an unresolved variable token is returned unchanged", () => {

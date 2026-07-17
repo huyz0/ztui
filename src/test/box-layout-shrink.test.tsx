@@ -95,4 +95,25 @@ describe("BoxLayout shrink", () => {
     const left = t.findById<Widget>("left")!;
     expect(left.region.width).toBe(32);
   });
+
+  test("an fr-shaped minWidth on a shrinkable child is ignored, falling back to a 0 floor", async () => {
+    // parseDimension returns { fr: n } for an "Nfr" string — meaningless as
+    // a shrink floor, but it must fall back to 0 instead of crashing or
+    // corrupting the shrink distribution with NaN.
+    const t = await mountApp(
+      <HBox style={{ width: "100%" }}>
+        <HBox id="left" style={{ width: "auto", flexShrink: 1, minWidth: "1fr" as never }}>
+          <Label>{"x".repeat(32)}</Label>
+        </HBox>
+        <VBox id="spacer" style={{ width: "auto", flexGrow: 1, minWidth: 0 }} />
+        <HBox id="right" style={{ width: "auto", flexShrink: 1 }}>
+          <Label>{"y".repeat(52)}</Label>
+        </HBox>
+      </HBox>,
+    );
+
+    const left = t.findById<Widget>("left")!;
+    expect(Number.isNaN(left.region.width)).toBe(false);
+    expect(left.region.width).toBeLessThan(32);
+  });
 });

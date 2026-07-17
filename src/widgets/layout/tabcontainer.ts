@@ -238,16 +238,20 @@ export class TabContainerWidget extends Widget {
     }
 
     if (this.computedStyle.minWidth !== undefined) {
-      this.measuredWidth = Math.max(this.measuredWidth, this.computedStyle.minWidth);
+      const v = parseDimension(this.computedStyle.minWidth, maxW, this.measuredWidth);
+      if (typeof v === "number") this.measuredWidth = Math.max(this.measuredWidth, v);
     }
     if (this.computedStyle.maxWidth !== undefined) {
-      this.measuredWidth = Math.min(this.measuredWidth, this.computedStyle.maxWidth);
+      const v = parseDimension(this.computedStyle.maxWidth, maxW, this.measuredWidth);
+      if (typeof v === "number") this.measuredWidth = Math.min(this.measuredWidth, v);
     }
     if (this.computedStyle.minHeight !== undefined) {
-      this.measuredHeight = Math.max(this.measuredHeight, this.computedStyle.minHeight);
+      const v = parseDimension(this.computedStyle.minHeight, maxH, this.measuredHeight);
+      if (typeof v === "number") this.measuredHeight = Math.max(this.measuredHeight, v);
     }
     if (this.computedStyle.maxHeight !== undefined) {
-      this.measuredHeight = Math.min(this.measuredHeight, this.computedStyle.maxHeight);
+      const v = parseDimension(this.computedStyle.maxHeight, maxH, this.measuredHeight);
+      if (typeof v === "number") this.measuredHeight = Math.min(this.measuredHeight, v);
     }
   }
 
