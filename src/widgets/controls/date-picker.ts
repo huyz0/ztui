@@ -278,14 +278,22 @@ export class CalendarOverlayWidget extends Widget {
     dim: string,
   ): void {
     const kind = this.datePicker.subPicker;
-    const label = kind === "month" ? "Select a month" : "Select a year";
+    const label =
+      kind === "year" && this.datePicker.yearInput
+        ? `Type a year: ${this.datePicker.yearInput}_`
+        : kind === "month"
+          ? "Select a month"
+          : "Select or type year";
     const innerWidth = CALENDAR_WIDTH - 2;
     buffer.drawSegment(
       x0 + 1,
       y0 + 2,
       new Segment(
         label.slice(0, innerWidth).padEnd(innerWidth),
-        new Style({ color: dim, background: bg }),
+        new Style({
+          color: kind === "year" && this.datePicker.yearInput ? primary : dim,
+          background: bg,
+        }),
       ),
     );
 
@@ -369,6 +377,8 @@ export class DatePickerWidget extends Widget {
   public subPickerIndex = 0;
   /** First year shown in the year sub-picker's 12-year range. */
   public yearRangeStart = 0;
+  /** Digits typed so far while directly entering a year (year sub-picker only), or `""`. */
+  public yearInput = "";
 
   /** Validation; the validated value is the `YYYY-MM-DD` string. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
@@ -464,6 +474,7 @@ export class DatePickerWidget extends Widget {
   public openYearPicker(): void {
     this.headerFocus = "year";
     this.subPicker = "year";
+    this.yearInput = "";
     this.yearRangeStart = this.viewMonth.getFullYear() - 5;
     this.subPickerIndex = this.viewMonth.getFullYear() - this.yearRangeStart;
     App.instance?.queueRender();
@@ -472,6 +483,7 @@ export class DatePickerWidget extends Widget {
   /** Cancel the open sub-picker without changing the view, returning focus to its header zone. */
   public closeSubPicker(): void {
     this.subPicker = null;
+    this.yearInput = "";
     App.instance?.queueRender();
   }
 
@@ -482,15 +494,49 @@ export class DatePickerWidget extends Widget {
       const day = this.cursorDate.getDate();
       const lastDay = new Date(year, index + 1, 0).getDate();
       this.cursorDate = new Date(year, index, Math.min(day, lastDay));
+      this.viewMonth = startOfMonth(this.cursorDate);
+      this.subPicker = null;
+      App.instance?.queueRender();
     } else if (this.subPicker === "year") {
-      const year = this.yearRangeStart + index;
-      const month = this.cursorDate.getMonth();
-      const day = this.cursorDate.getDate();
-      const lastDay = new Date(year, month + 1, 0).getDate();
-      this.cursorDate = new Date(year, month, Math.min(day, lastDay));
+      this.commitYear(this.yearRangeStart + index);
     }
+  }
+
+  /** Commit an exact year (typed directly or picked from the grid), then close the sub-picker. */
+  public commitYear(year: number): void {
+    const month = this.cursorDate.getMonth();
+    const day = this.cursorDate.getDate();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    this.cursorDate = new Date(year, month, Math.min(day, lastDay));
     this.viewMonth = startOfMonth(this.cursorDate);
     this.subPicker = null;
+    this.yearInput = "";
+    App.instance?.queueRender();
+  }
+
+  /** Append a typed digit to the in-progress year entry, re-centering the grid preview; auto-commits at 4 digits. */
+  public typeYearDigit(digit: string): void {
+    if (this.yearInput.length >= 4) return;
+    this.yearInput += digit;
+    const typed = Number(this.yearInput);
+    this.yearRangeStart = typed - 5;
+    this.subPickerIndex = 5;
+    if (this.yearInput.length === 4) {
+      this.commitYear(typed);
+    } else {
+      App.instance?.queueRender();
+    }
+  }
+
+  /** Remove the last typed digit, or fall back to backing out of the year grid entirely. */
+  public backspaceYearDigit(): void {
+    if (this.yearInput.length === 0) return;
+    this.yearInput = this.yearInput.slice(0, -1);
+    if (this.yearInput.length > 0) {
+      const typed = Number(this.yearInput);
+      this.yearRangeStart = typed - 5;
+      this.subPickerIndex = 5;
+    }
     App.instance?.queueRender();
   }
 
@@ -615,6 +661,20 @@ export class DatePickerWidget extends Widget {
 
   /** Keyboard handling while the month/year sub-picker grid has focus. */
   private handleSubPickerKey(keyName: string, ev: any): void {
+    // Typing digits in the year picker enters a year directly instead of
+    // paging the 12-year grid — much faster than paging to a birth year or
+    // an old deadline. Auto-commits once 4 digits are typed.
+    if (this.subPicker === "year" && /^[0-9]$/.test(keyName)) {
+      this.typeYearDigit(keyName);
+      ev.handled = true;
+      return;
+    }
+    if (this.subPicker === "year" && this.yearInput && keyName === "backspace") {
+      this.backspaceYearDigit();
+      ev.handled = true;
+      return;
+    }
+
     if (keyName === "left") {
       this.subPickerIndex = Math.max(0, this.subPickerIndex - 1);
       ev.handled = true;
@@ -634,10 +694,16 @@ export class DatePickerWidget extends Widget {
       this.yearRangeStart += 12;
       ev.handled = true;
     } else if (keyName === "space" || keyName === " " || keyName === "enter") {
-      this.commitSubPickerIndex(this.subPickerIndex);
+      if (this.subPicker === "year" && this.yearInput) this.commitYear(Number(this.yearInput));
+      else this.commitSubPickerIndex(this.subPickerIndex);
       ev.handled = true;
     } else if (keyName === "escape") {
-      this.closeSubPicker();
+      if (this.subPicker === "year" && this.yearInput) {
+        this.yearInput = "";
+        App.instance?.queueRender();
+      } else {
+        this.closeSubPicker();
+      }
       ev.handled = true;
     }
   }

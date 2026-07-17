@@ -348,6 +348,111 @@ describe("DatePickerWidget", () => {
         expect(w.yearRangeStart).toBe(start);
       });
 
+      test("typing 4 digits in the year picker jumps directly to that year and auto-commits", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.cursorDate = new Date(2026, 6, 15);
+        w.openYearPicker();
+
+        for (const digit of ["1", "9", "8", "7"]) {
+          w.onKey?.({ name: digit, handled: false });
+        }
+
+        expect(w.subPicker).toBeNull();
+        expect(w.viewMonth.getFullYear()).toBe(1987);
+        expect(w.cursorDate.getFullYear()).toBe(1987);
+        expect(w.cursorDate.getMonth()).toBe(6); // month/day preserved
+        expect(w.cursorDate.getDate()).toBe(15);
+      });
+
+      test("typing digits re-centers the year grid preview before committing", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openYearPicker();
+        w.onKey?.({ name: "1", handled: false });
+        w.onKey?.({ name: "9", handled: false });
+        expect(w.subPicker).toBe("year"); // not yet committed
+        expect(w.yearInput).toBe("19");
+        expect(w.yearRangeStart).toBe(19 - 5);
+      });
+
+      test("backspace removes a typed digit instead of paging the grid", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openYearPicker();
+        w.onKey?.({ name: "1", handled: false });
+        w.onKey?.({ name: "9", handled: false });
+        w.onKey?.({ name: "backspace", handled: false });
+        expect(w.yearInput).toBe("1");
+      });
+
+      test("backspacing the last digit clears the typed year entirely", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openYearPicker();
+        w.onKey?.({ name: "1", handled: false });
+        w.onKey?.({ name: "backspace", handled: false });
+        expect(w.yearInput).toBe("");
+      });
+
+      test("backspaceYearDigit is a no-op when nothing has been typed", () => {
+        const w = new DatePickerWidget();
+        w.openYearPicker();
+        expect(() => w.backspaceYearDigit()).not.toThrow();
+        expect(w.yearInput).toBe("");
+      });
+
+      test("typeYearDigit ignores further digits once 4 have been typed", () => {
+        const w = new DatePickerWidget();
+        w.openYearPicker();
+        w.typeYearDigit("1");
+        w.typeYearDigit("9");
+        w.typeYearDigit("8");
+        w.typeYearDigit("7"); // auto-commits, clearing yearInput
+        expect(w.subPicker).toBeNull();
+        w.subPicker = "year"; // reopen the guard path directly, bypassing the commit
+        w.yearInput = "1987";
+        w.typeYearDigit("6");
+        expect(w.yearInput).toBe("1987"); // unchanged — the 5th digit was ignored
+      });
+
+      test("enter with a partial typed year commits it directly instead of the grid cursor", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.cursorDate = new Date(2026, 6, 15);
+        w.openYearPicker();
+        w.onKey?.({ name: "2", handled: false });
+        w.onKey?.({ name: "0", handled: false });
+        w.onKey?.({ name: "0", handled: false }); // "200", not yet 4 digits
+        w.onKey?.({ name: "enter", handled: false });
+        expect(w.subPicker).toBeNull();
+        expect(w.viewMonth.getFullYear()).toBe(200);
+      });
+
+      test("escape while digits are typed clears the input first, leaving the picker open", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openYearPicker();
+        w.onKey?.({ name: "1", handled: false });
+        w.onKey?.({ name: "escape", handled: false });
+        expect(w.yearInput).toBe("");
+        expect(w.subPicker).toBe("year");
+
+        // A second escape (no digits left) now closes the sub-picker.
+        w.onKey?.({ name: "escape", handled: false });
+        expect(w.subPicker).toBeNull();
+      });
+
+      test("digit keys are ignored in the month picker", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openMonthPicker();
+        const ev = { name: "5", handled: false };
+        w.onKey?.(ev);
+        expect(ev.handled).toBe(false);
+        expect(w.subPicker).toBe("month");
+      });
+
       test("escape cancels the sub-picker without changing the view, keeping the calendar open", () => {
         const w = new DatePickerWidget();
         w.isOpen = true;
@@ -697,5 +802,20 @@ describe("CalendarOverlayWidget", () => {
     // "July" starts at local x=6 within the header row (local y=1).
     const monthCell = buffer.cells[overlay.overlayY + 1][overlay.overlayX + 6];
     expect(monthCell.style.bold).toBe(true);
+  });
+
+  test("typed year digits render as a live preview label instead of the static prompt", () => {
+    const { w, overlay } = makeOverlay();
+    w.openYearPicker();
+    w.typeYearDigit("1");
+    w.typeYearDigit("9");
+    const buffer = new ScreenBuffer(40, 20);
+    expect(() => overlay.render(buffer)).not.toThrow();
+
+    let rowText = "";
+    for (let x = overlay.overlayX + 1; x < overlay.overlayX + 21; x++) {
+      rowText += buffer.cells[overlay.overlayY + 2][x].char;
+    }
+    expect(rowText).toContain("19");
   });
 });
