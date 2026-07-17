@@ -88,11 +88,14 @@ export class CopyButtonWidget extends Widget {
       dim: !this.hovered && !this.copied,
     });
 
-    // On hover, fill the whole box so the background reads as a solid chip (no
-    // gaps); the glyph sits flush at the left with a one-cell right margin.
-    if (this.hovered) {
-      for (let x = box.x; x < box.right; x++) buffer.setCell(x, box.y, " ", cellStyle);
-    }
+    // Fill the whole 2-wide box every frame, idle or not — the glyph only
+    // occupies the left cell, so the right cell must be explicitly cleared
+    // too, or it keeps showing whatever was painted there before this button
+    // existed (a stale second glyph/character left over from the parent's
+    // own content), rendering as two overlapping icons. On hover this also
+    // reads as a solid chip; the glyph sits flush at the left with a
+    // one-cell right margin.
+    for (let x = box.x; x < box.right; x++) buffer.setCell(x, box.y, " ", cellStyle);
     buffer.setCell(box.x, box.y, this.copied ? DONE_GLYPH : COPY_GLYPH, cellStyle);
   }
 }

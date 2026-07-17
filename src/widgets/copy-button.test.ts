@@ -70,4 +70,23 @@ describe("CopyButtonWidget", () => {
     expect(() => btn.render(buffer)).not.toThrow();
     expect(buffer.cells[0]?.[0]?.char).toBe("⧉");
   });
+
+  test("idle render clears both cells of its 2-wide box, not just the glyph cell", () => {
+    // Regression: idle render only painted box.x (the glyph itself), leaving
+    // box.x + 1 untouched — whatever the parent (markdown/code block) had
+    // drawn there before this button existed stayed on screen, showing as a
+    // second, stale glyph overlapping the copy icon. Only the hover path
+    // used to fill the full box.
+    const btn = new CopyButtonWidget();
+    btn.region = new Region(new Offset(0, 0), new Size(2, 1));
+    const buffer = new ScreenBuffer(4, 2);
+    // Simulate stale content already painted at the second cell by the
+    // parent, before the button renders on top of it.
+    buffer.cells[0][1].char = "X";
+
+    btn.render(buffer);
+
+    expect(buffer.cells[0]?.[0]?.char).toBe("⧉");
+    expect(buffer.cells[0]?.[1]?.char).toBe(" "); // cleared, not left as "X"
+  });
 });
