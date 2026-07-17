@@ -478,6 +478,58 @@ describe("CSSResolver diff row tint strength", () => {
     expect(contrastRatio(gutterBg, bg)).toBeGreaterThan(contrastRatio(codeBg, bg));
     expect(contrastRatio(gutterFg, gutterBg)).toBeGreaterThan(4.5);
   });
+
+  test.each([
+    "default-dark",
+    "default-light",
+  ])("%s: an unchanged row's gutter text (diff-gutter-fg) is brighter than the plain gutter color", (themeName) => {
+    // Regression: context-row line numbers used the plain $gutter tone,
+    // which read as too dark next to the brighter added/removed gutter
+    // highlight. diff-gutter-fg must be measurably closer to the
+    // foreground (brighter) than $gutter on its own.
+    const mgr = ThemeManager.getInstance();
+    mgr.setTheme(themeName);
+    const resolver = new CSSResolver([]);
+    const w = new Widget("code");
+    const theme = mgr.getActiveTheme();
+    const bg = theme.colors.background;
+
+    w.style.color = "$gutter";
+    const plainGutter = resolver.resolveStyles(w, false).color as string;
+    w.style.color = "$diff-gutter-fg";
+    const brightGutter = resolver.resolveStyles(w, false).color as string;
+
+    expect(contrastRatio(brightGutter, bg)).toBeGreaterThan(contrastRatio(plainGutter, bg));
+  });
+
+  test("diff-gutter-fg falls back to a fixed gutter tone when the theme leaves colors.gutter undefined", () => {
+    const mgr = ThemeManager.getInstance();
+    mgr.register({
+      name: "no-gutter-test-theme",
+      colors: {
+        primary: "#4daafc",
+        secondary: "#56b6c2",
+        background: "#121212",
+        foreground: "#e0e0e0",
+        surface: "#1a1a1a",
+        panel: "#1a1a1a",
+        accent: "#4daafc",
+        success: "#4ec07a",
+        warning: "#e5c07b",
+        error: "#e06c75",
+      },
+    });
+    mgr.setTheme("no-gutter-test-theme");
+    const resolver = new CSSResolver([]);
+    const w = new Widget("code");
+    // Resolved directly (not via w.style.color): $gutter's own fallback
+    // chain walks the widget's `.style.color` for an ambient override, which
+    // for a widget whose style.color IS "$diff-gutter-fg" would recurse into
+    // itself.
+    const color = resolver.resolveVariable(w, "$diff-gutter-fg");
+    expect(typeof color === "string" && color.startsWith("#")).toBe(true);
+    mgr.setTheme("default-dark");
+  });
 });
 
 describe("CSSResolver value coercion and glow", () => {

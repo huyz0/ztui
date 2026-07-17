@@ -481,6 +481,15 @@ export class CSSResolver {
     if (name === "diff-added-gutter-fg" || name === "diff-removed-gutter-fg") {
       return isLight ? "#141414" : "#f5f5f5";
     }
+    // Context (unchanged) row line numbers: the plain $gutter tone reads as
+    // too dark next to the now-brighter added/removed gutter highlight —
+    // lift it partway toward the foreground so it's legible on its own,
+    // without going all the way to full foreground brightness.
+    if (name === "diff-gutter-fg") {
+      const gutter = this.lookupVariable(widget, "gutter") as string;
+      const fg = this.lookupVariable(widget, "foreground") as string;
+      return blendColors(fg, gutter, 0.45);
+    }
     // Row text: half foreground, half success/error, so an added/removed
     // line's own text reads as visibly green/red rather than relying on the
     // background tint alone to carry the signal (blending toward the

@@ -275,7 +275,7 @@ export class DiffWidget extends Widget {
           ? "$diff-added-gutter-fg"
           : r.kind === "del"
             ? "$diff-removed-gutter-fg"
-            : "$gutter";
+            : "$diff-gutter-fg";
 
       const segs: Segment[] = [];
       let plain = "";
@@ -347,7 +347,7 @@ export class DiffWidget extends Widget {
           ? "$diff-added-gutter-fg"
           : c.kind === "del"
             ? "$diff-removed-gutter-fg"
-            : "$gutter";
+            : "$diff-gutter-fg";
       const segs: Segment[] = [];
       if (numW > 0) {
         const num = (c.no ? String(c.no) : "").padStart(numW);
