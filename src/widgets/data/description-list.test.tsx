@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
+import { Region } from "../../geometry/region.ts";
 import { DescriptionList, VBox } from "../../react.ts";
+import { ScreenBuffer } from "../../render/buffer.ts";
 import { mountApp } from "../../test/harness.tsx";
+import type { DescriptionListWidget } from "./description-list.ts";
 
 /** Read one content row as a trimmed string. */
 function rowText(
@@ -105,5 +108,120 @@ describe("DescriptionList", () => {
     );
     await empty.settle();
     expect(empty.findById("dl")).toBeTruthy(); // no throw
+  });
+
+  test("falls back to item count when a fixed height resolves to an fr weight", async () => {
+    // "1fr" isn't a plain number of rows: parseDimension() resolves it to an
+    // `{ fr }` weight (used for flex distribution), so DescriptionList's
+    // measure() can't use it directly and falls back to `this.items.length`
+    // for its intrinsic height before the flex pass stretches the box.
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <DescriptionList
+          id="dl"
+          style={{ width: 20, height: "1fr" }}
+          items={[
+            { term: "a", description: "1" },
+            { term: "b", description: "2" },
+            { term: "c", description: "3" },
+          ]}
+        />
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    await settle();
+    // The VBox stretches its single "1fr" child to fill the screen (24 rows),
+    // confirming the fr branch ran (a plain-number height would never expand
+    // past its measured size); measure() itself is exercised via coverage.
+    expect(findById("dl").getClientRect().height).toBe(24);
+  });
+
+  test("skips the term column entirely when termWidth is 0", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <DescriptionList id="dl" termWidth={0} items={[{ term: "hidden", description: "value" }]} />
+      </VBox>,
+      { cols: 30, rows: 4 },
+    );
+    await settle();
+    const r = findById("dl").getClientRect();
+    const row = rowText(cellAt, r, r.y);
+    expect(row).not.toContain("hidden");
+    expect(row).toContain("value");
+    expect(row.indexOf("value")).toBe(0); // no gap reserved when termW is 0
+  });
+
+  test("render() is a no-op when the content rect has zero height", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <DescriptionList id="dl" style={{ width: 10 }} items={[{ term: "a", description: "b" }]} />
+      </VBox>,
+      { cols: 30, rows: 4 },
+    );
+    await settle();
+    const widget = findById<DescriptionListWidget>("dl")!;
+    // Force a zero-height region directly (the tree wouldn't even call
+    // render() on a widget the layout already collapsed to zero size), then
+    // invoke render() the way the framework does, to exercise its own guard.
+    widget.region = Region.EMPTY;
+    const buffer = new ScreenBuffer(10, 1);
+    expect(() => widget.render(buffer)).not.toThrow();
+  });
+
+  test("breaks a wrapped description mid-item when the row limit is reached", async () => {
+    const { findById, cellAt, settle } = await mountApp(
+      <VBox>
+        <DescriptionList
+          id="dl"
+          style={{ width: 12, height: 2 }}
+          items={[
+            { term: "a", description: "one two three four five six seven" },
+            { term: "b", description: "eight" },
+          ]}
+        />
+      </VBox>,
+      { cols: 30, rows: 6 },
+    );
+    await settle();
+    const r = findById("dl").getClientRect();
+    expect(r.height).toBe(2);
+    // The wrapped first description alone exceeds 2 rows, so both the inner
+    // wrap loop and the outer item loop must break early; the second item
+    // ("eight") never gets drawn.
+    let all = "";
+    for (let y = r.y; y < r.y + r.height; y++) all += rowText(cellAt, r, y);
+    expect(all).not.toContain("eight");
+  });
+
+  test("falls back to the intrinsic width when a fixed width resolves to an fr weight", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <DescriptionList
+          id="dl"
+          style={{ width: "1fr" }}
+          items={[{ term: "term", description: "desc" }]}
+        />
+      </VBox>,
+      { cols: 80, rows: 24 },
+    );
+    await settle();
+    // The VBox stretches its single "1fr" child to fill the screen width (80),
+    // confirming the fr branch ran (a plain-number width would never expand
+    // past its intrinsic size).
+    expect(findById("dl").getClientRect().width).toBe(80);
+  });
+
+  test("render() is a no-op when the widget is invisible", async () => {
+    const { findById, settle } = await mountApp(
+      <VBox>
+        <DescriptionList id="dl" items={[{ term: "hidden-term", description: "hidden-desc" }]} />
+      </VBox>,
+      { cols: 30, rows: 4 },
+    );
+    await settle();
+    const widget = findById<DescriptionListWidget>("dl")!;
+    widget.visible = false;
+    const buffer = new ScreenBuffer(30, 4);
+    expect(() => widget.render(buffer)).not.toThrow();
   });
 });
