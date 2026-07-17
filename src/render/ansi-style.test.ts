@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { ThemeManager } from "../theme.ts";
 import { cursorMove, styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
 import { colorMode } from "./color-mode.ts";
 import { Style } from "./style.ts";
@@ -105,6 +106,58 @@ function expectedPen(to: Style): Pen {
   return pen;
 }
 
+describe("unset colour resolves to the active theme (real terminal, not just canvas)", () => {
+  // Bun sets NO_COLOR itself whenever stdout isn't a TTY (true under CI/vitest),
+  // so the ambient default can't be trusted — force colour on for these assertions.
+  beforeEach(() => colorMode.set(true));
+  afterEach(() => {
+    colorMode.reset();
+    ThemeManager.getInstance().setTheme("default-dark");
+  });
+
+  test("an unstyled Style renders the active theme's foreground under a light theme", () => {
+    // Reproduces the reported bug directly: a plain Label (no explicit
+    // `color`) inside an app themed `default-light` used to emit no fg SGR
+    // code at all, leaving text at the *terminal's* ambient default — on a
+    // developer's typically dark-profile terminal, that's a light color,
+    // rendering unreadable light-on-light text against the app's own white
+    // background. It must resolve to the theme's foreground instead.
+    ThemeManager.getInstance().setTheme("default-light");
+    const { start } = styleToEscapeCodes(new Style({}));
+    expect(start).toContain("\x1b[38;2;31;35;40m"); // default-light foreground #1f2328
+  });
+
+  test('the explicit "default" sentinel (used by e.g. ListView) is treated the same as unset', () => {
+    ThemeManager.getInstance().setTheme("default-light");
+    const unset = styleToEscapeCodes(new Style({}));
+    const explicitDefault = styleToEscapeCodes(new Style({ color: "default" }));
+    expect(explicitDefault.start).toBe(unset.start);
+  });
+
+  test("switching themes changes what an unstyled Style resolves to", () => {
+    ThemeManager.getInstance().setTheme("default-light");
+    const light = styleToEscapeCodes(new Style({})).start;
+    ThemeManager.getInstance().setTheme("catppuccin-mocha");
+    const dark = styleToEscapeCodes(new Style({})).start;
+    expect(light).not.toBe(dark);
+  });
+
+  test("the SAME Style instance re-resolves after a theme switch (per-Style escape cache is theme-scoped)", () => {
+    // Regression: styleToEscapeCodes memoizes per Style instance, invalidated
+    // only when colour-mode/depth changes — not when the theme changes. A
+    // long-lived widget's cached Style object (e.g. a Label built once and
+    // reused across renders) would otherwise keep emitting its *first*
+    // theme's resolved color forever, even after `ThemeManager.setTheme()`.
+    const style = new Style({}); // same instance reused across the switch
+    ThemeManager.getInstance().setTheme("default-light");
+    const light = styleToEscapeCodes(style).start;
+    ThemeManager.getInstance().setTheme("catppuccin-mocha");
+    const dark = styleToEscapeCodes(style).start;
+    expect(dark).not.toBe(light);
+    expect(dark).toContain("38;2;205;214;244"); // catppuccin-mocha foreground #cdd6f4
+  });
+});
+
 describe("cursorMove — shortest positioning", () => {
   const W = 80;
   test("no move when already at the target", () => {
@@ -186,9 +239,21 @@ describe("styleTransition — minimal output", () => {
     );
   });
 
-  test("dropping a colour returns it to default (39/49)", () => {
-    expect(styleTransition(new Style({ color: "#ff0000" }), new Style({}))).toBe("\x1b[39m");
-    expect(styleTransition(new Style({ background: "#ff0000" }), new Style({}))).toBe("\x1b[49m");
+  test("dropping a colour returns it to the active theme's fg/bg, not the terminal default", () => {
+    // An unset colour resolves to the theme's own fg/bg (see themeDefaultFg/Bg
+    // in ansi-style.ts) rather than the ambient terminal default — a themed
+    // app has already committed to an explicit background, so unstyled text
+    // must resolve against *that* background, not whatever the user's
+    // terminal happens to be configured with (commonly a mismatch: a light
+    // ztui theme against a developer's dark-profile terminal renders
+    // unreadable light-on-light text otherwise).
+    const dropFg = styleTransition(new Style({ color: "#ff0000" }), new Style({}));
+    expect(dropFg).not.toBe("\x1b[39m");
+    expect(dropFg).toContain("38;2;214;214;214"); // default-dark's foreground
+
+    const dropBg = styleTransition(new Style({ background: "#ff0000" }), new Style({}));
+    expect(dropBg).not.toBe("\x1b[49m");
+    expect(dropBg).toContain("48;2;26;26;26"); // default-dark's background
   });
 });
 

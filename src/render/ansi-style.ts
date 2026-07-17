@@ -1,3 +1,4 @@
+import { ThemeManager } from "../theme.ts";
 import { ANSI_16_RGB, ANSI_COLOR_INDEX, parseColor } from "./color.ts";
 import { colorMode } from "./color-mode.ts";
 import type { Style, UnderlineStyle } from "./style.ts";
@@ -18,6 +19,38 @@ const UNDERLINE_SGR: Record<UnderlineStyle, number> = {
   dotted: 4,
   dashed: 5,
 };
+
+/**
+ * A `Style` with no explicit `color`/`background` is normal — most widgets
+ * never set one, matching a plain terminal app's convention that "unset"
+ * means "the terminal's own default". That convention breaks once the App
+ * paints an *opaque* themed background (which every full-screen ztui app
+ * does, e.g. `<Dock style={{ background: "$background" }}>`): the terminal's
+ * ambient default foreground has no relationship to that background, and on
+ * a light theme against a terminal profile with a light default foreground
+ * (very common — most developers run dark-background terminals with a
+ * light default text color) unstyled text becomes unreadable. Once an app
+ * commits to a theme, unset colours resolve to *that theme's* fg/bg instead
+ * of the ambient terminal default — mirroring the analogous fix in the web
+ * canvas backend (`canvas-renderer.ts`'s `defaultFg`/`defaultBg`).
+ */
+function themeDefaultFg(): string {
+  return ThemeManager.getInstance().getActiveTheme().colors.foreground;
+}
+function themeDefaultBg(): string {
+  return ThemeManager.getInstance().getActiveTheme().colors.background;
+}
+
+/**
+ * Resolve a `Style.color`/`background` value to a concrete colour, treating
+ * both an unset field and the explicit sentinel string `"default"` (used by a
+ * few widgets, e.g. `ListView`, that want "whatever the ambient default is")
+ * the same way — falling through to the active theme's fg/bg rather than
+ * leaving either as a real "no colour" request to the terminal.
+ */
+function resolveColor(value: string | undefined, fallback: () => string): string {
+  return value && value !== "default" ? value : fallback();
+}
 
 /** Colour-depth the connected terminal supports; set by the driver on startup. */
 export interface RenderCapabilities {
@@ -41,6 +74,7 @@ export const renderCapabilities: RenderCapabilities = {
 // map is dropped. (`parseColorToAnsi` keeps its own string→SGR cache underneath.)
 let escapeCache = new WeakMap<Style, { start: string; end: string }>();
 let escapeCacheGen = -1;
+let escapeCacheThemeName = "";
 
 function serializationGen(): number {
   return (
@@ -53,9 +87,15 @@ function serializationGen(): number {
 /** SGR start/end escape pair that renders `style`, for use around cell text. */
 export function styleToEscapeCodes(style: Style): { start: string; end: string } {
   const gen = serializationGen();
-  if (gen !== escapeCacheGen) {
+  // A Style with an unset color/background now resolves against the active
+  // theme (see `resolveColor`), so a theme switch must invalidate this cache
+  // too — otherwise a Style instance rendered before the switch keeps
+  // returning its old theme's colors for as long as it's reused.
+  const themeName = ThemeManager.getInstance().getActiveThemeName();
+  if (gen !== escapeCacheGen || themeName !== escapeCacheThemeName) {
     escapeCache = new WeakMap();
     escapeCacheGen = gen;
+    escapeCacheThemeName = themeName;
   }
   const hit = escapeCache.get(style);
   if (hit !== undefined) return hit;
@@ -107,16 +147,16 @@ function computeEscapeCodes(style: Style): { start: string; end: string } {
     end += "\x1b[27m";
   }
 
-  if (useColor && style.color) {
-    const fgCode = parseColorToAnsi(style.color, false);
+  if (useColor) {
+    const fgCode = parseColorToAnsi(resolveColor(style.color, themeDefaultFg), false);
     if (fgCode) {
       start += fgCode;
       end += "\x1b[39m";
     }
   }
 
-  if (useColor && style.background) {
-    const bgCode = parseColorToAnsi(style.background, true);
+  if (useColor) {
+    const bgCode = parseColorToAnsi(resolveColor(style.background, themeDefaultBg), true);
     if (bgCode) {
       start += bgCode;
       end += "\x1b[49m";
@@ -191,15 +231,17 @@ export function styleTransition(from: Style, to: Style): string {
   else if (to.reverse && !from.reverse) out += "\x1b[7m";
 
   // Compare colours by their *emitted* SGR (depth-aware, NO_COLOR-aware) so an
-  // unparseable or default colour transitions to the right pen: a differing
-  // target emits its code, and dropping to no colour emits the default (39/49).
+  // unparseable colour transitions to the right pen. An unset colour resolves
+  // to the active theme's fg/bg (see `themeDefaultFg`/`themeDefaultBg`), same
+  // as a fresh `computeEscapeCodes` establish, so a diff and a full repaint
+  // always agree on the same pen.
   if (useColor) {
-    const fromFg = from.color ? parseColorToAnsi(from.color, false) : null;
-    const toFg = to.color ? parseColorToAnsi(to.color, false) : null;
+    const fromFg = parseColorToAnsi(resolveColor(from.color, themeDefaultFg), false);
+    const toFg = parseColorToAnsi(resolveColor(to.color, themeDefaultFg), false);
     if (fromFg !== toFg) out += toFg ?? "\x1b[39m";
 
-    const fromBg = from.background ? parseColorToAnsi(from.background, true) : null;
-    const toBg = to.background ? parseColorToAnsi(to.background, true) : null;
+    const fromBg = parseColorToAnsi(resolveColor(from.background, themeDefaultBg), true);
+    const toBg = parseColorToAnsi(resolveColor(to.background, themeDefaultBg), true);
     if (fromBg !== toBg) out += toBg ?? "\x1b[49m";
   }
 
