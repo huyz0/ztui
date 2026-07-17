@@ -214,6 +214,15 @@ export class TableWidget<Row = any> extends Widget {
       return;
     }
 
+    // `selectedIndex` is a view-order position; rebuilding `viewIndex` below
+    // (new data, or a different sort) would otherwise leave it pointing at
+    // whatever row now happens to land in that same view slot. Re-anchor it
+    // to the previously-selected row's identity instead.
+    const selectedRow =
+      this.selectedIndex >= 0 && this.selectedIndex < this.viewIndex.length
+        ? this.data[this.viewIndex[this.selectedIndex]]
+        : undefined;
+
     this.viewIndex = this.data.map((_, i) => i);
 
     if (sort) {
@@ -240,6 +249,11 @@ export class TableWidget<Row = any> extends Widget {
 
     this.lastData = this.data;
     this.lastSortSig = sig;
+
+    if (selectedRow !== undefined) {
+      const newDataIndex = this.data.indexOf(selectedRow);
+      this.selectedIndex = newDataIndex === -1 ? -1 : this.viewIndex.indexOf(newDataIndex);
+    }
   }
 
   /** Cycle a column's sort asc -> desc -> none. Honors controlled mode. */

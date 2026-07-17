@@ -83,6 +83,40 @@ describe("App — clipboard key routing", () => {
     expect(input.value).toBe("abXY");
   });
 
+  test("Ctrl+V does not paste into a widget that lost focus while clipboard.get() was pending", async () => {
+    // Bug: `driver.clipboard.get()` resolves asynchronously (OSC 52 round-trip
+    // in the real driver), and the paste handler closed over the widget that
+    // was focused when Ctrl+V was pressed without re-checking focus once the
+    // promise settled. Focus a different widget in the interim and the stale
+    // paste used to land there anyway.
+    const { findById, screen, driver } = await mountApp(
+      <>
+        <Input id="a" />
+        <Input id="b" />
+      </>,
+      { cols: 40, rows: 5 },
+    );
+    const a = findById("a");
+    const b = findById("b");
+    a.value = "";
+    b.value = "";
+    screen.focusWidget(a);
+    driver.clipboard.set("PASTED");
+
+    // Replace clipboard.get with a manually-resolved promise so focus can
+    // change while the "paste" is still in flight.
+    let resolveClipboard: (text: string) => void = () => {};
+    driver.clipboard.get = () => new Promise((resolve) => (resolveClipboard = resolve));
+
+    driver.emit("key", { key: "ctrl+v", name: "v", ctrl: true, meta: false, shift: false });
+    screen.focusWidget(b); // focus moves away before the clipboard read resolves
+    resolveClipboard("PASTED");
+    await flush(10);
+
+    expect(a.value).toBe(""); // stale paste did not land in the original widget
+    expect(b.value).toBe(""); // nor in whatever is now focused
+  });
+
   test("clipboard shortcuts are ignored once the focused widget is disabled", async () => {
     // Regression: routeClipboardKey ran before the isDisabled() check used by
     // normal key bubbling, so a text widget disabled while it still held

@@ -405,6 +405,47 @@ describe("Table selection (phase 2/4)", () => {
     press(); // second click within the double-click window
     expect(activated).toBe(0);
   });
+
+  test("selection tracks the selected row's identity across a sort, not its old view slot", async () => {
+    // Bug: `selectedIndex` is a raw view-order position with nothing that
+    // re-anchors it to the same logical row when `toggleSort` reorders
+    // `viewIndex`. Select Alice (view row 1, alphabetically first among the
+    // three), sort by name, and the widget silently reports whichever row
+    // now lands in view slot 1 — not Alice — even though the user never
+    // reselected anything.
+    let selected: Person | undefined;
+    const t = await mountApp(
+      <Table
+        data={people}
+        columns={columns}
+        onSelect={(row) => {
+          selected = row;
+        }}
+        style={{ height: "100%" }}
+      />,
+    );
+    const widget = findTable(t);
+    const content = widget.getContentRect();
+    // Unsorted order is people[] insertion order: Charlie, Alice, Bob.
+    // Click view row 1 (second body row) to select Alice.
+    widget.handleMouse({
+      type: "press",
+      button: "left",
+      x: content.x + 1,
+      y: content.y + 2,
+    } as any);
+    await t.settle();
+    expect(selected).toEqual(people[1]); // Alice
+    expect(widget.selectedIndex).toBe(1);
+
+    widget.toggleSort("name"); // asc: Alice, Bob, Charlie
+    await t.settle();
+
+    const stillSelected = (widget as any).rowAtView(widget.selectedIndex)?.row as
+      | Person
+      | undefined;
+    expect(stillSelected).toEqual(people[1]); // Alice
+  });
 });
 
 describe("Table navigation & layout edge cases", () => {

@@ -697,7 +697,11 @@ export class AppInput {
     if (ev.ctrl && !ev.shift && ev.name === "v" && typeof focused.insertText === "function") {
       this.safeInvoke("paste", () => {
         Promise.resolve(this.host.driver.clipboard.get()).then((text) => {
-          if (text) {
+          // `clipboard.get()` can take up to ~500ms (OSC 52 round-trip); focus
+          // may have moved to a different widget — or this one may have been
+          // unmounted — by the time it resolves. Re-check before inserting,
+          // or the paste lands in whatever now happens to be focused.
+          if (text && this.host.activeScreen.focusedWidget === focused) {
             this.safeInvoke("insertText (paste)", () => focused.insertText?.(text));
             this.host.queueRender("clipboard:paste-shortcut");
           }
