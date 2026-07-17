@@ -147,6 +147,25 @@ describe("JSONUIWidget", () => {
     expect(() => btn.onClick({ x: 0, y: 0 })).not.toThrow();
   });
 
+  test("defaults absent padding right/left sides to 0 (top/bottom given)", async () => {
+    const json = `{
+      "type": "ztui-box",
+      "id": "container",
+      "style": { "padding": {"top": 2, "bottom": 3} }
+    }`;
+    const { app, settle } = await mountApp(<JSONUI>{json}</JSONUI>, {
+      cols: 80,
+      rows: 25,
+      capabilities: { glyphProtocol: false, graphicsProtocol: "none" as const },
+    });
+    await settle();
+    const box = (app.activeScreen.children[0] as any).children[0];
+    expect(box.padding.top).toBe(2);
+    expect(box.padding.bottom).toBe(3);
+    expect(box.padding.right).toBe(0);
+    expect(box.padding.left).toBe(0);
+  });
+
   test("a JSON primitive (not an object) parses but builds no widget tree", async () => {
     const { app, settle } = await mountApp(<JSONUI>{"42"}</JSONUI>, {
       cols: 80,

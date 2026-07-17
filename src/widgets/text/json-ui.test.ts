@@ -38,4 +38,20 @@ describe("parsePartialJson", () => {
     // pushed for the array, exercising the matching (not mismatched) branch.
     expect(parsePartialJson('{"items":[1,2]')).toEqual({ items: [1, 2] });
   });
+
+  test("a mismatched `}` (top of stack is `[`, not `{`) is left as-is, not popped", () => {
+    // The `}` doesn't match the array's `[` on top of the stack, so it's a
+    // no-op rather than closing the array — leaving stray garbage that fails
+    // to parse even after the repair pass closes the array for real.
+    expect(parsePartialJson("[1,2}")).toBeNull();
+  });
+
+  test("a mismatched `]` (top of stack is `{`, not `[`) is left as-is, not popped", () => {
+    expect(parsePartialJson('{"a":1]')).toBeNull();
+  });
+
+  test("closes an unterminated array that doesn't end in a dangling comma", () => {
+    // No trailing comma to strip -- exercises the "else" side of that check.
+    expect(parsePartialJson('{"items":[1,2')).toEqual({ items: [1, 2] });
+  });
 });
