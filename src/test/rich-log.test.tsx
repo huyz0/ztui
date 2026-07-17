@@ -256,6 +256,27 @@ describe("RichLog", () => {
     expect(t.findById<RichLogWidget>("log")?.selectableLines()).toEqual(["two", "three"]);
   });
 
+  test("a blank line (consecutive newlines) contributes no empty segment", async () => {
+    const t = await mountApp(
+      <RichLog id="log" lines={["one\n\ntwo"]} style={{ width: 20, height: 6 }} />,
+    );
+    await t.settle();
+    // The middle empty part between the two `\n`s becomes a genuinely blank
+    // display row (no Segment at all), not a crash or a dropped row.
+    expect(t.findById<RichLogWidget>("log")?.selectableLines()).toEqual(["one", "", "two"]);
+  });
+
+  test("a non-selectable log doesn't register selection runs while rendering", async () => {
+    const t = await mountApp(
+      <RichLog id="log" lines={["hello"]} style={{ width: 20, height: 6 }} />,
+    );
+    const log = t.findById<RichLogWidget>("log")!;
+    log.selectable = false;
+    await t.settle();
+    // No throw, and the text still renders even with selection tracking off.
+    expect(t.text()).toContain("hello");
+  });
+
   test("a not-yet-mounted widget renders nothing when hidden", () => {
     const widget = new RichLogWidget();
     widget.visible = false;
