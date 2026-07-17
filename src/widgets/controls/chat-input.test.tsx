@@ -386,6 +386,26 @@ describe("ChatInput", () => {
     expect(w.value).toBe("redoable");
   });
 
+  test("undo/redo with nothing to undo/redo are no-ops", async () => {
+    const { w } = await mountChat({});
+    // Fresh buffer: no history at all — both must return without touching
+    // the value or calling afterEdit's caret/scroll bookkeeping.
+    expect(() => w.undo()).not.toThrow();
+    expect(w.value).toBe("");
+    expect(() => w.redo()).not.toThrow();
+    expect(w.value).toBe("");
+  });
+
+  test("getHints() shows the default → glyph for the accept hint when unconfigured", async () => {
+    const { w } = await mountChat({});
+    (w as unknown as { suggestion: string | null }).suggestion = "world";
+    const hints = (w as unknown as { getHints: () => Array<{ keys: string; label: string }> })
+      .getHints()
+      .filter((h) => h.label === "accept");
+    expect(hints).toHaveLength(1);
+    expect(hints[0].keys).toBe("→"); // default acceptSuggestionKey is "right"
+  });
+
   test("controlled value prop sets the buffer without looping onChange", async () => {
     let changes = 0;
     const t = await mountApp(<ChatInput id="c" value="seed" onChange={() => changes++} />, {
