@@ -62,4 +62,33 @@ describe("box title", () => {
     expect(top).toBe("╭─ … ╮");
     expect([...top].length).toBe(6);
   });
+
+  test("no-ops when the buffer is too small to have a styled cell at the border position", () => {
+    // The box's own region claims width 10 (room for a title), but the actual
+    // buffer it paints into is only 1 column wide. `buffer.cells[rect.y]?.[rect.x + 1]`
+    // is then out of range, so `borderStyle` is undefined and drawTitle must
+    // bail rather than throw trying to paint past the buffer's edge.
+    const w = new BoxWidget();
+    w.style.width = 10;
+    w.style.height = 3;
+    w.style.border = "rounded";
+    w.title = "Hi";
+    w.region = new Region(Offset.ORIGIN, new Size(10, 3));
+
+    const buffer = new ScreenBuffer(1, 3);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("stops painting the title once it reaches the right border, without overrunning it", () => {
+    // A wide (double-column) grapheme in the title means charWidth-based
+    // cursor advancement can outpace stringWidth-based truncation budgeting,
+    // so the paint loop's own right-edge guard (not just the pre-truncation
+    // budget) is what stops it from writing past the corner.
+    const top = rowText(renderBox({ width: 10, title: "深深深深深深深深" }), 0);
+    expect(top.startsWith("╭─")).toBe(true);
+    // The right corner must still be the last visible glyph on the row - the
+    // loop's right-edge guard, not just pre-truncation budgeting, is what
+    // keeps painting from overrunning it.
+    expect(top.trim().endsWith("╮")).toBe(true);
+  });
 });
