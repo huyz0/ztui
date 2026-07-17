@@ -80,10 +80,6 @@ export function ChatBubble({
   const fill = background === undefined ? DEFAULT_ROLE_BACKGROUNDS[role] : background;
   const resolved = resolveAccent(role, accent);
   const hasIcon = icon != null && icon !== false;
-  // A spoken turn (you / the assistant) gets a trailing blank line *inside* the
-  // bubble — bottom padding, not margin, so the accent bar runs through it and
-  // the turn reads as a closed block. Tool/system output stays tight.
-  const padBottom = role === "user" || role === "assistant" ? 1 : 0;
   // Plain string/number children are wrapped in a word-wrapping Label so the
   // documented `<ChatBubble>text</ChatBubble>` shorthand renders (and reflows)
   // instead of silently dropping a bare text node into a layout box.
@@ -100,7 +96,7 @@ export function ChatBubble({
       style={{
         ...accentStyle(resolved),
         ...(fill != null ? { background: fill } : {}),
-        padding: { left: 1, right: 1, bottom: padBottom },
+        padding: { left: 1, right: 1 },
         // Content-sized (not a fixed width) so a short "hi" doesn't stretch
         // into a wide box with trailing blank space — just capped so a long
         // message can't fill the whole panel.
@@ -109,7 +105,12 @@ export function ChatBubble({
       }}
     >
       {author || hasIcon ? (
-        <HBox style={{ width: "100%", height: 1 }}>
+        // No `width: "100%"` here: that would resolve against the full
+        // space this bubble was OFFERED (before its own content-sized/
+        // maxWidth-capped width is known), stretching the header — and
+        // therefore the whole bubble, since width is content's max — back
+        // out to the full offered width regardless of maxWidth/align.
+        <HBox style={{ height: 1 }}>
           {hasIcon ? <Box style={{ padding: { right: 1 } }}>{icon}</Box> : undefined}
           {author ? (
             <Label style={{ color: resolved.color, bold: true }}>{author}</Label>
