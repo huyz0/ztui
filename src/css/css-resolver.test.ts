@@ -351,6 +351,10 @@ describe("CSSResolver syntax/diff fallbacks for theme-undefined names", () => {
       "diff-removed-bg",
       "diff-added-fg",
       "diff-removed-fg",
+      "diff-added-gutter-bg",
+      "diff-removed-gutter-bg",
+      "diff-added-gutter-fg",
+      "diff-removed-gutter-fg",
     ]) {
       w.style.color = `$${name}`;
       const c = resolver.resolveStyles(w, false).color;
@@ -392,8 +396,8 @@ describe("CSSResolver diff row tint strength", () => {
   afterEach(() => ThemeManager.getInstance().setTheme("default-dark"));
 
   test.each([
-    ["default-dark", 1.5, 4.5] as const,
-    ["default-light", 1.7, 4.5] as const,
+    ["default-dark", 1.3, 4.5] as const,
+    ["default-light", 1.4, 4.5] as const,
   ])("%s: diff-added-bg/diff-removed-bg are distinguishable from the background, and the row's own text color stays legible on top", (themeName, minBgContrast, minTextContrast) => {
     const mgr = ThemeManager.getInstance();
     mgr.setTheme(themeName);
@@ -449,6 +453,30 @@ describe("CSSResolver diff row tint strength", () => {
     expect(addedFg).not.toBe(fg);
     expect(removedFg).not.toBe(fg);
     expect(addedFg).not.toBe(removedFg);
+  });
+
+  test.each([
+    "default-dark",
+    "default-light",
+  ])("%s: the gutter tint is brighter than the code-area tint, and its text clears AA on top", (themeName) => {
+    const mgr = ThemeManager.getInstance();
+    mgr.setTheme(themeName);
+    const resolver = new CSSResolver([]);
+    const w = new Widget("code");
+    const theme = mgr.getActiveTheme();
+    const bg = theme.colors.background;
+
+    w.style.color = "$diff-added-bg";
+    const codeBg = resolver.resolveStyles(w, false).color as string;
+    w.style.color = "$diff-added-gutter-bg";
+    const gutterBg = resolver.resolveStyles(w, false).color as string;
+    w.style.color = "$diff-added-gutter-fg";
+    const gutterFg = resolver.resolveStyles(w, false).color as string;
+
+    // "Brighter" = further from the page background than the code area's
+    // own (now intentionally darker) tint.
+    expect(contrastRatio(gutterBg, bg)).toBeGreaterThan(contrastRatio(codeBg, bg));
+    expect(contrastRatio(gutterFg, gutterBg)).toBeGreaterThan(4.5);
   });
 });
 

@@ -264,6 +264,18 @@ export class DiffWidget extends Widget {
         r.kind === "add" ? "$diff-added-fg" : r.kind === "del" ? "$diff-removed-fg" : fg;
       const rowBg = fillBg ?? this.findResolvedBackground();
       const codeBase = this.styleFor(rowFg, rowBg);
+      const gutterBg =
+        r.kind === "add"
+          ? "$diff-added-gutter-bg"
+          : r.kind === "del"
+            ? "$diff-removed-gutter-bg"
+            : rowBg;
+      const gutterFg =
+        r.kind === "add"
+          ? "$diff-added-gutter-fg"
+          : r.kind === "del"
+            ? "$diff-removed-gutter-fg"
+            : "$gutter";
 
       const segs: Segment[] = [];
       let plain = "";
@@ -271,7 +283,13 @@ export class DiffWidget extends Widget {
         const oldS = (r.oldNo ? String(r.oldNo) : "").padStart(numW);
         const newS = (r.newNo ? String(r.newNo) : "").padStart(numW);
         const gutter = `${oldS} ${newS} `;
-        segs.push(new Segment(gutter, this.styleFor("$gutter", rowBg).merge({ dim: true })));
+        const gutterStyle = this.styleFor(gutterFg, gutterBg);
+        segs.push(
+          new Segment(
+            gutter,
+            r.kind === "context" ? gutterStyle.merge({ dim: true }) : gutterStyle,
+          ),
+        );
         plain += gutter;
       }
       segs.push(...this.codeSegments(r.text, codeBase));
@@ -318,10 +336,28 @@ export class DiffWidget extends Widget {
         c.kind === "add" ? "$diff-added-bg" : c.kind === "del" ? "$diff-removed-bg" : widgetBg;
       const paneFg =
         c.kind === "add" ? "$diff-added-fg" : c.kind === "del" ? "$diff-removed-fg" : fg;
+      const gutterBg =
+        c.kind === "add"
+          ? "$diff-added-gutter-bg"
+          : c.kind === "del"
+            ? "$diff-removed-gutter-bg"
+            : bg;
+      const gutterFg =
+        c.kind === "add"
+          ? "$diff-added-gutter-fg"
+          : c.kind === "del"
+            ? "$diff-removed-gutter-fg"
+            : "$gutter";
       const segs: Segment[] = [];
       if (numW > 0) {
         const num = (c.no ? String(c.no) : "").padStart(numW);
-        segs.push(new Segment(`${num} `, this.styleFor("$gutter", bg).merge({ dim: true })));
+        const gutterStyle = this.styleFor(gutterFg, gutterBg);
+        segs.push(
+          new Segment(
+            `${num} `,
+            c.kind === "context" ? gutterStyle.merge({ dim: true }) : gutterStyle,
+          ),
+        );
       }
       if (c.text.length > 0) segs.push(...this.codeSegments(c.text, this.styleFor(paneFg, bg)));
       const clamped = clampSegments(segs, paneW);

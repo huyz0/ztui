@@ -459,7 +459,27 @@ export class CSSResolver {
         "background",
         activeTheme?.colors?.background || "#121212",
       );
-      return blendColors(base, bg, isLight ? 0.42 : 0.3);
+      return blendColors(base, bg, isLight ? 0.3 : 0.2);
+    }
+    // Gutter tint: a second, brighter blend than the code area's, so the
+    // line-number column reads as its own distinct highlight rather than
+    // just more of the same row wash — with white/near-black text on top
+    // (instead of the dimmed gutter gray) since that gray doesn't clear AA
+    // against a blend this saturated.
+    if (name === "diff-added-gutter-bg" || name === "diff-removed-gutter-bg") {
+      const base =
+        name === "diff-added-gutter-bg"
+          ? this.lookupVariable(widget, "success") || "#4caf50"
+          : this.lookupVariable(widget, "error") || "#f44336";
+      const bg = this.getWidgetColorWithFallback(
+        widget,
+        "background",
+        activeTheme?.colors?.background || "#121212",
+      );
+      return blendColors(base, bg, isLight ? 0.65 : 0.55);
+    }
+    if (name === "diff-added-gutter-fg" || name === "diff-removed-gutter-fg") {
+      return isLight ? "#141414" : "#f5f5f5";
     }
     // Row text: half foreground, half success/error, so an added/removed
     // line's own text reads as visibly green/red rather than relying on the
