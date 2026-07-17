@@ -75,10 +75,15 @@ export class FormWidget extends BoxWidget {
   /** Validates, focuses the first invalid field, and fires onSubmit when valid. */
   public submit(): void {
     const fields = this.collectFields();
+    let valid = true;
     let firstInvalid: ValidatableField | null = null;
     for (const f of fields) {
-      if (!f.validation.validate().valid && !firstInvalid) firstInvalid = f;
+      if (!f.validation.validate().valid) {
+        valid = false;
+        if (!firstInvalid) firstInvalid = f;
+      }
     }
+    this.onValidate?.(valid, this.values);
     if (firstInvalid) {
       App.instance?.activeScreen?.focusWidget(firstInvalid);
       App.instance?.queueRender();

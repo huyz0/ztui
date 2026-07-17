@@ -158,9 +158,52 @@ describe("SelectWidget hoveredIndex stays valid when options shrinks while open"
   });
 });
 
+describe("SelectWidget hoveredIndex stays valid when options shrinks with no keypress", () => {
+  test("render() draws visible rows instead of breaking out early on a stale hoveredIndex", () => {
+    // Regression: hoveredIndex was only ever re-clamped inside the keyboard
+    // handler. Reassigning `options` to a shorter array externally (e.g. an
+    // async reload) while the dropdown stayed open — with no keypress in
+    // between — left hoveredIndex stale. render()'s scroll math then aimed
+    // past the end of the (now short) options array, and its draw loop
+    // `break`s the moment it hits an undefined option, leaving every row
+    // blank instead of showing the shrunk list.
+    const w = new SelectWidget();
+    w.options = ["a", "b", "c", "d", "e", "f"];
+    w.isOpen = true;
+    w.hoveredIndex = 5; // last of 6 options
+
+    // Reassign directly — no keypress fires the keyboard-handler clamp.
+    w.options = ["x", "y"];
+
+    const overlay = new DropdownOverlayWidget(w, 0, 0, 20);
+    const buffer = new ScreenBuffer(20, overlay.dropdownHeight);
+    overlay.render(buffer);
+    // Row 1 (first option row) should show "x" (prefixed by two spaces of
+    // unselected-option padding), not be left blank by an early break.
+    expect(buffer.cells[1][3]?.char).toBe("x");
+  });
+
+  test("handleMouse() selects the clamped row instead of silently no-oping on a stale hoveredIndex", () => {
+    const w = new SelectWidget();
+    w.options = ["a", "b", "c", "d", "e", "f"];
+    w.isOpen = true;
+    w.hoveredIndex = 5;
+    w.options = ["x", "y"]; // shrunk externally, no keypress
+
+    const overlay = new DropdownOverlayWidget(w, 0, 0, 20);
+    let selectedIndex: number | undefined;
+    w.selectOptionIndex = (i: number) => {
+      selectedIndex = i;
+    };
+    overlay.handleMouse({ type: "press", button: "left", x: 5, y: 1 });
+    expect(selectedIndex).toBe(0);
+  });
+});
+
 describe("SelectWidget openDropdown/closeDropdown/getScreen edge cases", () => {
   test("openDropdown is a no-op when already open", () => {
     const w = new SelectWidget();
+    w.options = ["a", "b", "c", "d"];
     w.isOpen = true;
     w.hoveredIndex = 3;
     w.openDropdown();

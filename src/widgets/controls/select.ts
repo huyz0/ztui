@@ -204,8 +204,25 @@ export class SelectWidget extends Widget {
 
   /** Whether the dropdown is open. */
   public isOpen = false;
-  /** Index of the highlighted option while open. */
-  public hoveredIndex = 0;
+  private _hoveredIndex = 0;
+  /**
+   * Index of the highlighted option while open. Clamped to the current
+   * (resolved) options length on every read — `options` can be reassigned to
+   * a shorter array externally (e.g. an async reload) while the dropdown
+   * stays open, with no keypress to trigger the keyboard handler's own
+   * clamp. Without this, render()/handleMouse() would use a stale
+   * out-of-range index: render() breaks out of its draw loop early (blank
+   * rows) and handleMouse() computes an index past the option list, so
+   * clicks silently no-op.
+   */
+  public get hoveredIndex(): number {
+    const max = this.getResolvedOptions().length - 1;
+    if (max < 0) return 0;
+    return Math.min(this._hoveredIndex, max);
+  }
+  public set hoveredIndex(index: number) {
+    this._hoveredIndex = index;
+  }
 
   /** Validation; the validated value is the current selection. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);

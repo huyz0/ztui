@@ -152,6 +152,44 @@ describe("ComboboxWidget highlightedIndex stays valid as the filtered list shrin
   });
 });
 
+describe("ComboboxWidget highlightedIndex stays valid when options shrinks with no keypress", () => {
+  test("render() draws visible rows instead of breaking out early on a stale highlightedIndex", () => {
+    // Regression: highlightedIndex was only ever re-clamped inside the
+    // keyboard handler (backspace/delete/typing). Reassigning `options`
+    // externally (e.g. an async reload) while the popover stayed open, with
+    // no keypress in between, left highlightedIndex stale — render()'s
+    // scroll math aimed past the shrunk filtered list, and its draw loop
+    // breaks the moment it hits an undefined option, leaving rows blank.
+    const w = new ComboboxWidget();
+    w.options = ["a", "b", "c", "d", "e", "f"];
+    w.isOpen = true;
+    w.highlightedIndex = 5; // last of 6 options
+
+    w.options = ["x", "y"]; // shrunk externally, no keypress
+
+    const overlay = new ComboboxOverlayWidget(w, 0, 0, 20);
+    const buffer = new ScreenBuffer(20, 4);
+    overlay.render(buffer);
+    expect(buffer.cells[1][1]?.char).toBe("x");
+  });
+
+  test("handleMouse() selects the clamped row instead of silently no-oping on a stale highlightedIndex", () => {
+    const w = new ComboboxWidget();
+    w.options = ["a", "b", "c", "d", "e", "f"];
+    w.isOpen = true;
+    w.highlightedIndex = 5;
+    w.options = ["x", "y"]; // shrunk externally, no keypress
+
+    const overlay = new ComboboxOverlayWidget(w, 0, 0, 20);
+    let selected: unknown;
+    w.selectOption = (opt: unknown) => {
+      selected = opt;
+    };
+    overlay.handleMouse({ type: "press", button: "left", x: 5, y: 1 });
+    expect((selected as { label: string } | undefined)?.label).toBe("x");
+  });
+});
+
 describe("ComboboxWidget overlay placement when neither direction fits", () => {
   test("overlay height shrinks to available space instead of overflowing the screen", () => {
     // Regression: the "flip above" branch only checked spaceBelow < overlayHeight
@@ -198,6 +236,7 @@ describe("ComboboxWidget overlay placement when neither direction fits", () => {
 describe("ComboboxWidget openDropdown/closeDropdown/getScreen edge cases", () => {
   test("openDropdown is a no-op when already open", () => {
     const w = new ComboboxWidget();
+    w.options = ["a", "b", "c", "d"];
     w.isOpen = true;
     w.highlightedIndex = 3;
     w.openDropdown();

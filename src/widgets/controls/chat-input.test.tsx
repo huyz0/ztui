@@ -191,6 +191,36 @@ describe("ChatInput", () => {
     expect(submitted).toBe("see <auth.ts>");
   });
 
+  test("setting value externally while a completion popup is open closes the popup instead of leaving a stale queryStart", async () => {
+    // Regression: the controlled `value` setter replaced the buffer directly
+    // without closing an open completion popup. `queryStart` (captured when
+    // the popup opened) then pointed into the *old* text; accepting the
+    // still-open completion afterward replaced the wrong range of the new
+    // text, corrupting it instead of just inserting the completion.
+    const trigger: Trigger = {
+      char: "@",
+      getCompletions: () => [{ label: "auth.ts" }],
+      onAccept: (c) => ({ kind: "text", value: `[${c.label}]` }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "see @au");
+    await t.settle();
+    expect(t.text()).toContain("auth.ts"); // popup open
+
+    // Host replaces the whole value externally (e.g. a controlled reset).
+    w.value = "totally different text";
+    await t.settle();
+    expect(t.text()).not.toContain("auth.ts"); // popup closed, not left dangling
+
+    // With the popup closed, Enter submits the new text verbatim instead of
+    // acceptCompletion() splicing over a stale (now out-of-bounds) range.
+    let submitted = "";
+    w.onSubmit = (v: string) => (submitted = v);
+    key(w, "enter");
+    await t.settle();
+    expect(submitted).toBe("totally different text");
+  });
+
   test("a slash command trigger fires onCommand", async () => {
     const trigger: Trigger = {
       char: "/",

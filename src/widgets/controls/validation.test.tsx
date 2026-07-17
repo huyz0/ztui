@@ -151,6 +151,29 @@ describe("Form widget integration", () => {
     expect(submitted).toEqual({ a: "ok" });
   });
 
+  test("submit invokes onValidate the same as validate(), including on failure", async () => {
+    // Regression: submit() duplicated validate()'s per-field loop inline but
+    // never called onValidate, so UI relying on onValidate for submit-time
+    // feedback (e.g. a summary banner) never updated when Submit was pressed
+    // with invalid fields — only an explicit validate() call notified it.
+    const calls: Array<[boolean, Record<string, unknown>]> = [];
+    const { findById } = await mountApp(
+      <Form id="form" onValidate={(valid, values) => calls.push([valid, values])}>
+        <Input id="a" validators={[required()]} validateOn="submit" />
+      </Form>,
+    );
+    const form = findById<FormWidget>("form")!;
+    form.submit();
+    expect(calls).toEqual([[false, { a: "" }]]);
+
+    findById<InputWidget>("a")!.value = "ok";
+    form.submit();
+    expect(calls).toEqual([
+      [false, { a: "" }],
+      [true, { a: "ok" }],
+    ]);
+  });
+
   test("auto/shared message mode paints the focused field's error on the form's bottom row", async () => {
     const { findById, settle, text } = await mountApp(
       <Form id="form" style={{ width: 30, height: 4 }}>

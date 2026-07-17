@@ -202,6 +202,11 @@ export class ChatInputWidget extends Widget {
   /** Replace the text (does not emit onChange — avoids controlled-prop loops). */
   public set value(text: string) {
     if (text === this.buffer.value) return;
+    // Close any open completion popup first — it anchors on `queryStart`, a
+    // position into the *old* buffer contents, which setValue() below
+    // invalidates. Left open, accepting the completion afterward would
+    // replaceRange() over the wrong span and corrupt the new text.
+    this.closePopup();
     this.buffer.setValue(text);
     this.hasInput = text.length > 0;
     this.app?.queueRender();

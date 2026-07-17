@@ -175,8 +175,25 @@ export class ComboboxWidget extends Widget {
 
   /** Whether the suggestion popover is open. */
   public isOpen = false;
-  /** Index into {@link getFilteredOptions} of the highlighted suggestion. */
-  public highlightedIndex = 0;
+  private _highlightedIndex = 0;
+  /**
+   * Index into {@link getFilteredOptions} of the highlighted suggestion.
+   * Clamped to the current filtered length on every read — `options` can be
+   * reassigned externally (e.g. an async reload) while the popover stays
+   * open, with no keypress to trigger the keyboard handler's own clamp.
+   * Without this, render()/handleMouse() would use a stale out-of-range
+   * index: render() breaks out of its draw loop early (blank rows) and
+   * handleMouse() computes an index past the filtered list, so clicks
+   * silently no-op.
+   */
+  public get highlightedIndex(): number {
+    const max = this.getFilteredOptions().length - 1;
+    if (max < 0) return 0;
+    return Math.min(this._highlightedIndex, max);
+  }
+  public set highlightedIndex(index: number) {
+    this._highlightedIndex = index;
+  }
 
   /** Validation; the validated value is the typed text. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
