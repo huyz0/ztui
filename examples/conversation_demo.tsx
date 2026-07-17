@@ -124,11 +124,15 @@ function ConversationDemoApp() {
       >
         {turns.map((turn) =>
           turn.thinking ? (
-            <ChatBubble key={turn.id} role="assistant">
+            <ChatBubble key={turn.id} role="assistant" align="left">
               <Reasoning active label="Thinking through your request" />
             </ChatBubble>
           ) : (
-            <ChatBubble key={turn.id} role={turn.role}>
+            <ChatBubble
+              key={turn.id}
+              role={turn.role}
+              align={turn.role === "user" ? "right" : "left"}
+            >
               {turn.text}
             </ChatBubble>
           ),
@@ -143,6 +147,6 @@ export const conversationDemo: Demo = {
   title: "Conversation",
   group: "Text",
   description:
-    "Agent chat shell: a tail-following transcript of bubbles with a docked composer, busy/interrupt and hint-line wired in.",
+    "Agent chat shell: a tail-following transcript of left/right-aligned bubbles with a docked composer, busy/interrupt and hint-line wired in.",
   Component: ConversationDemoApp,
 };
