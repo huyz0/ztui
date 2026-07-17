@@ -365,6 +365,13 @@ describe("CSSResolver diff row tint strength", () => {
   // weaker against a near-white background. Verified with a real luminance-
   // contrast measurement (WCAG relative luminance) rather than eyeballing,
   // since "looks washed" is otherwise unfalsifiable.
+  //
+  // Dark and light intentionally target different floors: dark's weight
+  // (30%) trades some background-distinguishability for keeping text-on-tint
+  // contrast high (going further, to 40%, measurably cost ~2:1 of foreground
+  // legibility for a distinguishability gain most users don't need as much
+  // as the text staying easy to read) — light's (42%) doesn't have that
+  // tradeoff to the same degree since it starts from a much lower base.
   function relativeLuminance(hex: string): number {
     const lin = (c: number) => {
       const s = c / 255;
@@ -383,14 +390,16 @@ describe("CSSResolver diff row tint strength", () => {
   afterEach(() => ThemeManager.getInstance().setTheme("default-dark"));
 
   test.each([
-    "default-dark",
-    "default-light",
-  ] as const)("%s: diff-added-bg/diff-removed-bg are clearly distinguishable from the page background", (themeName) => {
+    ["default-dark", 1.5, 5.5] as const,
+    ["default-light", 1.7, 5.5] as const,
+  ])("%s: diff-added-bg/diff-removed-bg are distinguishable from the background, and text on top stays legible", (themeName, minBgContrast, minTextContrast) => {
     const mgr = ThemeManager.getInstance();
     mgr.setTheme(themeName);
     const resolver = new CSSResolver([]);
     const w = new Widget("code");
-    const bg = mgr.getActiveTheme().colors.background;
+    const theme = mgr.getActiveTheme();
+    const bg = theme.colors.background;
+    const fg = theme.colors.foreground;
 
     w.style.color = "$diff-added-bg";
     const addedBg = resolver.resolveStyles(w, false).color as string;
@@ -401,8 +410,13 @@ describe("CSSResolver diff row tint strength", () => {
     // background on every built-in theme — below this floor. This isn't a
     // WCAG text-contrast target (a background wash isn't text), just a
     // "not literally the same shade as the page" floor.
-    expect(contrastRatio(addedBg, bg)).toBeGreaterThan(1.7);
-    expect(contrastRatio(removedBg, bg)).toBeGreaterThan(1.7);
+    expect(contrastRatio(addedBg, bg)).toBeGreaterThan(minBgContrast);
+    expect(contrastRatio(removedBg, bg)).toBeGreaterThan(minBgContrast);
+    // The foreground text painted over the tint must stay clearly legible
+    // — this is what regresses if the tint is pushed too strong chasing
+    // background-distinguishability alone.
+    expect(contrastRatio(fg, addedBg)).toBeGreaterThan(minTextContrast);
+    expect(contrastRatio(fg, removedBg)).toBeGreaterThan(minTextContrast);
   });
 });
 

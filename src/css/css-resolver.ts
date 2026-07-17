@@ -441,10 +441,14 @@ export class CSSResolver {
     // glance rather than a near-invisible wash (text on top stays legible
     // with comfortable margin at these weights — verified against every
     // built-in theme, not just eyeballed). Light themes blend in *more* than
-    // dark ones (not less, as an earlier, too-subtle version of this had it):
-    // the same blend weight reads as visibly weaker against a near-white
-    // background than against a dark one, so light needs the higher share to
-    // land at a similar felt intensity.
+    // dark ones: the same blend weight reads as visibly weaker against a
+    // near-white background than against a dark one, so light needs the
+    // higher share to land at a similar felt intensity. Dark's weight is
+    // lower than light's for the opposite reason too — blending toward an
+    // already-dark background needs less to register, and going further
+    // measurably costs text-on-tint contrast (0.40 dropped it from ~7.6-8.4:1
+    // at the original 0.24 to ~5.3-6.3:1) for a background-distinguishability
+    // gain most users don't need as much as the text staying easy to read.
     if (name === "diff-added-bg" || name === "diff-removed-bg") {
       const base =
         name === "diff-added-bg"
@@ -455,7 +459,7 @@ export class CSSResolver {
         "background",
         activeTheme?.colors?.background || "#121212",
       );
-      return blendColors(base, bg, isLight ? 0.42 : 0.4);
+      return blendColors(base, bg, isLight ? 0.42 : 0.3);
     }
 
     return undefined;
