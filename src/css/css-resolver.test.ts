@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 import { motion } from "../anim/motion.ts";
 import { Widget } from "../dom/widget.ts";
 import { adjustLightness, deriveTheme, ThemeManager } from "../theme.ts";
@@ -355,6 +355,54 @@ describe("CSSResolver syntax/diff fallbacks for theme-undefined names", () => {
       expect(typeof c === "string" && c.length > 0).toBe(true);
     }
     themeManager.setTheme("default-dark");
+  });
+});
+
+describe("CSSResolver diff row tint strength", () => {
+  // Regression: the row tint used to blend in only 16%/24% (light/dark) of
+  // the success/error color — a wash so subtle it read as barely-there,
+  // especially on light themes where the same blend weight lands visually
+  // weaker against a near-white background. Verified with a real luminance-
+  // contrast measurement (WCAG relative luminance) rather than eyeballing,
+  // since "looks washed" is otherwise unfalsifiable.
+  function relativeLuminance(hex: string): number {
+    const lin = (c: number) => {
+      const s = c / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    const r = Number.parseInt(hex.slice(1, 3), 16);
+    const g = Number.parseInt(hex.slice(3, 5), 16);
+    const b = Number.parseInt(hex.slice(5, 7), 16);
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  }
+  function contrastRatio(a: string, b: string): number {
+    const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  afterEach(() => ThemeManager.getInstance().setTheme("default-dark"));
+
+  test.each([
+    "default-dark",
+    "default-light",
+  ] as const)("%s: diff-added-bg/diff-removed-bg are clearly distinguishable from the page background", (themeName) => {
+    const mgr = ThemeManager.getInstance();
+    mgr.setTheme(themeName);
+    const resolver = new CSSResolver([]);
+    const w = new Widget("code");
+    const bg = mgr.getActiveTheme().colors.background;
+
+    w.style.color = "$diff-added-bg";
+    const addedBg = resolver.resolveStyles(w, false).color as string;
+    w.style.color = "$diff-removed-bg";
+    const removedBg = resolver.resolveStyles(w, false).color as string;
+
+    // The pre-fix weights (16%/24%) produced ~1.2-1.6:1 against the page
+    // background on every built-in theme — below this floor. This isn't a
+    // WCAG text-contrast target (a background wash isn't text), just a
+    // "not literally the same shade as the page" floor.
+    expect(contrastRatio(addedBg, bg)).toBeGreaterThan(1.7);
+    expect(contrastRatio(removedBg, bg)).toBeGreaterThan(1.7);
   });
 });
 
