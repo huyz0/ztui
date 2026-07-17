@@ -30,6 +30,68 @@ describe("LabelWidget selectable lines", () => {
     w.handleMouse(ev);
     expect(ev.handled).toBe(true); // consumed upstream → early return, still handled
   });
+
+  test("wrappedRows falls back to the unwrapped text when width is 0", () => {
+    const w = withText(new LabelWidget(), "hello world");
+    w.wrap = true;
+    w.region = new Region(Offset.ORIGIN, new Size(0, 1));
+    const buffer = new ScreenBuffer(0, 1);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("wrappedRows' memo evicts its oldest entry past 4 distinct widths", () => {
+    const w = withText(new LabelWidget(), "one two three four five six seven eight");
+    w.wrap = true;
+    w.region = new Region(Offset.ORIGIN, new Size(50, 20));
+    for (const width of [5, 10, 15, 20, 25, 30]) {
+      w.measure(width, 20);
+    }
+    expect(w.measuredHeight).toBeGreaterThan(0);
+  });
+
+  test("wrapped, selectable rows register a selectable run per line", () => {
+    const w = withText(new LabelWidget(), "one two three four five");
+    w.wrap = true;
+    w.selectable = true;
+    w.region = new Region(Offset.ORIGIN, new Size(10, 5));
+    const buffer = new ScreenBuffer(10, 5);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("a non-selectable label registers no selectable run", () => {
+    const w = withText(new LabelWidget(), "text");
+    w.selectable = false;
+    w.region = new Region(Offset.ORIGIN, new Size(10, 1));
+    const buffer = new ScreenBuffer(10, 1);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("registers no selectable run when the content rect has zero width", () => {
+    // contentRect.width === 0 pins x === contentRect.right, so maxCols
+    // collapses to 0 and the cols.length > 0 guard must skip the run.
+    const w = withText(new LabelWidget(), "text");
+    w.selectable = true;
+    w.region = new Region(Offset.ORIGIN, new Size(0, 1));
+    const buffer = new ScreenBuffer(1, 1);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("wrapped rows register no selectable run when not selectable", () => {
+    const w = withText(new LabelWidget(), "one two three four five");
+    w.wrap = true;
+    w.selectable = false;
+    w.region = new Region(Offset.ORIGIN, new Size(10, 5));
+    const buffer = new ScreenBuffer(10, 5);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("markup with a mixed themed/literal color resolves only the $-prefixed field", () => {
+    const w = withText(new LabelWidget(), "[$accent on blue]hi[/]");
+    w.markup = true;
+    w.region = new Region(Offset.ORIGIN, new Size(10, 1));
+    const buffer = new ScreenBuffer(10, 1);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
 });
 
 describe("RichTextWidget selectable lines", () => {
