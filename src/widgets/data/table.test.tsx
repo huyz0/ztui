@@ -482,6 +482,45 @@ describe("Table selection (phase 2/4)", () => {
     // occurrence was actually selected.
     expect(widget.selectedIndex).toBe(2);
   });
+
+  test("re-anchors selection by nearest identity when data is replaced with a new array", async () => {
+    // When `data` is reassigned to a genuinely new array (not just re-sorted
+    // in place), the fast "same array, hint is still valid" path misses, so
+    // re-anchoring falls back to a scan for the same row nearest its old
+    // index — this covers that scan path, including disambiguating a
+    // duplicate value by proximity rather than always picking the first hit
+    // (what a plain `indexOf` would do).
+    const dupData = ["X", "Bob", "Bob"];
+    const dupColumns: TableColumn<string>[] = [{ key: "name", header: "Name", width: 10 }];
+    const t = await mountApp(
+      <Table data={dupData} columns={dupColumns} style={{ height: "100%" }} />,
+    );
+    const widget = findTable<string>(t);
+
+    widget.selectedIndex = 2; // the second "Bob"
+    widget.data = ["Bob", "Bob", "Y", "Z"]; // both "Bob"s now earlier; old index (2) is "Y"
+    // "missing" doesn't match any column key, so this only triggers a rebuild
+    // without actually reordering — keeps the data-index math easy to reason
+    // about (viewIndex stays an identity mapping).
+    widget.toggleSort("missing");
+    await t.settle();
+
+    // Nearest to the old hint (2) is data index 1 (dist 1), not index 0 (dist
+    // 2) — the first occurrence a plain `indexOf` would have returned.
+    expect(widget.selectedIndex).toBe(1);
+  });
+
+  test("clears selection when the previously-selected row is no longer in a replaced data array", async () => {
+    const t = await mountApp(<Table data={people} columns={columns} style={{ height: "100%" }} />);
+    const widget = findTable<Person>(t);
+
+    widget.selectedIndex = 1; // Alice
+    widget.data = [people[0], people[2]]; // Alice removed entirely
+    widget.toggleSort("name");
+    await t.settle();
+
+    expect(widget.selectedIndex).toBe(-1);
+  });
 });
 
 describe("Table navigation & layout edge cases", () => {

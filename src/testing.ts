@@ -111,9 +111,16 @@ export function findWidgetByType<T>(
   className: string,
 ): T {
   let found: T | undefined;
+  let matches = 0;
   t.screen.walk((n: any) => {
-    if (n?.constructor?.name === className) found = n as T;
+    if (n?.constructor?.name === className) {
+      found = n as T;
+      matches++;
+    }
   });
-  if (!found) throw new Error(`${className} not found`);
-  return found;
+  if (matches === 0) throw new Error(`${className} not found`);
+  if (matches > 1) {
+    throw new Error(`${className} is not unique: found ${matches} instances under this tree`);
+  }
+  return found as T;
 }

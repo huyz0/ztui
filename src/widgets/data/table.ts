@@ -91,7 +91,14 @@ export interface TableTextStyle {
  * untouched source data rather than copying rows.
  */
 export class TableWidget<Row = any> extends Widget {
-  /** Source rows; only the visible window is rendered. Ignored when {@link groups} is set. */
+  /**
+   * Source rows; only the visible window is rendered. Ignored when {@link groups} is set.
+   * Assign a new array when rows change — mutating this array in place (e.g.
+   * `widget.data.splice(...)`) isn't observed until the next unrelated
+   * rebuild (a sort toggle, or `data` being reassigned), and {@link
+   * selectedIndex}'s re-anchoring can't reliably track a row that moved
+   * across such an in-place mutation.
+   */
   public data: Row[] = [];
   /**
    * Grouped mode: each group renders a non-interactive title row (spanning all
@@ -215,21 +222,23 @@ export class TableWidget<Row = any> extends Widget {
     }
 
     // `selectedIndex` is a view-order position; rebuilding `viewIndex` below
-    // (new data, or a different sort) would otherwise leave it pointing at
-    // whatever row now happens to land in that same view slot. Re-anchor it
-    // instead. When only the sort changed (`data` itself is the same array),
-    // the row's *data* index is still valid and unambiguous — use that
-    // directly rather than searching by row identity, which would find the
-    // wrong occurrence for duplicate values/references in `data`.
-    const dataUnchanged = this.lastData === this.data;
-    const prevSelectedDataIndex =
-      dataUnchanged && this.selectedIndex >= 0 && this.selectedIndex < this.viewIndex.length
+    // (a different sort, or `data` reassigned to a new array) would otherwise
+    // leave it pointing at whatever row now happens to land in that same view
+    // slot. Re-anchor it to the previously selected row instead. Read the row
+    // from `lastData` (the *old* array, still untouched even if `data` was
+    // just reassigned to a different array) rather than `data` — by the time
+    // this runs, `data` may already be the new array, so indexing into it at
+    // the old hint would silently read whatever row now happens to sit there.
+    const prevDataIndexHint =
+      this.selectedIndex >= 0 && this.selectedIndex < this.viewIndex.length
         ? this.viewIndex[this.selectedIndex]
         : -1;
     const selectedRow =
-      !dataUnchanged && this.selectedIndex >= 0 && this.selectedIndex < this.viewIndex.length
-        ? this.data[this.viewIndex[this.selectedIndex]]
-        : undefined;
+      prevDataIndexHint !== -1 && this.lastData ? this.lastData[prevDataIndexHint] : undefined;
+    // If `data` itself is still the same array, that hint is already a valid,
+    // unambiguous index into it — no search needed. Only fall back to a scan
+    // when the array was actually replaced.
+    const dataUnchanged = this.lastData === this.data;
 
     this.viewIndex = this.data.map((_, i) => i);
 
@@ -258,14 +267,16 @@ export class TableWidget<Row = any> extends Widget {
     this.lastData = this.data;
     this.lastSortSig = sig;
 
-    if (prevSelectedDataIndex !== -1) {
-      this.selectedIndex = this.viewIndex.indexOf(prevSelectedDataIndex);
-    } else if (selectedRow !== undefined) {
-      // `data` itself changed (not just the sort): fall back to a best-effort
-      // identity search. Imprecise for duplicate primitive values/references,
-      // but strictly better than leaving `selectedIndex` pointing at an
-      // unrelated row.
-      const newDataIndex = this.data.indexOf(selectedRow);
+    if (selectedRow !== undefined) {
+      // `data` unchanged (only the sort was): the hint is already a valid,
+      // unambiguous index into it. Otherwise search for the same row
+      // *nearest* its old data index — a plain `indexOf` would always
+      // resolve to the first occurrence of an equal value or repeated
+      // reference, silently jumping selection to the wrong duplicate when
+      // `data` contains one.
+      const newDataIndex = dataUnchanged
+        ? prevDataIndexHint
+        : nearestIndexOf(this.data, selectedRow, prevDataIndexHint);
       this.selectedIndex = newDataIndex === -1 ? -1 : this.viewIndex.indexOf(newDataIndex);
     }
   }
@@ -991,6 +1002,25 @@ export class TableWidget<Row = any> extends Widget {
       else buffer.setCell(x, yy, " ", track);
     }
   }
+}
+
+/**
+ * Index of `value` in `arr` nearest to `hint`, or -1 if absent. Used to
+ * re-anchor a selection by row identity without always landing on the
+ * *first* occurrence of a repeated value/reference — `Array.indexOf` would.
+ */
+function nearestIndexOf<T>(arr: readonly T[], value: T, hint: number): number {
+  let best = -1;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] !== value) continue;
+    const dist = Math.abs(i - hint);
+    if (dist < bestDist) {
+      best = i;
+      bestDist = dist;
+    }
+  }
+  return best;
 }
 
 function padTo(text: string, width: number): string {

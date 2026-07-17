@@ -63,4 +63,23 @@ describe("@huyz0/ztui/testing entry", () => {
     await t.settle();
     expect(() => findWidgetByType(t, "TableWidget")).toThrow(/TableWidget not found/);
   });
+
+  test("findWidgetByType throws when more than one matching instance is under the tree", async () => {
+    // Regression: the docstring promises "the sole widget instance," but the
+    // implementation silently kept whichever match the walk visited last
+    // instead of checking uniqueness — a test relying on this helper to reach
+    // "the" widget under test would get a false pass/fail against whichever
+    // instance won the walk, not a loud failure flagging the ambiguity.
+    const t = await mountApp(
+      <VBox>
+        <Label id="a">one</Label>
+        <Label id="b">two</Label>
+      </VBox>,
+      { cols: 20, rows: 3 },
+    );
+    await t.settle();
+    expect(() => findWidgetByType(t, "LabelWidget")).toThrow(
+      /LabelWidget is not unique: found 2 instances/,
+    );
+  });
 });
