@@ -279,4 +279,18 @@ describe("every light theme's muted text tokens clear WCAG AA", () => {
       expect(contrastRatio(value, theme.colors.background)).toBeGreaterThanOrEqual(4.5);
     }
   });
+
+  // Regression: default-light's selectionBg (#b6d7fb, 1.49:1), catppuccin-
+  // latte's (#acb0be, 1.91:1), and solarized-light's (#eee8d5 — literally
+  // its own `surface` value, 1.14:1) were all far under WCAG 1.4.11's 3:1
+  // minimum for a non-text UI element — a selection highlight needs to be
+  // visibly *there* against the page background, not just contrast the text
+  // inside it. gruvbox-light's (3.33:1) already cleared the bar.
+  test.each(
+    lightThemes.map((t) => [t.name, t] as const),
+  )("%s: selectionBg >= 3:1 against background (WCAG 1.4.11 non-text UI)", (_name, theme) => {
+    const selectionBg = theme.colors.selectionBg;
+    if (!selectionBg?.startsWith("#")) return;
+    expect(contrastRatio(selectionBg, theme.colors.background)).toBeGreaterThanOrEqual(3.0);
+  });
 });

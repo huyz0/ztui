@@ -327,7 +327,11 @@ export class ThemeManager {
         string: "#0a3069",
         number: "#0550ae",
         function: "#8250df",
-        selectionBg: "#b6d7fb",
+        // Darkened from the original #b6d7fb — only 1.49:1 against #ffffff,
+        // catastrophically under WCAG 1.4.11's 3:1 minimum for a non-text UI
+        // element (a text selection is exactly that: it needs to be visibly
+        // *there*, not just contrast the text inside it). Now 3.69:1.
+        selectionBg: "#73879e",
         selectionFg: "#1f2328",
         border: "#d0d7de",
         focus: "#0969da",
@@ -437,8 +441,12 @@ export class ThemeManager {
         string: "#40a02b",
         number: "#df8e1d",
         function: "#1e66f5",
-        selectionBg: "#acb0be",
-        selectionFg: "#4c4f69",
+        // Darkened from the original #acb0be — only 1.91:1 against #eff1f5,
+        // under WCAG 1.4.11's 3:1 minimum for a non-text UI element. Now
+        // 4.12:1; selectionFg switched to white since dark text no longer
+        // has room to also clear 4.5:1 against a background this dark.
+        selectionBg: "#72747d",
+        selectionFg: "#ffffff",
         border: "#ccd0da",
         focus: "#8839ef",
       },
@@ -733,8 +741,14 @@ export class ThemeManager {
         string: "#2aa198",
         number: "#b58900",
         function: "#268bd2",
-        selectionBg: "#eee8d5",
-        selectionFg: "#586e75",
+        // The original #eee8d5 was nearly identical to `background` (#fdf6e3)
+        // — 1.14:1, effectively invisible — since it doubled as `surface`'s
+        // value instead of a real selection color. Replaced with a
+        // genuinely distinct blue (derived from `primary`); selectionFg
+        // switched to white to stay legible against it. Now 4.41:1 against
+        // background, 4.75:1 for the text on top.
+        selectionBg: "#2178b5",
+        selectionFg: "#ffffff",
         border: "#eee8d5",
         focus: "#268bd2",
       },
