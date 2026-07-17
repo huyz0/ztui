@@ -34,6 +34,16 @@ export interface ChatBubbleProps extends ComponentProps {
   accent?: Partial<MessageAccent>;
   /** Bubble fill. Defaults to the role's tint ({@link DEFAULT_ROLE_BACKGROUNDS}); `null` = none. */
   background?: string | null;
+  /**
+   * Where the bubble sits within the conversation panel. `"full"` (the
+   * default) spans the panel's full width, as today. `"left"`/`"right"` caps
+   * the bubble at {@link bubbleWidth} and pushes it to that edge —
+   * iMessage-style, useful when user/assistant turns should visually split
+   * the panel instead of stacking as full-width blocks.
+   */
+  align?: "left" | "right" | "full";
+  /** Bubble width when {@link align} is `"left"`/`"right"`: cells or a `"%"` string. Defaults to `"75%"`. */
+  bubbleWidth?: string | number;
   /** Message body — text, Markdown, a `ToolCall`, anything. */
   children: ReactNode;
 }
@@ -60,6 +70,8 @@ export function ChatBubble({
   icon,
   accent,
   background,
+  align = "full",
+  bubbleWidth = "75%",
   children,
   ...rest
 }: ChatBubbleProps): ReactElement {
@@ -81,13 +93,14 @@ export function ChatBubble({
       children
     );
 
-  return (
+  const bubble = (
     <VBox
       {...rest}
       style={{
         ...accentStyle(resolved),
         ...(fill != null ? { background: fill } : {}),
         padding: { left: 1, right: 1, bottom: padBottom },
+        ...(align !== "full" ? { width: bubbleWidth } : {}),
         ...rest.style,
       }}
     >
@@ -101,6 +114,19 @@ export function ChatBubble({
       ) : undefined}
       {body}
     </VBox>
+  );
+
+  if (align === "full") return bubble;
+
+  // Push the (narrower) bubble to one edge with a flexGrow spacer on the
+  // other side — the standard "float" idiom in this layout system, since
+  // there's no per-child cross-axis alignment on a plain container.
+  return (
+    <HBox style={{ width: "100%" }}>
+      {align === "right" ? <VBox style={{ flexGrow: 1 }} /> : undefined}
+      {bubble}
+      {align === "left" ? <VBox style={{ flexGrow: 1 }} /> : undefined}
+    </HBox>
   );
 }
 ChatBubble.displayName = "ChatBubble";

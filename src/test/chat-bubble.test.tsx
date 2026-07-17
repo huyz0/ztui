@@ -121,6 +121,78 @@ describe("ChatBubble", () => {
     expect(cs.borderLeft).toBe(DEFAULT_ROLE_ACCENTS.user.weight);
     expect(cs.borderRight).toBeFalsy();
   });
+
+  test('align="full" (the default) renders no wrapper — the bubble itself spans 100%', async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="assistant">
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<Widget>("b") as Widget;
+    expect(w.computedStyle.width).toBeUndefined(); // no width cap applied
+    // No extra flex-spacer sibling — parent is the mounted root, not an HBox wrapper.
+    expect(w.parent?.children.length).toBe(1);
+  });
+
+  test('align="right" caps the bubble width and pushes it past a trailing spacer', async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="user" align="right">
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<Widget>("b") as Widget;
+    expect(w.computedStyle.width).toBe("75%");
+    // Wrapped in an HBox: [spacer, bubble] — the spacer comes first.
+    const siblings = w.parent?.children ?? [];
+    expect(siblings.length).toBe(2);
+    expect(siblings[0]).not.toBe(w);
+    expect(siblings[1]).toBe(w);
+  });
+
+  test('align="left" caps the bubble width and pushes it before a trailing spacer', async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="assistant" align="left">
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<Widget>("b") as Widget;
+    expect(w.computedStyle.width).toBe("75%");
+    const siblings = w.parent?.children ?? [];
+    expect(siblings.length).toBe(2);
+    expect(siblings[0]).toBe(w);
+    expect(siblings[1]).not.toBe(w);
+  });
+
+  test("bubbleWidth overrides the default 75% cap", async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="user" align="right" bubbleWidth="50%">
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const w = t.findById<Widget>("b") as Widget;
+    expect(w.computedStyle.width).toBe("50%");
+  });
+
+  test("align has no effect on the accent bar side — that's still governed by role/accent", async () => {
+    const t = await mountApp(
+      <ChatBubble id="b" role="user" align="left">
+        <Label>hi</Label>
+      </ChatBubble>,
+      OPTS,
+    );
+    await t.settle();
+    const cs = (t.findById<Widget>("b") as Widget).computedStyle;
+    expect(cs.borderRight).toBeTruthy(); // user's default side, unchanged by align
+    expect(cs.borderLeft).toBeFalsy();
+  });
 });
 
 describe("roles helpers", () => {
