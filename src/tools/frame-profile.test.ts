@@ -87,4 +87,32 @@ describe("formatReport / formatRun", () => {
     expect(report).toContain("0 frames");
     expect(report).toContain("0.0 µs/frame");
   });
+
+  test("pad/lpad pass a value already at (or past) its target width through unchanged", () => {
+    // formatReport's own literal header strings ("phase", "µs/frame", ...)
+    // are always shorter than their target widths, and every real phase name
+    // (restyle/measure/layout/render/diff/write) is well under 9 chars — so
+    // the "already long enough, don't pad" branch of pad()/lpad() can only be
+    // exercised with an out-of-range value, which a pathologically slow
+    // single phase could produce for `perFrameUs`.
+    const result = {
+      mode: "repaint" as const,
+      iterations: 1,
+      report: {
+        frames: 1,
+        fullFrames: 1,
+        partialFrames: 0,
+        emittedFrames: 1,
+        redundantFrames: 0,
+        redundantRate: 0,
+        totalMs: 1,
+        bytes: 10,
+        phases: [{ phase: "render" as const, totalMs: 1, perFrameUs: 123456789.12, share: 0.999 }],
+      },
+    };
+    const report = formatReport(result);
+    // perFrameUs.toFixed(2) ("123456789.12", 12 chars) is already >= the
+    // lpad target width (10), so lpad returns it verbatim, unpadded.
+    expect(report).toContain("123456789.12");
+  });
 });
