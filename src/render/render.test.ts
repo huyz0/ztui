@@ -1,9 +1,10 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
 import { Size } from "../geometry/size.ts";
 import { renderCapabilities, styleToEscapeCodes } from "./ansi-style.ts";
 import { ScreenBuffer } from "./buffer.ts";
+import { colorMode } from "./color-mode.ts";
 import { renderBufferToHTML } from "./html-renderer.ts";
 import { Segment } from "./segment.ts";
 import { Style } from "./style.ts";
@@ -23,6 +24,11 @@ function debugRender(buffer: ScreenBuffer): string {
 }
 
 describe("rendering system", () => {
+  // Bun sets NO_COLOR itself whenever stdout isn't a TTY (true under CI/vitest),
+  // so the ambient default can't be trusted — force colour on for these assertions.
+  beforeEach(() => colorMode.set(true));
+  afterEach(() => colorMode.reset());
+
   test("Style escape codes", () => {
     const s = new Style({ color: "red", bold: true });
     const { start, end } = styleToEscapeCodes(s);

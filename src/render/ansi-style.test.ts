@@ -1,5 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { cursorMove, styleToEscapeCodes, styleTransition } from "./ansi-style.ts";
+import { colorMode } from "./color-mode.ts";
 import { Style } from "./style.ts";
 
 /**
@@ -147,6 +148,11 @@ describe("cursorMove — shortest positioning", () => {
 });
 
 describe("styleTransition — minimal output", () => {
+  // Bun sets NO_COLOR itself whenever stdout isn't a TTY (true under CI/vitest),
+  // so the ambient default can't be trusted — force colour on for these assertions.
+  beforeEach(() => colorMode.set(true));
+  afterEach(() => colorMode.reset());
+
   test("adding one attribute emits only that attribute", () => {
     expect(
       styleTransition(new Style({ bold: true }), new Style({ bold: true, italic: true })),

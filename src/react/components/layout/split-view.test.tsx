@@ -294,6 +294,97 @@ describe("SplitView interactive controls", () => {
     expect(latest && countLeaves(latest)).toBe(4);
   });
 
+  test("stale splitter path into a collapsed leaf is a no-op (nodeAt guard)", async () => {
+    // Regression coverage for nodeAt's early return: a splitter's onResize
+    // closes over the path of its enclosing split at render time. If the tree
+    // is swapped out from under it (e.g. an ancestor split collapsed down to
+    // a leaf via closeLeaf) before the drag lands, resizeAt/nodeAt must walk
+    // the now-stale path safely and bail out instead of indexing into a leaf
+    // as if it were still a split.
+    //
+    //   root (row): [ leafA, A ]
+    //   A    (col): [ S, leafY ]
+    //   S    (row): [ G, leafZ ]
+    //   G    (col): [ leafB, leafC ]
+    //
+    // Closing leafC collapses G into leafB; closing leafZ then collapses S
+    // (now [leafB, leafZ]) into leafB too — so A's first child, once a
+    // 3-deep split (S -> G -> leaves), becomes a single leaf directly.
+    const deepTree: SplitNode = {
+      type: "split",
+      direction: "row",
+      children: [
+        leaf("leafA"),
+        {
+          type: "split",
+          direction: "column",
+          children: [
+            {
+              type: "split",
+              direction: "row",
+              children: [
+                {
+                  type: "split",
+                  direction: "column",
+                  children: [leaf("leafB"), leaf("leafC")],
+                },
+                leaf("leafZ"),
+              ],
+            },
+            leaf("leafY"),
+          ],
+        },
+      ],
+    };
+
+    let latest: SplitNode | undefined;
+    function Host() {
+      const [root, setRoot] = useState<SplitNode>(deepTree);
+      return (
+        <VBox style={{ width: "100%", height: "100%" }}>
+          <Label
+            id="collapse"
+            onClick={() => setRoot((r) => closeLeaf(closeLeaf(r, "leafC"), "leafZ"))}
+            style={{ height: 1 }}
+          >
+            collapse
+          </Label>
+          <Box style={{ width: "100%", flexGrow: 1 }}>
+            <SplitView root={root} onChange={(r) => (latest = r)} />
+          </Box>
+        </VBox>
+      );
+    }
+
+    const t = await mountApp(<Host />, { cols: 80, rows: 24 });
+
+    // G is the innermost split, so its column splitter (horizontal) is the
+    // last horizontal splitter encountered in render order (A's own column
+    // splitter, between S and leafY, is the first).
+    const horizontalSplitters: any[] = [];
+    t.screen.walk((n: any) => {
+      if (n.tagName === "splitter" && n.orientation === "horizontal") horizontalSplitters.push(n);
+    });
+    expect(horizontalSplitters.length).toBe(2);
+    const staleSplitter = horizontalSplitters[1]; // G's own splitter (leafB | leafC)
+    expect(staleSplitter.onResize).toBeTruthy();
+
+    // Collapse S/G down into a single leaf, invalidating the splitter's
+    // closed-over path ([1, 0, 0], G's original address).
+    const collapseBtn = t.findById("collapse")!;
+    t.driver.simulateMouse(collapseBtn.region.x, collapseBtn.region.y, "press", "left");
+    t.driver.simulateMouse(collapseBtn.region.x, collapseBtn.region.y, "release", "left");
+    await t.settle();
+
+    // Firing the stale splitter's onResize now walks a path that dead-ends on
+    // a leaf partway through — nodeAt must return undefined and resizeAt must
+    // no-op rather than throwing or corrupting the tree.
+    expect(() => staleSplitter.onResize?.(5)).not.toThrow();
+    await t.settle();
+    expect(latest?.type).toBe("split");
+    expect(countLeaves(latest!)).toBe(3); // leafA, leafB (collapsed survivor), leafY
+  });
+
   test("clicking ↕ splits the pane along the column axis", async () => {
     let latest: SplitNode | undefined;
     const t = await mountApp(

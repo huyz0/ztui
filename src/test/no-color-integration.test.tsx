@@ -10,6 +10,9 @@ afterEach(() => colorMode.reset());
 describe("NO_COLOR end-to-end (colorMode + App.refresh)", () => {
   test("toggling colour off re-emits every cell without colour, then back on", async () => {
     renderCapabilities.truecolor = true;
+    // Bun sets NO_COLOR itself whenever stdout isn't a TTY (true under CI/vitest),
+    // so the ambient default can't be trusted — force the baseline explicitly.
+    colorMode.set(true);
     const { screen, driver, settle } = await mountApp(
       <Label style={{ color: "#ff0000", bold: true }}>Hi</Label>,
       { cols: 20, rows: 3 },

@@ -171,6 +171,19 @@ describe("Markdown streaming reconciliation", () => {
     expect(blocks(w)[0]).toBe(list);
     expect(blocks(w)[1]).toBe(code);
   });
+
+  test("a task list item that flips checked state is treated as changed, not reused", () => {
+    // areTokensEqual's list_item comparison short-circuits on the `checked`
+    // field diverging, forcing a rebuild instead of reusing the old widget.
+    const w = md("- [ ] todo\n- [ ] another");
+    const [list] = blocks(w);
+    expect(list.tagName).toBe("bullet_list");
+
+    md("- [x] todo\n- [ ] another", w);
+    // The list token's items differ (task/checked), so the block is rebuilt.
+    expect(blocks(w)[0]).not.toBe(list);
+    expect(blocks(w)[0].tagName).toBe("bullet_list");
+  });
 });
 
 describe("Markdown generative UI (code fences)", () => {
@@ -696,6 +709,28 @@ describe("Markdown error resilience", () => {
       const fallback = blocks(w)[0] as any;
       expect(fallback.tagName).toBe("richtext");
       expect(fallback.getTextContent()).toContain("some *markdown*");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("a lexer failure after a successful render clears the previously built children", () => {
+    const w = new MarkdownWidget();
+    w.appendChild(new TextNode("some *markdown*"));
+    w.measure(80, 24);
+    // A successful render populated children; now force the lexer to throw so
+    // the catch path's cleanup loop actually has widgets to remove.
+    expect(blocks(w).length).toBeGreaterThan(0);
+
+    const spy = vi.spyOn(getMarked(), "lexer").mockImplementation(() => {
+      throw new Error("boom");
+    });
+    try {
+      (w as any).textNode.text = "some *other markdown*";
+      w.measure(80, 24);
+      const fallback = blocks(w)[0] as any;
+      expect(fallback.tagName).toBe("richtext");
+      expect(fallback.getTextContent()).toContain("some *other markdown*");
     } finally {
       spy.mockRestore();
     }

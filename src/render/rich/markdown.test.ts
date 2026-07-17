@@ -169,4 +169,19 @@ describe("Markdown Engine", () => {
     expect(lines.some((l) => l.plain.includes("inner a"))).toBe(true);
     expect(lines.some((l) => l.plain.includes("inner b"))).toBe(true);
   });
+
+  test("Markdown.renderToLines handles a list item with no text/paragraph token, only a nested sub-list", () => {
+    const mdText = "-\n  - only nested inner";
+    const lines = Markdown.renderToLines(mdText);
+    // Item has no leading text token, so it falls back to item.tokens[0] (the nested list).
+    expect(lines.some((l) => l.plain.includes("only nested inner"))).toBe(true);
+  });
+
+  test("Markdown.renderToLines shifts inline span offsets when rendering a table cell with markup", () => {
+    const mdText = "| Name |\n|------|\n| **bold cell** |";
+    const lines = Markdown.renderToLines(mdText);
+    const boldRow = lines.find((l) => l.plain.includes("bold cell"));
+    expect(boldRow).toBeDefined();
+    expect(boldRow!.spans.some((s) => s.style.bold)).toBe(true);
+  });
 });

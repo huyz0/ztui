@@ -10,6 +10,9 @@ afterEach(() => colorMode.reset());
 describe("colorMode (NO_COLOR)", () => {
   test("enabled by default, emitting fg/bg colour", () => {
     renderCapabilities.truecolor = true;
+    // Bun sets NO_COLOR itself whenever stdout isn't a TTY (true under CI/vitest),
+    // so the ambient default can't be trusted — force colour on explicitly.
+    colorMode.set(true);
     expect(colorMode.enabled).toBe(true);
     const { start } = styleToEscapeCodes(new Style({ color: "#ff0000", background: "#00ff00" }));
     expect(start).toContain("\x1b[38;2;255;0;0m"); // fg

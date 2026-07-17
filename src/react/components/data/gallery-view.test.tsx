@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
+import { App } from "../../../core/app.ts";
 import { GalleryView } from "../../../react.ts";
 import { mountApp } from "../../../test/harness.tsx";
 
@@ -110,6 +111,40 @@ describe("GalleryView", () => {
     expect(columnCount(t)).toBe(before);
   });
 
+  test("auto-column measurement falls back to zero when width is missing entirely", async () => {
+    // Regression coverage for `boxRef.current?.getContentRect?.().width ?? 0`:
+    // the existing zero-width retry test stubs an explicit `width: 0`, which
+    // is a defined value and never exercises the `??` fallback itself. Stub a
+    // rect with no `width` key at all so the fallback kicks in.
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const before = columnCount(t);
+    expect(before).toBeGreaterThan(1);
+
+    const box = findBox(t);
+    const realGetContentRect = box.getContentRect.bind(box);
+    box.getContentRect = () => ({ height: 12 }) as any;
+    t.driver.simulateResize(90, 16);
+    await t.settle(80);
+    // Still 1+ columns from before — a missing width falls back to 0, taking
+    // the same retry path as an explicit zero.
+    expect(columnCount(t)).toBe(before);
+
+    box.getContentRect = realGetContentRect;
+    t.driver.simulateResize(64, 16);
+    await t.settle(80);
+    expect(columnCount(t)).toBe(before);
+  });
+
   test("respects an explicit columns override", async () => {
     const t = await mountApp(
       <GalleryView
@@ -194,6 +229,153 @@ describe("GalleryView", () => {
     box.parent.handleKey({ name: "end" }); // jump to the last item
     await t.settle(20);
     expect(box.scrollOffset.y).toBeGreaterThan(0);
+  });
+
+  test("scrolling into view falls back to zero when the box has no scrollOffset yet", async () => {
+    // Regression coverage: `box.scrollOffset?.y ?? 0` / `?.x ?? 0` must not
+    // throw when the ScrollableBox hasn't reported a scroll offset yet — the
+    // ensure-visible effect should treat that as (0, 0) and still scroll.
+    //
+    // Stub getContentRect first (as the auto-measure retry test above does):
+    // the real ScrollableBox implementation reads `this.scrollOffset` to
+    // compute content size, so it can't be called while scrollOffset is
+    // undefined without throwing.
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 12 },
+    );
+    await t.settle(20);
+    const box = findBox(t);
+    const rect = box.getContentRect();
+    box.getContentRect = () => rect;
+    box.scrollOffset = undefined;
+    box.parent.handleKey({ name: "end" }); // jump to the last item, off-screen
+    await t.settle(20);
+    expect(box.scrollOffset.y).toBeGreaterThan(0);
+    expect(box.scrollOffset.x).toBe(0);
+  });
+
+  test("scrolling into view skips queueRender when there's no live App instance", async () => {
+    // The ensure-visible effect calls `App.instance?.queueRender(...)` — with
+    // no live App, it must skip that call instead of throwing.
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 12 },
+    );
+    await t.settle(20);
+    const box = findBox(t);
+    const savedInstance = App.instance;
+    App.instance = null;
+    try {
+      box.parent.handleKey({ name: "end" }); // jump to the last item, off-screen
+      await t.settle(20);
+      expect(box.scrollOffset.y).toBeGreaterThan(0);
+    } finally {
+      App.instance = savedInstance;
+    }
+  });
+
+  test("focusSelf is a no-op when the scroll box has no parent wrapper", async () => {
+    // `focusSelf` reads `boxRef.current?.parent` and only focuses when that's
+    // truthy — cover the falsy branch (e.g. a mousedown racing unmount).
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const box = findBox(t);
+    const wrapper = box.parent;
+    expect(t.screen.focusedWidget).not.toBe(wrapper);
+
+    // Invoke the wrapper's onMouseDown handler (focusSelf) directly rather
+    // than through hit-test bubbling: bubbling itself walks widgets' `.parent`
+    // pointers, so nulling `box.parent` to reach the branch would also break
+    // delivery of the event to the wrapper's handler.
+    const savedParent = box.parent;
+    box.parent = null;
+    try {
+      expect(() => wrapper.onMouseDown?.({} as any)).not.toThrow();
+      await t.settle();
+      expect(t.screen.focusedWidget).not.toBe(wrapper);
+    } finally {
+      box.parent = savedParent;
+    }
+  });
+
+  test("scrolling into view falls back to a zero viewport height when it's missing", async () => {
+    // Regression coverage for `box.getContentRect?.().height ?? 0` in the
+    // ensure-visible effect — stub a rect with no `height` key so the `??`
+    // fallback (rather than a defined `0`) is what's exercised.
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 12 },
+    );
+    await t.settle(20);
+    const box = findBox(t);
+    const realGetContentRect = box.getContentRect.bind(box);
+    const rect = realGetContentRect();
+    box.getContentRect = () => ({ width: rect.width }) as any;
+    box.parent.handleKey({ name: "end" }); // jump to the last item, off-screen
+    await t.settle(20);
+    box.getContentRect = realGetContentRect;
+    // With viewH treated as 0, the row-top bound alone drives the scroll —
+    // still moves the view down to reveal the last row.
+    expect(box.scrollOffset.y).toBeGreaterThan(0);
+  });
+
+  test("page step falls back to one row's stride when the viewport height is missing", async () => {
+    // Regression coverage for `boxRef.current?.getContentRect?.().height ?? rowStride`
+    // in `pageStep` — stub a rect with no `height` key.
+    const onSelect = vi.fn();
+    const t = await mountApp(
+      <GalleryView
+        items={ITEMS}
+        renderItem={renderItem}
+        itemWidth={10}
+        itemHeight={3}
+        onSelect={onSelect}
+        style={{ height: "100%" }}
+      />,
+      { cols: 64, rows: 16 },
+    );
+    await t.settle(20);
+    const box = findBox(t);
+    const cols = columnCount(t);
+    const realGetContentRect = box.getContentRect.bind(box);
+    box.getContentRect = () => ({ width: realGetContentRect().width }) as any;
+    try {
+      box.parent.handleKey({ name: "pagedown" });
+      await t.settle();
+      // viewH falls back to rowStride, so floor(rowStride / rowStride) === 1:
+      // exactly one row's worth of cells (`columns`).
+      expect(onSelect).toHaveBeenLastCalledWith(cols);
+    } finally {
+      box.getContentRect = realGetContentRect;
+    }
   });
 
   test("mouse wheel scrolls the grid", async () => {
