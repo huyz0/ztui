@@ -163,6 +163,25 @@ describe("Form widget integration", () => {
     expect(text()).toContain("Name required");
   });
 
+  test("auto/shared message mode truncates a message wider than the form's content rect", async () => {
+    const { findById, settle, text } = await mountApp(
+      <VBox style={{ width: "100%", height: "100%" }}>
+        <Form id="form" style={{ width: 12, height: 4, flexGrow: 0, flexShrink: 0 }}>
+          <Input
+            id="a"
+            validators={[required("This message is far too long to fit in a narrow form")]}
+            validateOn="submit"
+          />
+        </Form>
+      </VBox>,
+    );
+    const form = findById<FormWidget>("form")!;
+    form.submit();
+    await settle();
+    // Truncated (via `truncate()`, which ellipsizes) rather than wrapped or overflowing.
+    expect(text()).not.toContain("This message is far too long to fit in a narrow form");
+  });
+
   test("FieldError takes zero rows until its field is invalid", async () => {
     const { findById } = await mountApp(
       <Form id="form">
