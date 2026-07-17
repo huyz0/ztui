@@ -1,6 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { styleToEscapeCodes } from "./ansi-style.ts";
 import { ScreenBuffer } from "./buffer.ts";
+import { colorMode } from "./color-mode.ts";
 import { ScreenDiffCompiler } from "./screen-diff-compiler.ts";
 import { Style } from "./style.ts";
 
@@ -175,10 +176,17 @@ function replay(
           x++;
         }
       } else if (final === "K") {
-        // EL: clear from the cursor to the end of the line (mode 0 / empty) to a
-        // default blank — ztui only emits it with a default pen.
+        // EL: clear from the cursor to the end of the line (mode 0 / empty) to
+        // a blank in the *currently active* pen — a real terminal fills erased
+        // cells with the current SGR background, not a hardcoded "nothing".
+        // ztui's diff compiler only emits EL once it has already transitioned
+        // the pen to the erasable style's colors (see flushRun's comment), so
+        // by the time `\x1b[K` fires here `pen` already reflects them — which,
+        // since an unset color now resolves to the active theme's fg/bg
+        // (ansi-style.ts's `resolveColor`) rather than "no colour", is no
+        // longer necessarily empty.
         if (body === "" || body === "0") {
-          for (let c = x; c < w; c++) grid[y][c] = { char: " ", pen: "" };
+          for (let c = x; c < w; c++) grid[y][c] = { char: " ", pen: canon(pen) };
         }
       } else if (final === "S" || final === "T") {
         // Scroll the region up (S) / down (T) by n, blanking the revealed rows.
@@ -259,6 +267,14 @@ function variedBuffer(): ScreenBuffer {
 }
 
 describe("render diff ANSI replays to the source buffer", () => {
+  // This file's expected pens assume real color output. Bun sets NO_COLOR
+  // itself whenever stdout isn't a TTY (true under CI/vitest), and colorMode's
+  // default is derived once at module load — so without forcing it here, these
+  // tests only pass by accident when some other file in the same worker
+  // happened to leave colorMode set true first. Force it explicitly.
+  beforeEach(() => colorMode.set(true));
+  afterEach(() => colorMode.reset());
+
   test("a full repaint reproduces every cell's char and style", () => {
     const buf = variedBuffer();
     const blank = new ScreenBuffer(20, 6); // empty prev → every cell emitted
