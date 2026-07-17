@@ -226,6 +226,166 @@ describe("DatePickerWidget", () => {
       expect(w2.isOpen).toBe(false);
       expect(ev2.handled).toBe(false);
     });
+
+    test("up from the grid's first displayed row moves focus to the month header zone instead of the date", () => {
+      const w = new DatePickerWidget();
+      w.isOpen = true;
+      w.cursorDate = new Date(2026, 6, 1); // July 1 2026 — always in the grid's row 0
+      w.onKey?.({ name: "up", handled: false });
+      expect(w.headerFocus).toBe("month");
+      expect(w.cursorDate.getDate()).toBe(1); // date itself didn't move
+    });
+
+    test("left/right cycle the header zones; down returns focus to the grid", () => {
+      const w = new DatePickerWidget();
+      w.isOpen = true;
+      w.headerFocus = "month";
+
+      w.onKey?.({ name: "right", handled: false });
+      expect(w.headerFocus).toBe("year");
+      w.onKey?.({ name: "right", handled: false });
+      expect(w.headerFocus).toBe("next");
+      w.onKey?.({ name: "right", handled: false }); // wraps
+      expect(w.headerFocus).toBe("prev");
+      w.onKey?.({ name: "left", handled: false }); // wraps back
+      expect(w.headerFocus).toBe("next");
+
+      w.onKey?.({ name: "down", handled: false });
+      expect(w.headerFocus).toBe("grid");
+    });
+
+    test("enter on the prev/next header zones shifts the month; on month/year opens that sub-picker", () => {
+      const prev = new DatePickerWidget();
+      prev.isOpen = true;
+      prev.headerFocus = "prev";
+      prev.viewMonth = new Date(2026, 6, 1);
+      prev.onKey?.({ name: "enter", handled: false });
+      expect(prev.viewMonth.getMonth()).toBe(5);
+
+      const next = new DatePickerWidget();
+      next.isOpen = true;
+      next.headerFocus = "next";
+      next.viewMonth = new Date(2026, 6, 1);
+      next.onKey?.({ name: "enter", handled: false });
+      expect(next.viewMonth.getMonth()).toBe(7);
+
+      const month = new DatePickerWidget();
+      month.isOpen = true;
+      month.headerFocus = "month";
+      month.onKey?.({ name: "enter", handled: false });
+      expect(month.subPicker).toBe("month");
+
+      const year = new DatePickerWidget();
+      year.isOpen = true;
+      year.headerFocus = "year";
+      year.onKey?.({ name: "enter", handled: false });
+      expect(year.subPicker).toBe("year");
+    });
+
+    test("escape on a header zone closes the whole calendar", () => {
+      const w = new DatePickerWidget();
+      w.isOpen = true;
+      w.headerFocus = "year";
+      w.onKey?.({ name: "escape", handled: false });
+      expect(w.isOpen).toBe(false);
+    });
+
+    describe("sub-picker keyboard navigation", () => {
+      test("arrow keys move the sub-picker cursor within the 2x6 grid, clamped at the edges", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openMonthPicker();
+        w.subPickerIndex = 5;
+
+        w.onKey?.({ name: "right", handled: false });
+        expect(w.subPickerIndex).toBe(6);
+        w.onKey?.({ name: "left", handled: false });
+        expect(w.subPickerIndex).toBe(5);
+        w.onKey?.({ name: "down", handled: false });
+        expect(w.subPickerIndex).toBe(7);
+        w.onKey?.({ name: "up", handled: false });
+        expect(w.subPickerIndex).toBe(5);
+
+        w.subPickerIndex = 0;
+        w.onKey?.({ name: "left", handled: false });
+        expect(w.subPickerIndex).toBe(0); // clamped
+        w.subPickerIndex = 11;
+        w.onKey?.({ name: "right", handled: false });
+        expect(w.subPickerIndex).toBe(11); // clamped
+      });
+
+      test("enter commits the highlighted month and closes the sub-picker", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.cursorDate = new Date(2026, 6, 15);
+        w.openMonthPicker();
+        w.subPickerIndex = 1; // February
+        w.onKey?.({ name: "enter", handled: false });
+        expect(w.subPicker).toBeNull();
+        expect(w.viewMonth.getMonth()).toBe(1);
+        expect(w.cursorDate.getMonth()).toBe(1);
+      });
+
+      test("enter commits the highlighted year and closes the sub-picker", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.cursorDate = new Date(2026, 6, 15);
+        w.openYearPicker();
+        w.subPickerIndex = 0; // yearRangeStart
+        w.onKey?.({ name: "enter", handled: false });
+        expect(w.subPicker).toBeNull();
+        expect(w.viewMonth.getFullYear()).toBe(w.yearRangeStart);
+      });
+
+      test("pageup/pagedown shift the year range by 12 without closing the picker", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openYearPicker();
+        const start = w.yearRangeStart;
+        w.onKey?.({ name: "pagedown", handled: false });
+        expect(w.yearRangeStart).toBe(start + 12);
+        w.onKey?.({ name: "pageup", handled: false });
+        expect(w.yearRangeStart).toBe(start);
+      });
+
+      test("escape cancels the sub-picker without changing the view, keeping the calendar open", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.viewMonth = new Date(2026, 6, 1);
+        w.openMonthPicker();
+        w.subPickerIndex = 3;
+        w.onKey?.({ name: "escape", handled: false });
+        expect(w.subPicker).toBeNull();
+        expect(w.isOpen).toBe(true);
+        expect(w.viewMonth.getMonth()).toBe(6); // unchanged
+      });
+
+      test("an unrecognized key in the sub-picker is left unhandled", () => {
+        const w = new DatePickerWidget();
+        w.isOpen = true;
+        w.openMonthPicker();
+        const ev = { name: "x", handled: false };
+        w.onKey?.(ev);
+        expect(ev.handled).toBe(false);
+      });
+    });
+
+    test("an unrecognized key on the grid is left unhandled", () => {
+      const w = new DatePickerWidget();
+      w.isOpen = true;
+      const ev = { name: "x", handled: false };
+      w.onKey?.(ev);
+      expect(ev.handled).toBe(false);
+    });
+
+    test("an unrecognized key on a header zone is left unhandled", () => {
+      const w = new DatePickerWidget();
+      w.isOpen = true;
+      w.headerFocus = "month";
+      const ev = { name: "x", handled: false };
+      w.onKey?.(ev);
+      expect(ev.handled).toBe(false);
+    });
   });
 
   describe("resolveBorderColor", () => {
@@ -416,6 +576,60 @@ describe("CalendarOverlayWidget", () => {
       overlay.handleMouse(ev);
       expect(w.value).toBe(before);
     });
+
+    test("clicking the month text opens the month sub-picker", () => {
+      const { w, overlay } = makeOverlay();
+      // "July 2026" is centered in the 20-wide inner header; "July" starts at local x=6.
+      const ev = {
+        type: "press",
+        button: "left",
+        x: overlay.overlayX + 8,
+        y: overlay.overlayY + 1,
+      };
+      overlay.handleMouse(ev);
+      expect(w.subPicker).toBe("month");
+    });
+
+    test("clicking the year text opens the year sub-picker", () => {
+      const { w, overlay } = makeOverlay();
+      const ev = {
+        type: "press",
+        button: "left",
+        x: overlay.overlayX + 13,
+        y: overlay.overlayY + 1,
+      };
+      overlay.handleMouse(ev);
+      expect(w.subPicker).toBe("year");
+    });
+
+    test("clicking a sub-picker cell commits it and closes the sub-picker", () => {
+      const { w, overlay } = makeOverlay();
+      w.openMonthPicker(); // subPickerIndex seeded from the current view month (June, index 6)
+      const ev = {
+        type: "press",
+        button: "left",
+        x: overlay.overlayX + 1, // col 0
+        y: overlay.overlayY + 3, // row 0 -> index 0 -> January
+      };
+      overlay.handleMouse(ev);
+      expect(w.subPicker).toBeNull();
+      expect(w.viewMonth.getMonth()).toBe(0);
+    });
+
+    test("header-row clicks are ignored while a sub-picker is open", () => {
+      const { w, overlay } = makeOverlay();
+      w.openMonthPicker();
+      const before = w.viewMonth.getMonth();
+      const ev = {
+        type: "press",
+        button: "left",
+        x: overlay.overlayX + 1, // left chevron position
+        y: overlay.overlayY + 1,
+      };
+      overlay.handleMouse(ev);
+      expect(w.viewMonth.getMonth()).toBe(before);
+      expect(w.subPicker).toBe("month"); // still open
+    });
   });
 
   test("render draws the calendar without throwing, covering selected/cursor/out-of-month styling", () => {
@@ -432,5 +646,56 @@ describe("CalendarOverlayWidget", () => {
     const { overlay } = makeOverlay();
     const buffer = new ScreenBuffer(40, 20);
     expect(() => overlay.render(buffer)).not.toThrow();
+  });
+
+  test("render draws the sub-picker grid without throwing, for both month and year", () => {
+    const driver = new MockDriver(40, 20);
+    const app = new App(driver);
+    const { w, overlay } = makeOverlay();
+    app.activeScreen.appendChild(w);
+    const buffer = new ScreenBuffer(40, 20);
+
+    w.openMonthPicker();
+    expect(() => overlay.render(buffer)).not.toThrow();
+
+    w.openYearPicker();
+    expect(() => overlay.render(buffer)).not.toThrow();
+    app.stop();
+  });
+
+  test("Sunday and Saturday columns render with a different background than weekday columns", () => {
+    const { overlay } = makeOverlay();
+    const buffer = new ScreenBuffer(40, 20);
+    overlay.render(buffer);
+
+    // Day grid starts at local row 3, columns at local x 1 (Su), 4 (Mo), ... 19 (Sa).
+    const sunday = buffer.cells[overlay.overlayY + 3][overlay.overlayX + 1];
+    const monday = buffer.cells[overlay.overlayY + 3][overlay.overlayX + 4];
+    const saturday = buffer.cells[overlay.overlayY + 3][overlay.overlayX + 19];
+    expect(sunday.style.background).not.toBe(monday.style.background);
+    expect(saturday.style.background).not.toBe(monday.style.background);
+    expect(sunday.style.background).toBe(saturday.style.background);
+  });
+
+  test("the first day of the displayed month renders bold", () => {
+    const { w, overlay } = makeOverlay();
+    // July 2026: the 1st is a Wednesday, grid col 3, row 0.
+    w.viewMonth = new Date(2026, 6, 1);
+    const buffer = new ScreenBuffer(40, 20);
+    overlay.render(buffer);
+    const firstCell = buffer.cells[overlay.overlayY + 3][overlay.overlayX + 1 + 3 * 3];
+    const secondCell = buffer.cells[overlay.overlayY + 3][overlay.overlayX + 1 + 4 * 3]; // July 2nd
+    expect(firstCell.style.bold).toBe(true);
+    expect(secondCell.style.bold).toBeFalsy();
+  });
+
+  test("the focused header zone renders highlighted", () => {
+    const { w, overlay } = makeOverlay();
+    w.headerFocus = "month";
+    const buffer = new ScreenBuffer(40, 20);
+    overlay.render(buffer);
+    // "July" starts at local x=6 within the header row (local y=1).
+    const monthCell = buffer.cells[overlay.overlayY + 1][overlay.overlayX + 6];
+    expect(monthCell.style.bold).toBe(true);
   });
 });

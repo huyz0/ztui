@@ -1,4 +1,5 @@
 import { App } from "../../core/app.ts";
+import { blendColors } from "../../css/css-resolver.ts";
 import { Screen } from "../../dom/screen.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
@@ -7,11 +8,22 @@ import { Style } from "../../render/style.ts";
 import { FALLBACK_DARK_BG } from "../../theme.ts";
 import { attachFieldValidation, type FieldValidation } from "./validation.ts";
 
-const WEEKDAY_HEADER = "Su Mo Tu We Th Fr Sa";
+const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const WEEKDAY_HEADER = WEEKDAY_LABELS.join(" ");
 const CALENDAR_WIDTH = WEEKDAY_HEADER.length + 2; // +2 for the border
 const WEEKS_SHOWN = 6; // fixed so the popover height never jitters month to month
 const CALENDAR_HEIGHT =
   1 /* month header */ + 1 /* weekday header */ + WEEKS_SHOWN + 2; /* border */
+
+// The month/year sub-picker reuses the day grid's footprint (WEEKS_SHOWN
+// rows) laid out as 2 columns x 6 rows — exactly 12 slots, one per month or
+// per year-in-range, so the popover never resizes when a sub-picker opens.
+const SUB_COLS = 2;
+const SUB_ROWS = WEEKS_SHOWN;
+const SUB_COL_WIDTH = Math.floor((CALENDAR_WIDTH - 2) / SUB_COLS);
+
+type HeaderZone = "prev" | "month" | "year" | "next" | "grid";
+type SubPicker = "month" | "year" | null;
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -48,6 +60,28 @@ const MONTH_NAMES = [
   "December",
 ];
 
+/** Layout of the header row's independently clickable/focusable month and year text. */
+function headerLayout(
+  view: Date,
+  x0: number,
+): { monthText: string; yearText: string; monthX: number; yearX: number } {
+  const monthText = MONTH_NAMES[view.getMonth()];
+  const yearText = String(view.getFullYear());
+  const title = `${monthText} ${yearText}`;
+  const innerWidth = CALENDAR_WIDTH - 2;
+  const titlePad = Math.max(0, Math.floor((innerWidth - stringWidth(title)) / 2));
+  const monthX = x0 + 1 + titlePad;
+  const yearX = monthX + stringWidth(monthText) + 1;
+  return { monthText, yearText, monthX, yearX };
+}
+
+/** Cell rect for the 2x6 month/year sub-picker grid, sharing the day grid's footprint. */
+function subPickerCell(index: number, x0: number, y0: number): { x: number; y: number } {
+  const col = index % SUB_COLS;
+  const row = Math.floor(index / SUB_COLS);
+  return { x: x0 + 1 + col * SUB_COL_WIDTH, y: y0 + 3 + row };
+}
+
 export class CalendarOverlayWidget extends Widget {
   protected override defaultCursor() {
     return "pointer" as const;
@@ -83,11 +117,40 @@ export class CalendarOverlayWidget extends Widget {
 
     const localX = ev.x - this.overlayX;
     const localY = ev.y - this.overlayY;
+    const x0 = this.overlayX;
 
     if (localY === 1) {
-      // Month header row: the chevrons sit just inside the border.
-      if (localX === 1) this.datePicker.shiftMonth(-1);
-      else if (localX === CALENDAR_WIDTH - 2) this.datePicker.shiftMonth(1);
+      // Month header row: chevrons sit just inside the border; the month and
+      // year text are independently clickable, opening their own picker.
+      if (this.datePicker.subPicker) {
+        ev.handled = true;
+        return;
+      }
+      const { monthX, yearX, monthText, yearText } = headerLayout(this.datePicker.viewMonth, x0);
+      if (localX === 1) {
+        this.datePicker.headerFocus = "prev";
+        this.datePicker.shiftMonth(-1);
+      } else if (localX === CALENDAR_WIDTH - 2) {
+        this.datePicker.headerFocus = "next";
+        this.datePicker.shiftMonth(1);
+      } else if (ev.x >= monthX && ev.x < monthX + stringWidth(monthText)) {
+        this.datePicker.openMonthPicker();
+      } else if (ev.x >= yearX && ev.x < yearX + stringWidth(yearText)) {
+        this.datePicker.openYearPicker();
+      }
+      ev.handled = true;
+      return;
+    }
+
+    if (this.datePicker.subPicker) {
+      if (localY >= 3 && localY < 3 + SUB_ROWS) {
+        const row = localY - 3;
+        const col = Math.floor((localX - 1) / SUB_COL_WIDTH);
+        if (col >= 0 && col < SUB_COLS) {
+          const index = row * SUB_COLS + col;
+          if (index < 12) this.datePicker.commitSubPickerIndex(index);
+        }
+      }
       ev.handled = true;
       return;
     }
@@ -97,7 +160,10 @@ export class CalendarOverlayWidget extends Widget {
       const col = Math.floor((localX - 1) / 3);
       if (col >= 0 && col < 7) {
         const day = this.datePicker.dayAt(week, col);
-        if (day) this.datePicker.commitDay(day);
+        if (day) {
+          this.datePicker.headerFocus = "grid";
+          this.datePicker.commitDay(day);
+        }
       }
     }
     ev.handled = true;
@@ -130,30 +196,43 @@ export class CalendarOverlayWidget extends Widget {
     buffer.setCell(x0, y0 + CALENDAR_HEIGHT - 1, "╰", borderStyle);
     buffer.setCell(x0 + CALENDAR_WIDTH - 1, y0 + CALENDAR_HEIGHT - 1, "╯", borderStyle);
 
-    // Month/year header, with prev/next chevrons at the inner edges.
+    // Month/year header: prev/next chevrons at the inner edges, month and
+    // year as independently focusable/clickable zones (highlighted when
+    // headerFocus points at them and no sub-picker is covering the grid).
     const view = this.datePicker.viewMonth;
-    const title = `${MONTH_NAMES[view.getMonth()]} ${view.getFullYear()}`;
-    const innerWidth = CALENDAR_WIDTH - 2;
-    const titlePad = Math.max(0, Math.floor((innerWidth - stringWidth(title)) / 2));
-    buffer.setCell(x0 + 1, y0 + 1, "‹", new Style({ color: primary, background: bg }));
-    buffer.drawSegment(
-      x0 + 1 + titlePad,
-      y0 + 1,
-      new Segment(title, new Style({ color: fg, background: bg })),
-    );
-    buffer.setCell(
-      x0 + CALENDAR_WIDTH - 2,
-      y0 + 1,
-      "›",
-      new Style({ color: primary, background: bg }),
-    );
+    const { monthText, yearText, monthX, yearX } = headerLayout(view, x0);
+    const focus = this.datePicker.subPicker ? null : this.datePicker.headerFocus;
 
-    // Weekday header.
-    buffer.drawSegment(
-      x0 + 1,
-      y0 + 2,
-      new Segment(WEEKDAY_HEADER, new Style({ color: dim, background: bg })),
-    );
+    const zoneStyle = (zone: HeaderZone, color: string) =>
+      focus === zone
+        ? new Style({ color: bg, background: primary, bold: true })
+        : new Style({ color, background: bg });
+
+    buffer.setCell(x0 + 1, y0 + 1, "‹", zoneStyle("prev", primary));
+    buffer.drawSegment(monthX, y0 + 1, new Segment(monthText, zoneStyle("month", fg)));
+    buffer.setCell(monthX + stringWidth(monthText), y0 + 1, " ", new Style({ background: bg }));
+    buffer.drawSegment(yearX, y0 + 1, new Segment(yearText, zoneStyle("year", fg)));
+    buffer.setCell(x0 + CALENDAR_WIDTH - 2, y0 + 1, "›", zoneStyle("next", primary));
+
+    const weekendBg = blendColors(fg, bg, 0.12);
+
+    if (this.datePicker.subPicker) {
+      this.renderSubPicker(buffer, x0, y0, bg, primary, dim);
+      return;
+    }
+
+    // Weekday header, with Sun/Sat columns tinted to match the day grid below.
+    for (let col = 0; col < 7; col++) {
+      const isWeekend = col === 0 || col === 6;
+      buffer.drawSegment(
+        x0 + 1 + col * 3,
+        y0 + 2,
+        new Segment(
+          WEEKDAY_LABELS[col],
+          new Style({ color: dim, background: isWeekend ? weekendBg : bg }),
+        ),
+      );
+    }
 
     // Day grid.
     const selected = this.datePicker.selectedDate;
@@ -168,21 +247,65 @@ export class CalendarOverlayWidget extends Widget {
         const inMonth = day.getMonth() === view.getMonth();
         const isSelected = selected !== null && sameDay(day, selected);
         const isCursor = sameDay(day, cursor);
+        const isWeekend = col === 0 || col === 6;
+        const cellBg = isWeekend ? weekendBg : bg;
+        const isFirstOfMonth = day.getDate() === 1;
 
         let style: Style;
         if (isCursor) {
           style = new Style({ color: bg, background: primary, bold: true });
         } else if (isSelected) {
-          style = new Style({ color: primary, background: bg, bold: true });
+          style = new Style({ color: primary, background: cellBg, bold: true });
         } else if (!inMonth) {
-          style = new Style({ color: dim, background: bg });
+          style = new Style({ color: dim, background: cellBg, bold: isFirstOfMonth });
         } else {
-          style = new Style({ color: fg, background: bg });
+          style = new Style({ color: fg, background: cellBg, bold: isFirstOfMonth });
         }
 
         const label = day.getDate().toString().padStart(2, " ");
         buffer.drawSegment(cellX, cellY, new Segment(label, style));
       }
+    }
+  }
+
+  /** The 2x6 month-name or year-range grid shown in place of the day grid. */
+  private renderSubPicker(
+    buffer: ScreenBuffer,
+    x0: number,
+    y0: number,
+    bg: string,
+    primary: string,
+    dim: string,
+  ): void {
+    const kind = this.datePicker.subPicker;
+    const label = kind === "month" ? "Select a month" : "Select a year";
+    const innerWidth = CALENDAR_WIDTH - 2;
+    buffer.drawSegment(
+      x0 + 1,
+      y0 + 2,
+      new Segment(
+        label.slice(0, innerWidth).padEnd(innerWidth),
+        new Style({ color: dim, background: bg }),
+      ),
+    );
+
+    const activeIndex =
+      kind === "month" ? this.datePicker.viewMonth.getMonth() : this.datePicker.subPickerIndex;
+    for (let i = 0; i < 12; i++) {
+      const { x, y } = subPickerCell(i, x0, y0);
+      const text = kind === "month" ? MONTH_NAMES[i] : String(this.datePicker.yearRangeStart + i);
+      const isCursor = i === this.datePicker.subPickerIndex;
+      const isActive = i === activeIndex;
+      const style = isCursor
+        ? new Style({ color: bg, background: primary, bold: true })
+        : isActive
+          ? new Style({ color: primary, background: bg, bold: true })
+          : new Style({ color: dim, background: bg });
+      buffer.drawSegment(
+        x,
+        y,
+        new Segment(text.padEnd(SUB_COL_WIDTH).slice(0, SUB_COL_WIDTH), style),
+      );
     }
   }
 }
@@ -238,6 +361,15 @@ export class DatePickerWidget extends Widget {
   /** The keyboard-navigable day highlighted in the popover (not yet committed). */
   public cursorDate: Date = new Date();
 
+  /** Which header zone (chevrons, month text, year text) or the day grid currently has keyboard focus. */
+  public headerFocus: HeaderZone = "grid";
+  /** The month or year sub-picker currently covering the day grid, or `null`. */
+  public subPicker: SubPicker = null;
+  /** Cursor index (0-11) within the open sub-picker's 2x6 grid. */
+  public subPickerIndex = 0;
+  /** First year shown in the year sub-picker's 12-year range. */
+  public yearRangeStart = 0;
+
   /** Validation; the validated value is the `YYYY-MM-DD` string. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);
 
@@ -281,6 +413,8 @@ export class DatePickerWidget extends Widget {
 
     this.cursorDate = this.selectedDate ?? new Date();
     this.viewMonth = startOfMonth(this.cursorDate);
+    this.headerFocus = "grid";
+    this.subPicker = null;
 
     const clientRect = this.getClientRect();
     const screenHeight = screen.region.height;
@@ -318,6 +452,48 @@ export class DatePickerWidget extends Widget {
     App.instance?.queueRender();
   }
 
+  /** Open the 12-month grid in place of the day grid. */
+  public openMonthPicker(): void {
+    this.headerFocus = "month";
+    this.subPicker = "month";
+    this.subPickerIndex = this.viewMonth.getMonth();
+    App.instance?.queueRender();
+  }
+
+  /** Open the 12-year grid (a range centered on the displayed year) in place of the day grid. */
+  public openYearPicker(): void {
+    this.headerFocus = "year";
+    this.subPicker = "year";
+    this.yearRangeStart = this.viewMonth.getFullYear() - 5;
+    this.subPickerIndex = this.viewMonth.getFullYear() - this.yearRangeStart;
+    App.instance?.queueRender();
+  }
+
+  /** Cancel the open sub-picker without changing the view, returning focus to its header zone. */
+  public closeSubPicker(): void {
+    this.subPicker = null;
+    App.instance?.queueRender();
+  }
+
+  /** Commit the sub-picker cell at `index` (month name or year), then close it. */
+  public commitSubPickerIndex(index: number): void {
+    if (this.subPicker === "month") {
+      const year = this.viewMonth.getFullYear();
+      const day = this.cursorDate.getDate();
+      const lastDay = new Date(year, index + 1, 0).getDate();
+      this.cursorDate = new Date(year, index, Math.min(day, lastDay));
+    } else if (this.subPicker === "year") {
+      const year = this.yearRangeStart + index;
+      const month = this.cursorDate.getMonth();
+      const day = this.cursorDate.getDate();
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      this.cursorDate = new Date(year, month, Math.min(day, lastDay));
+    }
+    this.viewMonth = startOfMonth(this.cursorDate);
+    this.subPicker = null;
+    App.instance?.queueRender();
+  }
+
   /** Select `day` as the value and close the popover. */
   public commitDay(day: Date): void {
     this.value = formatISODate(day);
@@ -342,6 +518,13 @@ export class DatePickerWidget extends Widget {
     if (ev.type === "press" && ev.button === "left") this.openCalendar();
   }
 
+  /** True when {@link cursorDate} falls in the day grid's first displayed row — the edge past which Up moves focus to the header instead of the date. */
+  private cursorInTopRow(): boolean {
+    const monthStart = startOfMonth(this.cursorDate);
+    const firstWeekday = monthStart.getDay();
+    return Math.floor((this.cursorDate.getDate() - 1 + firstWeekday) / 7) === 0;
+  }
+
   private handleDateKey(ev: any): void {
     const keyName = ev.name || ev.key;
 
@@ -350,6 +533,22 @@ export class DatePickerWidget extends Widget {
         this.openCalendar();
         ev.handled = true;
       }
+      return;
+    }
+
+    // Tab always moves focus off the field, regardless of what's focused inside the popover.
+    if (keyName === "tab") {
+      this.closeCalendar();
+      return;
+    }
+
+    if (this.subPicker) {
+      this.handleSubPickerKey(keyName, ev);
+      return;
+    }
+
+    if (this.headerFocus !== "grid") {
+      this.handleHeaderZoneKey(keyName, ev);
       return;
     }
 
@@ -362,8 +561,12 @@ export class DatePickerWidget extends Widget {
       this.viewMonth = startOfMonth(this.cursorDate);
       ev.handled = true;
     } else if (keyName === "up") {
-      this.cursorDate = addDays(this.cursorDate, -7);
-      this.viewMonth = startOfMonth(this.cursorDate);
+      if (this.cursorInTopRow()) {
+        this.headerFocus = "month";
+      } else {
+        this.cursorDate = addDays(this.cursorDate, -7);
+        this.viewMonth = startOfMonth(this.cursorDate);
+      }
       ev.handled = true;
     } else if (keyName === "down") {
       this.cursorDate = addDays(this.cursorDate, 7);
@@ -378,9 +581,64 @@ export class DatePickerWidget extends Widget {
     } else if (keyName === "space" || keyName === " " || keyName === "enter") {
       this.commitDay(this.cursorDate);
       ev.handled = true;
-    } else if (keyName === "escape" || keyName === "tab") {
+    } else if (keyName === "escape") {
       this.closeCalendar();
-      if (keyName === "escape") ev.handled = true;
+      ev.handled = true;
+    }
+  }
+
+  /** Keyboard handling while a header zone (chevron, month, or year text) has focus. */
+  private handleHeaderZoneKey(keyName: string, ev: any): void {
+    const zones: HeaderZone[] = ["prev", "month", "year", "next"];
+    const i = zones.indexOf(this.headerFocus as (typeof zones)[number]);
+
+    if (keyName === "left") {
+      this.headerFocus = zones[(i - 1 + zones.length) % zones.length];
+      ev.handled = true;
+    } else if (keyName === "right") {
+      this.headerFocus = zones[(i + 1) % zones.length];
+      ev.handled = true;
+    } else if (keyName === "down") {
+      this.headerFocus = "grid";
+      ev.handled = true;
+    } else if (keyName === "space" || keyName === " " || keyName === "enter") {
+      if (this.headerFocus === "prev") this.shiftMonth(-1);
+      else if (this.headerFocus === "next") this.shiftMonth(1);
+      else if (this.headerFocus === "month") this.openMonthPicker();
+      else if (this.headerFocus === "year") this.openYearPicker();
+      ev.handled = true;
+    } else if (keyName === "escape") {
+      this.closeCalendar();
+      ev.handled = true;
+    }
+  }
+
+  /** Keyboard handling while the month/year sub-picker grid has focus. */
+  private handleSubPickerKey(keyName: string, ev: any): void {
+    if (keyName === "left") {
+      this.subPickerIndex = Math.max(0, this.subPickerIndex - 1);
+      ev.handled = true;
+    } else if (keyName === "right") {
+      this.subPickerIndex = Math.min(11, this.subPickerIndex + 1);
+      ev.handled = true;
+    } else if (keyName === "up") {
+      this.subPickerIndex = Math.max(0, this.subPickerIndex - SUB_COLS);
+      ev.handled = true;
+    } else if (keyName === "down") {
+      this.subPickerIndex = Math.min(11, this.subPickerIndex + SUB_COLS);
+      ev.handled = true;
+    } else if (this.subPicker === "year" && keyName === "pageup") {
+      this.yearRangeStart -= 12;
+      ev.handled = true;
+    } else if (this.subPicker === "year" && keyName === "pagedown") {
+      this.yearRangeStart += 12;
+      ev.handled = true;
+    } else if (keyName === "space" || keyName === " " || keyName === "enter") {
+      this.commitSubPickerIndex(this.subPickerIndex);
+      ev.handled = true;
+    } else if (keyName === "escape") {
+      this.closeSubPicker();
+      ev.handled = true;
     }
   }
 
