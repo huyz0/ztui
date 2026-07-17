@@ -231,6 +231,13 @@ describe("rendering system", () => {
     expect(html.includes("Ghostty")).toBe(true);
   });
 
+  test("HTML rendering keeps a path/anchor link (no executable scheme) as-is", () => {
+    const buffer = new ScreenBuffer(15, 1);
+    buffer.drawSegment(0, 0, new Segment("Anchor", new Style({ link: "#section-2" })));
+    const html = renderBufferToHTML(buffer);
+    expect(html).toContain('<a href="#section-2"');
+  });
+
   test("renderBufferToHTML preserves dim styling, not just bold/italic", () => {
     // Regression: fgCSS (and the styleKey run-boundary comparison) read
     // style.bold/.italic/.underline/.strikethrough but never style.dim, so a
@@ -242,6 +249,37 @@ describe("rendering system", () => {
     buffer.drawSegment(0, 0, new Segment("hint", new Style({ dim: true })));
     const html = renderBufferToHTML(buffer);
     expect(html).toContain("opacity");
+  });
+
+  test("renderBufferToHTML swaps fg/bg for a reversed cell", () => {
+    const buffer = new ScreenBuffer(10, 1);
+    buffer.drawSegment(
+      0,
+      0,
+      new Segment("rev", new Style({ color: "#ff0000", background: "#0000ff", reverse: true })),
+    );
+    const html = renderBufferToHTML(buffer);
+    // Reversed: the background layer paints the *foreground* color (#ff0000),
+    // and the text itself is colored with the *background* (#0000ff).
+    expect(html.toLowerCase()).toContain("#ff0000");
+    expect(html.toLowerCase()).toContain("#0000ff");
+  });
+
+  test("renderBufferToHTML applies italic styling", () => {
+    const buffer = new ScreenBuffer(10, 1);
+    buffer.drawSegment(0, 0, new Segment("it", new Style({ italic: true })));
+    const html = renderBufferToHTML(buffer);
+    expect(html).toContain("font-style: italic");
+  });
+
+  test("renderBufferToHTML skips a wide character's continuation cell", () => {
+    const buffer = new ScreenBuffer(10, 1);
+    buffer.drawSegment(0, 0, new Segment("🍎x", new Style({})));
+    const html = renderBufferToHTML(buffer);
+    // The emoji's own glyph renders once; its wideContinuation cell contributes
+    // no second (empty) span.
+    expect(html).toContain("🍎");
+    expect(html).toContain("x");
   });
 
   test("ScreenBuffer renderDiff splits contiguous runs on style boundaries", () => {
