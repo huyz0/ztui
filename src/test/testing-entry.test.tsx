@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { Button, Label, VBox } from "../react/components.tsx";
 import {
   cleanupMountedApps,
+  findWidgetByType,
   flush,
   mountApp,
   mountTestApp,
@@ -49,5 +50,17 @@ describe("@huyz0/ztui/testing entry", () => {
     await b.settle();
     expect(b.text()).toContain("two");
     cleanupMountedApps();
+  });
+
+  test("waitFor throws once the condition still hasn't been met after the timeout", async () => {
+    await expect(waitFor(() => false, { timeout: 20, interval: 5 })).rejects.toThrow(
+      /not met within 20ms/,
+    );
+  });
+
+  test("findWidgetByType throws when no matching widget instance is under the tree", async () => {
+    const t = await mountApp(<Label>solo</Label>, { cols: 20, rows: 3 });
+    await t.settle();
+    expect(() => findWidgetByType(t, "TableWidget")).toThrow(/TableWidget not found/);
   });
 });
