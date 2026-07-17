@@ -395,8 +395,13 @@ export function parseInput(
       const next = remaining[1];
       if (next !== "\x1b" && next.charCodeAt(0) >= 32 && next.charCodeAt(0) <= 126) {
         const shift = next !== next.toLowerCase() && next === next.toUpperCase();
+        // Include "shift+" in the key string to match the Kitty-protocol path's
+        // shape for the same physical combo (see the Kitty meta/ctrl+shift combo
+        // tests below) — otherwise a hotkey spec for "meta+shift+<letter>" only
+        // fires under Kitty, and Alt+<letter>/Alt+Shift+<letter> collide into the
+        // same "meta+<letter>" key string on legacy terminals.
         onKey({
-          key: `meta+${next.toLowerCase()}`,
+          key: shift ? `meta+shift+${next.toLowerCase()}` : `meta+${next.toLowerCase()}`,
           name: next.toLowerCase(),
           ctrl: false,
           meta: true,

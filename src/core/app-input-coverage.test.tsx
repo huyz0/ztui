@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Box, Dialog, Input, RichLog, StickyPanel, VBox } from "../react.ts";
 import { flush, mountApp } from "../test/harness.tsx";
@@ -181,6 +182,36 @@ describe("AppInput: mouse edge cases", () => {
     await t.settle();
     expect(onClose).not.toHaveBeenCalled();
     expect(t.screen.layers.length).toBe(1); // still open
+  });
+
+  test("a widget that detaches itself in onMouseDown leaves no stale activeDragWidget for the next drag/release", async () => {
+    // Regression: resolveMouseHit pins `hit` back to `activeDragWidget` on
+    // every drag/release without checking it's still attached. The modal
+    // outside-click path clears it explicitly on dismiss, but any other
+    // widget whose own press handler detaches it (or an ancestor) mid-dispatch
+    // hit the same stale-widget reuse with no such guard.
+    function App() {
+      const [show, setShow] = useState(true);
+      return (
+        <Box style={{ width: 20, height: 10 }}>
+          {show && (
+            <Box id="target" style={{ width: 5, height: 2 }} onMouseDown={() => setShow(false)} />
+          )}
+        </Box>
+      );
+    }
+    const t = await mountApp(<App />, { cols: 20, rows: 10 });
+    const target = t.findById("target")!;
+    t.driver.simulateMouse(1, 1, "press", "left");
+    await t.settle();
+    expect(t.findById("target")).toBeUndefined(); // detached from tree now
+
+    expect(() => t.driver.simulateMouse(2, 1, "drag", "left")).not.toThrow();
+    await t.settle();
+
+    const input = (t.app.input as unknown as { activeDragWidget: unknown }).activeDragWidget;
+    expect(input).not.toBe(target);
+    expect(input).toBeNull();
   });
 });
 

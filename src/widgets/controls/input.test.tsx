@@ -77,6 +77,14 @@ describe("InputWidget — unicode input", () => {
     w.onKey?.({ key: "enter" } as any);
     expect(w.value).toBe("");
   });
+
+  test("tracks cursor to the new end when set externally while at end, past a multi-code-unit grapheme", () => {
+    const w = new InputWidget();
+    w.value = "ab😀"; // 3 graphemes, 4 UTF-16 units
+    (w as unknown as { cursorCol: number }).cursorCol = 3; // caret at end (grapheme count)
+    w.value = "ab😀c"; // append externally
+    expect((w as unknown as { cursorCol: number }).cursorCol).toBe(4); // end, after "c"
+  });
 });
 
 describe("InputWidget — selection & clipboard", () => {

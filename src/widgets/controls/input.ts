@@ -25,10 +25,11 @@ export class InputWidget extends Widget implements ValidatableField {
     const oldVal = this._value;
     this._value = val;
     this.selectionAnchor = null;
-    if (this.cursorCol === oldVal.length) {
-      this.cursorCol = val.length;
+    const newLen = splitGraphemes(val).length;
+    if (this.cursorCol === splitGraphemes(oldVal).length) {
+      this.cursorCol = newLen;
     } else {
-      this.cursorCol = Math.min(this.cursorCol, val.length);
+      this.cursorCol = Math.min(this.cursorCol, newLen);
     }
   }
 

@@ -319,6 +319,59 @@ describe("renderBufferToCanvas", () => {
     }
   });
 
+  test("a failed image decode evicts its cache entry so a later render can retry", () => {
+    // Regression: drawSvgCell/drawImageCell wired an `onload` handler but no
+    // `onerror` — a malformed source (bad data URI, invalid SVG markup) never
+    // finished decoding, and the broken <img> stayed cached forever, so the
+    // cell rendered blank permanently even once a valid source was supplied.
+    class FailThenSucceedImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      complete = false;
+      naturalWidth = 0;
+      set src(_v: string) {
+        // Simulate an async decode failure (bad data URI / invalid markup).
+        this.onerror?.();
+      }
+    }
+    const prevImage = (globalThis as any).Image;
+    (globalThis as any).Image = FailThenSucceedImage;
+    try {
+      const { ctx } = mockCtx();
+      ctx.drawImage = () => {};
+      const sizeBefore = _imageCacheSizeForTest();
+      const src = "data:image/png;base64,broken";
+
+      // First render: the source fails to decode.
+      const cells: any[][] = [[{ c: " ", img: src, gw: 1, gh: 1 }]];
+      renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      // The failed entry must have been evicted, not left cached forever —
+      // the cache must not have grown (it may even shrink, since the LRU cap
+      // can evict an older unrelated entry before our own gets removed).
+      expect(_imageCacheSizeForTest()).toBeLessThanOrEqual(sizeBefore);
+
+      // A later render with a source that now decodes successfully must
+      // create a *new* Image and actually draw, instead of reusing (or being
+      // permanently blocked by) the poisoned cache entry.
+      class SucceedingImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        complete = true;
+        naturalWidth = 16;
+        set src(_v: string) {}
+      }
+      (globalThis as any).Image = SucceedingImage;
+      let drawImageCalls = 0;
+      ctx.drawImage = () => {
+        drawImageCalls++;
+      };
+      renderBufferToCanvas(cells, ctx, METRICS, OPTS);
+      expect(drawImageCalls).toBeGreaterThanOrEqual(1);
+    } finally {
+      (globalThis as any).Image = prevImage;
+    }
+  });
+
   test("glyph and box-drawing draws align to the same snapped grid as background fills", () => {
     // Regression: the glyph/box-drawing pass computed its own x0/cy from raw
     // `x * cellWidth` / `y * cellHeight` instead of the snapped colX/rowY

@@ -178,7 +178,19 @@ describe("parseInput — character input", () => {
 
   test("Alt+Shift+letter carries the shift flag (uppercase char after ESC)", () => {
     const ev = firstKey("\x1bF");
-    expect(ev).toMatchObject({ key: "meta+f", name: "f", meta: true, shift: true });
+    expect(ev).toMatchObject({ key: "meta+shift+f", name: "f", meta: true, shift: true });
+  });
+
+  test("Alt+Shift+letter produces the same key string on the legacy and Kitty paths", () => {
+    // Regression: the legacy ESC+<char> path dropped "shift+" from the key
+    // string even though it set shift:true, so a hotkey spec for
+    // "meta+shift+f" matched under the Kitty keyboard protocol but not on
+    // terminals using this legacy encoding — and Alt+f / Alt+Shift+f collided
+    // into the same "meta+f" key string.
+    const legacy = firstKey("\x1bF");
+    // keycode 102 = 'f', modifiers = modVal(1 shift + 2 meta) + 1 = 4
+    const kitty = firstKey("\x1b[102;4u");
+    expect(legacy?.key).toBe(kitty?.key);
   });
 
   test("ESC followed by another ESC or a non-printable byte is not treated as Alt+<char>", () => {

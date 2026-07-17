@@ -401,7 +401,17 @@ export class AppInput {
     let hit = hitTest(this.host.activeScreen, ev.x, ev.y);
 
     if (this.activeDragWidget && (ev.type === "drag" || ev.type === "release")) {
-      hit = this.activeDragWidget;
+      // A widget's own press handler can detach it (or an ancestor) from the
+      // tree mid-dispatch — e.g. a control that unmounts itself on click, not
+      // just the modal-outside-click path handled separately above. Reusing a
+      // detached widget as `hit` here would run hover enter/leave, pointer-
+      // shape resolution and mouse dispatch against a torn-down node. Drop the
+      // stale reference and fall back to a fresh hit-test instead.
+      if (this.isWidgetAttached(this.activeDragWidget)) {
+        hit = this.activeDragWidget;
+      } else {
+        this.activeDragWidget = null;
+      }
     }
     if (ev.type === "press") {
       this.activeDragWidget = hit;
@@ -426,6 +436,16 @@ export class AppInput {
       }
     }
     return hit;
+  }
+
+  /** Whether `w` is still attached under the active screen (not a stale/unmounted node). */
+  private isWidgetAttached(w: Widget): boolean {
+    let node: DOMNode | null = w;
+    while (node) {
+      if (node === this.host.activeScreen) return true;
+      node = node.parent;
+    }
+    return false;
   }
 
   /** Fire onMouseLeave/onMouseEnter and queue a hover-CSS repaint when the hovered widget changes. */

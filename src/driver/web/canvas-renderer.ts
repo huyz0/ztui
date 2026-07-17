@@ -175,8 +175,13 @@ function drawSvgCell(
   if (!img) {
     img = new Image();
     img.onload = () => requestRepaint?.();
-    img.src = `data:image/svg+xml,${encodeURIComponent(tinted)}`;
+    img.onerror = () => {
+      // Malformed markup: evict so a later render (e.g. after the icon
+      // registry is fixed) retries instead of leaving the cell blank forever.
+      if (svgImageCache.get(key) === img) svgImageCache.delete(key);
+    };
     cacheSet(key, img);
+    img.src = `data:image/svg+xml,${encodeURIComponent(tinted)}`;
   }
   if (img.complete && img.naturalWidth > 0) {
     // Center a square (icons are square) within the cell box.
@@ -211,8 +216,13 @@ function drawImageCell(
   if (!img) {
     img = new Image();
     img.onload = () => requestRepaint?.();
-    img.src = src;
+    img.onerror = () => {
+      // Bad data URI / unsupported source: evict so a subsequent render with
+      // a corrected `src` retries instead of the cell staying blank forever.
+      if (svgImageCache.get(key) === img) svgImageCache.delete(key);
+    };
     cacheSet(key, img);
+    img.src = src;
   }
   if (img.complete && img.naturalWidth > 0) {
     const c = ctx as CanvasRenderingContext2D;
