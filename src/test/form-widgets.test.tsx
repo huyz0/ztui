@@ -407,7 +407,7 @@ describe("ZTUI Form Widgets Suite", () => {
     const chk = findById("chk");
     const sw = findById("sw");
 
-    // Checkbox: "☑ " or "☐ " (2 cells) + label.
+    // Checkbox: "☒ " or "☐ " (2 cells) + label.
     expect(chk.measuredWidth).toBe(2 + "Accept".length);
     // Switch: "[ ●]" or "[● ]" + a trailing space (5 cells) + label.
     expect(sw.measuredWidth).toBe(5 + "News".length);

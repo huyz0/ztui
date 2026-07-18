@@ -281,7 +281,7 @@ describe("Markdown GFM tables", () => {
     const t = await mountApp(<Markdown>{list}</Markdown>, { cols: 40, rows: 6 });
     await t.settle();
     const text = t.text();
-    expect(text).toContain("☑"); // checked
+    expect(text).toContain("☒"); // checked
     expect(text).toContain("☐"); // unchecked
     expect(text).toContain("done item");
     expect(text).toContain("todo item");

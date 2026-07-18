@@ -738,9 +738,11 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
     // A GFM task-list item (`- [ ]` / `- [x]`) shows a checkbox glyph in place
     // of the bullet, tinted by completion (a done item reads as success-green).
     const isTask = token.task === true;
+    // "☒" (not the emoji-codepoint "☑") so it matches "☐"'s plain text
+    // weight — see checkbox.ts's marker comment for why.
     const bulletSymbol = isTask
       ? token.checked
-        ? "☑ "
+        ? "☒ "
         : "☐ "
       : isOrdered
         ? `${index + 1}. `

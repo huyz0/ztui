@@ -44,7 +44,7 @@ export class CheckboxWidget extends Widget {
 
     if (ev.type === "press" && ev.button === "left") {
       this.toggle();
-      // The marker is a fixed-width glyph swap (☑/☐) — geometry-stable — so a
+      // The marker is a fixed-width glyph swap (☒/☐) — geometry-stable — so a
       // scoped repaint re-renders just this checkbox, not the whole tree. The
       // verification falls back to a full frame if a :checked rule ever resizes it.
       (this.app ?? App.instance)?.queueRepaintWidget(this, "checkbox:toggle");
@@ -54,7 +54,7 @@ export class CheckboxWidget extends Widget {
   public override measure(maxW: number, maxH: number): void {
     const b = this.borderSize;
     const p = this.padding;
-    const textLen = 2 + stringWidth(this.label); // "☑ " or "☐ " is 2 characters + label
+    const textLen = 2 + stringWidth(this.label); // "☒ " or "☐ " is 2 characters + label
 
     if (this.computedStyle.width === undefined) {
       this.measuredWidth = textLen + b.width + p.width;
@@ -91,7 +91,12 @@ export class CheckboxWidget extends Widget {
     const disabled = this.isDisabled();
     const disabledColor = App.instance?.cssResolver.resolveVariable(this, "$disabled") || fg;
 
-    const marker = this.checked ? "☑" : "☐";
+    // "☒" (U+2612), not "☑" (U+2611) — the latter is a real emoji codepoint
+    // with a colored, differently-weighted glyph in many terminal fonts
+    // (Noto/Apple Color Emoji), while "☐" has no emoji entry — so checked
+    // and unchecked visibly mismatched in size/weight. "☒" isn't an emoji
+    // codepoint at all, so it renders in the same plain text style as "☐".
+    const marker = this.checked ? "☒" : "☐";
 
     // A focused, valid checkbox is borderless, so focus is shown as a breathing
     // band behind the whole control (like a highlighted row) — far more visible

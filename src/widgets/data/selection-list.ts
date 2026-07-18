@@ -14,9 +14,15 @@ import { fitCell } from "./cell-format.ts";
 import type { ListItem } from "./list-view.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 
-/** @internal Checkbox glyphs per set (unchecked, checked). */
+/**
+ * @internal Checkbox glyphs per set (unchecked, checked). "unicode" uses "☒"
+ * (U+2612), not "☑" (U+2611) — the latter is a real emoji codepoint with a
+ * colored, differently-weighted glyph in many terminal fonts, while "☐" has
+ * no emoji entry, so the two visibly mismatched. "☒" isn't an emoji
+ * codepoint, so it renders in the same plain text style as "☐".
+ */
 const BOXES = {
-  unicode: { off: "☐", on: "☑" },
+  unicode: { off: "☐", on: "☒" },
   ascii: { off: "[ ]", on: "[x]" },
 } as const;
 /** Checkbox glyph set for {@link SelectionListWidget}. */

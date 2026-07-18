@@ -144,7 +144,9 @@ export class DropdownOverlayWidget extends Widget {
       // Determine text to show: E.g., for multi-select, show "[x] Label" or "[ ] Label"
       let prefix = "";
       if (this.selectWidget.multiple) {
-        prefix = isSelected ? "☑ " : "☐ ";
+        // "☒" (not the emoji-codepoint "☑") so it matches "☐"'s plain text
+        // weight — see checkbox.ts's marker comment for why.
+        prefix = isSelected ? "☒ " : "☐ ";
       } else {
         prefix = isSelected ? "● " : "  ";
       }

@@ -29,7 +29,7 @@ describe("SelectionList", () => {
     await t.settle();
     const text = t.text();
     expect(text).toContain("☐ apple.ts"); // unchecked
-    expect(text).toContain("☑ banana.ts"); // checked
+    expect(text).toContain("☒ banana.ts"); // checked
   });
 
   test("Space toggles the cursor row and fires onChange in item order", async () => {
@@ -51,7 +51,7 @@ describe("SelectionList", () => {
     w.handleKey({ name: "space", handled: false } as never);
     await t.settle();
     expect(changes.at(-1)).toEqual(["a", "b"]); // item order preserved
-    expect(t.text()).toContain("☑ banana.ts");
+    expect(t.text()).toContain("☒ banana.ts");
   });
 
   test("arrow navigation skips disabled rows", async () => {
@@ -445,7 +445,7 @@ describe("SelectionList", () => {
     } as never);
     await t.settle();
     expect(changes.at(-1)).toEqual(["b"]);
-    expect(t.text()).toContain("☑ banana.ts");
+    expect(t.text()).toContain("☒ banana.ts");
   });
 
   test("rowText renders icon and detail text when present", async () => {
