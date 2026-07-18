@@ -25,10 +25,10 @@ describe("UsageMeter", () => {
     const text = t.text();
     expect(text).toContain("↑1.2k"); // turn input, abbreviated
     expect(text).toContain("↓340"); // turn output
-    expect(text).toContain("💾68%"); // cache read ratio (840/1234)
-    expect(text).toContain("✍10%"); // cache write ratio (120/1234)
+    expect(text).toContain("▦68%"); // cache read ratio (840/1234)
+    expect(text).toContain("▨10%"); // cache write ratio (120/1234)
     expect(text).toContain("↑45k"); // session input
-    expect(text).toContain("💲0.12"); // cost
+    expect(text).toContain("$0.12"); // cost
     expect(text).toContain("156k/200k"); // context used/size
     expect(text).toContain("78%"); // context fill
     expect(text).toContain("█"); // the fill bar
@@ -47,7 +47,7 @@ describe("UsageMeter", () => {
     expect(lines.length).toBe(1);
     expect(lines[0]).toContain("⟳");
     expect(lines[0]).toContain("Σ");
-    expect(lines[0]).toContain("🪟156k/200k 78%"); // numbers + percent
+    expect(lines[0]).toContain("▭156k/200k 78%"); // numbers + percent
   });
 
   test("compact: clicking expands the full meter in a popover", async () => {
@@ -106,7 +106,7 @@ describe("UsageMeter", () => {
     );
     await t.settle();
     const text = t.text();
-    expect(text).toContain("💾5%");
+    expect(text).toContain("▦5%");
     expect(text).toContain("90%");
   });
 
@@ -120,7 +120,7 @@ describe("UsageMeter", () => {
       OPTS,
     );
     await t.settle();
-    expect(t.text()).toContain("💾30%");
+    expect(t.text()).toContain("▦30%");
   });
 
   test("with nothing to show and expandable, canExpand is false (no popover, no crash)", async () => {
@@ -138,7 +138,7 @@ describe("UsageMeter", () => {
     const text = t.text();
     expect(text).not.toContain("⟳");
     expect(text).toContain("Σ");
-    expect(text).not.toContain("💲");
+    expect(text).not.toContain("$");
   });
 
   test("full: omitting turn hides the turn row but keeps session/cost and context", async () => {
@@ -150,7 +150,7 @@ describe("UsageMeter", () => {
     const text = t.text();
     expect(text).not.toContain("Turn");
     expect(text).toContain("Session");
-    expect(text).not.toContain("💲"); // no cost given
+    expect(text).not.toContain("$"); // no cost given
     expect(text).toContain("Ctx");
   });
 

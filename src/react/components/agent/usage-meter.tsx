@@ -80,15 +80,18 @@ function inOut(u: TokenUsage): ReactNode {
     <>
       <Label style={{ color: "$accent" }}>↑{fmt(u.input)}</Label>
       <Label style={{ color: "$primary", padding: { left: 1 } }}>↓{fmt(u.output)}</Label>
-      {/* Prompt-cache hit (read) and creation (write) ratios of the input. */}
+      {/* Prompt-cache hit (read) and creation (write) ratios of the input.
+          "▦"/"▨" (plain geometric-shape glyphs), not emoji like "💾"/"✍" —
+          those render two cells wide and colored in many terminal fonts,
+          crowding into the adjacent number with no room for a gap. */}
       {u.cacheRead != null ? (
         <Label style={{ color: cacheColor(read), padding: { left: 1 } }}>
-          💾{Math.round(read * 100)}%
+          ▦{Math.round(read * 100)}%
         </Label>
       ) : undefined}
       {u.cacheWrite != null ? (
         <Label style={{ color: "$dimmed", padding: { left: 1 } }}>
-          ✍{Math.round(write * 100)}%
+          ▨{Math.round(write * 100)}%
         </Label>
       ) : undefined}
     </>
@@ -99,7 +102,7 @@ function inOut(u: TokenUsage): ReactNode {
  * A compact token-usage meter for an agent status line: last-turn and
  * whole-session input/output tokens, prompt-cache hit rate, optional cost, and a
  * context-window fill bar — colour-coded (green→amber→red as context fills) with
- * `↑`/`↓` for in/out and `💾`/`🪟` glyphs. Three tight rows by default, or a
+ * `↑`/`↓` for in/out and `▦`/`▭` glyphs. Three tight rows by default, or a
  * single dense line with `variant="compact"`.
  *
  * ```tsx
@@ -122,7 +125,8 @@ export function UsageMeter({
   ...rest
 }: UsageMeterProps): ReactElement {
   const ctxRatio = contextSize ? pct(contextUsed ?? 0, contextSize) : 0;
-  const costLabel = cost != null ? `💲${cost.toFixed(2)}` : undefined;
+  // "$" (plain ASCII), not the emoji "💲" — same two-cell/colored-glyph issue.
+  const costLabel = cost != null ? `$${cost.toFixed(2)}` : undefined;
 
   const anchorRef = useRef<Widget | null>(null);
   const [open, setOpen] = useState(false);
@@ -160,7 +164,8 @@ export function UsageMeter({
           {costLabel ? <Label style={{ padding: { left: 1 } }}>{costLabel}</Label> : undefined}
           {contextSize ? (
             <Label style={{ color: fillColor(ctxRatio), padding: { left: 1 } }}>
-              · 🪟{fmt(contextUsed ?? 0)}/{fmt(contextSize)} {Math.round(ctxRatio * 100)}%
+              {/* "▭" (plain rectangle), not the emoji "🪟" — same issue. */}· ▭
+              {fmt(contextUsed ?? 0)}/{fmt(contextSize)} {Math.round(ctxRatio * 100)}%
             </Label>
           ) : undefined}
         </HBox>
@@ -200,7 +205,7 @@ export function UsageMeter({
       ) : undefined}
       {contextSize ? (
         <HBox style={{ width: "100%", height: 1 }}>
-          <Label style={{ color: "$dimmed", width: 10 }}>🪟 Ctx</Label>
+          <Label style={{ color: "$dimmed", width: 10 }}>▭ Ctx</Label>
           <Label style={{ color: "$foreground" }}>
             {fmt(contextUsed ?? 0)}/{fmt(contextSize)}
           </Label>
