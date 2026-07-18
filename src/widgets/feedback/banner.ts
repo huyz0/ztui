@@ -19,7 +19,9 @@ export type BannerVariant = "info" | "success" | "warning" | "error" | "neutral"
 export type BannerGlyphSet = "unicode" | "ascii" | "emoji";
 
 const ICONS: Record<BannerGlyphSet, Record<BannerVariant, string>> = {
-  unicode: { info: "ⓘ", success: "✔", warning: "▲", error: "✘", neutral: "•" },
+  // "✓" (U+2713), not the emoji-codepoint "✔" (U+2714) — see status.ts's
+  // completed-glyph comment for why.
+  unicode: { info: "ⓘ", success: "✓", warning: "▲", error: "✘", neutral: "•" },
   ascii: { info: "i", success: "v", warning: "!", error: "x", neutral: "-" },
   emoji: { info: "ℹ️", success: "✅", warning: "⚠️", error: "❌", neutral: "▪️" },
 };

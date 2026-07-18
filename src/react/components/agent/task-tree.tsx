@@ -12,7 +12,9 @@ const STATUS_STYLE: Record<
 > = {
   pending: { glyph: "○", color: "$dimmed" },
   in_progress: { glyph: "◐", color: "$accent", bold: true },
-  completed: { glyph: "✔", color: "$success", strike: true, dim: true },
+  // "✓" (U+2713), not the emoji-codepoint "✔" (U+2714) — see status.ts's
+  // completed-glyph comment for why.
+  completed: { glyph: "✓", color: "$success", strike: true, dim: true },
   cancelled: { glyph: "✗", color: "$error", strike: true, dim: true },
 };
 
@@ -56,7 +58,7 @@ function tally(nodes: TaskNode[]): [number, number] {
 
 /**
  * A hierarchical agent task tree: like {@link TodoList} but for nested plans.
- * Each node carries a status glyph (`○` pending, `◐` in-progress, `✔` done, `✗`
+ * Each node carries a status glyph (`○` pending, `◐` in-progress, `✓` done, `✗`
  * cancelled) with the in-progress task emphasised and finished ones struck
  * through, and sub-tasks are drawn indented under dimmed `├─`/`└─` connectors.
  * Pass `title` for a heading with a live progress count over the whole tree.

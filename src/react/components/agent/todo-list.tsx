@@ -22,7 +22,9 @@ const STATUS_STYLE: Record<
 > = {
   pending: { glyph: "○", color: "$dimmed" },
   in_progress: { glyph: "◐", color: "$accent", bold: true },
-  completed: { glyph: "✔", color: "$success", strike: true, dim: true },
+  // "✓" (U+2713), not the emoji-codepoint "✔" (U+2714) — see status.ts's
+  // completed-glyph comment for why.
+  completed: { glyph: "✓", color: "$success", strike: true, dim: true },
   cancelled: { glyph: "✗", color: "$error", strike: true, dim: true },
 };
 
@@ -40,7 +42,7 @@ export interface TodoListProps extends ComponentProps {
 
 /**
  * An agent task checklist: one row per task with a status glyph (`○` pending,
- * `◐` in-progress, `✔` done, `✗` cancelled), the in-progress task emphasised and
+ * `◐` in-progress, `✓` done, `✗` cancelled), the in-progress task emphasised and
  * finished ones struck through. Pass `title` for a heading with a live progress
  * count. A compact, read-only mirror of the agent's plan — re-render it with new
  * `items` as work advances.

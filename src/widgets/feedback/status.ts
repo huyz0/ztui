@@ -44,7 +44,12 @@ const GLYPHS: Record<GlyphSet, Record<StatusState, string>> = {
     inactive: "○",
     ongoing: "◐",
     pending: "◌",
-    completed: "✔",
+    // "✓" (U+2713), not "✔" (U+2714) — the latter is a real emoji codepoint
+    // (default text presentation, but still colored/widened by many terminal
+    // color-emoji fonts, same issue as "☑" vs "☐" in checkbox.ts); "✓" isn't
+    // an emoji codepoint at all, so it stays the same weight as the other
+    // (non-emoji) glyphs in this set.
+    completed: "✓",
     warning: "▲",
     failed: "✘",
   },

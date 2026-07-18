@@ -26,7 +26,7 @@ const STEPS: string[][] = [
   ["[cyan]⚙ tool[/] [bold]gh.pr_checks[/] [dim]{ number: 305 }[/]"],
   ["[red]✗ ci[/] #305 [bold]auth-e2e[/] failing: [dim]token refresh returns 401[/]"],
   [
-    "[green]✔ done[/] [bold]Summary[/]",
+    "[green]✓ done[/] [bold]Summary[/]",
     "  • [green]#312[/] safe — additive, fully tested",
     "  • [yellow]#309[/] risky — deletes a module 3 files still import; request changes",
     "  • [red]#305[/] blocked — auth-e2e red on token refresh",

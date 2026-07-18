@@ -241,7 +241,7 @@ function ThemeExplorerApp() {
           {/* Section 1: Standard variables */}
           <VBox style={{ border: "rounded", borderColor: "$secondary", padding: 1 }}>
             <Label style={{ bold: true, color: "$accent" }}>Standard Widget Elements</Label>
-            <Label style={{ color: "$success" }}>✔ Success State Label ($success)</Label>
+            <Label style={{ color: "$success" }}>✓ Success State Label ($success)</Label>
             <Label style={{ color: "$warning" }}>⚠ Warning State Label ($warning)</Label>
             <Label style={{ color: "$error" }}>✘ Error State Label ($error)</Label>
             <Input

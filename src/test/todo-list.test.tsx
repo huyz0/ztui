@@ -21,7 +21,7 @@ describe("TodoList", () => {
     const t = await mountApp(<TodoList items={items} />, OPTS);
     await t.settle();
     const text = t.text();
-    expect(text).toContain("✔"); // completed
+    expect(text).toContain("✓"); // completed
     expect(text).toContain("◐"); // in progress
     expect(text).toContain("○"); // pending
     expect(text).toContain("✗"); // cancelled

@@ -16,7 +16,7 @@ describe("ZTUI Status Widget Suite", () => {
       { cols: 10, rows: 3 },
     );
     expect(findById("d")).toBeDefined();
-    expect(cellAt(0, 0).char).toBe("✔");
+    expect(cellAt(0, 0).char).toBe("✓");
     // completed resolves to the theme success colour (green by default).
     expect(cellAt(0, 0).style.color).toBeTruthy();
   });
@@ -80,7 +80,7 @@ describe("ZTUI Status Widget Suite", () => {
       { cols: 30, rows: 5 },
     );
     const out = text();
-    expect(out).toContain("✔ build");
+    expect(out).toContain("✓ build");
     expect(out).toContain("4.2s");
     expect(out).toContain("✘ e2e");
     expect(out).toContain("2 failed");
@@ -119,7 +119,7 @@ describe("ZTUI Status Widget Suite", () => {
     const noStyle = new StatusDotWidget();
     noStyle.state = "completed";
     noStyle.measure(20, 10);
-    expect(noStyle.measuredWidth).toBe(1); // charWidth of "✔"
+    expect(noStyle.measuredWidth).toBe(1); // charWidth of "✓"
     expect(noStyle.measuredHeight).toBe(1);
 
     const frStyle = new StatusDotWidget();

@@ -22,7 +22,7 @@ describe("ToolCall", () => {
     );
     await t.settle();
     const text = t.text();
-    expect(text).toContain("✔"); // success badge
+    expect(text).toContain("✓"); // success badge
     expect(text).toContain("Read");
     expect(text).toContain("src/app.ts");
     expect(text).toContain("120 lines"); // summary shown while collapsed

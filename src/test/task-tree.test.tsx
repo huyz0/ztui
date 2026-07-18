@@ -38,7 +38,7 @@ describe("TaskTree", () => {
     expect(text).toContain("Read the spec");
     expect(text).toContain("types");
     expect(text).toContain("Ship it");
-    expect(text).toContain("✔"); // completed
+    expect(text).toContain("✓"); // completed
     expect(text).toContain("◐"); // in progress
     expect(text).toContain("○"); // pending
     // Tree connectors are drawn for nested nodes.

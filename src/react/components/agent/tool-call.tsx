@@ -14,7 +14,9 @@ export type ToolCallStatus = "pending" | "running" | "success" | "error";
 const STATUS_BADGE: Record<ToolCallStatus, { glyph: string; color: string }> = {
   pending: { glyph: "○", color: "$dimmed" },
   running: { glyph: "◐", color: "$accent" },
-  success: { glyph: "✔", color: "$success" },
+  // "✓" (U+2713), not the emoji-codepoint "✔" (U+2714) — see status.ts's
+  // completed-glyph comment for why.
+  success: { glyph: "✓", color: "$success" },
   error: { glyph: "✖", color: "$error" },
 };
 
