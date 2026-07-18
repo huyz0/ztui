@@ -1,6 +1,6 @@
 {
   "name": "@huyz0/ztui",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "publishConfig": {
     "access": "public"
   },

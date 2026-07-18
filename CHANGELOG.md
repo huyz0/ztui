@@ -6,6 +6,47 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-18
+
+### Added
+
+- **`ChatBubble`** — `align="left" | "right" | "full"` pushes a bubble to
+  either edge of the conversation panel, content-sized and capped at
+  `maxWidth` (default `75%`), iMessage-style; `Transcript` inserts a blank
+  line between bubbles only when the speaker's role changes, keeping
+  consecutive same-role turns tight.
+- **`DatePicker`** — clicking (or arrowing up from the day grid) the
+  month/year header opens a 12-cell month or year grid in place of the day
+  grid; the year grid also accepts typed digits for a direct jump. Weekend
+  columns get a distinct tint and the 1st of the month renders bold.
+- **`Diff`** — added/removed row text is now tinted (not just the
+  background), and the line-number gutter gets its own brighter highlight.
+
+### Fixed
+
+- `ChatBubble` bubbles rendered at a fixed width instead of shrinking to
+  their text, and the author header row forced full width regardless of
+  `align`/`maxWidth`; also dropped an unwanted trailing blank line.
+- `Diff` row tint was too washed out to read as added/removed, then
+  overcorrected to hurt text legibility in dark themes — retuned both.
+- Unstyled text in the real terminal (`BunDriver`) fell back to the
+  terminal's own ambient default color instead of the active theme's, and
+  the escape-code cache didn't invalidate on theme switch.
+- Selection highlight and general text contrast were poor on several light
+  themes (`default-light`, `catppuccin-latte`, `gruvbox-light`,
+  `solarized-light`) and unreadable against a canvas-driver default.
+- `CopyButton` left stale content in the second cell of its 2-wide box while
+  idle, showing as a doubled/overlapping icon in Markdown and code blocks.
+- Checked-state glyphs (`Checkbox`, multi-select `Select`, `SelectionList`,
+  Markdown task-list items, `StatusDot`/`StatusBadge`/`StatusList`,
+  `Banner`, `TodoList`, `TaskTree`, `ToolCall`) rendered wider/colored
+  relative to their unchecked counterpart in many terminal fonts, because
+  the "checked" glyph was a real emoji codepoint and the "unchecked" one
+  wasn't — swapped to matched non-emoji Unicode pairs.
+- `UsageMeter`'s cache/cost/context-window icons were emoji, crowding into
+  the adjacent number in terminal fonts that render them wide/colored —
+  replaced with plain single-cell glyphs.
+
 ## [1.2.0] - 2026-07-15
 
 ### Added
