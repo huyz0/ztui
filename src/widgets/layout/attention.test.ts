@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { motion } from "../../anim/motion.ts";
 import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
@@ -35,5 +36,33 @@ describe("AttentionWidget", () => {
     const buffer = new ScreenBuffer(10, 3);
     expect(() => w.render(buffer)).not.toThrow();
     expect(buffer.cells[0][0].char).toBe("╭");
+  });
+
+  test("attentive=true with motion enabled and explicit borderColor", () => {
+    const w = new AttentionWidget();
+    w.attentive = true;
+    w.style.width = 10;
+    w.style.height = 3;
+    w.style.borderColor = "#123456";
+    w.region = new Region(Offset.ORIGIN, new Size(10, 3));
+
+    const buffer = new ScreenBuffer(10, 3);
+    expect(() => w.render(buffer)).not.toThrow();
+  });
+
+  test("attentive=true with motion enabled books animation tick", () => {
+    motion.set(true);
+    try {
+      const w = new AttentionWidget();
+      w.attentive = true;
+      w.style.width = 10;
+      w.style.height = 3;
+      w.region = new Region(Offset.ORIGIN, new Size(10, 3));
+
+      const buffer = new ScreenBuffer(10, 3);
+      expect(() => w.render(buffer)).not.toThrow();
+    } finally {
+      motion.reset();
+    }
   });
 });

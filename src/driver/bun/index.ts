@@ -155,6 +155,10 @@ export class BunDriver extends Driver {
     // back to the shell after exit.
     this.setPointerShape(null);
 
+    // Clear any taskbar/tab progress indicator so a stuck bar doesn't linger
+    // in the shell after exit.
+    this.setProgress("none");
+
     // Disable mouse tracking (hover 1003 and standard 1000/1002/1006) and
     // bracketed paste.
     this.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?2004l");

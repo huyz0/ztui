@@ -153,4 +153,9 @@ export class WebDriver extends Driver {
     const N: any = (globalThis as any).Notification;
     if (N?.permission === "granted") new N(title, { body });
   }
+
+  /** Sets the page title (`document.title`) instead of emitting OSC 0, which doesn't apply to this backend. */
+  public override setTitle(title: string): void {
+    if (typeof document !== "undefined") document.title = title;
+  }
 }

@@ -18,19 +18,22 @@ export function fitCell(
     }
     return text + " ".repeat(pad);
   }
-  // Truncate with an ellipsis.
-  if (width === 1) return "…";
-  const limit = width - 1;
+  // Clip to width without an ellipsis — callers apply fadeClippedRight for the
+  // visual affordance. Hard-clip by grapheme, then pad if a wide char forced an
+  // early break that left a gap.
   let out = "";
   let acc = 0;
   for (const ch of text) {
     const cw = charWidth(ch);
-    if (acc + cw > limit) break;
+    if (acc + cw > width) break;
     out += ch;
     acc += cw;
   }
-  out += "…";
-  const ow = stringWidth(out);
-  if (ow < width) out += " ".repeat(width - ow);
+  if (acc < width) out += " ".repeat(width - acc);
   return out;
+}
+
+/** Returns true when `text` would be clipped (is wider than `width` columns). */
+export function cellOverflows(text: string, width: number): boolean {
+  return stringWidth(text) > width;
 }

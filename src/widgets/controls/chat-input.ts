@@ -730,6 +730,7 @@ export class ChatInputWidget extends Widget {
       this.popupScreen = screen;
     }
     this.popup.items = items;
+    this.popup.title = this.activeTrigger?.title;
     this.popup.selectedIndex = Math.min(this.popup.selectedIndex, items.length - 1);
     // Anchor under the trigger char's cell.
     const rows = this.layoutRows(this.innerWidth());

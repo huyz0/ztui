@@ -270,15 +270,16 @@ describe("every light theme's muted text tokens clear WCAG AA", () => {
     }
   });
 
-  test.each(
-    lightThemes.map((t) => [t.name, t] as const),
-  )("%s: foreground/comment/placeholder/gutter/dimmed >= 4.5:1 against background", (_name, theme) => {
-    for (const key of ["foreground", "comment", "placeholder", "gutter", "dimmed"] as const) {
-      const value = theme.colors[key];
-      if (!value?.startsWith("#")) continue; // only concrete hex tokens are checked here
-      expect(contrastRatio(value, theme.colors.background)).toBeGreaterThanOrEqual(4.5);
-    }
-  });
+  test.each(lightThemes.map((t) => [t.name, t] as const))(
+    "%s: foreground/comment/placeholder/gutter/dimmed >= 4.5:1 against background",
+    (_name, theme) => {
+      for (const key of ["foreground", "comment", "placeholder", "gutter", "dimmed"] as const) {
+        const value = theme.colors[key];
+        if (!value?.startsWith("#")) continue; // only concrete hex tokens are checked here
+        expect(contrastRatio(value, theme.colors.background)).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 
   // Regression: default-light's selectionBg (#b6d7fb, 1.49:1), catppuccin-
   // latte's (#acb0be, 1.91:1), and solarized-light's (#eee8d5 — literally
@@ -286,11 +287,12 @@ describe("every light theme's muted text tokens clear WCAG AA", () => {
   // minimum for a non-text UI element — a selection highlight needs to be
   // visibly *there* against the page background, not just contrast the text
   // inside it. gruvbox-light's (3.33:1) already cleared the bar.
-  test.each(
-    lightThemes.map((t) => [t.name, t] as const),
-  )("%s: selectionBg >= 3:1 against background (WCAG 1.4.11 non-text UI)", (_name, theme) => {
-    const selectionBg = theme.colors.selectionBg;
-    if (!selectionBg?.startsWith("#")) return;
-    expect(contrastRatio(selectionBg, theme.colors.background)).toBeGreaterThanOrEqual(3.0);
-  });
+  test.each(lightThemes.map((t) => [t.name, t] as const))(
+    "%s: selectionBg >= 3:1 against background (WCAG 1.4.11 non-text UI)",
+    (_name, theme) => {
+      const selectionBg = theme.colors.selectionBg;
+      if (!selectionBg?.startsWith("#")) return;
+      expect(contrastRatio(selectionBg, theme.colors.background)).toBeGreaterThanOrEqual(3.0);
+    },
+  );
 });

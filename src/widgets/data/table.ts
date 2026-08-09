@@ -1,6 +1,6 @@
 import { App } from "../../core/app.ts";
 import { runCols } from "../../core/selection.ts";
-import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
+import { fadeClippedRight, fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import type { AccessibleNode } from "../../dom/widget.ts";
 import { Widget } from "../../dom/widget.ts";
@@ -11,7 +11,7 @@ import type { ScreenBuffer } from "../../render/buffer.ts";
 import { Segment, stringWidth } from "../../render/segment.ts";
 import type { Style } from "../../render/style.ts";
 import { handleReadonlySelectionMouse } from "../readonly-selection.ts";
-import { fitCell } from "./cell-format.ts";
+import { cellOverflows, fitCell } from "./cell-format.ts";
 import { buildGroupedRows, type GroupedRow, initialCollapsed, type RowGroup } from "./grouping.ts";
 import { maxRowScrollTop, trackYToScrollTop, wheelScrollTop } from "./row-scroll.ts";
 
@@ -923,6 +923,16 @@ export class TableWidget<Row = any> extends Widget {
     // Bold by default; caller-supplied headerStyle fields take precedence.
     const seg = new Segment(line, this.baseStyle({ bold: true, ...this.headerStyle }));
     buffer.drawSegment(originX - this.scrollLeft, y, seg);
+    // Per-column right-edge fade for overflowing header labels.
+    const bg = this.findResolvedBackground();
+    this._fadeCols(
+      buffer,
+      this.columns.map((col, i) => ({ text: col.header, width: widths[i] })),
+      originX,
+      y,
+      1,
+      bg,
+    );
   }
 
   private renderRow(
@@ -950,6 +960,36 @@ export class TableWidget<Row = any> extends Widget {
       this.baseStyle(selected ? { background: this.resolvedSelectedBackground() } : {}),
     );
     buffer.drawSegment(originX - this.scrollLeft, y, seg);
+    // Per-column right-edge fade for any cell whose text overflows its width.
+    const bg = selected ? this.resolvedSelectedBackground() : this.findResolvedBackground();
+    const colData = this.columns.map((col, i) =>
+      this.grouped || !this.isRich(col)
+        ? { text: this.cellTextFor(col, row, rowIndex), width: widths[i] }
+        : { text: "", width: widths[i] },
+    );
+    this._fadeCols(buffer, colData, originX, y, this.rowHeight, bg);
+  }
+
+  /**
+   * Apply a right-edge gradient fade to each column whose cell text overflows
+   * its allocated width. `cols` is an array of `{text, width}` per column
+   * (in display order); the x-origin accounts for horizontal scroll.
+   */
+  private _fadeCols(
+    buffer: ScreenBuffer,
+    cols: { text: string; width: number }[],
+    originX: number,
+    y: number,
+    rowH: number,
+    bg: string,
+  ): void {
+    let x = originX - this.scrollLeft;
+    for (const { text, width } of cols) {
+      if (width >= 2 && cellOverflows(text, width)) {
+        fadeClippedRight(buffer, new Region(new Offset(x, y), new Size(width, rowH)), bg);
+      }
+      x += width + GAP;
+    }
   }
 
   /** A group title row, spanning the full body width (bold title + dim count). */

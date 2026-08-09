@@ -36,7 +36,8 @@ describe("breatheColor", () => {
   });
 
   test("falls back to base when an endpoint is unparseable", () => {
-    expect(breatheColor("not-a-color", "#fff", 0, FOCUS_BREATH)).toBe("not-a-color");
+    expect(breatheColor("not-a-color", "#fff", 0, ATTENTION_BREATH)).toBe("not-a-color");
+    expect(breatheColor("#fff", "not-a-color", 0, ATTENTION_BREATH)).toBe("#fff");
   });
 });
 

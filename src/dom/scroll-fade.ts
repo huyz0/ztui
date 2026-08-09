@@ -51,3 +51,32 @@ export function fadeScrollEdges(
     if (region.height > 3) blendRow(region.bottom - 2, FADE_NEXT);
   }
 }
+
+/**
+ * Fade the rightmost 2 columns of a row region toward the background, creating
+ * a soft dissolve cue that text continues past the visible edge. This replaces
+ * the hard `…` ellipsis truncation with a smoother gradient affordance.
+ *
+ * The two-stop gradient mirrors {@link fadeScrollEdges}: the last column fades
+ * hardest (`FADE_EDGE`), the penultimate column more softly (`FADE_NEXT`), so
+ * the glyph underneath remains readable as it trails off.
+ *
+ * Pure visual affordance — only the already-painted cells are tinted. `bg` is
+ * the surface the text sits on; unset falls back to the theme background.
+ */
+export function fadeClippedRight(buffer: ScreenBuffer, region: Region, bg?: string): void {
+  if (region.width < 2) return;
+
+  const base = themeBlendBase();
+  const fade = (bg ? parseColor(bg)?.rgb : undefined) ?? base.bg;
+  const blendCol = (x: number, a: number) =>
+    buffer.blendRegion(
+      new Region(new Offset(x, region.y), new Size(1, region.height)),
+      fade,
+      a,
+      base,
+    );
+
+  blendCol(region.right - 1, FADE_EDGE);
+  blendCol(region.right - 2, FADE_NEXT);
+}

@@ -395,112 +395,112 @@ describe("CSSResolver diff row tint strength", () => {
 
   afterEach(() => ThemeManager.getInstance().setTheme("default-dark"));
 
-  test.each([
-    ["default-dark", 1.3, 4.5] as const,
-    ["default-light", 1.4, 4.5] as const,
-  ])("%s: diff-added-bg/diff-removed-bg are distinguishable from the background, and the row's own text color stays legible on top", (themeName, minBgContrast, minTextContrast) => {
-    const mgr = ThemeManager.getInstance();
-    mgr.setTheme(themeName);
-    const resolver = new CSSResolver([]);
-    const w = new Widget("code");
-    const theme = mgr.getActiveTheme();
-    const bg = theme.colors.background;
+  test.each([["default-dark", 1.3, 4.5] as const, ["default-light", 1.4, 4.5] as const])(
+    "%s: diff-added-bg/diff-removed-bg are distinguishable from the background, and the row's own text color stays legible on top",
+    (themeName, minBgContrast, minTextContrast) => {
+      const mgr = ThemeManager.getInstance();
+      mgr.setTheme(themeName);
+      const resolver = new CSSResolver([]);
+      const w = new Widget("code");
+      const theme = mgr.getActiveTheme();
+      const bg = theme.colors.background;
 
-    w.style.color = "$diff-added-bg";
-    const addedBg = resolver.resolveStyles(w, false).color as string;
-    w.style.color = "$diff-removed-bg";
-    const removedBg = resolver.resolveStyles(w, false).color as string;
-    // Diff.ts paints an added/removed row's text with diff-added-fg/
-    // diff-removed-fg, not the plain theme foreground — check the color
-    // that's actually rendered, not a stand-in.
-    w.style.color = "$diff-added-fg";
-    const addedFg = resolver.resolveStyles(w, false).color as string;
-    w.style.color = "$diff-removed-fg";
-    const removedFg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-added-bg";
+      const addedBg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-removed-bg";
+      const removedBg = resolver.resolveStyles(w, false).color as string;
+      // Diff.ts paints an added/removed row's text with diff-added-fg/
+      // diff-removed-fg, not the plain theme foreground — check the color
+      // that's actually rendered, not a stand-in.
+      w.style.color = "$diff-added-fg";
+      const addedFg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-removed-fg";
+      const removedFg = resolver.resolveStyles(w, false).color as string;
 
-    // The pre-fix weights (16%/24%) produced ~1.2-1.6:1 against the page
-    // background on every built-in theme — below this floor. This isn't a
-    // WCAG text-contrast target (a background wash isn't text), just a
-    // "not literally the same shade as the page" floor.
-    expect(contrastRatio(addedBg, bg)).toBeGreaterThan(minBgContrast);
-    expect(contrastRatio(removedBg, bg)).toBeGreaterThan(minBgContrast);
-    // The row's own text color painted over its own tint must stay clearly
-    // legible — this is what regresses if either tint is pushed too far.
-    expect(contrastRatio(addedFg, addedBg)).toBeGreaterThan(minTextContrast);
-    expect(contrastRatio(removedFg, removedBg)).toBeGreaterThan(minTextContrast);
-  });
+      // The pre-fix weights (16%/24%) produced ~1.2-1.6:1 against the page
+      // background on every built-in theme — below this floor. This isn't a
+      // WCAG text-contrast target (a background wash isn't text), just a
+      // "not literally the same shade as the page" floor.
+      expect(contrastRatio(addedBg, bg)).toBeGreaterThan(minBgContrast);
+      expect(contrastRatio(removedBg, bg)).toBeGreaterThan(minBgContrast);
+      // The row's own text color painted over its own tint must stay clearly
+      // legible — this is what regresses if either tint is pushed too far.
+      expect(contrastRatio(addedFg, addedBg)).toBeGreaterThan(minTextContrast);
+      expect(contrastRatio(removedFg, removedBg)).toBeGreaterThan(minTextContrast);
+    },
+  );
 
-  test.each([
-    "default-dark",
-    "default-light",
-  ])("%s: diff-added-fg/diff-removed-fg read as a distinct hue from the plain theme foreground, not just a same-color restyle", (themeName) => {
-    // Regression: an added/removed row's text used to be the same plain
-    // theme foreground as every other line — only the background tint
-    // signaled the change. diff-added-fg/diff-removed-fg must actually
-    // differ from the foreground (blended toward success/error), or this
-    // whole feature is a no-op.
-    const mgr = ThemeManager.getInstance();
-    mgr.setTheme(themeName);
-    const resolver = new CSSResolver([]);
-    const w = new Widget("code");
-    const fg = mgr.getActiveTheme().colors.foreground;
+  test.each(["default-dark", "default-light"])(
+    "%s: diff-added-fg/diff-removed-fg read as a distinct hue from the plain theme foreground, not just a same-color restyle",
+    (themeName) => {
+      // Regression: an added/removed row's text used to be the same plain
+      // theme foreground as every other line — only the background tint
+      // signaled the change. diff-added-fg/diff-removed-fg must actually
+      // differ from the foreground (blended toward success/error), or this
+      // whole feature is a no-op.
+      const mgr = ThemeManager.getInstance();
+      mgr.setTheme(themeName);
+      const resolver = new CSSResolver([]);
+      const w = new Widget("code");
+      const fg = mgr.getActiveTheme().colors.foreground;
 
-    w.style.color = "$diff-added-fg";
-    const addedFg = resolver.resolveStyles(w, false).color as string;
-    w.style.color = "$diff-removed-fg";
-    const removedFg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-added-fg";
+      const addedFg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-removed-fg";
+      const removedFg = resolver.resolveStyles(w, false).color as string;
 
-    expect(addedFg).not.toBe(fg);
-    expect(removedFg).not.toBe(fg);
-    expect(addedFg).not.toBe(removedFg);
-  });
+      expect(addedFg).not.toBe(fg);
+      expect(removedFg).not.toBe(fg);
+      expect(addedFg).not.toBe(removedFg);
+    },
+  );
 
-  test.each([
-    "default-dark",
-    "default-light",
-  ])("%s: the gutter tint is brighter than the code-area tint, and its text clears AA on top", (themeName) => {
-    const mgr = ThemeManager.getInstance();
-    mgr.setTheme(themeName);
-    const resolver = new CSSResolver([]);
-    const w = new Widget("code");
-    const theme = mgr.getActiveTheme();
-    const bg = theme.colors.background;
+  test.each(["default-dark", "default-light"])(
+    "%s: the gutter tint is brighter than the code-area tint, and its text clears AA on top",
+    (themeName) => {
+      const mgr = ThemeManager.getInstance();
+      mgr.setTheme(themeName);
+      const resolver = new CSSResolver([]);
+      const w = new Widget("code");
+      const theme = mgr.getActiveTheme();
+      const bg = theme.colors.background;
 
-    w.style.color = "$diff-added-bg";
-    const codeBg = resolver.resolveStyles(w, false).color as string;
-    w.style.color = "$diff-added-gutter-bg";
-    const gutterBg = resolver.resolveStyles(w, false).color as string;
-    w.style.color = "$diff-added-gutter-fg";
-    const gutterFg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-added-bg";
+      const codeBg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-added-gutter-bg";
+      const gutterBg = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-added-gutter-fg";
+      const gutterFg = resolver.resolveStyles(w, false).color as string;
 
-    // "Brighter" = further from the page background than the code area's
-    // own (now intentionally darker) tint.
-    expect(contrastRatio(gutterBg, bg)).toBeGreaterThan(contrastRatio(codeBg, bg));
-    expect(contrastRatio(gutterFg, gutterBg)).toBeGreaterThan(4.5);
-  });
+      // "Brighter" = further from the page background than the code area's
+      // own (now intentionally darker) tint.
+      expect(contrastRatio(gutterBg, bg)).toBeGreaterThan(contrastRatio(codeBg, bg));
+      expect(contrastRatio(gutterFg, gutterBg)).toBeGreaterThan(4.5);
+    },
+  );
 
-  test.each([
-    "default-dark",
-    "default-light",
-  ])("%s: an unchanged row's gutter text (diff-gutter-fg) is brighter than the plain gutter color", (themeName) => {
-    // Regression: context-row line numbers used the plain $gutter tone,
-    // which read as too dark next to the brighter added/removed gutter
-    // highlight. diff-gutter-fg must be measurably closer to the
-    // foreground (brighter) than $gutter on its own.
-    const mgr = ThemeManager.getInstance();
-    mgr.setTheme(themeName);
-    const resolver = new CSSResolver([]);
-    const w = new Widget("code");
-    const theme = mgr.getActiveTheme();
-    const bg = theme.colors.background;
+  test.each(["default-dark", "default-light"])(
+    "%s: an unchanged row's gutter text (diff-gutter-fg) is brighter than the plain gutter color",
+    (themeName) => {
+      // Regression: context-row line numbers used the plain $gutter tone,
+      // which read as too dark next to the brighter added/removed gutter
+      // highlight. diff-gutter-fg must be measurably closer to the
+      // foreground (brighter) than $gutter on its own.
+      const mgr = ThemeManager.getInstance();
+      mgr.setTheme(themeName);
+      const resolver = new CSSResolver([]);
+      const w = new Widget("code");
+      const theme = mgr.getActiveTheme();
+      const bg = theme.colors.background;
 
-    w.style.color = "$gutter";
-    const plainGutter = resolver.resolveStyles(w, false).color as string;
-    w.style.color = "$diff-gutter-fg";
-    const brightGutter = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$gutter";
+      const plainGutter = resolver.resolveStyles(w, false).color as string;
+      w.style.color = "$diff-gutter-fg";
+      const brightGutter = resolver.resolveStyles(w, false).color as string;
 
-    expect(contrastRatio(brightGutter, bg)).toBeGreaterThan(contrastRatio(plainGutter, bg));
-  });
+      expect(contrastRatio(brightGutter, bg)).toBeGreaterThan(contrastRatio(plainGutter, bg));
+    },
+  );
 
   test("diff-gutter-fg falls back to a fixed gutter tone when the theme leaves colors.gutter undefined", () => {
     const mgr = ThemeManager.getInstance();
@@ -629,28 +629,42 @@ describe("CSSResolver value coercion and glow", () => {
     expect(resolver.resolveVariable(w, "#abcdef")).toBe("#abcdef"); // fast path, no token
   });
 
-  test("focusGlow/focusGlowPair breathe a hex base when motion is on, and stay static otherwise", () => {
+  test("focusGlow/focusGlowPair resolve statically regardless of motion setting", () => {
     const resolver = new CSSResolver([]);
     const w = new Widget("button");
 
-    // Motion off: static base + a contrasting text colour.
     motion.set(false);
     expect(resolver.focusGlow(w, "#ff0000")).toBe("#ff0000");
     const offPair = resolver.focusGlowPair(w, "#ff0000");
     expect(offPair.bg).toBe("#ff0000");
     expect(offPair.fg.startsWith("#")).toBe(true);
 
-    // Motion on: a hex base pulses (still a hex), a $var base resolves first,
-    // and a non-hex/unresolvable base returns unchanged.
     motion.set(true);
     try {
-      // Breathing yields a concrete colour string (hex or rgb()) for a hex base.
-      expect(resolver.focusGlow(w, "#ff0000").length).toBeGreaterThan(0);
-      expect(resolver.focusGlow(w, "$primary").length).toBeGreaterThan(0);
-      expect(resolver.focusGlow(w, "red")).toBe("red"); // non-hex base stays as-is
+      expect(resolver.focusGlow(w, "#ff0000")).toBe("#ff0000");
+      expect(resolver.focusGlow(w, "red")).toBe("red");
       const onPair = resolver.focusGlowPair(w, "#00ff00");
-      expect(onPair.bg.length).toBeGreaterThan(0);
+      expect(onPair.bg).toBe("#00ff00");
       expect(onPair.fg.length).toBeGreaterThan(0);
+    } finally {
+      motion.reset();
+    }
+  });
+
+  test("resolveAccent handles non-hex base and recursion safety for attention and focus", () => {
+    const resolver = new CSSResolver([]);
+    resolver.addVariables({ attention: "red", focus: "$focus" });
+    const w = new Widget("div");
+
+    expect(resolver.resolveVariable(w, "$focus")).toBe("#4daafc");
+
+    const resolver2 = new CSSResolver([]);
+    resolver2.addVariables({ attention: "$focus", focus: "$attention" });
+    expect(resolver2.resolveVariable(w, "$attention")).toBe("#e5c07b");
+
+    motion.set(true);
+    try {
+      expect(resolver.resolveVariable(w, "$attention")).toBe("red");
     } finally {
       motion.reset();
     }

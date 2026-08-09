@@ -258,6 +258,7 @@ describe("DatePickerWidget", () => {
       const prev = new DatePickerWidget();
       prev.isOpen = true;
       prev.headerFocus = "prev";
+      prev.cursorDate = new Date(2026, 6, 1);
       prev.viewMonth = new Date(2026, 6, 1);
       prev.onKey?.({ name: "enter", handled: false });
       expect(prev.viewMonth.getMonth()).toBe(5);
@@ -265,6 +266,7 @@ describe("DatePickerWidget", () => {
       const next = new DatePickerWidget();
       next.isOpen = true;
       next.headerFocus = "next";
+      next.cursorDate = new Date(2026, 6, 1);
       next.viewMonth = new Date(2026, 6, 1);
       next.onKey?.({ name: "enter", handled: false });
       expect(next.viewMonth.getMonth()).toBe(7);

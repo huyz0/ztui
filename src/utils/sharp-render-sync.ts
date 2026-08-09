@@ -19,12 +19,12 @@ async function run() {
       .resize(width, height, { kernel: "lanczos3", fit: fit || "fill" })
       .sharpen();
 
-    const finalInstance = bgHex ? sharpInstance.flatten({ background: bgHex }) : sharpInstance;
-
-    const { data, info } = await finalInstance
+    const { data, info } = await sharpInstance
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
+
+    const finalInstance = bgHex ? sharpInstance.flatten({ background: bgHex }) : sharpInstance;
     const pngBuffer = await finalInstance.png().toBuffer();
 
     const output = {

@@ -191,6 +191,19 @@ describe("ChatInput", () => {
     expect(submitted).toBe("see <auth.ts>");
   });
 
+  test("a trigger with title sets popup title when opened", async () => {
+    const trigger: Trigger = {
+      char: "/",
+      title: "Slash Commands",
+      getCompletions: () => [{ label: "help" }, { label: "clear" }],
+      onAccept: (c) => ({ kind: "text", value: c.label }),
+    };
+    const { t, w } = await mountChat({ triggers: [trigger] });
+    type(w, "/");
+    await t.settle();
+    expect(t.text()).toContain("Slash Commands");
+  });
+
   test("setting value externally while a completion popup is open closes the popup instead of leaving a stale queryStart", async () => {
     // Regression: the controlled `value` setter replaced the buffer directly
     // without closing an open completion popup. `queryStart` (captured when

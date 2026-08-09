@@ -8,8 +8,9 @@
 import { App } from "../../../core/app.ts";
 import { Widget } from "../../../dom/widget.ts";
 import type { ScreenBuffer } from "../../../render/buffer.ts";
-import { Segment, stringWidth } from "../../../render/segment.ts";
+import { charWidth, Segment, splitGraphemes, stringWidth } from "../../../render/segment.ts";
 import { Style } from "../../../render/style.ts";
+import { truncate } from "../../../render/text-wrap.ts";
 import type { Completion } from "./types.ts";
 
 const MAX_ROWS = 8;
@@ -20,6 +21,8 @@ export class CompletionPopupWidget extends Widget {
   /** Top-left anchor (a cell at/under the trigger char). */
   public anchorX = 0;
   public anchorY = 0;
+  /** Optional title shown in the top border of the popup. */
+  public title?: string;
   /** Invoked with the chosen item index. */
   public onChoose?: (index: number) => void;
   /** Invoked when a click lands outside the popup. */
@@ -40,7 +43,7 @@ export class CompletionPopupWidget extends Widget {
 
   /** Cell width of the bordered popup (clamped to the screen). */
   private boxWidth(): number {
-    let w = 0;
+    let w = this.title ? stringWidth(this.title) + 2 : 0;
     for (const it of this.items) {
       const detail = it.detail ? ` ${it.detail}` : "";
       w = Math.max(w, stringWidth(it.label) + stringWidth(detail));
@@ -110,6 +113,17 @@ export class CompletionPopupWidget extends Widget {
     for (let yy = r.y + 1; yy < r.y + r.h - 1; yy++) {
       buffer.setCell(r.x, yy, v, border);
       buffer.setCell(r.x + r.w - 1, yy, v, border);
+    }
+
+    if (this.title) {
+      const avail = r.w - 4;
+      const titleStyle = border.merge({ bold: true });
+      const label = ` ${truncate(this.title, avail)} `;
+      let xx = r.x + 1;
+      for (const ch of splitGraphemes(label)) {
+        buffer.setCell(xx, r.y, ch, titleStyle);
+        xx += charWidth(ch);
+      }
     }
 
     // Rows (windowed around the selection).

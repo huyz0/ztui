@@ -89,6 +89,25 @@ export function isPointerShape(name: string): name is PointerShape {
   return POINTER_SHAPE_SET.has(name);
 }
 
+/**
+ * Taskbar/tab progress state, per the ConEmu OSC 9;4 convention adopted by
+ * Windows Terminal, iTerm2, WezTerm, and Ghostty. `"none"` clears the
+ * indicator; `"normal"`/`"error"`/`"paused"` show a determinate bar at
+ * `value` (0-100); `"indeterminate"` shows a busy/marquee state with no
+ * value. Unsupported terminals ignore the sequence, so it's safe to emit
+ * unconditionally.
+ */
+export type ProgressState = "none" | "normal" | "error" | "indeterminate" | "paused";
+
+/** OSC 9;4 state codes, in {@link ProgressState} order. */
+const PROGRESS_STATE_CODES: Record<ProgressState, number> = {
+  none: 0,
+  normal: 1,
+  error: 2,
+  indeterminate: 3,
+  paused: 4,
+};
+
 /** What the active backend/terminal supports; drivers fill this in (some after a probe). */
 export interface TerminalCapabilities {
   /** 24-bit color. */
@@ -236,6 +255,47 @@ export abstract class Driver extends EventEmitter {
   /** Whether passive hover move suppression should be enforced by the app. */
   public get enforcesRuntimeHoverMode(): boolean {
     return false;
+  }
+  /** Last title written, to suppress redundant OSC 0 emissions. `undefined` = nothing written yet. */
+  private lastTitle: string | undefined = undefined;
+  /**
+   * Set the terminal tab/window title via OSC 0 (`ESC ] 0 ; <title> BEL`). A
+   * no-op when `title` is already active. Most terminals honor this even
+   * without positively advertising support, so it's emitted unconditionally
+   * rather than gated on a probed capability. Backends that don't speak ANSI
+   * (e.g. the web canvas) override this to set the page title instead.
+   */
+  public setTitle(title: string): void {
+    if (title === this.lastTitle) return;
+    this.lastTitle = title;
+    this.write(`\x1b]0;${title}\x07`);
+  }
+  /** Last (state, value) written, to suppress redundant OSC 9;4 emissions. */
+  private lastProgress: { state: ProgressState; value: number | undefined } | undefined = undefined;
+  /**
+   * Set the taskbar/tab progress indicator via OSC 9;4
+   * (`ESC ] 9 ; 4 ; <state> ; <value> ST`), the ConEmu convention supported by
+   * Windows Terminal, iTerm2, WezTerm, and Ghostty. `value` (0-100) is used
+   * for `"normal"`/`"error"`/`"paused"` and ignored for `"none"`/
+   * `"indeterminate"`. A no-op when the same state/value is already active.
+   * Emitted unconditionally — unsupported terminals ignore unknown OSC
+   * sequences, so no capability probe is needed.
+   */
+  public setProgress(state: ProgressState, value?: number): void {
+    const clamped =
+      state === "normal" || state === "error" || state === "paused"
+        ? Math.max(0, Math.min(100, Math.round(value ?? 0)))
+        : undefined;
+    if (
+      this.lastProgress &&
+      this.lastProgress.state === state &&
+      this.lastProgress.value === clamped
+    ) {
+      return;
+    }
+    this.lastProgress = { state, value: clamped };
+    const code = PROGRESS_STATE_CODES[state];
+    this.write(clamped === undefined ? `\x1b]9;4;${code}\x07` : `\x1b]9;4;${code};${clamped}\x07`);
   }
   /** Escape sequence drawing a registered icon by name (text fallback by default; protocol drivers override). */
   public getIconSequence(name: string, _color?: string, _bgColor?: string): string {

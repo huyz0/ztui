@@ -36,6 +36,8 @@ export type TriggerResult =
 export interface Trigger {
   /** The trigger character, e.g. "/", "@", "#". */
   char: string;
+  /** Optional title shown in the completion popup header (e.g. "Commands", "Mentions"). */
+  title?: string;
   /** Require the char to sit at the start of its logical line (e.g. commands). */
   atLineStart?: boolean;
   /** Provide completions for the current query (sync or async). */

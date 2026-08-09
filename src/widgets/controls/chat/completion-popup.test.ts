@@ -96,4 +96,131 @@ describe("CompletionPopupWidget", () => {
     const empty = popup([]);
     expect(() => empty.render(buf)).not.toThrow();
   });
+
+  test("title expands boxRect width and renders in top border", () => {
+    const w = popup(ITEMS);
+    w.anchorX = 0;
+    w.anchorY = 0;
+    w.title = "Commands Header";
+    const r = w.boxRect();
+
+    // "Commands Header" is 15 chars; stringWidth + 2 = 17; + 4 = 21 outer width
+    expect(r.w).toBeGreaterThanOrEqual(21);
+
+    const buf = new ScreenBuffer();
+    buf.resize(40, 16);
+    w.render(buf);
+
+    const firstRow = buf.cells[r.y].map((c) => c.char).join("");
+    expect(firstRow).toContain("Commands Header");
+  });
+
+  test("truncates overly long titles to fit clamped box width", () => {
+    const w = popup(ITEMS);
+    w.title =
+      "An extremely long title that exceeds maximum popup box width limit of forty eight cells";
+    const r = w.boxRect();
+    expect(r.w).toBe(48);
+
+    const buf = new ScreenBuffer();
+    buf.resize(60, 16);
+    w.render(buf);
+
+    const firstRow = buf.cells[r.y].map((c) => c.char).join("");
+    expect(firstRow).toContain("…");
+  });
+
+  test("border click is within boxRect but does not choose an item", () => {
+    const onChoose = vi.fn();
+    const onDismiss = vi.fn();
+    const w = popup(ITEMS);
+    w.onChoose = onChoose;
+    w.onDismiss = onDismiss;
+    const r = w.boxRect();
+
+    // Top border row (y = r.y)
+    const ev = { type: "press", button: "left", x: r.x + 1, y: r.y, handled: false } as any;
+    w.handleMouse(ev);
+    expect(ev.handled).toBe(true);
+    expect(onChoose).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  test("out of bounds selectedIndex breaks safely during render", () => {
+    const w = popup(ITEMS);
+    w.selectedIndex = 10;
+    const buf = new ScreenBuffer();
+    buf.resize(40, 16);
+    expect(() => w.render(buf)).not.toThrow();
+  });
+
+  test("ignores right clicks in handleMouse", () => {
+    const onChoose = vi.fn();
+    const onDismiss = vi.fn();
+    const w = popup(ITEMS);
+    w.onChoose = onChoose;
+    w.onDismiss = onDismiss;
+    const ev = { type: "press", button: "right", x: 1, y: 1, handled: false } as any;
+    w.handleMouse(ev);
+    expect(ev.handled).toBe(false);
+    expect(onChoose).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  test("boxRect stays below when flip above cannot fit", () => {
+    const w = popup(ITEMS, new Region(new Offset(0, 0), new Size(40, 5)));
+    w.anchorX = 0;
+    w.anchorY = 4;
+    const r = w.boxRect();
+    expect(r.y).toBe(5);
+  });
+
+  test("bottom border click does not choose an item", () => {
+    const onChoose = vi.fn();
+    const onDismiss = vi.fn();
+    const w = popup(ITEMS);
+    w.onChoose = onChoose;
+    w.onDismiss = onDismiss;
+    const r = w.boxRect();
+
+    // Bottom border row (y = r.y + r.h - 1)
+    const ev = {
+      type: "press",
+      button: "left",
+      x: r.x + 1,
+      y: r.y + r.h - 1,
+      handled: false,
+    } as any;
+    w.handleMouse(ev);
+    expect(ev.handled).toBe(true);
+    expect(onChoose).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  test("handles mouse clicks without onChoose or onDismiss callbacks defined", () => {
+    const w = popup(ITEMS);
+    const r = w.boxRect();
+
+    // Inside row click
+    const insideEv = {
+      type: "press",
+      button: "left",
+      x: r.x + 1,
+      y: r.y + 1,
+      handled: false,
+    } as any;
+    expect(() => w.handleMouse(insideEv)).not.toThrow();
+    expect(insideEv.handled).toBe(true);
+
+    // Outside click
+    const outsideEv = {
+      type: "press",
+      button: "left",
+      x: r.x + r.w + 10,
+      y: r.y,
+      handled: false,
+    } as any;
+    expect(() => w.handleMouse(outsideEv)).not.toThrow();
+    expect(outsideEv.handled).toBe(true);
+  });
 });

@@ -1,5 +1,6 @@
 import { App } from "../../core/app.ts";
 import { runCols } from "../../core/selection.ts";
+import { fadeClippedRight } from "../../dom/scroll-fade.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { MouseEvent } from "../../driver/driver.ts";
 import type { Region } from "../../geometry/region.ts";
@@ -147,6 +148,10 @@ export class LabelWidget extends Widget {
         buffer.drawSegment(currentX, contentRect.y, themed, contentRect);
         currentX += stringWidth(themed.text);
       }
+      // Gradient fade on the right edge when markup text overflows the box.
+      if (stringWidth(plain) > contentRect.width) {
+        fadeClippedRight(buffer, contentRect, bg);
+      }
     } else if (this.wrap) {
       // Word-wrapped plain text: one drawn row per wrapped line, each its own
       // selectable line so a drag highlights and copies across the break.
@@ -169,6 +174,10 @@ export class LabelWidget extends Widget {
     } else {
       x = this.alignedX(contentRect, stringWidth(text));
       buffer.drawSegment(x, contentRect.y, new Segment(text, style), contentRect);
+      // Gradient fade on the right edge when plain text overflows the box.
+      if (stringWidth(text) > contentRect.width) {
+        fadeClippedRight(buffer, contentRect, bg);
+      }
     }
 
     // Register the rendered line as selectable content (clipped to the box) so a

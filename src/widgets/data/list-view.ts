@@ -1,6 +1,6 @@
 import { App } from "../../core/app.ts";
 import { selectionDeltaForKey } from "../../dom/key-nav.ts";
-import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
+import { fadeClippedRight, fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { PointerShape } from "../../driver/driver.ts";
@@ -419,10 +419,11 @@ export class ListViewWidget extends Widget {
     const drawItem = (item: ListItem, y: number, selected: boolean): void => {
       const background = selected ? selectedBg : ownBg;
       const color = item.disabled ? muted : baseColor;
+      const rawText = this.rowText(item);
       buffer.drawSegment(
         content.x - this.scrollLeft,
         y,
-        new Segment(fitCell(this.rowText(item), fullW, "left"), new Style({ color, background })),
+        new Segment(fitCell(rawText, fullW, "left"), new Style({ color, background })),
       );
       // Re-draw the detail suffix dimmed so it reads as secondary text.
       if (item.detail && !item.disabled) {
@@ -431,6 +432,14 @@ export class ListViewWidget extends Widget {
           content.x - this.scrollLeft + prefixW,
           y,
           new Segment(item.detail, new Style({ color: muted, background })),
+        );
+      }
+      // Right-edge gradient fade when the row text overflows the viewport.
+      if (stringWidth(rawText) > bodyW) {
+        fadeClippedRight(
+          buffer,
+          new Region(new Offset(content.x, y), new Size(bodyW, 1)),
+          background,
         );
       }
     };
@@ -456,6 +465,10 @@ export class ListViewWidget extends Widget {
           y,
           new Segment(suffix, new Style({ color: muted, background: ownBg, bold: true })),
         );
+        // Right-edge gradient fade for overflowing group header text.
+        if (stringWidth(text) > bodyW) {
+          fadeClippedRight(buffer, new Region(new Offset(content.x, y), new Size(bodyW, 1)), ownBg);
+        }
         continue;
       }
       const item = row ? (row.kind === "item" ? row.item : null) : this.items[v];

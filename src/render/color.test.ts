@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lerpColor, mix, parseColor, parseRgb } from "./color.ts";
+import { contrastText, lerpColor, mix, parseColor, parseRgb } from "./color.ts";
 
 describe("parseColor", () => {
   it("parses rgba() with its alpha", () => {
@@ -76,5 +76,18 @@ describe("lerpColor", () => {
     expect(lerpColor("default", "#ff0000", 0.5)).toBe("rgb(255, 0, 0)");
     expect(lerpColor("#00ff00", "transparent", 0.5)).toBe("rgb(0, 255, 0)");
     expect(lerpColor("default", "transparent", 0.5)).toBe("transparent");
+  });
+});
+
+describe("contrastText", () => {
+  it("returns dark text for light backgrounds and light text for dark backgrounds", () => {
+    expect(contrastText("#ffffff")).toBe("#0a0a0a");
+    expect(contrastText("#000000")).toBe("#ffffff");
+    expect(contrastText("rgb(255, 255, 255)")).toBe("#0a0a0a");
+    expect(contrastText("rgb(0, 0, 0)")).toBe("#ffffff");
+  });
+
+  it("falls back to white for unparseable input", () => {
+    expect(contrastText("not-a-color")).toBe("#ffffff");
   });
 });

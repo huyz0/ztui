@@ -1,6 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { App, iconRegistry, Spacing } from "../src/core.ts";
-import { Button, Dock, Footer, HBox, Header, HeroIcon, Icon, Label, VBox } from "../src/react.ts";
+import {
+  Button,
+  Dock,
+  Footer,
+  HBox,
+  Header,
+  HeroIcon,
+  Icon,
+  Label,
+  ProgressBar,
+  VBox,
+} from "../src/react.ts";
 import { ExitButton } from "./exit-button.tsx";
 
 iconRegistry.registerIcons([
@@ -38,6 +49,10 @@ function AdvancedProtocolsApp() {
     "Notifications: Detecting...",
   ]);
   const [clipStatus, setClipStatus] = useState("Copy to Clipboard (OSC 52)");
+  const [titleStatus, setTitleStatus] = useState("Set Tab Title (OSC 0)");
+  const [taskProgress, setTaskProgress] = useState(0);
+  const [taskRunning, setTaskRunning] = useState(false);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const caps = App.instance?.driver?.capabilities;
@@ -100,6 +115,45 @@ function AdvancedProtocolsApp() {
       driver.showNotification("ZTUI Alert", "This is a test notification from ZTUI!");
     }
   };
+
+  const handleSetTitle = () => {
+    const driver = App.instance?.driver;
+    if (driver) {
+      const newTitle = `ZTUI — task #${Math.floor(Math.random() * 900 + 100)}`;
+      driver.setTitle(newTitle);
+      setTitleStatus(`Tab titled "${newTitle}" (OSC 0)`);
+    }
+  };
+
+  // Sweeps 0 -> 100 to demo the taskbar/tab progress indicator (OSC 9;4),
+  // driven here rather than by <ProgressBar reportToTaskbar> so the button
+  // can also show the error/paused states, not just a determinate sweep.
+  const handleRunTask = () => {
+    const driver = App.instance?.driver;
+    if (!driver || taskRunning) return;
+    setTaskRunning(true);
+    setTaskProgress(0);
+    driver.setProgress("normal", 0);
+    progressTimer.current = setInterval(() => {
+      setTaskProgress((prev) => {
+        const next = prev + 10;
+        if (next >= 100) {
+          if (progressTimer.current) clearInterval(progressTimer.current);
+          driver.setProgress("none");
+          setTaskRunning(false);
+          return 100;
+        }
+        driver.setProgress("normal", next);
+        return next;
+      });
+    }, 200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+    };
+  }, []);
 
   return (
     <Dock style={{ background: "$background" }}>
@@ -225,6 +279,34 @@ function AdvancedProtocolsApp() {
           >
             Set Terminal Window Badge ({badgeText})
           </Button>
+
+          <Button
+            style={{
+              background: "$accent",
+              margin: new Spacing(0, 1, 1, 1),
+            }}
+            onClick={handleSetTitle}
+          >
+            {titleStatus}
+          </Button>
+
+          <Label style={{ color: "$primary", bold: true, margin: new Spacing(0, 1, 0, 1) }}>
+            6. Taskbar/Tab Progress (OSC 9;4)
+          </Label>
+          <HBox style={{ margin: new Spacing(0, 1, 1, 1), verticalAlign: "middle" }}>
+            <ProgressBar
+              value={taskProgress}
+              showPercent
+              style={{ flexGrow: 1, margin: new Spacing(0, 1, 0, 0) }}
+            />
+            <Button
+              style={{ background: "$success" }}
+              onClick={handleRunTask}
+              disabled={taskRunning}
+            >
+              {taskRunning ? "Running..." : "Run Task"}
+            </Button>
+          </HBox>
 
           <ExitButton style={{ margin: new Spacing(0, 1, 0, 1) }}>Exit Application</ExitButton>
         </VBox>

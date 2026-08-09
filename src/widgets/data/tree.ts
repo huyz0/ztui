@@ -1,6 +1,6 @@
 import { App } from "../../core/app.ts";
 import { selectionDeltaForKey } from "../../dom/key-nav.ts";
-import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
+import { fadeClippedRight, fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import type { AccessibleNode } from "../../dom/widget.ts";
 import { Widget } from "../../dom/widget.ts";
@@ -447,11 +447,14 @@ export class TreeWidget extends Widget {
     const resolver = (this.app ?? App.instance)?.cssResolver;
     const selectedBg = resolver?.resolveVariable(this, this.selectedBackground) ?? "#264f78";
     const guideColor = resolver?.resolveVariable(this, this.guideColor) || "default";
+    const ownBg = this.findResolvedBackground();
     for (let v = first; v < last; v++) {
       const row = this.flat[v];
       const y = content.y + (v - first) * this.rowHeight;
-      const background = v === selIdx ? selectedBg : this.findResolvedBackground();
-      const line = fitCell(this.rowText(row), Math.max(bodyW, this.lastContentWidth), "left");
+      const background = v === selIdx ? selectedBg : ownBg;
+      const rawText = this.rowText(row);
+      const rowW = Math.max(bodyW, this.lastContentWidth);
+      const line = fitCell(rawText, rowW, "left");
       const seg = new Segment(
         line,
         new Style({ color: this.computedStyle.color || "default", background }),
@@ -467,6 +470,15 @@ export class TreeWidget extends Widget {
           const gx = content.x - this.scrollLeft + level * INDENT;
           buffer.setCell(gx, y, "┊", guideStyle);
         }
+      }
+
+      // Right-edge gradient fade when the row text is wider than the viewport.
+      if (stringWidth(rawText) > bodyW) {
+        fadeClippedRight(
+          buffer,
+          new Region(new Offset(content.x, y), new Size(bodyW, this.rowHeight)),
+          background,
+        );
       }
     }
     buffer.popClip();

@@ -20,7 +20,7 @@ describe("$focus breathing accent", () => {
     expect(resolver.resolveVariable(w, "$focus")).toBe(resolver.resolveVariable(w, "$primary"));
   });
 
-  test("breathes (resolves to an rgb shimmer) when motion is on", async () => {
+  test("resolves statically to theme primary even when motion is on", async () => {
     motion.set(true);
     const { findById } = await mountApp(
       <VBox theme="default-dark">
@@ -29,9 +29,8 @@ describe("$focus breathing accent", () => {
       { cols: 20, rows: 3 },
     );
     const w = findById("i")!;
-    // The breathing form always returns an rgb(...) blend, distinct from the
-    // static hex primary.
-    expect(App.instance!.cssResolver.resolveVariable(w, "$focus")).toMatch(/^rgb\(/);
+    const resolver = App.instance!.cssResolver;
+    expect(resolver.resolveVariable(w, "$focus")).toBe(resolver.resolveVariable(w, "$primary"));
   });
 });
 

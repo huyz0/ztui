@@ -1,5 +1,3 @@
-import { requestAnimationTick } from "../anim/animation.ts";
-import { motion } from "../anim/motion.ts";
 import type { KeyEvent } from "../driver/driver.ts";
 import { Offset } from "../geometry/offset.ts";
 import { Region } from "../geometry/region.ts";
@@ -35,9 +33,6 @@ export interface ScreenLayer {
   /** Focus to restore when a modal layer is removed (filled in by pushLayer). */
   previousFocus?: Widget | null;
 }
-
-/** Repaint cadence for the ambient focus breathing (~13fps — easy on the diff). */
-const FOCUS_TICK_MS = 75;
 
 /** The root widget of one screen: holds the widget tree, focus, and overlay layers. {@link App} renders the active one. */
 /** Render one {@link AccessibleNode} as a compact line: `role: "label" =value [state]`. */
@@ -100,15 +95,6 @@ export class Screen extends Widget {
     // Draw overlays on top of all normal children
     for (const overlay of this.overlays) {
       overlay.render(buffer);
-    }
-    // Keep the ambient focus "breathing" alive: while something is focused and
-    // motion is enabled, book the next gentle repaint so the $focus accent (a
-    // time-varying colour resolved during render) advances. One central tick for
-    // the whole tree — widgets don't each schedule their own.
-    if (motion.enabled && this._focusedWidget) {
-      // Paint-only: the focus accent is just a border colour. Repaint instead of
-      // relaying out the entire tree ~60×/s while a widget holds focus.
-      requestAnimationTick(this._focusedWidget, FOCUS_TICK_MS, true);
     }
   }
 

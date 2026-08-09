@@ -53,7 +53,14 @@ function runSharpScript(scriptName: string, payload: string, forFeature: string)
 
   let result: any;
   try {
-    result = JSON.parse(res.stdout.trim());
+    const raw = res.stdout || "";
+    const lines = raw
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith("{"));
+    const targetLine =
+      lines.find((l) => l.includes('"success"')) ?? lines[lines.length - 1] ?? raw.trim();
+    result = JSON.parse(targetLine);
   } catch (err: any) {
     throw new Error(
       `Failed to parse ${scriptName} output: ${res.stdout || ""}. Stderr: ${res.stderr || ""}. Error: ${err.message}`,

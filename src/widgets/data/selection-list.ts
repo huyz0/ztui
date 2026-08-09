@@ -1,6 +1,6 @@
 import { App } from "../../core/app.ts";
 import { selectionDeltaForKey } from "../../dom/key-nav.ts";
-import { fadeScrollEdges } from "../../dom/scroll-fade.ts";
+import { fadeClippedRight, fadeScrollEdges } from "../../dom/scroll-fade.ts";
 import { scrollbarTrackStyle } from "../../dom/scrollbar.ts";
 import { Widget } from "../../dom/widget.ts";
 import type { PointerShape } from "../../driver/driver.ts";
@@ -8,7 +8,7 @@ import { Offset } from "../../geometry/offset.ts";
 import { Region } from "../../geometry/region.ts";
 import { Size } from "../../geometry/size.ts";
 import type { ScreenBuffer } from "../../render/buffer.ts";
-import { Segment } from "../../render/segment.ts";
+import { Segment, stringWidth } from "../../render/segment.ts";
 import { Style } from "../../render/style.ts";
 import { fitCell } from "./cell-format.ts";
 import type { ListItem } from "./list-view.ts";
@@ -250,8 +250,16 @@ export class SelectionListWidget extends Widget {
       const y = content.y + (v - first);
       const background = v === this.cursor ? cursorBg : this.findResolvedBackground();
       const color = item.disabled ? muted : checked ? accent : baseColor;
-      const line = fitCell(this.rowText(item, checked), bodyW, "left");
+      const rawText = this.rowText(item, checked);
+      const line = fitCell(rawText, bodyW, "left");
       buffer.drawSegment(content.x, y, new Segment(line, new Style({ color, background })));
+      if (stringWidth(rawText) > bodyW) {
+        fadeClippedRight(
+          buffer,
+          new Region(new Offset(content.x, y), new Size(bodyW, 1)),
+          background,
+        );
+      }
     }
     buffer.popClip();
 

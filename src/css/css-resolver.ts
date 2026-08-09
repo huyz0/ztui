@@ -1,9 +1,9 @@
-import { ATTENTION_BREATH, breatheColor, breatheIntensity, FOCUS_BREATH } from "../anim/breathe.ts";
+import { ATTENTION_BREATH, breatheColor } from "../anim/breathe.ts";
 import { motion } from "../anim/motion.ts";
 import type { WidgetStyles } from "../dom/widget.ts";
 import { Widget } from "../dom/widget.ts";
 import { Spacing } from "../geometry/spacing.ts";
-import { contrastText, lerpColor, mix, parseRgb, rgbStr } from "../render/color.ts";
+import { contrastText } from "../render/color.ts";
 import { isColorLight, isThemeLight, ThemeManager } from "../theme.ts";
 import type { CSSRule } from "./css-parser.ts";
 
@@ -170,27 +170,19 @@ export class CSSResolver {
     this.resolvingAccents.add(name);
     try {
       const activeTheme = this.getActiveThemeForWidget(widget);
-      const isLight = activeTheme ? isThemeLight(activeTheme) : false;
       const rawThemed = this.stylesheetVariables[name] ?? activeTheme?.colors?.[name];
-      // A stylesheet/theme value can itself be an alias (e.g. `$focus: $primary;`)
-      // — expand it through the normal variable machinery rather than using the
-      // raw `$name`/`var(--name)` token verbatim as a colour.
       const themed =
         rawThemed && (rawThemed.startsWith("$") || rawThemed.startsWith("var("))
           ? this.resolveVariable(widget, rawThemed)
           : rawThemed;
-      // Breathe toward a pole, not a lighter tint: lightening an already-bright
-      // accent is imperceptible, whereas blending toward white (dark themes) or
-      // black (light themes) reads as a clear glow. The contrast pole flips with
-      // theme polarity so the pulse is always visible.
-      const pole = isLight ? "#000000" : "#ffffff";
 
       if (name === "focus") {
-        const base = themed || activeTheme?.colors?.primary || "#4daafc";
-        if (!motion.enabled || !base.startsWith("#")) return base;
-        return breatheColor(base, pole, Date.now(), FOCUS_BREATH);
+        return themed || activeTheme?.colors?.primary || "#4daafc";
       }
+
       // attention — warmer/louder than focus.
+      const isLight = activeTheme ? isThemeLight(activeTheme) : false;
+      const pole = isLight ? "#000000" : "#ffffff";
       const base =
         themed || activeTheme?.colors?.warning || activeTheme?.colors?.primary || "#e5c07b";
       if (!motion.enabled || !base.startsWith("#")) return base;
@@ -201,53 +193,18 @@ export class CSSResolver {
   }
 
   /**
-   * Make an arbitrary base colour *glow* with the focus breath: it pulses from
-   * the base toward the theme's contrast pole and back, so a control can breathe
-   * its **own** colour (a red button glows red, a green one green) rather than a
-   * generic accent. `base` may be a `$var`/`var(--…)` or a concrete colour.
-   * Returns the static base when motion is off or the colour isn't a hex.
+   * Resolves base colour for focus styling statically.
    */
   public focusGlow(widget: Widget, base: string): string {
-    const resolved =
-      base.startsWith("$") || base.startsWith("var(") ? this.resolveVariable(widget, base) : base;
-    if (!motion.enabled || !resolved.startsWith("#")) return resolved;
-    const activeTheme = this.getActiveThemeForWidget(widget);
-    const isLight = activeTheme ? isThemeLight(activeTheme) : false;
-    const pole = isLight ? "#000000" : "#ffffff";
-    return breatheColor(resolved, pole, Date.now(), FOCUS_BREATH);
+    return this.resolveVariable(widget, base);
   }
 
   /**
-   * Like {@link focusGlow} but also returns a text colour that transitions in
-   * lockstep with the glow: as the background eases from the base toward the
-   * pole, the text eases between the contrast colour of the base and that of the
-   * crest — so dark→light backgrounds give light→dark text *smoothly*, never a
-   * hard flip at a luminance threshold (the same trick the smooth caret uses).
+   * Returns the resolved base background and its contrasting text colour statically.
    */
   public focusGlowPair(widget: Widget, base: string): { bg: string; fg: string } {
-    const resolved =
-      base.startsWith("$") || base.startsWith("var(") ? this.resolveVariable(widget, base) : base;
-    const baseRgb = parseRgb(resolved);
-    if (!motion.enabled || !baseRgb) {
-      return { bg: resolved, fg: contrastText(resolved) };
-    }
-    const activeTheme = this.getActiveThemeForWidget(widget);
-    const isLight = activeTheme ? isThemeLight(activeTheme) : false;
-    const pole = isLight ? "#000000" : "#ffffff";
-    const poleRgb = parseRgb(pole) ?? { r: 255, g: 255, b: 255 };
-    const now = Date.now();
-
-    const bg = breatheColor(resolved, pole, now, FOCUS_BREATH);
-    // The text endpoints: what contrasts the trough (base) vs the crest (base
-    // blended its peak amount toward the pole). Interpolating between them by the
-    // same breathing intensity keeps fg perfectly synced to bg.
-    const crestBg = rgbStr(mix(baseRgb, poleRgb, FOCUS_BREATH.amplitude));
-    const fg = lerpColor(
-      contrastText(resolved),
-      contrastText(crestBg),
-      breatheIntensity(now, FOCUS_BREATH.periodMs),
-    );
-    return { bg, fg };
+    const resolved = this.resolveVariable(widget, base);
+    return { bg: resolved, fg: contrastText(resolved) };
   }
 
   private getWidgetColorWithFallback(

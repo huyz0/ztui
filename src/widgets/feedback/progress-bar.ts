@@ -35,6 +35,13 @@ export class ProgressBarWidget extends Widget {
   public animateMs = 0;
   /** Easing curve for the {@link animateMs} tween. Defaults to `out-cubic`. */
   public animateEasing: Easing = "out-cubic";
+  /**
+   * When true, mirror this bar's progress to the terminal's taskbar/tab
+   * indicator (OSC 9;4) via {@link Driver.setProgress}. Off by default since
+   * only one bar should typically own the indicator at a time — set it on
+   * whichever bar represents the app's overall/primary operation.
+   */
+  public reportToTaskbar = false;
 
   constructor() {
     super("progress-bar");
@@ -101,6 +108,16 @@ export class ProgressBarWidget extends Widget {
       this.renderIndeterminate(buffer, contentRect.x, y, trackWidth, fillRgb, trackRgb, bg);
     } else {
       this.renderDeterminate(buffer, contentRect.x, y, trackWidth, fillRgb, trackRgb, bg, shown);
+    }
+
+    if (this.reportToTaskbar) {
+      if (this.indeterminate) {
+        App.instance?.driver.setProgress("indeterminate");
+      } else {
+        const range = this.max - this.min;
+        const pct = range === 0 ? 0 : ((shown - this.min) / range) * 100;
+        App.instance?.driver.setProgress("normal", pct);
+      }
     }
 
     if (this.showPercent) {

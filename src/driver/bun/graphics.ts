@@ -71,16 +71,24 @@ export class TerminalGraphicsManager {
     svg: string,
     color: string,
     capabilities: TerminalCapabilities,
+    bgColor?: string,
+    scale = capabilities.graphicsProtocol === "sixel" ? 1 : 4,
   ): RasterizedIcon {
     const { width: cellWidth, height: cellHeight } = fallbackCellSize(capabilities);
+    const bg = bgColor && bgColor !== "default" ? bgColor : undefined;
 
-    const cacheKey = `${name}_${color}`;
+    // Kitty and iTerm2 support high-DPI scaling via cell bounds (c=2,r=1 / width=2;height=1).
+    // Sixel has no protocol scaling property (pixels map 1:1 to screen pixels), so Sixel uses scale=1.
+    const renderW = cellWidth * 2 * scale;
+    const renderH = cellHeight * scale;
+
+    const cacheKey = `${name}_${color}_${bg || "none"}_${renderW}x${renderH}`;
     const cache = this.iconCacheGet(cacheKey);
     if (cache?.raster && cache.cellWidth === cellWidth && cache.cellHeight === cellHeight) {
       return cache.raster;
     }
 
-    const raster = rasterizeSVG(svg, cellWidth * 2, cellHeight, color);
+    const raster = rasterizeSVG(svg, renderW, renderH, color, bg);
     this.iconCacheSet(cacheKey, {
       raster,
       cellWidth,
@@ -137,7 +145,7 @@ export class TerminalGraphicsManager {
     const fgColor = color && color !== "default" ? color : "white";
 
     if (capabilities.graphicsProtocol === "kitty") {
-      const raster = this.getOrRasterize(name, icon.svg, fgColor, capabilities);
+      const raster = this.getOrRasterize(name, icon.svg, fgColor, capabilities, bgColor);
       const w = raster.superWidth !== undefined ? raster.superWidth : raster.width;
       const h = raster.superHeight !== undefined ? raster.superHeight : raster.height;
       const rawSeq = `\x1b[s\x1b_Gf=100,a=T,t=d,s=${w},v=${h},c=2,r=1;${raster.pngBase64}\x1b\\\x1b[u`;
@@ -145,13 +153,13 @@ export class TerminalGraphicsManager {
     }
 
     if (capabilities.graphicsProtocol === "iterm2") {
-      const raster = this.getOrRasterize(name, icon.svg, fgColor, capabilities);
+      const raster = this.getOrRasterize(name, icon.svg, fgColor, capabilities, bgColor);
       const rawSeq = `\x1b[s\x1b]1337;File=inline=1;width=2;height=1:${raster.pngBase64}\x07\x1b[u`;
       return `\x1b[s  \x1b[u${rawSeq}\x1b[2C`;
     }
 
     if (capabilities.graphicsProtocol === "sixel") {
-      const raster = this.getOrRasterize(name, icon.svg, fgColor, capabilities);
+      const raster = this.getOrRasterize(name, icon.svg, fgColor, capabilities, bgColor, 1);
       const bgClr = bgColor && bgColor !== "default" ? bgColor : FALLBACK_DARK_BG;
       const cacheKey = `${fgColor}_${bgClr}`;
 

@@ -23,6 +23,12 @@ export interface ProgressBarProps extends ComponentProps {
   animate?: boolean | number;
   /** Easing curve for the {@link animate} tween. Defaults to `out-cubic`. */
   animateEasing?: Easing;
+  /**
+   * Mirror this bar's progress to the terminal's taskbar/tab indicator
+   * (OSC 9;4). Set on whichever bar represents the app's overall/primary
+   * operation — only one bar should typically own the indicator at a time.
+   */
+  reportToTaskbar?: boolean;
 }
 
 interface ProgressBarHostProps extends ComponentProps {
@@ -33,6 +39,7 @@ interface ProgressBarHostProps extends ComponentProps {
   indeterminate?: boolean;
   animateMs?: number;
   animateEasing?: Easing;
+  reportToTaskbar?: boolean;
 }
 
 const ProgressBarHost = hostComponent<ProgressBarHostProps>("ztui-progress-bar");

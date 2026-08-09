@@ -90,6 +90,7 @@ export function rasterizeSVG(
   targetWidth = 16,
   targetHeight = 16,
   color = "white",
+  bgHex?: string,
 ): RasterizedIcon {
   const cleanedSvg = cleanSvg(svg);
   const iconSize = Math.min(targetWidth, targetHeight);
@@ -120,6 +121,7 @@ export function rasterizeSVG(
     height: targetHeight,
     isIcon: true,
     color,
+    bgHex,
   });
 
   return {
