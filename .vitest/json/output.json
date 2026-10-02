@@ -1,0 +1,163 @@
+{
+  "numTotalTestSuites": 3,
+  "numPassedTestSuites": 3,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 7,
+  "numPassedTests": 1,
+  "numFailedTests": 0,
+  "numPendingTests": 6,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1790915979573,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["bench: text measurement & wrapping"],
+          "fullName": "bench: text measurement & wrapping stringWidth (ascii)",
+          "status": "skipped",
+          "title": "stringWidth (ascii)",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["bench: text measurement & wrapping"],
+          "fullName": "bench: text measurement & wrapping stringWidth (mixed)",
+          "status": "skipped",
+          "title": "stringWidth (mixed)",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["bench: text measurement & wrapping"],
+          "fullName": "bench: text measurement & wrapping splitGraphemes (mixed)",
+          "status": "skipped",
+          "title": "splitGraphemes (mixed)",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["bench: text measurement & wrapping"],
+          "fullName": "bench: text measurement & wrapping charWidth",
+          "status": "passed",
+          "title": "charWidth",
+          "duration": 8531.298999999999,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": [
+            {
+              "name": "bench: text measurement & wrapping > charWidth",
+              "tasks": [
+                {
+                  "name": "charWidth",
+                  "latency": {
+                    "aad": 0.000053136575724445915,
+                    "critical": 1.96,
+                    "df": 15869046,
+                    "mad": 4.547473508864641e-13,
+                    "max": 9.129899999999907,
+                    "mean": 0.00006301575639672044,
+                    "min": 0,
+                    "moe": 0.0000015415807785709808,
+                    "p50": 0.00009999999974752427,
+                    "p75": 0.00009999999997489795,
+                    "p99": 0.00010000000020227162,
+                    "p995": 0.00010000000020227162,
+                    "p999": 0.0001999999999497959,
+                    "rme": 2.446341782943686,
+                    "samplesCount": 15869047,
+                    "sd": 0.0031331821124762774,
+                    "sem": 7.865208053933575e-7,
+                    "variance": 0.00000981683014994131
+                  },
+                  "throughput": {
+                    "aad": 2875020.8812982743,
+                    "critical": 1.96,
+                    "df": 15869046,
+                    "mad": 0.045474736019968987,
+                    "max": 15869046.999998298,
+                    "mean": 12459500.693684569,
+                    "min": 109.53022486555277,
+                    "moe": 1439.5049357531889,
+                    "p50": 10000000.025247574,
+                    "p75": 15869046.999998298,
+                    "p99": 15869046.999998298,
+                    "p995": 15869046.999998298,
+                    "p999": 15869046.999998298,
+                    "rme": 0.011553472094454318,
+                    "samplesCount": 15869047,
+                    "sd": 2925718.313447131,
+                    "sem": 734.441293751627,
+                    "variance": 8559827649639.925
+                  },
+                  "period": 0.00006301575639671774,
+                  "totalTime": 1000.0000000000646,
+                  "rank": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ancestorTitles": ["bench: text measurement & wrapping"],
+          "fullName": "bench: text measurement & wrapping wrapText (w=40)",
+          "status": "skipped",
+          "title": "wrapText (w=40)",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["bench: text measurement & wrapping"],
+          "fullName": "bench: text measurement & wrapping truncate",
+          "status": "skipped",
+          "title": "truncate",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["bench: markdown"],
+          "fullName": "bench: markdown renderToLines",
+          "status": "skipped",
+          "title": "renderToLines",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1790915979911,
+      "endTime": 1790915988442.299,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/tuong/AppData/Local/Temp/claude/D--work/988d07d4-1707-470f-9375-25a54ab8653b/scratchpad/ztui/src/render/text.bench.ts"
+    }
+  ]
+}

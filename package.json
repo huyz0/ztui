@@ -98,7 +98,7 @@
     "test": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "perf": "vitest run --config vitest.config.perf.ts",
-    "bench": "vitest bench --run --config vitest.config.perf.ts",
+    "bench": "vitest bench --run --reporter=verbose --config vitest.config.perf.ts",
     "profile": "bun run scripts/frame-profile.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -149,7 +149,7 @@
     "@types/prismjs": "1.26.6",
     "@types/react": "19.3.0",
     "@types/react-reconciler": "0.33.1",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "5.0.3",
     "@xterm/headless": "^6.0.0",
     "beautiful-mermaid": "^1.1.3",
     "marked": "^17.0.1",
@@ -160,6 +160,6 @@
     "react-reconciler": "0.33.0",
     "sharp": "^0.35.5",
     "typescript": "^7.0.2",
-    "vitest": "4.1.11"
+    "vitest": "5.0.3"
   }
 }

@@ -17,8 +17,8 @@ export default defineConfig({
     // so it never times out mid-measurement.
     testTimeout: 30_000,
     // Only the ratio-guard tests run under `vitest run` (`bun run perf`). The
-    // `.bench.ts` files use `bench()`, which is valid only under `vitest bench`
-    // (`bun run bench`) — including them here would error in run mode. They're
+    // `.bench.ts` files (tests using the `bench` fixture) run only under
+    // `vitest bench` (`bun run bench`), which enables benchmarking; they're
     // scoped via `benchmark.include` below.
     include: ["src/**/*.perf.ts"],
     exclude: ["node_modules", ".oss", "dist"],
@@ -30,6 +30,11 @@ export default defineConfig({
     benchmark: {
       include: ["src/**/*.bench.ts"],
       exclude: ["node_modules", ".oss", "dist"],
+      // The bench files bind their own imports locally, but src modules' internal
+      // imports still go through the module runner's export getters. That cost is
+      // constant run-to-run (and was present, unreported, under vitest 4), so it
+      // doesn't affect drift tracking — don't warn on every bench.
+      suppressExportGetterWarnings: true,
     },
   },
 });
