@@ -6,6 +6,33 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-10-02
+
+Includes the changes tagged as 1.2.2, which was never published to npm.
+
+### Added
+
+- **Terminal title & taskbar progress** — `Driver.setTitle()` (OSC 0; the web
+  driver sets the page title) and `Driver.setProgress()` (OSC 9;4, honored by
+  Windows Terminal, iTerm2, WezTerm and Ghostty). `ProgressBar` gains
+  `reportToTaskbar` to mirror its value to the indicator.
+- **Completion popup title** — chat completion providers can set a `title`
+  (e.g. "Commands", "Mentions") shown in the popup's top border.
+
+### Changed
+
+- Clipped cell text in `Table`, `ListView`, `Tree`, `SelectionList` and
+  `Label` now fades out over its last two columns instead of ending in a hard
+  `…` ellipsis.
+- Focus styling no longer breathes/pulses; focus colours are resolved
+  statically.
+- Dependencies refreshed: `remend` ^1.4.0, `string-width` ^8.3.0; dev
+  toolchain on Biome 2.5.15, TypeScript 7, Vitest 4.1.11, React 19.3.0.
+
+### Fixed
+
+- The `sharp` sync helpers tolerate extra stdout noise before the JSON result.
+
 ## [1.2.1] - 2026-07-18
 
 ### Added
