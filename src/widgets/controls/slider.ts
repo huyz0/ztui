@@ -19,7 +19,7 @@ export class SliderWidget extends Widget {
   public max = 100;
   /** Increment per step. */
   public step = 1;
-  public declare onChange?: (val: number) => void;
+  declare public onChange?: (val: number) => void;
 
   /** Validation; the validated value is the numeric `value`. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.value);

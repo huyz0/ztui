@@ -27,6 +27,7 @@ export function render(element: React.ReactNode, rootNode: DOMNode): any {
     (error) => logger.error("react", "caught render error (error boundary)", error), // onCaughtError
     (error) => logger.warn("react", "recoverable render error", error), // onRecoverableError
     () => {}, // onDefaultTransitionIndicator
+    null, // transitionCallbacks
   );
 
   reconciler.updateContainer(element, container, null, () => {});

@@ -143,7 +143,7 @@ export function SplitView({ root, onChange, controls, newPane }: SplitViewProps)
     setTree((prev) => {
       const next = structuredCloneTree(prev);
       const node = nodeAt(next, path);
-      if (!node || node.type !== "split") return prev;
+      if (node?.type !== "split") return prev;
 
       const sizes = node.sizes ?? node.children.map(() => 1);
       const total = sizes.reduce((a, b) => a + b, 0);
@@ -262,7 +262,7 @@ function nodeKey(node: SplitNode): string {
 function nodeAt(root: SplitNode, path: number[]): SplitNode | undefined {
   let node: SplitNode | undefined = root;
   for (const i of path) {
-    if (!node || node.type !== "split") return undefined;
+    if (node?.type !== "split") return undefined;
     node = node.children[i];
   }
   return node;

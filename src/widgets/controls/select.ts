@@ -200,7 +200,7 @@ export class SelectWidget extends Widget {
   /** Allow selecting multiple options. */
   public multiple = false;
   /** Fired with the new selection (a value, or array when `multiple`). */
-  public declare onChange?: (val: string | string[]) => void;
+  declare public onChange?: (val: string | string[]) => void;
   /** Text shown when nothing is selected. */
   public placeholder = "Select...";
 

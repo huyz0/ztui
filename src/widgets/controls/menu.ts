@@ -57,7 +57,7 @@ export class MenuListWidget extends Widget {
   /** Index of the highlighted row (always a selectable row, or 0 when none). */
   public highlightedIndex = 0;
   /** Fired when a selectable leaf row is chosen by Enter/Space or a click. */
-  public declare onSelect?: (item: MenuItem, index: number) => void;
+  declare public onSelect?: (item: MenuItem, index: number) => void;
   /** Nesting depth (0 = root); drives the submenu overlay z-order. */
   public depth = 0;
   /** The menu this one was opened from, if it is a submenu. */

@@ -27,7 +27,7 @@ export class TabContainerWidget extends Widget {
   public hoveredIndex = 0;
   /** Allow dragging a tab header to reorder tabs. Defaults to `false`. */
   public reorderable = false;
-  public declare onChange?: (index: number) => void;
+  declare public onChange?: (index: number) => void;
   /**
    * Fired once when a drag-to-reorder ends at a different position than it
    * started. The tab headers (and this widget's children) are already
@@ -35,7 +35,7 @@ export class TabContainerWidget extends Widget {
    * this to reorder your own tab data source so the new order survives the
    * next render (otherwise a re-render with the old order snaps it back).
    */
-  public declare onReorder?: (fromIndex: number, toIndex: number) => void;
+  declare public onReorder?: (fromIndex: number, toIndex: number) => void;
   private tabMetrics: TabMetric[] = [];
   /** Index the dragged tab started at this drag gesture (for the onReorder event). */
   private dragOriginIndex: number | null = null;

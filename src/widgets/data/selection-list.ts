@@ -64,7 +64,7 @@ export class SelectionListWidget extends Widget {
   /** Color for disabled rows and `detail` text. */
   public mutedColor = "$dimmed";
   /** Fired with the next checked-id array when the selection changes. */
-  public declare onChange?: (selectedIds: string[]) => void;
+  declare public onChange?: (selectedIds: string[]) => void;
 
   private cursor = 0;
   private scrollTop = 0;

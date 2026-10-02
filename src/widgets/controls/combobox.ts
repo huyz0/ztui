@@ -165,9 +165,9 @@ export class ComboboxWidget extends Widget {
   /** Current text (typed or picked from a suggestion). */
   public value = "";
   /** Fired with the new text on every edit and on picking a suggestion. */
-  public declare onChange?: (val: string) => void;
+  declare public onChange?: (val: string) => void;
   /** Fired specifically when a suggestion is picked (click or Enter). */
-  public declare onSelect?: (option: SelectOption) => void;
+  declare public onSelect?: (option: SelectOption) => void;
   /** Text shown when the field is empty. */
   public placeholder = "Type to search...";
   /** Whether text matching no option is kept as-is when the dropdown closes. */

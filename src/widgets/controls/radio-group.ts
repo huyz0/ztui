@@ -38,7 +38,7 @@ export class RadioGroupWidget extends Widget {
 
   /** Layout direction. */
   public orientation: "horizontal" | "vertical" = "vertical";
-  public declare onChange?: (val: string) => void;
+  declare public onChange?: (val: string) => void;
 
   /** Index of the highlighted option. */
   public hoveredIndex = 0;

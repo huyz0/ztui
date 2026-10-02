@@ -70,7 +70,7 @@ export class BannerWidget extends Widget {
   /** Draw a clickable `×` at the top-right that fires {@link onDismiss}. */
   public dismissible = false;
   /** Called when the `×` is clicked (only when {@link dismissible}). */
-  public declare onDismiss?: () => void;
+  declare public onDismiss?: () => void;
 
   /** Absolute screen cell of the `×` affordance, for click hit-testing (-1 when absent). */
   private dismissX = -1;

@@ -143,17 +143,17 @@ export class ChatInputWidget extends Widget {
   }
 
   // ── host callbacks (declared as the universal supertype on the base) ─────────
-  public declare onChange?: (value: string) => void;
-  public declare onSubmit?: (value: string, attachments: Attachment[]) => void;
-  public declare onInterrupt?: () => void;
-  public declare onCommand?: (name: string, args?: unknown) => void;
-  public declare onAttach?: (item: Attachment) => void;
-  public declare onAttachRemove?: (id: string) => void;
+  declare public onChange?: (value: string) => void;
+  declare public onSubmit?: (value: string, attachments: Attachment[]) => void;
+  declare public onInterrupt?: () => void;
+  declare public onCommand?: (name: string, args?: unknown) => void;
+  declare public onAttach?: (item: Attachment) => void;
+  declare public onAttachRemove?: (id: string) => void;
   /**
    * Fires whenever the active contextual hint set changes (mode transitions, not
    * every keystroke). The host renders these as a help line below the composer.
    */
-  public declare onHintsChange?: (hints: ChatHint[]) => void;
+  declare public onHintsChange?: (hints: ChatHint[]) => void;
 
   // ── internal state ──────────────────────────────────────────────────────────
   private attachments: Attachment[] = [];

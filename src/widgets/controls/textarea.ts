@@ -45,7 +45,7 @@ export class TextAreaWidget extends Widget {
       this.cursorCol = Math.min(this.cursorCol, splitGraphemes(newLines[this.cursorRow]).length);
     }
   }
-  public declare onChange?: (val: string) => void;
+  declare public onChange?: (val: string) => void;
   /** Hint text shown when empty. */
   public placeholder = "";
   /** Show a line-number gutter. */

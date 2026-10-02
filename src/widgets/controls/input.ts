@@ -15,7 +15,7 @@ export class InputWidget extends Widget implements ValidatableField {
   }
 
   /** Fired with the current text when Enter is pressed. */
-  public declare onSubmit?: (value: string) => void;
+  declare public onSubmit?: (value: string) => void;
 
   private _value = "";
   public get value(): string {
@@ -33,7 +33,7 @@ export class InputWidget extends Widget implements ValidatableField {
     }
   }
 
-  public declare onChange?: (val: string) => void;
+  declare public onChange?: (val: string) => void;
   public placeholder = "";
 
   // Input Type, Icons, & Validation
@@ -73,7 +73,7 @@ export class InputWidget extends Widget implements ValidatableField {
    * accessor in the constructor (mirroring `attachFieldValidation`) because a
    * class accessor cannot override the base `Widget` handler declaration.
    */
-  public declare onValidate?: (result: ValidationResult) => void;
+  declare public onValidate?: (result: ValidationResult) => void;
 
   private cursorCol = 0;
   private scrollX = 0;

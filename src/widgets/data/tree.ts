@@ -84,13 +84,13 @@ export class TreeWidget extends Widget {
   public guideColor = "$border";
 
   /** Selection changed (arrow navigation or single click). */
-  public declare onSelect?: (node: TreeNode) => void;
+  declare public onSelect?: (node: TreeNode) => void;
   /** Item activated — Enter, Space, or double-click (the "open it" intent). */
-  public declare onActivate?: (node: TreeNode) => void;
+  declare public onActivate?: (node: TreeNode) => void;
   /** A node was expanded/collapsed. */
-  public declare onToggle?: (node: TreeNode, expanded: boolean) => void;
+  declare public onToggle?: (node: TreeNode, expanded: boolean) => void;
   /** The set of expanded ids changed. */
-  public declare onExpandedChange?: (expanded: string[]) => void;
+  declare public onExpandedChange?: (expanded: string[]) => void;
 
   // Double-click detection (no driver support; measured here).
   private lastClickIndex = -1;

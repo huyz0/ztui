@@ -67,11 +67,11 @@ export class ListViewWidget extends Widget {
   public mutedColor = "$dimmed";
 
   /** Selection changed (arrow navigation or single click). */
-  public declare onSelect?: (item: ListItem) => void;
+  declare public onSelect?: (item: ListItem) => void;
   /** Item activated — Enter, Space, or double-click (the "open it" intent). */
-  public declare onActivate?: (item: ListItem) => void;
+  declare public onActivate?: (item: ListItem) => void;
   /** A group was collapsed or expanded (grouped mode). */
-  public declare onToggleGroup?: (id: string, collapsed: boolean) => void;
+  declare public onToggleGroup?: (id: string, collapsed: boolean) => void;
 
   // ---- grouping state -------------------------------------------------------
   /** Ids of collapsed groups (grouped mode). */
