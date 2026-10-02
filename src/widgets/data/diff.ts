@@ -116,7 +116,7 @@ export class DiffWidget extends Widget {
   /** Show the clickable "Unified / Split" toggle in a header row. */
   public showToggle = true;
   /** Fired with the requested view when the toggle is clicked. */
-  public declare onViewChange?: (view: DiffView) => void;
+  declare public onViewChange?: (view: DiffView) => void;
 
   private scrollTop = 0;
   private lastVisibleRows = 0;

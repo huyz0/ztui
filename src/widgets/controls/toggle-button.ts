@@ -13,7 +13,7 @@ export class ToggleButtonWidget extends Widget {
   /** Pressed/active state. */
   public active = false;
   public label = "";
-  public declare onChange?: (active: boolean) => void;
+  declare public onChange?: (active: boolean) => void;
 
   constructor() {
     super("toggle-button");

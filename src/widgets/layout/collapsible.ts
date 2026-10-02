@@ -33,7 +33,7 @@ export class CollapsibleWidget extends Widget {
   /** Disclosure-marker glyph set. */
   public glyphSet: CollapsibleGlyphSet = "unicode";
   /** Fired with the requested next open state on Enter/Space/arrow/click. */
-  public declare onToggle?: (open: boolean) => void;
+  declare public onToggle?: (open: boolean) => void;
 
   constructor() {
     super("collapsible");

@@ -13,7 +13,7 @@ export class SwitchWidget extends Widget {
   /** On/off state. */
   public active = false;
   public label = "";
-  public declare onChange?: (val: boolean) => void;
+  declare public onChange?: (val: boolean) => void;
 
   /** Validation; the validated value is the boolean `active` state. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.active);

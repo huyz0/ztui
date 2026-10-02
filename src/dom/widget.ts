@@ -407,26 +407,26 @@ export class Widget extends DOMNode {
   // type-level: no instance field is emitted, so subclass fields and accessors
   // (e.g. InputWidget's `set onValidate`) are not shadowed at runtime. The base
   // class never invokes these — only subclasses that narrow the type do.
-  /** @internal */ public declare onAction?: (...args: never[]) => void;
-  /** @internal */ public declare onChange?: (...args: never[]) => void;
-  /** @internal */ public declare onSelect?: (...args: never[]) => void;
-  /** @internal */ public declare onActivate?: (...args: never[]) => void;
-  /** @internal */ public declare onSortChange?: (...args: never[]) => void;
-  /** @internal */ public declare onToggleGroup?: (...args: never[]) => void;
-  /** @internal */ public declare onViewportChange?: (...args: never[]) => void;
-  /** @internal */ public declare onViewChange?: (...args: never[]) => void;
-  /** @internal */ public declare onToggle?: (...args: never[]) => void;
-  /** @internal */ public declare onExpandedChange?: (...args: never[]) => void;
-  /** @internal */ public declare onReorder?: (...args: never[]) => void;
-  /** @internal */ public declare onValidate?: (...args: never[]) => void;
-  /** @internal */ public declare onSubmit?: (...args: never[]) => void;
-  /** @internal */ public declare onResize?: (...args: never[]) => void;
-  /** @internal */ public declare onInterrupt?: (...args: never[]) => void;
-  /** @internal */ public declare onCommand?: (...args: never[]) => void;
-  /** @internal */ public declare onAttach?: (...args: never[]) => void;
-  /** @internal */ public declare onAttachRemove?: (...args: never[]) => void;
-  /** @internal */ public declare onHintsChange?: (...args: never[]) => void;
-  /** @internal */ public declare onDismiss?: (...args: never[]) => void;
+  /** @internal */ declare public onAction?: (...args: never[]) => void;
+  /** @internal */ declare public onChange?: (...args: never[]) => void;
+  /** @internal */ declare public onSelect?: (...args: never[]) => void;
+  /** @internal */ declare public onActivate?: (...args: never[]) => void;
+  /** @internal */ declare public onSortChange?: (...args: never[]) => void;
+  /** @internal */ declare public onToggleGroup?: (...args: never[]) => void;
+  /** @internal */ declare public onViewportChange?: (...args: never[]) => void;
+  /** @internal */ declare public onViewChange?: (...args: never[]) => void;
+  /** @internal */ declare public onToggle?: (...args: never[]) => void;
+  /** @internal */ declare public onExpandedChange?: (...args: never[]) => void;
+  /** @internal */ declare public onReorder?: (...args: never[]) => void;
+  /** @internal */ declare public onValidate?: (...args: never[]) => void;
+  /** @internal */ declare public onSubmit?: (...args: never[]) => void;
+  /** @internal */ declare public onResize?: (...args: never[]) => void;
+  /** @internal */ declare public onInterrupt?: (...args: never[]) => void;
+  /** @internal */ declare public onCommand?: (...args: never[]) => void;
+  /** @internal */ declare public onAttach?: (...args: never[]) => void;
+  /** @internal */ declare public onAttachRemove?: (...args: never[]) => void;
+  /** @internal */ declare public onHintsChange?: (...args: never[]) => void;
+  /** @internal */ declare public onDismiss?: (...args: never[]) => void;
 
   /**
    * Handle a wheel/scroll event. Override to scroll your own content; set

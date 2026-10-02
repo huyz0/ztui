@@ -136,17 +136,17 @@ export class TableWidget<Row = any> extends Widget {
   }
 
   /** Selection changed (arrow navigation or single click). */
-  public declare onSelect?: (row: Row, viewIndex: number) => void;
+  declare public onSelect?: (row: Row, viewIndex: number) => void;
   /** Row activated — Enter or double-click (the "open it" intent). */
-  public declare onActivate?: (row: Row, viewIndex: number) => void;
-  public declare onSortChange?: (sort: SortState | null) => void;
+  declare public onActivate?: (row: Row, viewIndex: number) => void;
+  declare public onSortChange?: (sort: SortState | null) => void;
   /** A group was collapsed or expanded (grouped mode). */
-  public declare onToggleGroup?: (id: string, collapsed: boolean) => void;
+  declare public onToggleGroup?: (id: string, collapsed: boolean) => void;
   /**
    * Reports the visible row window so a stateful `<Table>` can render
    * widget-bearing cells (`column.render`) only for on-screen rows.
    */
-  public declare onViewportChange?: (window: { first: number; dataIndices: number[] }) => void;
+  declare public onViewportChange?: (window: { first: number; dataIndices: number[] }) => void;
 
   // ---- grouping state -------------------------------------------------------
   /** Ids of collapsed groups (grouped mode). */

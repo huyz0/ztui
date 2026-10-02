@@ -358,7 +358,7 @@ export class DatePickerWidget extends Widget {
   /** Selected date as `YYYY-MM-DD`, or `""` for no selection. */
   public value = "";
   /** Fired with the new `YYYY-MM-DD` value when a day is committed. */
-  public declare onChange?: (value: string) => void;
+  declare public onChange?: (value: string) => void;
   /** Text shown when nothing is selected. */
   public placeholder = "Select date...";
 

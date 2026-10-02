@@ -126,7 +126,7 @@ export class MarkdownWidget extends Scrollable(TextSource(Widget)) {
       }
     }
   }
-  public declare onAction?: (actionName: string, eventData: any) => void;
+  declare public onAction?: (actionName: string, eventData: any) => void;
 
   private lastRawMarkdown = "";
   private lastBlocks: { token: Token; widget: Widget | null }[] = [];

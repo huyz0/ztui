@@ -13,7 +13,7 @@ export class CheckboxWidget extends Widget {
   /** Checked state. */
   public checked = false;
   public label = "";
-  public declare onChange?: (val: boolean) => void;
+  declare public onChange?: (val: boolean) => void;
 
   /** Validation; the validated value is the boolean `checked` state. */
   public readonly validation: FieldValidation = attachFieldValidation(this, () => this.checked);

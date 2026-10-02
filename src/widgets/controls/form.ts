@@ -28,8 +28,8 @@ export class FormWidget extends BoxWidget {
   public readonly isForm = true;
   /** How validation messages are surfaced. */
   public messageMode: FormMessageMode = "auto";
-  public declare onSubmit?: (values: Record<string, unknown>) => void;
-  public declare onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
+  declare public onSubmit?: (values: Record<string, unknown>) => void;
+  declare public onValidate?: (valid: boolean, values: Record<string, unknown>) => void;
 
   constructor() {
     super();
