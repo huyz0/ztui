@@ -6,6 +6,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-10-02
+
+### Changed
+
+- Dev tooling migrated to Vitest 5 (`vitest` / `@vitest/coverage-v8` 5.0.3).
+  The `bun run bench` suites use the new `bench` test-context fixture and
+  print results with the verbose reporter. No runtime or API changes.
+
 ## [1.2.3] - 2026-10-02
 
 Includes the changes tagged as 1.2.2, which was never published to npm.
